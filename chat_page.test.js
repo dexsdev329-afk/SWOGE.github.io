@@ -77,7 +77,7 @@ const sse = (evs) => evs.map(([t, d]) => 'event: ' + t + '\ndata: ' + JSON.strin
       if (/vitrine\.json/.test(u)) return r.fulfill({ status:200, contentType:'application/json', body:'{}' });
       return r.abort();
     });
-    await page.goto('http://127.0.0.1:' + port + '/swoge_studio.html', { waitUntil:'domcontentloaded' });
+    await page.goto('http://127.0.0.1:' + port + '/swolemind.html', { waitUntil:'domcontentloaded' });
     await page.waitForFunction(() => /\$SWOGE per question/.test(document.getElementById('prixq').textContent));
     return { page, ctx, envois, soldes };
   };
@@ -86,8 +86,8 @@ const sse = (evs) => evs.map(([t, d]) => 'event: ' + t + '\ndata: ' + JSON.strin
   console.log('-- 1. la page, sans rien executer --');
   {
     /* Depuis le 26 septembre 2026, Studio EST le chat : on y arrive sur le composeur. */
-    const html = fs.readFileSync(path.join(SITE, 'swoge_studio.html'), 'utf8');
-    ok(/<title>[^<]*SWOGE Studio[^<]*chat[^<]*<\/title>/i.test(html), 'le titre est celui du Studio, qui est le chat');
+    const html = fs.readFileSync(path.join(SITE, 'swolemind.html'), 'utf8');
+    ok(/<title>SwoleMind[^<]*chat[^<]*<\/title>/i.test(html), 'le titre est celui de SwoleMind, qui est le chat');
     ok(!/sk-ant-|ANTHROPIC_API_KEY\s*=|x-api-key/i.test(html), 'aucune cle de fournisseur dans la page');
     ok(!/api\.anthropic\.com/.test(html), 'la page ne parle jamais au fournisseur directement');
     ok(/stakebubble\.min\.js\?v=/.test(html), 'la connexion par portefeuille est chargee');

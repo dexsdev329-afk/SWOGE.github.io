@@ -25,7 +25,7 @@ let chromium = null; try { chromium = require('playwright').chromium; } catch (e
 let n = 0, rates = 0;
 const ok = (c, m) => { n++; if (c) console.log('  ok   ' + m); else { rates++; console.log('  RATE ' + m); } };
 const eq = (a, b, m) => ok(a === b, m + ' [' + JSON.stringify(a) + ']');
-const T = { '.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'application/json',
+const T = { '.html':'text/html','.htm':'text/html','.js':'text/javascript','.css':'text/css','.json':'application/json',
   '.jpg':'image/jpeg','.png':'image/png','.webp':'image/webp','.ico':'image/x-icon','.mp4':'video/mp4' };
 
 const CAT = { ouvert: true, note: null, monnaie: '$SWOGE', defaut: 'opus-5-5', efforts: ['low', 'medium', 'high'], modeles: [
@@ -90,7 +90,7 @@ const CAT = { ouvert: true, note: null, monnaie: '$SWOGE', defaut: 'opus-5-5', e
 
   console.log('-- 1. on arrive SUR le chat --');
   {
-    const p = await ouvre('swoge_studio.html');
+    const p = await ouvre('swolemind.html');
     ok(await p.isVisible('#question'), 'la zone de saisie est visible des l arrivee');
     eq(await p.evaluate(() => document.activeElement && document.activeElement.id), 'question', 'et elle a le focus : on peut taper tout de suite');
     ok(await p.isVisible('#accueil'), 'l accueil « What can I help with? » est la');
@@ -102,12 +102,12 @@ const CAT = { ouvert: true, note: null, monnaie: '$SWOGE', defaut: 'opus-5-5', e
   console.log('\n-- 2. la page se peint depuis le catalogue --');
   {
     lectures = 0;
-    const p = await ouvre('swoge_studio.html');
+    const p = await ouvre('swolemind.html');
     ok(lectures >= 1, 'le catalogue est lu sur le serveur');
     eq(await p.textContent('#modeleNom'), 'Opus 5.5', 'le modele par defaut vient du catalogue');
     const plus = JSON.parse(JSON.stringify(CAT));
     plus.modeles.push({ id: 'autre', nom: 'Other 1', note: 'later', effort: false, recherche: false, typiqueSwoge: 100, maxSwoge: 900 });
-    const p2 = await ouvre('swoge_studio.html', plus);
+    const p2 = await ouvre('swolemind.html', plus);
     await p2.click('#modeleBtn');
     eq((await p2.$$('#modeles .modele')).length, 3, 'un modele ajoute cote serveur apparait, page inchangee');
     await p.close(); await p2.close();
@@ -115,7 +115,7 @@ const CAT = { ouvert: true, note: null, monnaie: '$SWOGE', defaut: 'opus-5-5', e
 
   console.log('\n-- 3. rien de promis qui ne marche pas, aucune cle --');
   {
-    const html = fs.readFileSync(path.join(SITE, 'swoge_studio.html'), 'utf8');
+    const html = fs.readFileSync(path.join(SITE, 'swolemind.html'), 'utf8');
     const sansCommentaires = html.replace(/<!--[\s\S]*?-->/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
     ok(!/id="generer"|In preparation|class="genre"/.test(sansCommentaires), 'plus de bouton « Generate » d image ou de video qui ne genere rien');
     ok(!/sk-ant-|sk-[a-z0-9]{20}|xai-[a-z0-9]|ANTHROPIC_API_KEY\s*=|OPENAI_API_KEY\s*=/i.test(html), 'aucune cle de fournisseur dans la page');
@@ -124,7 +124,7 @@ const CAT = { ouvert: true, note: null, monnaie: '$SWOGE', defaut: 'opus-5-5', e
   console.log('\n-- 5. facon Grok : Chat, Image, Video dans le meme composeur --');
   {
     envois.length = 0; polls = 0;
-    const p = await ouvre('swoge_studio.html', null, 'jeton-test');
+    const p = await ouvre('swolemind.html', null, 'jeton-test');
     const vis = (sel) => p.isVisible(sel);
     ok(await vis('.mode[data-mode="chat"]') && await vis('.mode[data-mode="image"]') && await vis('.mode[data-mode="video"]'), 'les trois modes sont dans le composeur');
     ok(await vis('#modeleBtn') && !(await vis('#reglages')) && !(await vis('#joindre')), 'en Chat : le choix du modele, pas de reglages d image');
@@ -189,7 +189,7 @@ const CAT = { ouvert: true, note: null, monnaie: '$SWOGE', defaut: 'opus-5-5', e
   console.log('\n-- 6. une video en cours survit au rechargement --');
   {
     envois.length = 0; polls = -1000;                 /* la video reste « en cours » tant qu on ne la libere pas */
-    const p = await ouvre('swoge_studio.html', null, 'jeton-test');
+    const p = await ouvre('swolemind.html', null, 'jeton-test');
     await p.click('.mode[data-mode="video"]');
     await p.fill('#question', 'the doge flexes');
     await p.click('#envoyer');
@@ -212,7 +212,7 @@ const CAT = { ouvert: true, note: null, monnaie: '$SWOGE', defaut: 'opus-5-5', e
     const sauveMED = JSON.stringify(MED);
     MED.image.fournisseurs[1].actif = false;
     envois.length = 0;
-    const p = await ouvre('swoge_studio.html', null, 'jeton-test');
+    const p = await ouvre('swolemind.html', null, 'jeton-test');
     await p.click('.mode[data-mode="image"]');
     await p.click('#fournisseur button[data-f="openai"]');
     ok(/not switched on yet/.test(await p.textContent('#prixq')), 'ChatGPT Image sans cle : la page le dit');
@@ -223,17 +223,26 @@ const CAT = { ouvert: true, note: null, monnaie: '$SWOGE', defaut: 'opus-5-5', e
     Object.assign(MED, JSON.parse(sauveMED));
   }
 
-  console.log('\n-- 4. l ancienne adresse renvoie ici --');
+  console.log('\n-- 4. les anciennes adresses renvoient sur SwoleMind --');
   {
-    const p = await nav.newPage();
-    await p.route((u) => !u.href.startsWith('http://127.0.0.1:' + port), (r) => r.abort());
-    await p.goto('http://127.0.0.1:' + port + '/swoge_chat.html?server=http://exemple.test#x', { waitUntil: 'domcontentloaded' });
-    await p.waitForURL(/swoge_studio\.html/, { timeout: 5000 }).catch(() => {});
-    ok(/\/swoge_studio\.html\?server=http:\/\/exemple\.test#x$/.test(p.url()), 'swoge_chat.html renvoie sur le Studio, ?server= et ancre gardes [' + p.url().replace(/^http:\/\/127\.0\.0\.1:\d+/, '') + ']');
-    const ancien = fs.readFileSync(path.join(SITE, 'swoge_chat.html'), 'utf8');
-    ok(/name="robots" content="noindex"/.test(ancien), 'et l ancienne adresse reste hors des moteurs : une seule page porte le chat');
-    ok(!/swoge_chat\.html/.test(fs.readFileSync(path.join(SITE, 'sitemap.xml'), 'utf8')), 'le sitemap ne la liste plus');
-    await p.close();
+    /* Renomme le 26 septembre 2026 : « SWOGE Studio » devient SwoleMind, sur
+       swolemind.html. Les adresses deja partagees ne cassent pas. */
+    for (const ancienne of ['swoge_chat.html', 'swoge_studio.html', 'swolemind.htm']) {
+      const p = await nav.newPage();
+      await p.route((u) => !u.href.startsWith('http://127.0.0.1:' + port), (r) => r.abort());
+      await p.goto('http://127.0.0.1:' + port + '/' + ancienne + '?server=http://exemple.test#x', { waitUntil: 'domcontentloaded' });
+      await p.waitForURL(/swolemind\.html/, { timeout: 5000 }).catch(() => {});
+      ok(/\/swolemind\.html\?server=http:\/\/exemple\.test#x$/.test(p.url()), ancienne + ' renvoie sur SwoleMind, ?server= et ancre gardes [' + p.url().replace(/^http:\/\/127\.0\.0\.1:\d+/, '') + ']');
+      ok(/name="robots" content="noindex"/.test(fs.readFileSync(path.join(SITE, ancienne), 'utf8')), 'et ' + ancienne + ' reste hors des moteurs : une seule page porte l application');
+      await p.close();
+    }
+    const plan = fs.readFileSync(path.join(SITE, 'sitemap.xml'), 'utf8');
+    ok(/swolemind\.html/.test(plan) && !/swoge_chat\.html|swoge_studio\.html/.test(plan), 'le sitemap porte swolemind.html, plus les anciennes');
+    const html = fs.readFileSync(path.join(SITE, 'swolemind.html'), 'utf8');
+    ok(/<title>SwoleMind/.test(html) && /class="on" aria-current="page"><span class="ic">&#129504;<\/span>SwoleMind</.test(html), 'le titre et le menu disent SwoleMind');
+    const pages = fs.readdirSync(SITE).filter((f) => /\.html$/.test(f) && !['swoge_studio.html', 'swoge_chat.html'].includes(f));
+    const vieux = pages.filter((f) => /href="swoge_studio\.html"/.test(fs.readFileSync(path.join(SITE, f), 'utf8')));
+    ok(vieux.length === 0, 'aucun menu du site ne pointe encore vers l ancienne adresse' + (vieux.length ? ' : ' + vieux.join(', ') : ''));
   }
 
   await nav.close();

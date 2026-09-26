@@ -70,7 +70,7 @@ const sse = (evs) => evs.map(([t, d]) => 'event: ' + t + '\ndata: ' + JSON.strin
       if (/vitrine\.json/.test(u)) return r.fulfill({ status:200, contentType:'application/json', body:'{}' });
       return r.abort();
     });
-    await page.goto('http://127.0.0.1:' + port + '/swoge_chat.html', { waitUntil:'domcontentloaded' });
+    await page.goto('http://127.0.0.1:' + port + '/swoge_studio.html', { waitUntil:'domcontentloaded' });
     await page.waitForFunction(() => /\$SWOGE per question/.test(document.getElementById('prixq').textContent));
     return { page, ctx, envois, soldes };
   };
@@ -78,12 +78,13 @@ const sse = (evs) => evs.map(([t, d]) => 'event: ' + t + '\ndata: ' + JSON.strin
 
   console.log('-- 1. la page, sans rien executer --');
   {
-    const html = fs.readFileSync(path.join(SITE, 'swoge_chat.html'), 'utf8');
-    ok(/<title>[^<]*SWOGE AI Chat[^<]*<\/title>/.test(html), 'le titre est celui du chat');
+    /* Depuis le 26 septembre 2026, Studio EST le chat : on y arrive sur le composeur. */
+    const html = fs.readFileSync(path.join(SITE, 'swoge_studio.html'), 'utf8');
+    ok(/<title>[^<]*SWOGE Studio[^<]*chat[^<]*<\/title>/i.test(html), 'le titre est celui du Studio, qui est le chat');
     ok(!/sk-ant-|ANTHROPIC_API_KEY\s*=|x-api-key/i.test(html), 'aucune cle de fournisseur dans la page');
     ok(!/api\.anthropic\.com/.test(html), 'la page ne parle jamais au fournisseur directement');
     ok(/stakebubble\.min\.js\?v=/.test(html), 'la connexion par portefeuille est chargee');
-    ok(fs.readFileSync(path.join(SITE, 'swoge_studio.html'), 'utf8').includes('href="swoge_chat.html"'), 'le studio mene au chat');
+    ok(!/Open SWOGE AI Chat|class="vers-chat"/.test(html), 'aucun bouton « Open chat » a cliquer : on est deja dans le chat');
   }
 
   console.log('\n-- 2. la page se peint depuis le catalogue --');

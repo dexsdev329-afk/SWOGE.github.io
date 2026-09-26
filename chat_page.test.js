@@ -648,6 +648,36 @@ const sse = (evs) => evs.map(([t, d]) => 'event: ' + t + '\ndata: ' + JSON.strin
     await b.ctx.close(); lent.close();
   }
 
+  console.log('\n-- REVENIR sur une ancienne discussion (demande du proprietaire, 26 septembre 2026) --');
+  {
+    /* « Il n'y a que New chat, on ne peut pas revoir une ancienne discussion » :
+       la pastille du haut ne se voyait pas comme un historique. */
+    const ctx = await nav.newContext({ viewport: { width: 390, height: 844 } });
+    const vieux = Array.from({ length: 7 }, (_, k) => ({ id: 'v' + k, titre: 'Old chat ' + k, maj: Date.now() - k * 86400000,
+      messages: [{ role: 'user', content: 'question ' + k }, { role: 'assistant', content: 'answer ' + k }] }));
+    await ctx.addInitScript((v) => { try { localStorage.setItem('swogeChats', JSON.stringify(v)); } catch (e) {} }, vieux);
+    const page = await ctx.newPage();
+    await page.route((u) => !u.href.startsWith('http://127.0.0.1:' + port), (r) => (/catalogue/.test(r.request().url())
+      ? r.fulfill({ status:200, contentType:'application/json', body: JSON.stringify(CAT) }) : r.abort()));
+    await page.goto('http://127.0.0.1:' + port + '/swolemind.html', { waitUntil:'domcontentloaded' });
+    await page.waitForFunction(() => !document.getElementById('recents').hidden);
+    const recents = await page.$$eval('#recentsListe .recent .t', (l) => l.map((x) => x.textContent));
+    eq(recents.join(','), 'Old chat 0,Old chat 1,Old chat 2,Old chat 3,Old chat 4', 'l accueil montre les 5 discussions les plus RECENTES, sans rien ouvrir');
+    ok(!(await page.$eval('#recentsTout', (b) => b.hidden)), 'et « See all chats » quand il y en a plus');
+    eq((await page.textContent('#histoBtn')).trim(), '\u{1F553} History', 'le bouton du haut dit « History »');
+    await page.click('#recentsListe .recent:nth-child(2)');
+    await page.waitForFunction(() => !document.getElementById('fil').hidden);
+    ok(/question 1/.test(await page.textContent('#fil')) && /answer 1/.test(await page.textContent('#fil')) && await page.$eval('#accueil', (a) => a.hidden),
+       'un clic rouvre l ancienne discussion, questions et reponses');
+    await page.click('#nouveau');
+    await page.click('#recentsTout');
+    ok(!(await page.$eval('#histo', (h) => h.hidden)) && (await page.$$('#histo .ouvre')).length === 7 && /Your chats/.test(await page.textContent('#histo')), '« See all chats » ouvre l historique complet (7), titre « Your chats »');
+    ok((await page.$$('#histo .quand')).length === 7, 'chaque discussion dit sa date');
+    const larg = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    ok(larg <= 1, 'a 390 px, rien ne deborde [' + larg + ']');
+    await ctx.close();
+  }
+
   await nav.close(); srv.close();
   console.log('\nRATES : ' + rates + '/' + n);
   process.exit(rates ? 1 : 0);

@@ -903,6 +903,18 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 .histo .ligne{display:flex;align-items:center;gap:2px}
 .histo .ligne button.ouvre{flex:1;min-width:0}
 .histo .ligne button.efface{width:auto;flex:0 0 auto;color:var(--dim);padding:8px 10px}
+.histo .histo-titre{font-weight:800;font-size:14px;padding:6px 10px 2px}
+.histo .quand,.recents .quand{font-family:'Space Mono',monospace;font-size:10.5px;color:var(--dim);flex:0 0 auto;padding-left:6px}
+/* ---- les discussions recentes, sur l'accueil (demande du proprietaire, 26 septembre 2026) :
+   la pastille « Chats » du haut ne se voyait pas comme un historique ---- */
+.recents{width:100%;max-width:520px;margin-top:18px;border-top:1px solid var(--line);padding-top:12px}
+.recents[hidden]{display:none}
+.recents .recents-titre{font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--dim);padding:0 12px 6px}
+.recents .recent{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:transparent;border:0;border-radius:10px;
+  padding:10px 12px;font-size:14px;color:var(--paper);cursor:pointer;font-family:inherit}
+.recents .recent:hover{background:var(--panel)}
+.recents .recent .t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.recents .tout{background:transparent;border:0;color:var(--pool);font-weight:700;font-size:13px;padding:8px 12px;cursor:pointer;font-family:inherit}
 </style>
 
 <div class="chat">
@@ -910,7 +922,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     <div class="titre">Swole<em>Mind</em></div>
     <div class="droite">
       <span class="pastille" id="solde" title="Your SWOGE gaming balance">Balance <b>—</b></span>
-      <button class="btn-fin" id="histoBtn" type="button" aria-expanded="false">&#128172; Chats</button>
+      <button class="btn-fin" id="histoBtn" type="button" aria-expanded="false" title="Your past chats">&#128339; History</button>
       <button class="btn-fin" id="nouveau" type="button">&#10133; New chat</button>
     </div>
   </div>
@@ -929,6 +941,11 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       <button class="suggestion" type="button" data-sugg="jeton"><span class="ic">&#128269;</span>Check a token</button>
       <button class="suggestion" type="button" data-sugg="image"><span class="ic">&#128444;&#65039;</span>Create an image</button>
       <button class="suggestion" type="button" data-sugg="video"><span class="ic">&#127916;</span>Make a video</button>
+    </div>
+    <div class="recents" id="recents" hidden>
+      <div class="recents-titre">Recent chats</div>
+      <div id="recentsListe"></div>
+      <button class="tout" id="recentsTout" type="button">See all chats &#8594;</button>
     </div>
   </section>
 
@@ -1278,7 +1295,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   function peintConv(){
     $("fil").innerHTML = "";
     var c = etat.conv;
-    if (!c || !c.messages.length) { $("fil").hidden = true; $("accueil").hidden = false; return; }
+    if (!c || !c.messages.length) { $("fil").hidden = true; $("accueil").hidden = false; peintRecents(); return; }
     var groupe = null, idGroupe = null;
     c.messages.forEach(function(m, i){
       if (m.genre && m.role === "assistant") { var dm = ajouteMsg("assistant", ""); dm.setAttribute("data-i", i); peintMedia(dm, m); return; }
@@ -1612,6 +1629,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
         SYNC.t = d.maintenant || SYNC.t; ecrisLocal("swogeHistoSync", SYNC);
         ecrisLocal("swogeChats", etat.convs);
         if (!$("histo").hidden) peintHisto();
+        if (!$("accueil").hidden) peintRecents();
         return pousseTout();
       })["catch"](function(){})
       .then(function(){ enSync = false; });
@@ -1620,13 +1638,41 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     etat.convs = etat.convs.filter(function(x){ return x.id !== c.id; });
     ecrisLocal("swogeChats", etat.convs);
     if (etat.conv && etat.conv.id === c.id) nouvelleConv();
+    if (!$("accueil").hidden) peintRecents();
     if (histoActif() && c.adr === SYNC.adresse) {
       fetch(serveur() + "/studio/histo/" + encodeURIComponent(c.id) + "?maj=" + Date.now(), { method: "DELETE", headers: { authorization: "Bearer " + jeton() } })["catch"](function(){});
     }
     peintHisto();
   }
+  /* Ouvrir une discussion enregistree : la meme chose depuis l'historique et depuis l'accueil. */
+  function ouvreConv(c){ etat.conv = JSON.parse(JSON.stringify(c)); ecrisLocal("swogeChatCourant", c.id); peintConv(); basculeHisto(false); reprend(); }
+  /* Quand : l'heure aujourd'hui, sinon le jour. */
+  function quand(t){
+    if (!t) return "";
+    var d = new Date(t), n = new Date();
+    return d.toDateString() === n.toDateString() ? d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })
+      : d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  }
+  /* Les cinq plus recentes, sur l'accueil : on revient a une discussion en un geste. */
+  function peintRecents(){
+    var box = $("recents"), l = $("recentsListe");
+    var cs = etat.convs.filter(function(c){ return c.messages && c.messages.length; }).slice().sort(function(a, b){ return (b.maj || 0) - (a.maj || 0); });
+    l.innerHTML = "";
+    box.hidden = !cs.length;
+    cs.slice(0, 5).forEach(function(c){
+      var b = document.createElement("button"); b.type = "button"; b.className = "recent";
+      var ic = document.createElement("span"); ic.textContent = "\uD83D\uDCAC";
+      var t = document.createElement("span"); t.className = "t"; t.textContent = c.titre || "Chat";
+      var q = document.createElement("span"); q.className = "quand"; q.textContent = quand(c.maj);
+      b.appendChild(ic); b.appendChild(t); b.appendChild(q);
+      b.addEventListener("click", function(){ ouvreConv(c); });
+      l.appendChild(b);
+    });
+    $("recentsTout").hidden = cs.length <= 5;
+  }
   function peintHisto(){
     var h = $("histo"); h.innerHTML = "";
+    var ti = document.createElement("div"); ti.className = "histo-titre"; ti.textContent = "Your chats"; h.appendChild(ti);
     var note = document.createElement("div"); note.className = "note";
     note.textContent = histoActif() ? "Synced to your wallet " + SYNC.adresse.slice(0, 6) + "\u2026" + SYNC.adresse.slice(-4) + " \u2014 open it on any device."
       : "Saved on this device. Sign in to sync your chats across devices.";
@@ -1635,11 +1681,12 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     etat.convs.forEach(function(c){
       var l = document.createElement("div"); l.className = "ligne";
       var b = document.createElement("button"); b.type = "button"; b.className = "ouvre"; b.textContent = c.titre || "Chat";
-      b.addEventListener("click", function(){ etat.conv = JSON.parse(JSON.stringify(c)); ecrisLocal("swogeChatCourant", c.id); peintConv(); basculeHisto(false); reprend(); });
+      b.addEventListener("click", function(){ ouvreConv(c); });
+      var q = document.createElement("span"); q.className = "quand"; q.textContent = quand(c.maj);
       var x = document.createElement("button"); x.type = "button"; x.className = "efface"; x.textContent = "\u2715";
       x.setAttribute("aria-label", "Delete " + (c.titre || "chat"));
       x.addEventListener("click", function(){ effaceConv(c); });
-      l.appendChild(b); l.appendChild(x); h.appendChild(l);
+      l.appendChild(b); l.appendChild(q); l.appendChild(x); h.appendChild(l);
     });
   }
   function basculeHisto(ouvre){
@@ -2072,6 +2119,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   $("web").addEventListener("click", function(){ etat.web = !etat.web; $("web").setAttribute("aria-pressed", String(etat.web)); });
   $("nouveau").addEventListener("click", function(){ nouvelleConv(); basculeHisto(false); });
   $("histoBtn").addEventListener("click", function(){ basculeHisto(); });
+  $("recentsTout").addEventListener("click", function(){ basculeHisto(true); window.scrollTo(0, 0); });
   Array.prototype.forEach.call(document.querySelectorAll(".effort"), function(b){
     b.addEventListener("click", function(){ etat.effort = b.getAttribute("data-effort"); ecrisLocal("swogeChatEffort", etat.effort); peintFeuille(); });
   });

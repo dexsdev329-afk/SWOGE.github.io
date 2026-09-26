@@ -162,6 +162,27 @@ const CAT = { ouvert: true, note: null, monnaie: '$SWOGE', defaut: 'opus-5-5', e
     await p.close();
   }
 
+  console.log('\n-- 6. une video en cours survit au rechargement --');
+  {
+    envois.length = 0; polls = -1000;                 /* la video reste « en cours » tant qu on ne la libere pas */
+    const p = await ouvre('swoge_studio.html', null, 'jeton-test');
+    await p.click('.mode[data-mode="video"]');
+    await p.fill('#question', 'the doge flexes');
+    await p.click('#envoyer');
+    await p.waitForSelector('.progres');
+    const garde = await p.evaluate(() => JSON.parse(localStorage.getItem('swogeChats') || '[]')[0].messages);
+    ok(garde.some((m) => m.enCours === 'v1'), 'la video lancee est ecrite dans le fil avec son identifiant');
+    await p.reload({ waitUntil: 'domcontentloaded' });
+    await p.waitForSelector('.progres');
+    ok(/the doge flexes/.test(await p.textContent('.msg.moi')), 'rechargee : la demande est toujours la');
+    polls = 1;                                        /* la video arrive */
+    await p.waitForSelector('.msg.ia video', { timeout: 15000 });
+    eq(await p.getAttribute('.msg.ia video', 'src'), 'https://vidgen.x.ai/v1.mp4', 'et la video reprend son suivi, puis arrive dans le fil');
+    const apres = await p.evaluate(() => JSON.parse(localStorage.getItem('swogeChats') || '[]')[0].messages);
+    ok(!apres.some((m) => m.enCours) && apres.some((m) => m.url === 'https://vidgen.x.ai/v1.mp4'), 'le fil garde la video finie, plus d attente');
+    await p.close();
+  }
+
   console.log('\n-- 4. l ancienne adresse renvoie ici --');
   {
     const p = await nav.newPage();

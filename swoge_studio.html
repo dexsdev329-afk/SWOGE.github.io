@@ -1159,6 +1159,22 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     }
     if (m.meta) { var mt = document.createElement("div"); mt.className = "meta"; mt.textContent = m.meta; d.appendChild(mt); }
   }
+  /* La fin d'une reponse de chat : texte, sources, cout, « Copy », fil ecrit.
+     Partagee par le flux et par la reprise apres rechargement. */
+  function finChat(d, data, nomModele, recu){
+    var corps = d.querySelector(".corps");
+    var texte = data.texte || recu || "";
+    if (!texte && data.stop === "refusal") texte = TXT.refus;
+    corps.innerHTML = markdown(texte);
+    if (data.sources && data.sources.length) d.appendChild(sourcesEl(data.sources));
+    var nom = nomModele || ((etat.cat && etat.cat.modeles.filter(function(x){ return x.id === data.modele; })[0]) || {}).nom || "AI";
+    var meta = nom + " \u00b7 " + nombre(data.factureSwoge) + " $SWOGE" + (data.usage && data.usage.recherches ? " \u00b7 " + data.usage.recherches + " web search" + (data.usage.recherches > 1 ? "es" : "") : "");
+    var mt = document.createElement("div"); mt.className = "meta"; mt.textContent = meta; d.appendChild(mt);
+    d.appendChild(actionsEl(texte));
+    etat.conv.messages.push({ role: "assistant", content: texte, sources: data.sources || [], meta: meta });
+    sauveConv();
+    if (data.solde) $("solde").innerHTML = "Balance <b>" + nombre(data.solde) + " $SWOGE</b>";
+  }
   /* ---- COPIER : le presse-papiers, et un repli pour les navigateurs qui le refusent ---- */
   function copie(texte, bouton){
     var fait = function(){ var t = bouton.textContent; bouton.textContent = "\u2713 Copied"; setTimeout(function(){ bouton.textContent = t; }, 1600); };
@@ -1186,22 +1202,36 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     });
     return s;
   }
+  /* ---- LE FIL SURVIT AU RECHARGEMENT ----
+   * Signale le 26 septembre 2026 : « si l'utilisateur actualise, il perd toutes
+   * ses donnees du chat ». Le fil etait bien garde, mais la page rechargee en
+   * ouvrait un VIDE, et une question n'etait ecrite qu'une fois sa reponse
+   * finie. Desormais : le fil courant est retenu (`swogeChatCourant`) et
+   * rouvert, et chaque question est ecrite AVANT de partir, avec l'identifiant
+   * (`rid`) sous lequel le serveur garde sa reponse une heure (/studio/reprise). */
+  function nouveauRid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2, 10); }
   function nouvelleConv(){
     etat.conv = { id: String(Date.now()), titre: "", messages: [] };
+    ecrisLocal("swogeChatCourant", null);
     peintConv(); $("question").focus();
   }
   function sauveConv(){
-    var c = etat.conv; if (!c || !c.messages.length) return;
-    c.titre = c.titre || c.messages[0].content.slice(0, 60);
+    var c = etat.conv; if (!c) return;
+    if (!c.messages.length) {
+      etat.convs = etat.convs.filter(function(x){ return x.id !== c.id; });
+      ecrisLocal("swogeChats", etat.convs); ecrisLocal("swogeChatCourant", null); return;
+    }
+    c.titre = c.titre || String(c.messages[0].content || "").slice(0, 60);
     etat.convs = [c].concat(etat.convs.filter(function(x){ return x.id !== c.id; })).slice(0, 20);
     ecrisLocal("swogeChats", etat.convs);
+    ecrisLocal("swogeChatCourant", c.id);
   }
   function peintHisto(){
     var h = $("histo"); h.innerHTML = "";
     if (!etat.convs.length) { h.innerHTML = '<div class="vide">' + TXT.vide + '</div>'; return; }
     etat.convs.forEach(function(c){
       var b = document.createElement("button"); b.type = "button"; b.textContent = c.titre || "Chat";
-      b.addEventListener("click", function(){ etat.conv = JSON.parse(JSON.stringify(c)); peintConv(); basculeHisto(false); });
+      b.addEventListener("click", function(){ etat.conv = JSON.parse(JSON.stringify(c)); ecrisLocal("swogeChatCourant", c.id); peintConv(); basculeHisto(false); reprend(); });
       h.appendChild(b);
     });
   }
@@ -1230,7 +1260,9 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     if (!etat.cat || !etat.cat.ouvert) { dit((etat.cat && etat.cat.note) || TXT.ferme); return; }
     if (!etat.conv) nouvelleConv();
     var m = modeleCourant();
-    etat.conv.messages.push({ role: "user", content: q });
+    var rid = nouveauRid();
+    etat.conv.messages.push({ role: "user", content: q, rid: rid });
+    sauveConv();
     ajouteMsg("user", q);
     $("question").value = ""; dimensionne();
     etat.occupe = true; peintBoutons(); dit("");
@@ -1238,13 +1270,13 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     var etape = document.createElement("div"); etape.className = "etape"; etape.textContent = TXT.reflexion; d.insertBefore(etape, corps);
     /* Seuls les echanges de TEXTE partent au modele : une image ou une video
        du fil n'est pas une phrase qu'il pourrait lire. */
-    var historique = etat.conv.messages.filter(function(x){ return !x.genre; }).map(function(x){ return { role: x.role, content: x.content }; });
+    var historique = etat.conv.messages.filter(function(x){ return !x.genre && !x.interrompu; }).map(function(x){ return { role: x.role, content: x.content }; });
     var fini = false;
     function termine(){ etat.occupe = false; peintBoutons(); if (etape.parentNode) etape.remove(); }
     fetch(serveur() + "/studio/chat", {
       method: "POST",
       headers: { "content-type": "application/json", authorization: "Bearer " + j },
-      body: JSON.stringify({ modele: m.id, messages: historique, recherche: etat.web && m.recherche, effort: m.effort ? (etat.effort || "medium") : undefined })
+      body: JSON.stringify({ rid: rid, modele: m.id, messages: historique, recherche: etat.web && m.recherche, effort: m.effort ? (etat.effort || "medium") : undefined })
     }).then(function(rep){
       if (!rep.ok || !rep.body) {
         return rep.json().then(function(e){ throw { code: rep.status, raison: e && e.raison }; }, function(){ throw { code: rep.status }; });
@@ -1255,16 +1287,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
         else if (type === "etape") { etape.textContent = data.quoi === "recherche" ? TXT.recherche : TXT.reflexion; if (!etape.parentNode) d.insertBefore(etape, corps); }
         else if (type === "fin") {
           fini = true;
-          texte = data.texte || texte;
-          if (!texte && data.stop === "refusal") texte = TXT.refus;
-          corps.innerHTML = markdown(texte);
-          if (data.sources && data.sources.length) d.appendChild(sourcesEl(data.sources));
-          var meta = m.nom + " · " + nombre(data.factureSwoge) + " $SWOGE" + (data.usage && data.usage.recherches ? " · " + data.usage.recherches + " web search" + (data.usage.recherches > 1 ? "es" : "") : "");
-          var mt = document.createElement("div"); mt.className = "meta"; mt.textContent = meta; d.appendChild(mt);
-          d.appendChild(actionsEl(texte));
-          etat.conv.messages.push({ role: "assistant", content: texte, sources: data.sources || [], meta: meta });
-          sauveConv();
-          if (data.solde) $("solde").innerHTML = "Balance <b>" + nombre(data.solde) + " $SWOGE</b>";
+          finChat(d, data, m.nom, texte);
         } else if (type === "erreur") {
           fini = true; throw data;
         }
@@ -1286,9 +1309,13 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       if (!fini) throw { raison: TXT.erreurReseau };
       termine();
     })["catch"](function(e){
+      /* La page s'en va (rechargement) : le navigateur coupe la requete, ce
+         n'est PAS un echec. Effacer la question ici la perdait juste avant le
+         rechargement — la reponse se retrouve au retour, par son rid. */
+      if (etat.quitte) return;
       termine();
       /* La question n'a pas ete servie : elle ne reste pas dans l'historique envoye. */
-      etat.conv.messages.pop();
+      etat.conv.messages.pop(); sauveConv();
       d.classList.add("err");
       var raison = (e && e.raison) || TXT.erreurReseau;
       if (e && e.code === 402) raison += " — top up your balance in the Wallet (needs ~" + nombre(e.requisSwoge) + " $SWOGE for this model).";
@@ -1316,7 +1343,9 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     var mm = modeleMedia(), reg = etat.reg, jointe = etat.jointe;
     var fmt = mode === "video" ? reg.formatV : reg.formatI;
     var libelle = (mode === "image" ? "\ud83d\uddbc\ufe0f " : "\ud83c\udfac ") + (q || "Animate this photo");
-    etat.conv.messages.push({ role: "user", content: libelle, genre: mode });
+    var rid = nouveauRid();
+    etat.conv.messages.push({ role: "user", content: libelle, genre: mode, rid: rid, nomModele: mm.nom, format: fmt });
+    sauveConv();
     var du = ajouteMsg("user", libelle);
     if (jointe) { var vi = document.createElement("img"); vi.className = "vignette"; vi.src = jointe; vi.alt = ""; du.insertBefore(vi, du.firstChild); }
     $("question").value = ""; dimensionne(); retireJointe();
@@ -1325,40 +1354,106 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     var etape = document.createElement("div"); etape.className = "etape";
     etape.textContent = mode === "image" ? (jointe ? "Editing your photo\u2026" : "Creating " + (reg.nombre > 1 ? reg.nombre + " images" : "the image") + "\u2026") : "Starting the video\u2026";
     d.insertBefore(etape, corps);
-    var corpsReq = { modele: reg.vitesse, prompt: q, format: fmt, image: jointe || undefined };
+    var corpsReq = { rid: rid, modele: reg.vitesse, prompt: q, format: fmt, image: jointe || undefined };
     if (mode === "image") corpsReq.n = reg.nombre; else { corpsReq.duree = reg.duree; corpsReq.resolution = reg.resolution; }
     function fin(){ etat.occupe = false; peintBoutons(); if (etape.parentNode) etape.remove(); }
     /* La demande non servie ne reste pas dans le fil enregistre. */
-    function echec(e){ fin(); etat.conv.messages.pop(); erreurMedia(d, e); }
-    function termine(res){
-      fin();
-      var meta = mm.nom + (mode === "image" ? " \u00b7 \u00d7" + (res.urls || []).length : " \u00b7 " + res.duree + " s \u00b7 " + res.resolution)
-        + (fmt !== "auto" ? " \u00b7 " + fmt : "") + " \u00b7 " + nombre(res.factureSwoge) + " $SWOGE";
-      var m = { role: "assistant", content: mode === "image" ? "[image]" : "[video]", genre: mode, urls: res.urls, url: res.url, meta: meta };
-      peintMedia(d, m);
-      etat.conv.messages.push(m); sauveConv();
-      if (res.solde) $("solde").innerHTML = "Balance <b>" + nombre(res.solde) + " $SWOGE</b>";
-    }
+    function echec(e){ if (etat.quitte) return; fin(); etat.conv.messages.pop(); sauveConv(); erreurMedia(d, e); }
+    function termine(res){ fin(); finMedia(d, mode, res, mm.nom, fmt, null); }
     fetch(serveur() + "/studio/media/" + mode, { method: "POST",
       headers: { "content-type": "application/json", authorization: "Bearer " + j }, body: JSON.stringify(corpsReq) })
       .then(function(r){ return r.json().then(function(x){ return x; }, function(){ return { ok: false, code: r.status }; }); })
       .then(function(res){
         if (!res || !res.ok) return echec(res);
         if (mode === "image") return termine(res);
-        /* La video se fabrique cote serveur : on interroge le serveur, jamais le fournisseur. */
-        etape.textContent = "Generating the video\u2026 this takes a minute or two";
-        var barre = document.createElement("div"); barre.className = "progres"; barre.innerHTML = "<i></i>"; d.insertBefore(barre, corps);
-        (function suit(){
-          fetch(serveur() + "/studio/media/video/" + encodeURIComponent(res.id), { headers: { authorization: "Bearer " + j }, cache: "no-store" })
-            .then(function(r){ return r.json(); })
-            .then(function(v){
-              if (v && v.status === "done") { barre.remove(); return termine(v); }
-              if (!v || v.status === "failed" || !v.ok) { barre.remove(); return echec(v || {}); }
-              barre.firstChild.style.width = Math.max(5, Math.min(99, Number(v.progress) || 0)) + "%";
-              setTimeout(suit, 3000);
-            })["catch"](function(){ setTimeout(suit, 5000); });
-        })();
+        /* La video se fabrique cote serveur : son identifiant est ecrit dans le
+           fil tout de suite, pour qu'une page rechargee la reprenne. */
+        fin();
+        var attente = { role: "assistant", content: "[video]", genre: "video", enCours: res.id, nomModele: mm.nom, format: fmt };
+        etat.conv.messages.push(attente); sauveConv();
+        suisVideo(d, attente);
       })["catch"](function(){ echec({ raison: TXT.erreurReseau }); });
+  }
+
+  /* La fin d'une generation : l'image ou la video dans le fil, son cout, le fil ecrit.
+     `place` : le message d'attente d'une video, complete sur place. */
+  function finMedia(d, mode, res, nomModele, fmt, place){
+    var meta = nomModele + (mode === "image" ? " \u00b7 \u00d7" + (res.urls || []).length : " \u00b7 " + res.duree + " s \u00b7 " + res.resolution)
+      + (fmt && fmt !== "auto" ? " \u00b7 " + fmt : "") + " \u00b7 " + nombre(res.factureSwoge) + " $SWOGE";
+    var m = place || { role: "assistant", genre: mode };
+    m.content = mode === "image" ? "[image]" : "[video]"; m.urls = res.urls; m.url = res.url; m.meta = meta; delete m.enCours;
+    peintMedia(d, m);
+    if (!place) etat.conv.messages.push(m);
+    sauveConv();
+    if (res.solde) $("solde").innerHTML = "Balance <b>" + nombre(res.solde) + " $SWOGE</b>";
+  }
+  /* Suit une video sur le SERVEUR (jamais chez le fournisseur) jusqu'a son arrivee. */
+  function suisVideo(d, attente){
+    var j = jeton(); if (!j) return;
+    var corps = d.querySelector(".corps");
+    var etape = document.createElement("div"); etape.className = "etape"; etape.textContent = "Generating the video\u2026 this takes a minute or two";
+    var barre = document.createElement("div"); barre.className = "progres"; barre.innerHTML = "<i></i>";
+    d.insertBefore(etape, corps); d.insertBefore(barre, corps);
+    (function suit(){
+      fetch(serveur() + "/studio/media/video/" + encodeURIComponent(attente.enCours), { headers: { authorization: "Bearer " + j }, cache: "no-store" })
+        .then(function(r){ return r.json(); })
+        .then(function(v){
+          if (v && v.status === "done") { etape.remove(); barre.remove(); return finMedia(d, "video", v, attente.nomModele || "Video", attente.format, attente); }
+          if (!v || v.status === "failed" || !v.ok) {
+            etape.remove(); barre.remove();
+            /* Ratee, ou oubliee par le serveur : le fil ne garde pas une attente eternelle. */
+            var i = etat.conv.messages.indexOf(attente);
+            if (i >= 0) etat.conv.messages.splice(i, 1);
+            if (etat.conv.messages[i - 1] && etat.conv.messages[i - 1].genre === "video") etat.conv.messages[i - 1].interrompu = true;
+            sauveConv();
+            return erreurMedia(d, v || {});
+          }
+          barre.firstChild.style.width = Math.max(5, Math.min(99, Number(v.progress) || 0)) + "%";
+          setTimeout(suit, 3000);
+        })["catch"](function(){ setTimeout(suit, 5000); });
+    })();
+  }
+
+  /* ---- LA REPRISE APRES UN RECHARGEMENT ----
+   * Une question partie sans reponse dans le fil (la page a ete rechargee
+   * pendant qu'elle s'ecrivait) : on redemande au serveur ce qu'il a garde sous
+   * son `rid`. En cours : on montre ce qui est deja arrive et on repasse. Finie :
+   * on l'affiche comme si de rien n'etait (elle a ete facturee, elle est a lui).
+   * Oubliee (serveur redemarre) : on le DIT, et la question reste marquee. */
+  function reprend(){
+    var c = etat.conv; if (!c || !c.messages.length || !jeton()) return;
+    c.messages.forEach(function(m, i){
+      if (m.enCours) { var dv = $("fil").children[i]; if (dv) suisVideo(dv, m); }
+    });
+    var der = c.messages[c.messages.length - 1];
+    if (!der || der.role !== "user" || !der.rid || der.interrompu) return;
+    var j = jeton(), mode = der.genre || "chat";
+    etat.occupe = true; peintBoutons();
+    var d = ajouteMsg("assistant", ""), corps = d.querySelector(".corps");
+    var etape = document.createElement("div"); etape.className = "etape"; etape.textContent = "Recovering the answer\u2026";
+    d.insertBefore(etape, corps);
+    function fin(){ etat.occupe = false; peintBoutons(); if (etape.parentNode) etape.remove(); }
+    (function tour(){
+      fetch(serveur() + "/studio/reprise/" + encodeURIComponent(der.rid), { headers: { authorization: "Bearer " + j }, cache: "no-store" })
+        .then(function(r){ return r.json().then(function(x){ x.http = r.status; return x; }); })
+        .then(function(v){
+          if (v.status === "pending") {
+            if (mode === "chat" && v.texte) { etape.textContent = "Still writing\u2026"; corps.innerHTML = markdown(v.texte); }
+            return setTimeout(tour, 1500);
+          }
+          fin();
+          if (v.status === "done" && mode === "chat") return finChat(d, v, null, v.texte);
+          if (v.status === "done" && mode === "image") return finMedia(d, "image", v, der.nomModele || "Image", der.format, null);
+          if (v.status === "started" && v.id) {
+            var attente = { role: "assistant", content: "[video]", genre: "video", enCours: v.id, nomModele: der.nomModele, format: der.format };
+            etat.conv.messages.push(attente); sauveConv(); return suisVideo(d, attente);
+          }
+          if (v.status === "failed") { etat.conv.messages.pop(); sauveConv(); d.classList.add("err"); corps.textContent = v.raison || TXT.erreurReseau; return; }
+          der.interrompu = true; sauveConv();
+          d.classList.add("err");
+          corps.textContent = "This answer could not be recovered (the page was reloaded and the server no longer has it). Ask again if you need it.";
+        })["catch"](function(){ setTimeout(tour, 4000); });
+    })();
   }
 
   function dimensionne(){ var t = $("question"); t.style.height = "auto"; t.style.height = Math.min(200, t.scrollHeight) + "px"; peintBoutons(); }
@@ -1367,6 +1462,9 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   $("question").addEventListener("input", dimensionne);
   $("question").addEventListener("keydown", function(e){ if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); envoyer(); } });
   $("envoyer").addEventListener("click", envoyer);
+  /* La page qui s'en va : ses requetes coupees ne sont pas des echecs. */
+  window.addEventListener("pagehide", function(){ etat.quitte = true; });
+  window.addEventListener("beforeunload", function(){ etat.quitte = true; });
   /* Un seul ecouteur pour tous les « Copy » des blocs de code : le fil se
      repeint a chaque morceau de texte recu, les boutons avec. On copie le
      texte BRUT du bloc — exactement le code, sans le HTML de l'affichage. */
@@ -1432,8 +1530,13 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     .then(function(r){ return r.json(); })
     .then(function(c){ etat.media = c; peintMode(); })["catch"](function(){ peintMode(); });
   chargeSolde();
-  nouvelleConv();
+  (function(){
+    var id = lisLocal("swogeChatCourant", null);
+    var c = id && etat.convs.filter(function(x){ return x.id === id; })[0];
+    if (c) { etat.conv = JSON.parse(JSON.stringify(c)); peintConv(); } else nouvelleConv();
+  })();
   peintMode();
+  reprend();
 
   /* La connexion se fait APRES le chargement (bouton de `stakebubble.js`) :
      le jeton apparait alors dans `localStorage`, dans CET onglet — l'evenement

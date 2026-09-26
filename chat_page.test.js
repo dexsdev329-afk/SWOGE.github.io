@@ -51,7 +51,7 @@ const sse = (evs) => evs.map(([t, d]) => 'event: ' + t + '\ndata: ' + JSON.strin
   /* `rep(corps)` rend le flux SSE d'une question ; `envois` garde ce que la
      page a POSTe. Tout ce qui sort de la machine est coupe : l'essai ne
      depend ni du reseau ni du vrai serveur. */
-  const ouvre = async ({ session, cat, rep, largeur } = {}) => {
+  const ouvre = async ({ session, cat, rep, largeur, reprise } = {}) => {
     const ctx = await nav.newContext({ viewport: { width: largeur || 1200, height: 900 } });
     await ctx.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: 'http://127.0.0.1:' + port });
     if (session) await ctx.addInitScript((j) => { try { localStorage.setItem('swogeSession', j); } catch (e) {} }, session);
@@ -66,7 +66,13 @@ const sse = (evs) => evs.map(([t, d]) => 'event: ' + t + '\ndata: ' + JSON.strin
       }
       if (/\/studio\/chat$/.test(u) && r.request().method() === 'POST') {
         envois.push({ auth: r.request().headers().authorization || null, corps: JSON.parse(r.request().postData() || '{}') });
-        return r.fulfill({ status:200, contentType:'text/event-stream', body: (rep || (() => ''))(envois[envois.length - 1].corps) });
+        const corps = (rep || (() => ''))(envois[envois.length - 1].corps);
+        if (corps === null) return;                /* la reponse n arrive jamais : la page sera rechargee avant */
+        return r.fulfill({ status:200, contentType:'text/event-stream', body: corps });
+      }
+      if (/\/studio\/reprise\//.test(u) && reprise) {
+        const x = reprise(decodeURIComponent(u.split('/studio/reprise/')[1]));
+        return r.fulfill({ status: x.http || 200, contentType:'application/json', body: JSON.stringify(x) });
       }
       if (/vitrine\.json/.test(u)) return r.fulfill({ status:200, contentType:'application/json', body:'{}' });
       return r.abort();
@@ -205,6 +211,44 @@ const sse = (evs) => evs.map(([t, d]) => 'event: ' + t + '\ndata: ' + JSON.strin
     const f = await page.$eval('#feuille', (e) => { const r = e.getBoundingClientRect(); return Math.round(r.right); });
     ok(f <= w, 'et la feuille des modeles aussi [' + f + ']');
     await ctx.close();
+  }
+
+  console.log('\n-- 9. une page rechargee ne perd rien --');
+  {
+    /* Signale le 26 septembre 2026 : « si l utilisateur actualise, il perd
+       toutes ses donnees du chat ». Le fil rouvert, la question ecrite avant de
+       partir, et la reponse en cours retrouvee sur le serveur par son rid. */
+    let tours = 0, ridVu = null;
+    const reprise = (rid) => { ridVu = rid; tours++;
+      return tours < 2 ? { ok: true, status: 'pending', texte: 'Partial answer so' }
+        : { ok: true, status: 'done', texte: 'Partial answer so far, now complete.', sources: [], factureSwoge: '321', modele: 'opus-5-5', usage: {}, solde: '199679' }; };
+    const { page, ctx, envois } = await ouvre({ session: 'j', rep: () => null, reprise });
+    await pose(page, 'question interrupted by a reload');
+    await page.waitForTimeout(300);
+    const garde = await page.evaluate(() => JSON.parse(localStorage.getItem('swogeChats') || '[]'));
+    ok(garde.length === 1 && garde[0].messages[0].content === 'question interrupted by a reload' && garde[0].messages[0].rid === envois[0].corps.rid,
+       'la question est ecrite AVANT la reponse, avec l identifiant envoye au serveur');
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('.msg.ia .meta', { timeout: 10000 });
+    eq(await page.textContent('.msg.moi'), 'question interrupted by a reload', 'apres rechargement, le fil courant est rouvert');
+    eq(ridVu, envois[0].corps.rid, 'la page redemande la reponse sous son identifiant');
+    ok(/now complete/.test(await page.textContent('.msg.ia .corps')) && /321 \$SWOGE/.test(await page.textContent('.msg.ia .meta')), 'la reponse finie cote serveur est retrouvee, avec son cout');
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('.msg.ia .meta');
+    const t0 = tours;
+    await page.waitForTimeout(500);
+    eq((await page.$$('.msg')).length, 2, 'rechargee encore : la question et la reponse, rien de perdu, rien en double');
+    eq(tours, t0, 'et une reponse deja retrouvee n est plus redemandee');
+    await ctx.close();
+
+    const b = await ouvre({ session: 'j', rep: () => null, reprise: () => ({ http: 404, ok: false, status: 'unknown' }) });
+    await pose(b.page, 'lost one');
+    await b.page.waitForTimeout(300);
+    await b.page.reload({ waitUntil: 'domcontentloaded' });
+    await b.page.waitForSelector('.msg.ia.err');
+    ok(/could not be recovered/.test(await b.page.textContent('.msg.ia.err')), 'si le serveur ne l a plus : la page le DIT, sans boucler');
+    ok(!(await b.page.isDisabled('#question')) && (await b.page.evaluate(() => JSON.parse(localStorage.getItem('swogeChats'))[0].messages[0].interrompu)) === true, 'la question reste dans le fil, marquee, et le chat reste utilisable');
+    await b.ctx.close();
   }
 
   console.log('\n-- 8. un bloc de code se copie d un geste, exactement --');

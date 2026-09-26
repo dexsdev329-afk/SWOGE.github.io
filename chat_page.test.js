@@ -22,6 +22,8 @@
  *      colonie avec effectifs), echappee, liens https seulement, jamais « safe ».
  *  10. Une photo ou un PDF : la photo reduite, le fichier en memoire seulement,
  *      un PDF arrete sur la page quand le modele ne le lit pas.
+ *  11. L'historique suit le portefeuille : l'adresse vient de la session,
+ *      une suppression se propage, un autre portefeuille ne voit rien.
  * ==========================================================================*/
 const fs = require('fs'), path = require('path'), http = require('http');
 const SITE = __dirname;
@@ -57,7 +59,7 @@ const sse = (evs) => evs.map(([t, d]) => 'event: ' + t + '\ndata: ' + JSON.strin
   /* `rep(corps)` rend le flux SSE d'une question ; `envois` garde ce que la
      page a POSTe. Tout ce qui sort de la machine est coupe : l'essai ne
      depend ni du reseau ni du vrai serveur. */
-  const ouvre = async ({ session, cat, rep, largeur, reprise } = {}) => {
+  const ouvre = async ({ session, cat, rep, largeur, reprise, adresses, histo, journal } = {}) => {
     const ctx = await nav.newContext({ viewport: { width: largeur || 1200, height: 900 } });
     await ctx.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: 'http://127.0.0.1:' + port });
     if (session) await ctx.addInitScript((j) => { try { localStorage.setItem('swogeSession', j); } catch (e) {} }, session);
@@ -68,7 +70,21 @@ const sse = (evs) => evs.map(([t, d]) => 'event: ' + t + '\ndata: ' + JSON.strin
       if (/\/studio\/chat\/catalogue/.test(u)) return r.fulfill({ status:200, contentType:'application/json', body: JSON.stringify(cat || CAT) });
       if (/\/studio\/chat\/solde/.test(u)) {
         soldes.push(r.request().headers().authorization || null);
-        return r.fulfill({ status:200, contentType:'application/json', body: JSON.stringify({ ok:true, adresse:'0xabc', solde:'200000.0' }) });
+        const jt = String(r.request().headers().authorization || '').replace(/^Bearer /, '');
+        return r.fulfill({ status:200, contentType:'application/json', body: JSON.stringify({ ok:true, adresse: (adresses && adresses[jt]) || '0xabc', solde:'200000.0' }) });
+      }
+      /* L'historique : le VRAI module du serveur (studio_histo.js), derriere un faux reseau. */
+      if (/\/studio\/histo/.test(u) && histo) {
+        const q = r.request(), url = new URL(u), jt = String(q.headers().authorization || '').replace(/^Bearer /, '');
+        const addr = adresses && adresses[jt];
+        if (!addr) return r.fulfill({ status:401, contentType:'application/json', body:'{"ok":false}' });
+        const id = decodeURIComponent(url.pathname.slice('/studio/histo/'.length));
+        let x;
+        if (url.pathname === '/studio/histo') x = histo.depuis(addr, url.searchParams.get('depuis'));
+        else if (q.method() === 'PUT') x = histo.pose(addr, id, JSON.parse(q.postData() || '{}'));
+        else if (q.method() === 'DELETE') x = histo.supprime(addr, id, url.searchParams.get('maj'));
+        if (journal) journal.push({ m: q.method(), addr, id, corps: q.postData() || '' });
+        return r.fulfill({ status: x.ok ? 200 : x.code, contentType:'application/json', body: JSON.stringify(x) });
       }
       if (/\/studio\/chat$/.test(u) && r.request().method() === 'POST') {
         envois.push({ auth: r.request().headers().authorization || null, corps: JSON.parse(r.request().postData() || '{}') });
@@ -516,6 +532,72 @@ const sse = (evs) => evs.map(([t, d]) => 'event: ' + t + '\ndata: ' + JSON.strin
     const larg = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     ok(larg <= 1, 'a 360 px, les pastilles ne debordent pas [' + larg + ']');
     await ctx.close();
+  }
+
+  console.log('\n-- 14. l historique suit le portefeuille, d un appareil a l autre --');
+  {
+    /* Demande du proprietaire, le 26 septembre 2026. Deux contextes = deux
+       appareils ; le meme jeton de session = le meme portefeuille. */
+    let H = null;
+    try { H = require(path.join(SITE, '..', 'swoge-pusher-server.github.io', 'studio_histo.js')); } catch (e) {}
+    if (!H) console.log('  (studio_histo.js absent : section ignoree)');
+    else {
+      const dir = fs.mkdtempSync(path.join(require('os').tmpdir(), 'histo-page-'));
+      const histo = H.cree({ dir });
+      const A = '0x' + 'a1'.repeat(20), C = '0x' + 'c3'.repeat(20);
+      const adresses = { jA: A, jC: C };
+      const journal = [];
+      const rep = (c) => sse([['fin', { ok:true, texte:'Answer to: ' + c.messages[c.messages.length - 1].content, sources:[], factureSwoge:'4', usage:{}, solde:'1' }]]);
+      const telephone = await ouvre({ session:'jA', rep, adresses, histo, journal, largeur:360 });
+      await pose(telephone.page, 'written on my phone');
+      await telephone.page.waitForSelector('.msg.ia .meta');
+      await telephone.page.waitForFunction(() => { try { return JSON.parse(localStorage.getItem('swogeChats'))[0].pousse > 0; } catch (e) { return false; } }, null, { timeout: 8000 });
+      const put = journal.filter((x) => x.m === 'PUT');
+      ok(put.length >= 1 && put.every((x) => x.addr === A), 'la conversation part au serveur, sous l adresse de la SESSION');
+      ok(!put.some((x) => /"adresse"|"addr"/.test(x.corps)), 'le corps ne porte aucune adresse : le serveur la tient de la session');
+
+      const ordi = await ouvre({ session:'jA', rep, adresses, histo, journal });
+      await ordi.page.click('#histoBtn');
+      await ordi.page.waitForFunction(() => /written on my phone/.test(document.getElementById('histo').textContent));
+      ok(/Synced to your wallet 0xa1a1/.test(await ordi.page.textContent('#histo .note')), 'sur l autre appareil : le chat est la, et la page dit ou il vit');
+      await ordi.page.click('#histo .ouvre');
+      eq(await ordi.page.textContent('.msg.ia .corps'), 'Answer to: written on my phone', 'on le rouvre, reponse comprise');
+      await pose(ordi.page, 'continued on my laptop');
+      await ordi.page.waitForFunction(() => document.querySelectorAll('.msg.ia .meta').length === 2);
+      eq(ordi.envois[0].corps.messages.length, 3, 'la suite part avec tout le fil venu du telephone');
+      /* Attendre l'ETAT (la derniere version poussee), pas une duree. */
+      await ordi.page.waitForFunction(() => { try { const c = JSON.parse(localStorage.getItem('swogeChats'))[0]; return c && c.pousse === c.maj; } catch (e) { return false; } }, null, { timeout: 8000 });
+
+      await telephone.page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+      await telephone.page.waitForFunction(() => document.querySelectorAll('.msg.ia .meta').length === 2, null, { timeout: 8000 });
+      eq(await telephone.page.$$eval('.msg.moi', (l) => l[l.length - 1].textContent), 'continued on my laptop', 'de retour sur le telephone : la suite ecrite sur l ordinateur apparait');
+
+      await ordi.page.click('#histoBtn');
+      await ordi.page.click('#histo .efface');
+      await ordi.page.waitForTimeout(300);
+      ok(journal.some((x) => x.m === 'DELETE' && x.addr === A), '« ✕ » supprime aussi sur le serveur');
+      await telephone.page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+      await telephone.page.waitForFunction(() => JSON.parse(localStorage.getItem('swogeChats') || '[]').length === 0, null, { timeout: 8000 });
+      ok(!(await telephone.page.$('.msg.moi')), 'et la suppression atteint le telephone : le fil ouvert se vide');
+
+      /* Un autre portefeuille sur le meme telephone : il ne voit pas les chats du premier. */
+      await pose(telephone.page, 'private to wallet A');
+      await telephone.page.waitForSelector('.msg.ia .meta');
+      await telephone.page.waitForFunction(() => { try { const c = JSON.parse(localStorage.getItem('swogeChats'))[0]; return c && c.pousse === c.maj; } catch (e) { return false; } }, null, { timeout: 8000 });
+      await telephone.page.evaluate(() => localStorage.setItem('swogeSession', 'jC'));
+      await telephone.page.waitForFunction(() => { try { return JSON.parse(localStorage.getItem('swogeHistoSync')).adresse.startsWith('0xc3'); } catch (e) { return false; } }, null, { timeout: 8000 });
+      await telephone.page.waitForTimeout(500);
+      ok(!/private to wallet A/.test(await telephone.page.evaluate(() => localStorage.getItem('swogeChats'))), 'un autre portefeuille : les chats du premier quittent l appareil');
+      ok(!journal.some((x) => x.addr === C && /private to wallet A/.test(x.corps)) && histo.depuis(C, 0).convs.length === 0, 'et ils ne sont jamais copies chez lui');
+      ok(histo.depuis(A, 0).convs.some((c) => !c.supprime && /private to wallet A/.test(JSON.stringify(c.messages))), 'ils restent au serveur, a l adresse du premier');
+      await telephone.ctx.close(); await ordi.ctx.close();
+
+      const sans = await ouvre({ rep });
+      await sans.page.click('#histoBtn');
+      ok(/Sign in to sync/.test(await sans.page.textContent('#histo .note')), 'sans session : la page dit que tout reste sur l appareil');
+      await sans.ctx.close();
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
   }
 
   await nav.close(); srv.close();

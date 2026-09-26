@@ -895,6 +895,10 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   font-size:13px;cursor:pointer;color:var(--paper);font-family:inherit;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .histo button:hover{background:var(--panel2)}
 .histo .vide{font-size:12.5px;color:var(--dim);padding:8px 10px}
+.histo .note{font-size:11.5px;color:var(--dim);padding:4px 10px 8px;border-bottom:1px solid var(--line);margin-bottom:4px}
+.histo .ligne{display:flex;align-items:center;gap:2px}
+.histo .ligne button.ouvre{flex:1;min-width:0}
+.histo .ligne button.efface{width:auto;flex:0 0 auto;color:var(--dim);padding:8px 10px}
 </style>
 
 <div class="chat">
@@ -1492,17 +1496,110 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       ecrisLocal("swogeChats", etat.convs); ecrisLocal("swogeChatCourant", null); return;
     }
     c.titre = c.titre || String(c.messages[0].content || "").slice(0, 60);
-    etat.convs = [c].concat(etat.convs.filter(function(x){ return x.id !== c.id; })).slice(0, 20);
+    c.maj = Date.now();
+    etat.convs = [c].concat(etat.convs.filter(function(x){ return x.id !== c.id; })).slice(0, 50);
     ecrisLocal("swogeChats", etat.convs);
     ecrisLocal("swogeChatCourant", c.id);
+    planifiePousse();
+  }
+
+  /* ---- L'HISTORIQUE ATTACHE AU PORTEFEUILLE ----
+   * Demande du proprietaire, le 26 septembre 2026. Le serveur garde les
+   * conversations de l'adresse de la SESSION (jamais une adresse que la page
+   * choisirait). A chaque ouverture et a chaque retour sur l'onglet, la page
+   * lit ce qui a change depuis sa derniere visite (horloge du serveur) ; la
+   * plus recente gagne ; une suppression se propage. Seule une vignette des
+   * pieces jointes voyage, jamais le fichier. Sans session : tout reste local. */
+  var SYNC = lisLocal("swogeHistoSync", { adresse: null, t: 0 });
+  var pousseT = null, enSync = false;
+  function histoActif(){ return !!(jeton() && SYNC.adresse); }
+  function aPousser(c){ return c.messages && c.messages.length && (!c.adr || c.pousse !== c.maj) && (!c.adr || c.adr === SYNC.adresse); }
+  function planifiePousse(){
+    if (!histoActif()) return;
+    clearTimeout(pousseT); pousseT = setTimeout(pousseTout, 1500);
+  }
+  function pousseTout(){
+    if (!histoActif()) return Promise.resolve();
+    var j = jeton(), a = SYNC.adresse;
+    return etat.convs.filter(aPousser).reduce(function(suite, c){
+      return suite.then(function(){
+        var maj = c.maj || Date.now();
+        return fetch(serveur() + "/studio/histo/" + encodeURIComponent(c.id), { method: "PUT",
+          headers: { "content-type": "application/json", authorization: "Bearer " + j },
+          body: JSON.stringify({ titre: c.titre, maj: maj, messages: c.messages }) })
+          .then(function(r){ return r.json().then(function(d){ d.http = r.status; return d; }); })
+          .then(function(d){
+            if (d.ok) { c.adr = a; c.pousse = maj; if (etat.conv && etat.conv.id === c.id) { etat.conv.adr = a; etat.conv.pousse = maj; } }
+            else if (d.http === 409 && d.conv) fusionne(d.conv, a);
+          })["catch"](function(){});
+      });
+    }, Promise.resolve()).then(function(){ ecrisLocal("swogeChats", etat.convs); });
+  }
+  function fusionne(sc, a){
+    var i = -1; etat.convs.forEach(function(x, k){ if (x.id === sc.id) i = k; });
+    var l = i >= 0 ? etat.convs[i] : null, courante = etat.conv && etat.conv.id === sc.id;
+    if (sc.supprime) {
+      if (l && (l.maj || 0) <= sc.maj) {
+        etat.convs.splice(i, 1);
+        if (courante && !etat.occupe) nouvelleConv();
+      }
+      return;
+    }
+    if (l && (l.maj || 0) >= sc.maj) return;
+    var c = { id: sc.id, titre: sc.titre, maj: sc.maj, messages: sc.messages || [], adr: a, pousse: sc.maj };
+    if (i >= 0) etat.convs[i] = c; else etat.convs.push(c);
+    if (courante && !etat.occupe) { etat.conv = JSON.parse(JSON.stringify(c)); peintConv(); }
+  }
+  function syncHisto(adresse){
+    var a = String(adresse || "").toLowerCase(), j = jeton();
+    if (!/^0x[0-9a-f]{40}$/.test(a) || !j || enSync) return;
+    if (SYNC.adresse !== a) {
+      /* Un autre portefeuille sur cet appareil : on ne lui montre pas les chats
+         de l'autre (ils restent sur le serveur, a leur adresse). Les chats
+         jamais synchronises sont rattaches a celui-ci. */
+      etat.convs = etat.convs.filter(function(c){ return !c.adr || c.adr === a; });
+      if (etat.conv && etat.conv.adr && etat.conv.adr !== a) nouvelleConv();
+      SYNC = { adresse: a, t: 0 };
+    }
+    enSync = true;
+    fetch(serveur() + "/studio/histo?depuis=" + encodeURIComponent(SYNC.t || 0), { headers: { authorization: "Bearer " + j }, cache: "no-store" })
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if (!d || !d.ok) return;
+        (d.convs || []).forEach(function(sc){ fusionne(sc, a); });
+        etat.convs.sort(function(x, y){ return (y.maj || 0) - (x.maj || 0); });
+        etat.convs = etat.convs.slice(0, 50);
+        SYNC.t = d.maintenant || SYNC.t; ecrisLocal("swogeHistoSync", SYNC);
+        ecrisLocal("swogeChats", etat.convs);
+        if (!$("histo").hidden) peintHisto();
+        return pousseTout();
+      })["catch"](function(){})
+      .then(function(){ enSync = false; });
+  }
+  function effaceConv(c){
+    etat.convs = etat.convs.filter(function(x){ return x.id !== c.id; });
+    ecrisLocal("swogeChats", etat.convs);
+    if (etat.conv && etat.conv.id === c.id) nouvelleConv();
+    if (histoActif() && c.adr === SYNC.adresse) {
+      fetch(serveur() + "/studio/histo/" + encodeURIComponent(c.id) + "?maj=" + Date.now(), { method: "DELETE", headers: { authorization: "Bearer " + jeton() } })["catch"](function(){});
+    }
+    peintHisto();
   }
   function peintHisto(){
     var h = $("histo"); h.innerHTML = "";
-    if (!etat.convs.length) { h.innerHTML = '<div class="vide">' + TXT.vide + '</div>'; return; }
+    var note = document.createElement("div"); note.className = "note";
+    note.textContent = histoActif() ? "Synced to your wallet " + SYNC.adresse.slice(0, 6) + "\u2026" + SYNC.adresse.slice(-4) + " \u2014 open it on any device."
+      : "Saved on this device. Sign in to sync your chats across devices.";
+    h.appendChild(note);
+    if (!etat.convs.length) { var v = document.createElement("div"); v.className = "vide"; v.textContent = TXT.vide; h.appendChild(v); return; }
     etat.convs.forEach(function(c){
-      var b = document.createElement("button"); b.type = "button"; b.textContent = c.titre || "Chat";
+      var l = document.createElement("div"); l.className = "ligne";
+      var b = document.createElement("button"); b.type = "button"; b.className = "ouvre"; b.textContent = c.titre || "Chat";
       b.addEventListener("click", function(){ etat.conv = JSON.parse(JSON.stringify(c)); ecrisLocal("swogeChatCourant", c.id); peintConv(); basculeHisto(false); reprend(); });
-      h.appendChild(b);
+      var x = document.createElement("button"); x.type = "button"; x.className = "efface"; x.textContent = "\u2715";
+      x.setAttribute("aria-label", "Delete " + (c.titre || "chat"));
+      x.addEventListener("click", function(){ effaceConv(c); });
+      l.appendChild(b); l.appendChild(x); h.appendChild(l);
     });
   }
   function basculeHisto(ouvre){
@@ -1516,7 +1613,10 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     if (!j) { $("solde").innerHTML = "Balance <b>sign in</b>"; return; }
     fetch(serveur() + "/studio/chat/solde", { headers: { authorization: "Bearer " + j }, cache: "no-store" })
       .then(function(r){ return r.json(); })
-      .then(function(d){ if (d && d.ok) $("solde").innerHTML = "Balance <b>" + nombre(d.solde) + " $SWOGE</b>"; else $("solde").innerHTML = "Balance <b>sign in</b>"; })
+      .then(function(d){
+        if (d && d.ok) { $("solde").innerHTML = "Balance <b>" + nombre(d.solde) + " $SWOGE</b>"; syncHisto(d.adresse); }
+        else $("solde").innerHTML = "Balance <b>sign in</b>";
+      })
       ["catch"](function(){});
   }
 
@@ -1992,6 +2092,8 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   /* La connexion se fait APRES le chargement (bouton de `stakebubble.js`) :
      le jeton apparait alors dans `localStorage`, dans CET onglet — l'evenement
      `storage` ne le signalerait pas. On le guette, et le solde suit. */
+  /* De retour sur l'onglet : ce qui a change sur un autre appareil. */
+  document.addEventListener("visibilitychange", function(){ if (!document.hidden && histoActif()) syncHisto(SYNC.adresse); });
   var dernierJeton = jeton();
   setInterval(function(){
     var j = jeton();

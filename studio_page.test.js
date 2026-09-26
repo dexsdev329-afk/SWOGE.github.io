@@ -44,8 +44,11 @@ const CAT = { ouvert: true, note: null, monnaie: '$SWOGE', defaut: 'opus-5-5', e
   const port = srv.address().port;
   const nav = await chromium.launch();
   let lectures = 0;
-  const MED = { ouvert: true,
-    image: { modeles: [{ id: 'rapide', nom: 'Speed', parImageSwoge: 1071 }, { id: 'qualite', nom: 'Quality (2.0)', parImageSwoge: 2142 }], formats: ['auto', '1:1', '16:9', '9:16'], nombres: [1, 2, 4] },
+  const MED = { ouvert: true, videoOuverte: true,
+    image: { fournisseurs: [
+      { id: 'grok', nom: 'Grok Imagine', actif: true, modeles: [{ id: 'rapide', nom: 'Speed', parImageSwoge: 1071 }, { id: 'qualite', nom: 'Quality (2.0)', parImageSwoge: 2142 }] },
+      { id: 'openai', nom: 'ChatGPT Image', actif: true, modeles: [{ id: 'rapide', nom: 'Speed', parImageSwoge: 11075, estime: true }, { id: 'qualite', nom: 'Quality', parImageSwoge: 11075, estime: true }] }],
+      modeles: [{ id: 'rapide', nom: 'Speed', parImageSwoge: 1071 }, { id: 'qualite', nom: 'Quality (2.0)', parImageSwoge: 2142 }], formats: ['auto', '1:1', '16:9', '9:16'], nombres: [1, 2, 4] },
     video: { modeles: [{ id: 'rapide', nom: 'Speed', parSecondeSwoge: 2678, typiqueSwoge: 16065 }, { id: 'qualite', nom: 'Quality (1.5)', parSecondeSwoge: 4284, typiqueSwoge: 25704 }], formats: ['auto', '16:9', '9:16', '1:1'], durees: [6, 10], resolutions: ['480p', '720p'] } };
   const envois = [];
   let polls = 0;
@@ -58,7 +61,12 @@ const CAT = { ouvert: true, note: null, monnaie: '$SWOGE', defaut: 'opus-5-5', e
       if (/\/studio\/media\/catalogue/.test(u)) return r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(MED) });
       if (/\/studio\/media\/(image|video)$/.test(u)) {
         envois.push({ u, auth: r.request().headers().authorization, corps: JSON.parse(r.request().postData() || '{}') });
-        if (/image$/.test(u)) return r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, urls: ['https://imgen.x.ai/a.png', 'https://imgen.x.ai/b.png'], factureSwoge: '4284.18', solde: '195715' }) });
+        if (/image$/.test(u)) {
+          const oa = envois[envois.length - 1].corps.fournisseur === 'openai';
+          return r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true,
+            urls: oa ? ['/studio/media/fichier/' + 'b'.repeat(48) + '.jpg'] : ['https://imgen.x.ai/a.png', 'https://imgen.x.ai/b.png'],
+            factureSwoge: oa ? '9012' : '4284.18', solde: '195715' }) });
+        }
         return r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, id: 'v1', status: 'pending' }) });
       }
       if (/\/studio\/media\/video\/v1/.test(u)) {
@@ -137,6 +145,22 @@ const CAT = { ouvert: true, note: null, monnaie: '$SWOGE', defaut: 'opus-5-5', e
     eq((await p.$$('.grille img')).length, 2, 'les images arrivent en grille dans le fil');
     ok(/4,284 \$SWOGE/.test(await p.textContent('.msg.ia .meta')), 'avec ce qu elles ont coute');
     ok(/195,715/.test(await p.textContent('#solde')), 'et le solde suit');
+    ok(e.corps.fournisseur === 'grok', 'par defaut, le modele d image est Grok Imagine');
+
+    /* Le choix du modele d image : Grok Imagine ou ChatGPT Image. */
+    ok(await vis('#fournisseur'), 'en Image : le choix Grok Imagine | ChatGPT Image est la');
+    await p.click('#fournisseur button[data-f="openai"]');
+    ok(/ChatGPT Image/.test(await p.textContent('#prixq')) && /estimate/.test(await p.textContent('#prixq')), 'le prix suit le modele choisi, dit estime quand il l est');
+    await p.fill('#question', 'a doge astronaut');
+    await p.click('#envoyer');
+    await p.waitForFunction(() => document.querySelectorAll('.msg.ia .grille img').length >= 3);
+    const eo = envois.filter((x) => /image$/.test(x.u)).pop();
+    eq(eo.corps.fournisseur, 'openai', 'la demande part vers ChatGPT Image');
+    const src = await p.$$eval('.msg.ia .grille img', (l) => l[l.length - 1].getAttribute('src'));
+    ok(/^https:\/\/web-production-220a3\.up\.railway\.app\/studio\/media\/fichier\/b{48}\.jpg$/.test(src), 'une image rangee sur notre serveur s affiche depuis lui [' + src.slice(0, 60) + '…]');
+    const metaO = await p.$$eval('.msg.ia .meta', (l) => l[l.length - 1].textContent);
+    ok(/^ChatGPT Image · Speed/.test(metaO), 'le cout dit quel modele l a faite, avec le reglage retenu plus haut (Speed) [' + metaO + ']');
+    await p.click('#fournisseur button[data-f="grok"]');
 
     await p.click('.mode[data-mode="video"]');
     ok(await vis('#duree') && await vis('#resolution') && !(await vis('#nombre')), 'en Video : duree et resolution, pas de nombre');
@@ -181,6 +205,22 @@ const CAT = { ouvert: true, note: null, monnaie: '$SWOGE', defaut: 'opus-5-5', e
     const apres = await p.evaluate(() => JSON.parse(localStorage.getItem('swogeChats') || '[]')[0].messages);
     ok(!apres.some((m) => m.enCours) && apres.some((m) => m.url === 'https://vidgen.x.ai/v1.mp4'), 'le fil garde la video finie, plus d attente');
     await p.close();
+  }
+
+  console.log('\n-- 7. un modele sans cle le dit, sans rien envoyer --');
+  {
+    const sauveMED = JSON.stringify(MED);
+    MED.image.fournisseurs[1].actif = false;
+    envois.length = 0;
+    const p = await ouvre('swoge_studio.html', null, 'jeton-test');
+    await p.click('.mode[data-mode="image"]');
+    await p.click('#fournisseur button[data-f="openai"]');
+    ok(/not switched on yet/.test(await p.textContent('#prixq')), 'ChatGPT Image sans cle : la page le dit');
+    await p.fill('#question', 'x'); await p.click('#envoyer'); await p.waitForTimeout(200);
+    eq(envois.length, 0, 'et rien ne part');
+    await p.click('#fournisseur button[data-f="grok"]');
+    await p.close();
+    Object.assign(MED, JSON.parse(sauveMED));
   }
 
   console.log('\n-- 4. l ancienne adresse renvoie ici --');

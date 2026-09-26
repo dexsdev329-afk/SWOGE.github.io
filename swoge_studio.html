@@ -804,6 +804,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 /* `display:inline-flex` l'emporte sur `hidden` : sans cette ligne, le choix du
    modele de chat et « Search » restaient affiches en mode Image et Video. */
 .outil[hidden],.puce[hidden]{display:none}
+.seg[hidden]{display:none}
 .reglages{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
 .reglages[hidden]{display:none}
 .seg{display:inline-flex;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:3px}
@@ -878,7 +879,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   <section class="accueil" id="accueil">
     <h1>What can I help with?</h1>
     <p>Chat with top AI models — Claude Opus 5.5, Fable 5.1, Sonnet 5, Haiku 4.5 — search the live web,
-       and create images and videos with Grok Imagine. You pay in $SWOGE, only for what each request actually costs.</p>
+       create images with Grok Imagine or ChatGPT Image, and videos with Grok. You pay in $SWOGE, only for what each request actually costs.</p>
     <div class="suggestions" id="suggestions">
       <button class="suggestion" type="button" data-sugg="web"><span class="ic">&#127760;</span>Search the web</button>
       <button class="suggestion" type="button" data-sugg="ecrire"><span class="ic">&#9998;&#65039;</span>Write or edit</button>
@@ -893,6 +894,10 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 
   <div class="compose">
     <div class="reglages" id="reglages" hidden>
+      <div class="seg" id="fournisseur" role="group" aria-label="Image model">
+        <button type="button" data-f="grok" aria-pressed="true">Grok Imagine</button>
+        <button type="button" data-f="openai" aria-pressed="false">ChatGPT Image</button>
+      </div>
       <div class="seg" id="vitesse" role="group" aria-label="Speed or quality">
         <button type="button" data-v="rapide" aria-pressed="false">Speed</button>
         <button type="button" data-v="qualite" aria-pressed="true" id="qualiteNom">Quality</button>
@@ -988,7 +993,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     web: false, occupe: false, conv: null, convs: lisLocal("swogeChats", []),
     /* Studio facon Grok : le mode du composeur et ses reglages, retenus. */
     media: null, mode: lisLocal("swogeStudioMode", "chat"), jointe: null,
-    reg: Object.assign({ vitesse: "qualite", nombre: 1, formatI: "auto", formatV: "auto", duree: 6, resolution: "480p" },
+    reg: Object.assign({ fournisseur: "grok", vitesse: "qualite", nombre: 1, formatI: "auto", formatV: "auto", duree: 6, resolution: "480p" },
                        lisLocal("swogeStudioReglages", {}))
   };
   if (["chat", "image", "video"].indexOf(etat.mode) < 0) etat.mode = "chat";
@@ -1035,19 +1040,41 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     var c = etat.cat; if (!c) return null;
     return c.modeles.filter(function(m){ return m.id === etat.modele; })[0] || c.modeles.filter(function(m){ return m.id === c.defaut; })[0] || c.modeles[0];
   }
+  /* Le choix du modele d'image (Grok Imagine ou ChatGPT Image), puis sa vitesse. */
+  function fournisseurImage(){
+    var im = etat.media && etat.media.image; if (!im) return null;
+    var l = im.fournisseurs || [{ id: "grok", nom: "Grok Imagine", actif: etat.media.ouvert, modeles: im.modeles }];
+    return l.filter(function(f){ return f.id === etat.reg.fournisseur; })[0] || l[0];
+  }
   function modeleMedia(){
-    var c = etat.media && etat.media[etat.mode]; if (!c) return null;
-    return c.modeles.filter(function(m){ return m.id === etat.reg.vitesse; })[0] || c.modeles[0];
+    if (!etat.media) return null;
+    var l = etat.mode === "image" ? (fournisseurImage() || {}).modeles : (etat.media.video || {}).modeles;
+    if (!l || !l.length) return null;
+    return l.filter(function(m){ return m.id === etat.reg.vitesse; })[0] || l[0];
+  }
+  function nomMedia(mm){
+    if (etat.mode !== "image") return mm.nom;
+    var f = fournisseurImage(); return (f ? f.nom + " \u00b7 " : "") + mm.nom;
+  }
+  /* Ce qui empeche de generer dans ce mode, ou null. */
+  function fermeMedia(){
+    var c = etat.media; if (!c) return TXT.ferme;
+    if (etat.mode === "video") return c.videoOuverte === false || (c.videoOuverte === undefined && !c.ouvert) ? (c.videoNote || c.note || TXT.ferme) : null;
+    var f = fournisseurImage();
+    if (!c.ouvert) return c.note || TXT.ferme;
+    if (f && f.actif === false) return f.nom + " is not switched on yet \u2014 pick the other model.";
+    return null;
   }
   function peintPrix(){
     if (etat.mode !== "chat") {
       var mm = modeleMedia(), p = $("prixq");
       if (!etat.media) { p.textContent = "Loading\u2026"; return; }
-      if (!etat.media.ouvert) { p.textContent = etat.media.note || TXT.ferme; return; }
+      var ferme = fermeMedia();
+      if (ferme) { p.textContent = ferme; return; }
       if (!mm) return;
       if (etat.mode === "image") {
         var n = etat.jointe ? etat.reg.nombre + 1 : etat.reg.nombre;
-        p.textContent = mm.nom + " \u00b7 ~" + nombre(mm.parImageSwoge) + " $SWOGE per image" + (n > 1 ? " \u00b7 \u2248 " + nombre(mm.parImageSwoge * n) + " in all" : "") + " \u00b7 you pay the real cost";
+        p.textContent = nomMedia(mm) + " \u00b7 ~" + nombre(mm.parImageSwoge) + " $SWOGE per image" + (mm.estime ? " (estimate)" : "") + (n > 1 ? " \u00b7 \u2248 " + nombre(mm.parImageSwoge * n) + " in all" : "") + " \u00b7 you pay the real cost";
       } else {
         p.textContent = mm.nom + " \u00b7 ~" + nombre(mm.parSecondeSwoge * etat.reg.duree) + " $SWOGE for " + etat.reg.duree + " s at 480p" + (etat.reg.resolution !== "480p" ? " (" + etat.reg.resolution + " costs more)" : "") + " \u00b7 you pay the real cost";
       }
@@ -1071,12 +1098,15 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     $("web").hidden = m !== "chat" || !((modeleCourant() || {}).recherche);
     $("joindre").hidden = m === "chat";
     $("reglages").hidden = m === "chat";
+    $("fournisseur").hidden = m !== "image";
+    Array.prototype.forEach.call(document.querySelectorAll("#fournisseur button"), function(b){ b.setAttribute("aria-pressed", String(b.getAttribute("data-f") === etat.reg.fournisseur)); });
     $("nombre").hidden = m !== "image";
     $("duree").hidden = m !== "video"; $("resolution").hidden = m !== "video";
     $("question").placeholder = PLACE[m];
     if (m === "chat" && etat.jointe) retireJointe();
     Array.prototype.forEach.call(document.querySelectorAll("#vitesse button"), function(b){ b.setAttribute("aria-pressed", String(b.getAttribute("data-v") === etat.reg.vitesse)); });
-    if (etat.media && etat.media[m] && etat.media[m].modeles[1]) $("qualiteNom").textContent = etat.media[m].modeles[1].nom;
+    var lm = m === "image" ? (fournisseurImage() || {}).modeles : (etat.media && etat.media.video && etat.media.video.modeles);
+    if (lm && lm[1]) $("qualiteNom").textContent = lm[1].nom;
     $("nombre").textContent = "\ud83d\uddbc\ufe0f \u00d7" + etat.reg.nombre;
     $("duree").textContent = "\u23f1\ufe0f " + etat.reg.duree + " s";
     $("resolution").textContent = etat.reg.resolution;
@@ -1145,6 +1175,8 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     if (m.genre === "image") {
       var g = document.createElement("div"); g.className = "grille";
       (m.urls || []).forEach(function(u){
+        /* Une image rangee chez nous arrive en adresse relative : on la sert depuis le serveur. */
+        if (/^\/studio\/media\/fichier\/[0-9a-f]{48}\.(png|jpg|webp)$/.test(u)) u = serveur() + u;
         if (!/^(https:|data:image\/)/.test(u)) return;
         var a = document.createElement("a"); a.href = u; a.target = "_blank"; a.rel = "noopener";
         var im = document.createElement("img"); im.src = u; im.alt = "Generated image"; im.loading = "lazy";
@@ -1338,13 +1370,14 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     if (etat.occupe || (!q && !(mode === "video" && etat.jointe))) return;
     var j = jeton();
     if (!j) { dit(TXT.signin); return; }
-    if (!etat.media || !etat.media.ouvert) { dit((etat.media && etat.media.note) || TXT.ferme); return; }
+    var ferme = fermeMedia();
+    if (ferme) { dit(ferme); return; }
     if (!etat.conv) nouvelleConv();
-    var mm = modeleMedia(), reg = etat.reg, jointe = etat.jointe;
+    var mm = modeleMedia(), reg = etat.reg, jointe = etat.jointe, nomM = nomMedia(mm);
     var fmt = mode === "video" ? reg.formatV : reg.formatI;
     var libelle = (mode === "image" ? "\ud83d\uddbc\ufe0f " : "\ud83c\udfac ") + (q || "Animate this photo");
     var rid = nouveauRid();
-    etat.conv.messages.push({ role: "user", content: libelle, genre: mode, rid: rid, nomModele: mm.nom, format: fmt });
+    etat.conv.messages.push({ role: "user", content: libelle, genre: mode, rid: rid, nomModele: nomM, format: fmt });
     sauveConv();
     var du = ajouteMsg("user", libelle);
     if (jointe) { var vi = document.createElement("img"); vi.className = "vignette"; vi.src = jointe; vi.alt = ""; du.insertBefore(vi, du.firstChild); }
@@ -1355,11 +1388,12 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     etape.textContent = mode === "image" ? (jointe ? "Editing your photo\u2026" : "Creating " + (reg.nombre > 1 ? reg.nombre + " images" : "the image") + "\u2026") : "Starting the video\u2026";
     d.insertBefore(etape, corps);
     var corpsReq = { rid: rid, modele: reg.vitesse, prompt: q, format: fmt, image: jointe || undefined };
-    if (mode === "image") corpsReq.n = reg.nombre; else { corpsReq.duree = reg.duree; corpsReq.resolution = reg.resolution; }
+    if (mode === "image") { corpsReq.n = reg.nombre; corpsReq.fournisseur = (fournisseurImage() || {}).id || "grok"; }
+    else { corpsReq.duree = reg.duree; corpsReq.resolution = reg.resolution; }
     function fin(){ etat.occupe = false; peintBoutons(); if (etape.parentNode) etape.remove(); }
     /* La demande non servie ne reste pas dans le fil enregistre. */
     function echec(e){ if (etat.quitte) return; fin(); etat.conv.messages.pop(); sauveConv(); erreurMedia(d, e); }
-    function termine(res){ fin(); finMedia(d, mode, res, mm.nom, fmt, null); }
+    function termine(res){ fin(); finMedia(d, mode, res, nomM, fmt, null); }
     fetch(serveur() + "/studio/media/" + mode, { method: "POST",
       headers: { "content-type": "application/json", authorization: "Bearer " + j }, body: JSON.stringify(corpsReq) })
       .then(function(r){ return r.json().then(function(x){ return x; }, function(){ return { ok: false, code: r.status }; }); })
@@ -1369,7 +1403,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
         /* La video se fabrique cote serveur : son identifiant est ecrit dans le
            fil tout de suite, pour qu'une page rechargee la reprenne. */
         fin();
-        var attente = { role: "assistant", content: "[video]", genre: "video", enCours: res.id, nomModele: mm.nom, format: fmt };
+        var attente = { role: "assistant", content: "[video]", genre: "video", enCours: res.id, nomModele: nomM, format: fmt };
         etat.conv.messages.push(attente); sauveConv();
         suisVideo(d, attente);
       })["catch"](function(){ echec({ raison: TXT.erreurReseau }); });
@@ -1488,6 +1522,9 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   });
   Array.prototype.forEach.call(document.querySelectorAll("#vitesse button"), function(b){
     b.addEventListener("click", function(){ etat.reg.vitesse = b.getAttribute("data-v"); sauveReg(); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("#fournisseur button"), function(b){
+    b.addEventListener("click", function(){ etat.reg.fournisseur = b.getAttribute("data-f"); sauveReg(); });
   });
   $("nombre").addEventListener("click", function(){ etat.reg.nombre = cycle((etat.media && etat.media.image.nombres) || [1, 2, 4], etat.reg.nombre); sauveReg(); });
   $("duree").addEventListener("click", function(){ etat.reg.duree = cycle((etat.media && etat.media.video.durees) || [6, 10], etat.reg.duree); sauveReg(); });

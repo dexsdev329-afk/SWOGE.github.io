@@ -53,6 +53,7 @@ const sse = (evs) => evs.map(([t, d]) => 'event: ' + t + '\ndata: ' + JSON.strin
      depend ni du reseau ni du vrai serveur. */
   const ouvre = async ({ session, cat, rep, largeur } = {}) => {
     const ctx = await nav.newContext({ viewport: { width: largeur || 1200, height: 900 } });
+    await ctx.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: 'http://127.0.0.1:' + port });
     if (session) await ctx.addInitScript((j) => { try { localStorage.setItem('swogeSession', j); } catch (e) {} }, session);
     const page = await ctx.newPage();
     const envois = [], soldes = [];
@@ -203,6 +204,30 @@ const sse = (evs) => evs.map(([t, d]) => 'event: ' + t + '\ndata: ' + JSON.strin
     await page.click('#modeleBtn');
     const f = await page.$eval('#feuille', (e) => { const r = e.getBoundingClientRect(); return Math.round(r.right); });
     ok(f <= w, 'et la feuille des modeles aussi [' + f + ']');
+    await ctx.close();
+  }
+
+  console.log('\n-- 8. un bloc de code se copie d un geste, exactement --');
+  {
+    /* Signale le 26 septembre 2026 : un Snake en HTML demande au chat, et rien
+       pour copier le code ; sur telephone, le bloc defilait de cote. */
+    const CODE = '<!DOCTYPE html>\n<html>\n<head><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>\n<body><canvas id="jeu"></canvas><script>let snake = [{x: 10, y: 10}];</script></body>\n</html>';
+    const TEXTE = 'Here is the game:\n\n```html\n' + CODE + '\n```\n\nEnjoy!';
+    const rep = () => sse([['texte', { t: TEXTE }], ['fin', { ok: true, texte: TEXTE, sources: [], factureSwoge: '12', usage: {}, solde: '1' }]]);
+    const { page, ctx } = await ouvre({ session: 'j', rep, largeur: 360 });
+    await pose(page, 'code a snake game in html');
+    await page.waitForSelector('.msg.ia .meta');
+    eq(await page.textContent('.code-tete span'), 'html', 'le bloc dit sa langue');
+    eq(await page.$('.msg.ia .corps img, .msg.ia .corps canvas'), null, 'le HTML du code est affiche, jamais execute');
+    await page.click('.code .copier');
+    eq(await page.evaluate(() => navigator.clipboard.readText()), CODE, '« Copy » met le code EXACT dans le presse-papiers, balises comprises');
+    ok(/Copied/.test(await page.textContent('.code .copier')), 'et le bouton le confirme');
+    const b = await page.$eval('.code .copier', (x) => { const c = getComputedStyle(x); return c.borderTopStyle + '|' + c.outlineStyle; });
+    ok(/^none\|none$/.test(b), 'un bouton discret : ni cadre ni contour [' + b + ']');
+    const pre = await page.$eval('.code pre', (x) => ({ ws: getComputedStyle(x).whiteSpace, deborde: x.scrollWidth - x.clientWidth }));
+    ok(pre.ws === 'pre-wrap' && pre.deborde <= 1, 'a 360 px, les longues lignes passent a la ligne : rien ne defile de cote [' + pre.deborde + ']');
+    await page.click('.actions .copier');
+    eq(await page.evaluate(() => navigator.clipboard.readText()), TEXTE, 'et « Copy » sous la reponse copie la reponse entiere');
     await ctx.close();
   }
 

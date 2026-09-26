@@ -24,6 +24,7 @@ const T = { '.html':'text/html','.js':'text/javascript','.css':'text/css','.json
 const CAT = { ouvert:true, note:null, monnaie:'$SWOGE', coursUsd:0.00002801, defaut:'sonnet-5', etapesMax:6,
   outils:[{ nom:'scan_token', description:'Read a token' }, { nom:'colony_activity', description:'The colony' }, { nom:'swoge_economy', description:'Economy' }, { nom:'web_search', description:'Web' }],
   modeles:[{ id:'opus-5-5', nom:'Opus 5.5', typiqueSwoge:5000, maxSwoge:90000 }, { id:'sonnet-5', nom:'Sonnet 5', typiqueSwoge:2500, maxSwoge:45000 }, { id:'haiku-4-5', nom:'Haiku 4.5', typiqueSwoge:1200, maxSwoge:20000 }] };
+const DEV = { cles: [], appels: [], recus: [{ id: 'r1e2c3u4', outil: 'scan_token', swoge: '357.01535', t: Date.UTC(2026, 8, 26, 13, 5) }] };
 const sse = (evs) => evs.map(([t, d]) => 'event: ' + t + '\ndata: ' + JSON.stringify(d) + '\n\n').join('');
 const PEPE = { adresse:'0x6982508145454ce325ddbe47a25d4ec3d2311933', trouve:true, sym:'PEPE', nom:'Pepe', chaine:'ethereum', prixUsd:0.0000044, liqUsd:25000000, mcUsd:1.8e9,
   vol24Usd:1e6, var24h:3.2, url:'https://dexscreener.com/ethereum/0xp', securite:'read', alertes:['Pausable'], taxeAchat:0, taxeVente:0, porteurs:593837, premierPorteur:8.8, dixPremiers:35.2, colonie:null };
@@ -54,6 +55,17 @@ const PEPE = { adresse:'0x6982508145454ce325ddbe47a25d4ec3d2311933', trouve:true
         return r.fulfill({ status:200, contentType:'text/event-stream', body: c });
       }
       if (/\/studio\/reprise\//.test(u) && reprise) { const x = reprise(decodeURIComponent(u.split('/studio/reprise/')[1])); return r.fulfill({ status:200, contentType:'application/json', body: JSON.stringify(x) }); }
+      /* Les cles d'API : un faux serveur qui se souvient, comme agentic_cles.js. */
+      if (/\/agentic\/cles/.test(u)) {
+        const q = r.request(), m = q.method();
+        DEV.appels.push({ m, u, auth: q.headers().authorization || null, corps: q.postData() || '' });
+        if (m === 'POST') { const c = JSON.parse(q.postData()); const k = 'swg_' + 'k'.repeat(43);
+          DEV.cles.push({ id: 'abc123def456', nom: c.nom || 'agent', debut: 'swg_kkkk', cree: Date.now(), plafondSwoge: c.plafondSwoge, depenseAujourdhui: 0, revoquee: false });
+          return r.fulfill({ status:200, contentType:'application/json', body: JSON.stringify({ ok:true, cle: k }) }); }
+        if (m === 'DELETE') { DEV.cles.forEach((c) => { c.revoquee = true; }); return r.fulfill({ status:200, contentType:'application/json', body:'{"ok":true}' }); }
+        return r.fulfill({ status:200, contentType:'application/json', body: JSON.stringify({ ok:true, cles: DEV.cles }) });
+      }
+      if (/\/agentic\/recus/.test(u)) return r.fulfill({ status:200, contentType:'application/json', body: JSON.stringify({ ok:true, recus: DEV.recus }) });
       if (/vitrine\.json/.test(u)) return r.fulfill({ status:200, contentType:'application/json', body:'{}' });
       return r.abort();
     });
@@ -143,6 +155,46 @@ const PEPE = { adresse:'0x6982508145454ce325ddbe47a25d4ec3d2311933', trouve:true
     await page.waitForSelector('.msg.ia .meta', { timeout: 10000 });
     ok(/Recovered answer/.test(await page.textContent('.msg.ia .corps')) && /Sonnet 5 · 600 \$SWOGE · 2 steps/.test(await page.textContent('.msg.ia .meta')) && envois.length === 1,
        'la reponse finie sur le serveur est retrouvee par son rid, avec son cout, sans relancer la tache');
+    await ctx.close();
+  }
+
+  console.log('\n-- 6. pour les autres agents : cles d API, MCP, recus --');
+  {
+    /* Demande du proprietaire, le 26 septembre 2026 : « SwogeAgentic comme HYRE,
+       utilisable par les autres agents ». La cle se cree par la session, se
+       montre UNE fois, n'est jamais ecrite dans le navigateur. */
+    const sans = await ouvre({});
+    await sans.page.click('#dev summary');
+    ok(await sans.page.isVisible('#devSession') && await sans.page.isHidden('#devForm'), 'sans session : la page dit de se connecter, pas de formulaire');
+    ok(/claude mcp add --transport http swogeagentic https:\/\/web-production-220a3\.up\.railway\.app\/mcp/.test(await sans.page.textContent('#devClaude')),
+       'la commande Claude Code, a la syntaxe de sa documentation');
+    await sans.ctx.close();
+
+    const { page, ctx } = await ouvre({ session:'jeton-dev', largeur:360 });
+    await page.click('#dev summary');
+    await page.waitForFunction(() => !document.getElementById('devForm').hidden);
+    await page.click('#devCree');
+    ok(/daily cap/.test(await page.textContent('#etat')) && !DEV.appels.some((a) => a.m === 'POST'), 'sans plafond par jour : la page le demande, rien ne part');
+    await page.fill('#devNom', 'my-bot'); await page.fill('#devPlafond', '5000');
+    await page.click('#devCree');
+    await page.waitForSelector('#devNeuve:not([hidden]) code');
+    const post = DEV.appels.find((a) => a.m === 'POST');
+    ok(post.auth === 'Bearer jeton-dev' && JSON.parse(post.corps).plafondSwoge === 5000 && JSON.parse(post.corps).nom === 'my-bot', 'la cle se cree avec le jeton de SESSION, le nom et le plafond');
+    const cle = 'swg_' + 'k'.repeat(43);
+    ok((await page.textContent('#devNeuve code')) === cle && /will not be shown again/.test(await page.textContent('#devNeuve')), 'la cle est montree une fois, et la page le dit');
+    ok((await page.textContent('#devJson')).includes('"Authorization": "Bearer ' + cle + '"') && (await page.textContent('#devJson')).includes('"url": "https://web-production-220a3.up.railway.app/mcp"'),
+       'les extraits de configuration portent la cle et l adresse MCP');
+    ok(!(await page.evaluate(() => JSON.stringify(Object.assign({}, localStorage)))).includes(cle), 'la cle n est JAMAIS ecrite dans le navigateur');
+    await page.waitForSelector('#devCles .dev-cle');
+    ok(/my-bot/.test(await page.textContent('#devCles')) && /0 \/ 5,000 \$SWOGE today/.test(await page.textContent('#devCles')), 'la liste : nom, depense du jour sur le plafond');
+    ok(/scan_token · 357\.01535 \$SWOGE · receipt r1e2c3u4/.test(await page.textContent('#devRecus')), 'les derniers appels, avec leur recu');
+    const larg = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    ok(larg <= 1, 'a 360 px, la section ne deborde pas [' + larg + ']');
+    await page.click('#devCles .dev-cle button');
+    await page.waitForFunction(() => !document.querySelector('#devCles .dev-cle'));
+    ok(DEV.appels.some((a) => a.m === 'DELETE' && /\/agentic\/cles\/abc123def456$/.test(a.u) && a.auth === 'Bearer jeton-dev'), '« Revoke » revoque par la session, et la cle quitte la liste');
+    await page.reload({ waitUntil:'domcontentloaded' });
+    ok(await page.isHidden('#devNeuve'), 'rechargee : la cle ne se remontre plus');
     await ctx.close();
   }
 

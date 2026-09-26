@@ -715,6 +715,21 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 .etapes li[data-etat="ok"]{border-left-color:var(--believer)}
 .etapes li[data-etat="err"]{border-left-color:var(--serpent)}
 .etapes li[data-etat="cours"]{border-left-color:var(--pool)}
+.dev{border:1px solid var(--line);background:var(--panel);border-radius:14px;padding:10px 14px;margin:0 0 12px}
+.dev summary{cursor:pointer;font-weight:700;font-size:13.5px}
+.dev p{font-size:12.5px;color:var(--dim);margin:8px 0}
+.dev-form{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:8px 0}
+/* `display:flex` l'emporte sur l'attribut `hidden` : sans cette ligne, le formulaire restait visible sans session. */
+.dev-form[hidden],.dev-neuve[hidden]{display:none}
+.dev-form input{border:1px solid var(--line);background:var(--void2);color:var(--paper);border-radius:10px;padding:7px 10px;font:inherit;font-size:13px;min-width:0;flex:1 1 120px}
+.dev-form button,.dev-cle button{border:1px solid var(--line);background:var(--paper);color:var(--void);border-radius:999px;padding:7px 12px;font:700 12px/1 inherit;font-family:inherit;cursor:pointer}
+.dev-neuve{border:1px dashed var(--pool);border-radius:10px;padding:8px 10px;margin:8px 0;font-size:12.5px}
+.dev-neuve code,.dev pre{font-family:'Space Mono',monospace;font-size:11.5px;overflow-wrap:anywhere;white-space:pre-wrap}
+.dev pre{background:var(--panel2);border-radius:10px;padding:8px 10px;margin:6px 0}
+.dev-cle{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center;font-size:12.5px;border-top:1px solid var(--line);padding:6px 0}
+.dev-cle .dim{color:var(--dim)}
+.dev-cle button{margin-left:auto;background:transparent;color:var(--serpent);border-color:var(--serpent)}
+.dev h3{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--dim);margin:12px 0 4px}
 .ag-compose select{border:1px solid var(--line);background:var(--panel);color:var(--paper);border-radius:999px;padding:7px 10px;font:600 12.5px/1 inherit;font-family:inherit;max-width:100%}
 </style>
 <style>
@@ -930,6 +945,28 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   </div>
   <div class="ag-outils" id="outils" aria-label="Tools the agent can use"></div>
   <div class="ag-lit">&#128274; Read-only: the agent can't buy, sell, sign or post anything.</div>
+  <!-- ---- POUR LES AUTRES AGENTS (demande du proprietaire, 26 septembre 2026) ----
+       Les cles d'API se creent ICI, par la session signee ; le serveur ne garde
+       que leur empreinte, la cle se montre une seule fois. Chaque cle a un
+       plafond par jour. Voir agentic_cles.js / agentic.js / agentic_mcp.js. -->
+  <details class="dev" id="dev">
+    <summary>&#128268; Use SwogeAgentic from your own agent (API &amp; MCP)</summary>
+    <p>Any AI agent can call these tools — Claude Desktop, Claude Code, Cursor, or your own script. Each call is paid from your $SWOGE balance through an API key, within the daily cap you set. Ask for a price first with <code>quote</code>: it costs nothing.</p>
+    <div id="devSession" class="dev-neuve" hidden>Sign in with your wallet (top right) to create API keys.</div>
+    <div class="dev-form" id="devForm">
+      <input id="devNom" maxlength="40" placeholder="Key name (e.g. my-bot)" aria-label="Key name">
+      <input id="devPlafond" type="number" min="1" step="1" placeholder="Daily cap in $SWOGE" aria-label="Daily cap in $SWOGE">
+      <button type="button" id="devCree">Create key</button>
+    </div>
+    <div class="dev-neuve" id="devNeuve" hidden></div>
+    <div id="devCles"></div>
+    <h3>Connect it</h3>
+    <pre id="devClaude"></pre>
+    <pre id="devJson"></pre>
+    <pre id="devCurl"></pre>
+    <h3>Your last calls</h3>
+    <div id="devRecus"><p>No calls yet.</p></div>
+  </details>
   <div class="barre-fin">
     <span class="pastille" id="solde" title="Your SWOGE gaming balance">Balance <b>&mdash;</b></span>
     <button class="btn-fin" id="nouveau" type="button">&#10133; New task</button>
@@ -1149,6 +1186,64 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       else peintReponse(ajouteMsg("assistant", ""), m);
     });
   }
+  /* ---- LES CLES D'API ET LES RECUS ---- */
+  function peintDev(cle){
+    var mcp = serveur() + "/mcp", k = cle || "swg_YOUR_KEY";
+    $("devClaude").textContent = "# Claude Code\nclaude mcp add --transport http swogeagentic " + mcp + " \\\n  --header \"Authorization: Bearer " + k + "\"";
+    $("devJson").textContent = "// Cursor (~/.cursor/mcp.json) or .mcp.json\n" + JSON.stringify({ mcpServers: { swogeagentic: { url: mcp, headers: { Authorization: "Bearer " + k } } } }, null, 2);
+    $("devCurl").textContent = "# Any script: quote, then call\ncurl -s " + serveur() + "/agentic/tools\ncurl -s -X POST " + serveur() + "/agentic/call/scan_token \\\n  -H \"Authorization: Bearer " + k + "\" -H \"content-type: application/json\" \\\n  -d '{\"arguments\":{\"address\":\"0x...\"},\"quote\":true}'";
+  }
+  function chargeDev(){
+    var j = jeton();
+    $("devSession").hidden = !!j; $("devForm").hidden = !j;
+    if (!j) { $("devCles").innerHTML = ""; return; }
+    fetch(serveur() + "/agentic/cles", { headers: { authorization: "Bearer " + j }, cache: "no-store" })
+      .then(function(r){ return r.json(); }).then(function(d){
+        var z = $("devCles"); z.innerHTML = "";
+        ((d && d.cles) || []).filter(function(c){ return !c.revoquee; }).forEach(function(c){
+          var l = document.createElement("div"); l.className = "dev-cle";
+          var b = document.createElement("b"); b.textContent = c.nom; l.appendChild(b);
+          var i = document.createElement("span"); i.className = "dim";
+          i.textContent = c.debut + "\u2026 \u00b7 " + nombre(c.depenseAujourdhui) + " / " + nombre(c.plafondSwoge) + " $SWOGE today" + (c.derniere ? " \u00b7 last used " + new Date(c.derniere).toISOString().slice(0, 16).replace("T", " ") + " UTC" : "");
+          l.appendChild(i);
+          var x = document.createElement("button"); x.type = "button"; x.textContent = "Revoke";
+          x.addEventListener("click", function(){
+            fetch(serveur() + "/agentic/cles/" + encodeURIComponent(c.id), { method: "DELETE", headers: { authorization: "Bearer " + j } })
+              .then(function(){ chargeDev(); })["catch"](function(){});
+          });
+          l.appendChild(x); z.appendChild(l);
+        });
+      })["catch"](function(){});
+    fetch(serveur() + "/agentic/recus", { headers: { authorization: "Bearer " + j }, cache: "no-store" })
+      .then(function(r){ return r.json(); }).then(function(d){
+        var l = (d && d.recus) || [], z = $("devRecus"); if (!l.length) return;
+        z.innerHTML = "";
+        l.slice(0, 10).forEach(function(x){
+          var e = document.createElement("div"); e.className = "dev-cle";
+          e.textContent = new Date(x.t).toISOString().slice(5, 16).replace("T", " ") + " \u00b7 " + x.outil + " \u00b7 " + x.swoge + " $SWOGE \u00b7 receipt " + x.id;
+          z.appendChild(e);
+        });
+      })["catch"](function(){});
+  }
+  function creeCle(){
+    var j = jeton(); if (!j) { dit(TXT.signin); return; }
+    var plafond = Math.floor(Number($("devPlafond").value));
+    if (!(plafond >= 1)) { dit("Set a daily cap in $SWOGE: it is the most this key can spend per day."); return; }
+    fetch(serveur() + "/agentic/cles", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + j },
+      body: JSON.stringify({ nom: $("devNom").value, plafondSwoge: plafond }) })
+      .then(function(r){ return r.json(); }).then(function(d){
+        if (!d || !d.ok) { dit((d && d.raison) || "The key could not be created."); return; }
+        /* La cle n'est montree qu'ICI, une fois : jamais ecrite dans le navigateur. */
+        var z = $("devNeuve"); z.hidden = false; z.innerHTML = "";
+        var t = document.createElement("div"); t.textContent = "Your new key \u2014 copy it now, it will not be shown again:"; z.appendChild(t);
+        var c = document.createElement("code"); c.textContent = d.cle; z.appendChild(c);
+        var b = document.createElement("button"); b.type = "button"; b.className = "copier"; b.textContent = "\u29c9 Copy";
+        b.addEventListener("click", function(){ copie(d.cle, b); }); z.appendChild(b);
+        peintDev(d.cle); $("devNom").value = ""; $("devPlafond").value = ""; dit(""); chargeDev();
+      })["catch"](function(){ dit(TXT.erreurReseau); });
+  }
+  $("devCree").addEventListener("click", creeCle);
+
   function chargeSolde(){
     var j = jeton();
     if (!j) { $("solde").innerHTML = "Balance <b>sign in</b>"; return; }
@@ -1284,12 +1379,13 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       peintPrix(); peintBoutons();
     })["catch"](function(){ $("prixq").textContent = TXT.ferme; });
   chargeSolde();
+  peintDev(null); chargeDev();
   peintFil();
   reprend();
   var dernierJeton = jeton();
   setInterval(function(){
     var j = jeton(); if (j === dernierJeton) return;
-    dernierJeton = j; if (j && $("etat").textContent === TXT.signin) dit(""); chargeSolde();
+    dernierJeton = j; if (j && $("etat").textContent === TXT.signin) dit(""); chargeSolde(); chargeDev();
   }, 2000);
 })();
 </script>

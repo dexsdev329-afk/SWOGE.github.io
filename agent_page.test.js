@@ -198,6 +198,38 @@ const PEPE = { adresse:'0x6982508145454ce325ddbe47a25d4ec3d2311933', trouve:true
     await ctx.close();
   }
 
+  console.log('\n-- 7. la documentation de l API et llms.txt --');
+  {
+    /* Etape 4 (26 septembre 2026) : que les developpeurs et leurs agents
+       trouvent l'API. La doc lit le catalogue en direct : aucun prix recopie. */
+    const CATA = { ok: true, coursUsd: 0.00002801, outils: [
+      { name: 'scan_token', description: 'Read live data on a token. More.', inputSchema: { type: 'object', properties: { address: { type: 'string' } }, required: ['address'] }, prix: { usd: 0.01, swoge: '357.01535' } },
+      { name: 'ask_agent', description: 'Give a whole task to <b>SwogeAgentic</b>. Billed.', inputSchema: { type: 'object', properties: { task: {}, model: {} }, required: ['task'] }, prix: { variable: true, maxUsd: 1.278, maxSwoge: '45626.5' } }] };
+    const ctx = await nav.newContext({ viewport: { width: 360, height: 800 } });
+    const page = await ctx.newPage();
+    await page.route((u) => !u.href.startsWith('http://127.0.0.1:' + port), (r) => (/\/agentic\/tools/.test(r.request().url())
+      ? r.fulfill({ status:200, contentType:'application/json', body: JSON.stringify(CATA) }) : r.abort()));
+    await page.goto('http://127.0.0.1:' + port + '/swogeagentic_api.html', { waitUntil:'domcontentloaded' });
+    await page.waitForFunction(() => document.querySelectorAll('#outilsDoc tr').length === 2 && !/Loading/.test(document.getElementById('outilsDoc').textContent));
+    const lignes = await page.$$eval('#outilsDoc tr', (l) => l.map((tr) => Array.from(tr.children).map((td) => td.textContent).join(' | ')));
+    eq(lignes[0], 'scan_token | Read live data on a token. | address | $0.01 (357.02 $SWOGE)', 'la doc lit le catalogue : outil, phrase, arguments, prix en $ et $SWOGE');
+    eq(lignes[1], 'ask_agent | Give a whole task to <b>SwogeAgentic</b>. | task, model? | real cost, up to $1.278 (45,627 $SWOGE)', 'un outil au reel dit son maximum ; le texte du catalogue reste du texte');
+    ok((await page.$('#outilsDoc b')) === null, 'rien du catalogue ne devient du HTML');
+    ok(/claude mcp add --transport http swogeagentic https:\/\/web-production-220a3\.up\.railway\.app\/mcp/.test(await page.textContent('#exMcp'))
+       && /"quote":true/.test(await page.textContent('#exRest')), 'les exemples MCP et curl portent la vraie adresse, et le devis gratuit');
+    const larg = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    ok(larg <= 1, 'a 360 px, la doc ne deborde pas [' + larg + ']');
+    const html = fs.readFileSync(path.join(SITE, 'swogeagentic_api.html'), 'utf8');
+    ok(/rel="canonical" href="https:\/\/swoleeswoge\.dog\/swogeagentic_api\.html"/.test(html) && /<title>SwogeAgentic API/.test(html) && !/sk-ant-|swg_[A-Za-z0-9_-]{40}/.test(html), 'son adresse canonique, son titre, aucune cle dans la page');
+    await ctx.close();
+
+    const llms = fs.readFileSync(path.join(SITE, 'llms.txt'), 'utf8');
+    const h2 = llms.split('\n').filter((l) => /^## /.test(l));
+    ok(/^# SwogeAgentic\n\n> /.test(llms) && !/^#{3,} /m.test(llms), 'llms.txt : un H1, puis le resume en citation, aucun titre plus profond (format llmstxt.org)');
+    ok(h2.join(',') === '## Docs,## Optional', 'des listes de liens sous des H2, « Optional » en dernier');
+    ok(llms.includes('(https://swoleeswoge.dog/swogeagentic_api.html)') && llms.includes('/agentic/tools)'), 'il mene a la doc et au catalogue en direct');
+  }
+
   await nav.close(); srv.close();
   console.log('\nRATES : ' + rates + '/' + n);
   process.exit(rates ? 1 : 0);

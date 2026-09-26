@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="en">
+<!-- Cette page n avait ni doctype ni balise `html` : elle s affichait donc en
+     mode QUIRKS, ou le navigateur imite les fautes des annees 90, et elle ne
+     pouvait declarer aucune langue. Mesure faite avant de la changer : au
+     passage en mode standard, aucun de ses 139 elements ne bouge, ni a 390 ni
+     a 1280 — seule la hauteur de `body` se remet a celle de son contenu. -->
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>
+/* ================== CORRECTIFS COMMUNS ==================
+ * Bloc identique sur les vingt-cinq pages. Il se pose juste apres le viewport
+ * pour qu'aucune feuille de style de la page ne puisse le prendre de vitesse.
+ *
+ * LE DOUBLE-TAP NE ZOOME PLUS. Deux appuis rapproches sur un bouton — tirer,
+ * tirer ; miser, miser — etaient lus comme un double-tap, et la page grossissait.
+ * On jouait le coup suivant a moitie hors de l'ecran et il fallait pincer pour
+ * revenir. `manipulation` supprime CE geste, et lui seul : le pincement pour
+ * zoomer reste possible, ce qui n'aurait pas ete le cas avec un
+ * `user-scalable=no` dans le viewport — la solution courante, qui prive aussi
+ * les gens qui zooment pour lire. Les 300 ms d'attente avant que le clic parte
+ * disparaissent avec, en prime.
+ *
+ * LA SURFACE DE JEU, elle, ne doit rien laisser passer : un doigt qui glisse
+ * sur un plateau ne doit pas faire defiler la page derriere.
+ *
+ * LES CIBLES : le bouton menu tombait a 38x38 sur telephone, sous les 44 px
+ * recommandes — et c'est le seul chemin vers le depot, le retrait et le compte.
+ * ========================================================= */
+html{ -webkit-text-size-adjust:100%; }
+
+/* ---- ON RELEVE LE NOIR, PARTOUT ----
+ *
+ * Les tables etaient presque entierement noires : 80 % des pixels du casino
+ * sous le seuil du visible, 96 % au Coin Pusher, contre 58 % au hall. A cote
+ * du hall, chaque jeu paraissait eteint.
+ *
+ * Le calque est en `screen`, pas en voile blanc, et la difference est tout :
+ *
+ *   screen(a, g) = 255 - (255 - a)(255 - g) / 255
+ *
+ * Le NOIR monte a la valeur du calque, le BLANC ne bouge pas d'un cran. Les
+ * plaques peintes, les jetons et les cartes gardent donc exactement leur
+ * eclat — seuls les creux se remplissent. Un voile blanc a 5 %, lui, aurait
+ * laiteuse les cartes en meme temps.
+ *
+ * `filter: brightness()` est ecarte pour deux raisons : il MULTIPLIE, donc le
+ * noir reste noir — or c'est justement le noir qu'on veut relever — et un
+ * filtre fait de son element le repere de tout descendant en position fixe,
+ * ce qui nous a deja coute un cadre de palier de deux cents pixels sur le Spin.
+ *
+ * `pointer-events:none` : le calque couvre tout l'ecran, il ne doit rien
+ * intercepter. Verifie par un vrai clic sur la bulle de profil, avec et sans.
+ *
+ * Une seule valeur a regler ici, et elle vaut pour les vingt-six pages. */
+html::after{ content:""; position:fixed; inset:0; pointer-events:none;
+  z-index:2147483000; background:#12121a; mix-blend-mode:screen; }
+button, a, input, select, textarea, label, summary,
+[role="button"], [onclick],
+.card, .chipbtn, .btn, .tile, .sbet, .qclaim, .abtn, .pct, .chip, .sday{
+  touch-action:manipulation;
+}
+canvas{ touch-action:none; }
+
+/* ---- UNE VIDEO NE PEUT PLUS ETRE PLUS LARGE QUE SA PLACE ----
+ *
+ * Signale, capture a l appui : sur telephone, l en-tete de SWOGE BET et la
+ * rangee de navigation s affichent a 59 % de la largeur de l ecran, tout
+ * ratatines, pendant que la banniere et les cartes en dessous occupent bien
+ * toute la largeur. Deux echelles sur la meme page.
+ *
+ * Ce n est pas l en-tete qui a retreci : c est TOUTE LA PAGE qui a ete
+ * degonflee. Quand un element deborde en largeur, iOS ne coupe pas et ne
+ * replie pas — il reduit l echelle de la page entiere pour faire tenir le
+ * document. L en-tete, lui, fait 100 % de la FENETRE (390 px) et non du
+ * document (772 px) : degonfle du meme coup, il n occupe plus que la moitie
+ * de l ecran. Le contenu large, lui, remplit l ecran. C est exactement ce que
+ * montre la capture, et la page porte deja ce constat ailleurs :
+ * « le telephone dezoomait toute la page pour la faire tenir ».
+ *
+ * Ce qui debordait : la banniere video. `<video width="912" height="600">` —
+ * ces attributs sont des indices de presentation, c est-a-dire une largeur de
+ * 912 px si la regle d auteur qui dit `width:100%` ne s applique pas, ou si le
+ * moteur recalcule la largeur depuis `aspect-ratio` quand `max-height` mord.
+ * Mesure, la regle neutralisee : document a 772 px pour une fenetre de 390, et
+ * un en-tete qui occuperait 51 % de l ecran.
+ *
+ * Chaque `<img>` du site etait deja borne — `img{max-width:100%}`. Aucune des
+ * vingt et une pages qui portent une `<video>` ne le faisait pour elle. Le
+ * garde manquait pour un seul type de balise, et c est celui qu on a mis en
+ * pleine largeur en haut de trois pages.
+ *
+ * Pose ici, dans le bloc commun, et pas dans la regle de chaque banniere : ce
+ * n est pas une decision de mise en page, c est un plancher. Une banniere qui
+ * veut deborder devra le dire, et personne ne le veut. */
+video{ max-width:100%; }
+.menubtn{ min-width:44px; min-height:44px; }
+</style>
+
+<title>SwogeAgentic API · tools for AI agents</title>
+
+<!-- ==================== REFERENCEMENT ET PARTAGE ====================
+     Bloc identique sur toutes les pages, pose juste apres le titre.
+
+     L ICONE. Vingt-trois pages sur vingt-huit n en avaient aucune, et les cinq
+     qui en portaient une pointaient vers trois fichiers differents — dont un
+     qui n existe pas. C est la premiere chose qu on cherche pour retrouver un
+     onglet, et Google la montre a cote du resultat.
+
+     LE PARTAGE. Aucune page ne portait de balise Open Graph : un lien colle
+     dans Telegram, sur X ou dans Discord n affichait ni titre, ni resume, ni
+     image — juste l adresse nue. Pour un projet qui vit dans Telegram, c est
+     le lien lui-meme qui faisait le travail de vitrine, et il ne le faisait
+     pas.
+
+     L ADRESSE CANONIQUE dit au moteur quelle est LA page, quand la meme est
+     atteignable avec un `?game=`, un `#` ou un `www`. Sans elle, les deux
+     versions se font concurrence et aucune ne gagne.
+     ================================================================= -->
+<link rel="canonical" href="https://swoleeswoge.dog/swogeagentic_api.html">
+<meta name="description" content="SwogeAgentic API: pay-per-call tools for AI agents over REST and MCP — token scans with SWOGE AI colony measurements, new launches, wallet and infrastructure OSINT, web search, images, a research agent. Read-only, paid in $SWOGE with a daily cap per key.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="SWOGE WORLD">
+<meta property="og:locale" content="en_US">
+<meta property="og:title" content="SwogeAgentic API · tools for AI agents">
+<meta property="og:description" content="SwogeAgentic API: pay-per-call tools for AI agents over REST and MCP — token scans with SWOGE AI colony measurements, new launches, wallet and infrastructure OSINT, web search, images, a research agent. Read-only, paid in $SWOGE with a daily cap per key.">
+<meta property="og:url" content="https://swoleeswoge.dog/swogeagentic_api.html">
+<meta property="og:image" content="https://swoleeswoge.dog/img/site/partage.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@SwoleDogeSwoge">
+<meta name="twitter:title" content="SwogeAgentic API · tools for AI agents">
+<meta name="twitter:description" content="SwogeAgentic API: pay-per-call tools for AI agents over REST and MCP — token scans with SWOGE AI colony measurements, new launches, wallet and infrastructure OSINT, web search, images, a research agent. Read-only, paid in $SWOGE with a daily cap per key.">
+<meta name="twitter:image" content="https://swoleeswoge.dog/img/site/partage.jpg">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/img/site/icone-32.png">
+<link rel="apple-touch-icon" href="/img/site/icone-180.png">
+<link rel="manifest" href="/site.webmanifest">
+<meta name="theme-color" content="#1B5FE0">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+<style>
+/* ---- LA PALETTE PASSE AU CLAIR ----
+ * Les noms de variables ne changent pas — seule leur VALEUR bascule, pour que
+ * les couleurs posees en ligne par le script (`style="color:var(--serpent)"`,
+ * `style="background:var(--believer)"`) suivent sans qu on touche au JS.
+ * `--paper` etait #EAF2FF, un texte clair pose sur un fond noir : sur un fond
+ * clair il aurait disparu, il devient donc l encre marine #0B1B36.
+ * `--believer` / `--serpent` / `--neutral` / `--pool` retrouvent le vert, le
+ * rouge, l ambre et le bleu que les fonds teintes de cette feuille
+ * (`rgba(95,209,160,.14)`, `rgba(232,120,92,.14)`…) supposaient depuis le
+ * debut, assombris juste ce qu il faut pour rester lisibles sur du blanc. */
+:root{
+  --void:#EEF3FB; --void2:#FFFFFF; --panel:#FFFFFF; --panel2:#E1E9F6; --line:#E1E9F6;
+  --paper:#0B1B36; --dim:#6B7C99; --believer:#12805A; --serpent:#C0392B; --neutral:#96650F; --pool:#1B5FE0;
+  --gold:#1B5FE0; --goldlite:#EAF1FF; --cream:#0A1F44; --r:3px;
+}
+*{box-sizing:border-box}
+/* ---- LE FOND DE PAGE, EN TROIS COUCHES, TOUTES TRAITEES ----
+ * Cette page posait le noir a TROIS endroits : `body{background:var(--void)}`,
+ * un `body::after` (photo de grain en `luminosity`) et un `body::before`
+ * (deux halos or). Deux pseudo-elements de meme specificite se REMPLACENT au
+ * lieu de s additionner : n en neutraliser qu un rend la main a l autre et la
+ * page reste sombre. Les deux sont donc SUPPRIMES, pas surcharges — le grain
+ * en `luminosity` grisait le blanc, les halos or n avaient plus de fond noir
+ * ou se lire. Le fond est ecrit en dur ici, comme sur les pages deja passees
+ * au clair, pour qu aucune valeur de variable ne puisse le reprendre. */
+html,body{margin:0;padding:0;overflow-x:hidden;max-width:100%;background:#EEF3FB;color:#0B1B36}
+body{font-family:'Archivo',system-ui,sans-serif;font-size:14px;line-height:1.55}
+.wrap{position:relative;z-index:2}
+/* `container-type:inline-size` : les `vw` du titre mesuraient la fenetre
+   entiere, pas la colonne retrecie par les deux cotes — voir `8cqi` plus bas. */
+.wrap{max-width:1080px;margin:0 auto;padding:32px 20px 90px;container-type:inline-size}
+.mono{font-family:'Space Mono',monospace}
+
+/* header */
+.top{border-bottom:1px solid var(--line);padding-bottom:20px;margin-bottom:24px}
+.kick{font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--dim)}
+h1{font-family:'Anton',sans-serif;font-size:clamp(30px,8cqi,40px);letter-spacing:.01em;text-transform:uppercase;margin:6px 0 0}
+h1 em{font-style:normal;color:var(--gold)}
+.sub{color:var(--dim);font-size:13px;margin-top:6px;max-width:560px}
+
+/* input */
+.bar{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}
+.bar input{flex:1;min-width:0;width:100%;background:var(--panel);color:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:11px 13px;font-family:'Space Mono',monospace;font-size:12.5px}
+.bar input:focus{outline:2px solid var(--believer);outline-offset:1px}
+button{font-family:'Anton',sans-serif;font-size:16px;letter-spacing:.04em;text-transform:uppercase;background:var(--gold);color:#FFFFFF;border:0;border-radius:var(--r);padding:12px 24px;cursor:pointer}
+button:hover{transform:scale(1.03);filter:brightness(1.06)}
+button:disabled{opacity:.5;cursor:not-allowed}
+button.ghost{background:transparent;color:var(--dim);border:1px solid var(--line)}
+button.ghost:hover{color:var(--paper);border-color:var(--believer);filter:none}
+
+.state{margin-top:14px;font-family:'Space Mono',monospace;font-size:11.5px;color:var(--dim);min-height:16px}
+.state.err{color:var(--serpent)}
+.spin{display:inline-block;width:9px;height:9px;border:1.5px solid var(--line);border-top-color:var(--believer);border-radius:50%;animation:sp .7s linear infinite;vertical-align:-1px;margin-right:6px}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+/* token id */
+.tokenhead{display:none;align-items:baseline;gap:14px;flex-wrap:wrap;margin-top:26px;padding-bottom:14px;border-bottom:1px solid var(--line)}
+.tokenhead .nm{font-family:'Anton',sans-serif;font-size:22px;font-weight:600}
+.tokenhead .sy{font-family:'Space Mono',monospace;color:var(--believer);font-size:13px}
+.tokenhead .ct{font-family:'Space Mono',monospace;color:var(--dim);font-size:11px;word-break:break-all}
+
+/* verdict band — the signature element */
+.health{display:none;margin-top:24px;border-radius:var(--r);padding:18px 20px;border:1px solid var(--line)}
+.health.green{background:rgba(95,209,160,.08);border-color:rgba(95,209,160,.4);border-left:4px solid var(--believer)}
+.health.orange{background:rgba(199,161,94,.08);border-color:rgba(199,161,94,.4);border-left:4px solid var(--neutral)}
+.health.red{background:rgba(232,120,92,.08);border-color:rgba(232,120,92,.4);border-left:4px solid var(--serpent)}
+.health .grade{font-family:'Anton',sans-serif;font-size:24px;text-transform:uppercase;letter-spacing:.02em;display:flex;align-items:center;gap:12px}
+.health .grade .badge{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;padding:4px 10px;border-radius:20px;font-weight:600}
+.health.green .badge{background:var(--believer);color:#FFFFFF}
+.health.orange .badge{background:var(--neutral);color:#FFFFFF}
+.health.red .badge{background:var(--serpent);color:#FFFFFF}
+.health .line{font-size:13.5px;color:var(--paper);margin-top:10px;line-height:1.6}
+.health .factors{display:flex;gap:18px;flex-wrap:wrap;margin-top:12px;font-family:'Space Mono',monospace;font-size:11px;color:var(--dim)}
+.health .factors b{color:var(--paper)}
+.health .factors .ok{color:var(--believer)} .health .factors .bad{color:var(--serpent)} .health .factors .mid{color:var(--neutral)}
+.verdict{display:none;margin-top:26px}
+.vlabel{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin-bottom:7px}
+.vlabelsub{text-transform:none;letter-spacing:0;color:var(--believer)}
+.vbar{height:46px;border-radius:var(--r);overflow:hidden;display:flex;border:1px solid var(--line)}
+.vseg{display:flex;align-items:center;justify-content:center;font-family:'Space Mono',monospace;font-size:12px;font-weight:600;color:#FFFFFF;transition:flex-basis .6s cubic-bezier(.2,.7,.2,1);min-width:0;overflow:hidden;white-space:nowrap}
+.vseg.b{background:var(--believer)}
+.vseg.s{background:var(--serpent);color:#FFFFFF}
+.vseg.n{background:var(--neutral);color:#FFFFFF}
+.vlegend{display:flex;gap:22px;flex-wrap:wrap;margin-top:12px;font-family:'Space Mono',monospace;font-size:11.5px;color:var(--dim)}
+.vlegend b{color:var(--paper);font-weight:600}
+/* Le top 10 a rejoint la legende, separe des trois classes par un filet : il
+   ne decrit pas une classe de portefeuille, il decrit la FORME du tableau. */
+.vlegend .vsep{border-left:1px solid var(--line);padding-left:22px}
+
+/* ---- LES SECTIONS QUI SE REPLIENT ----
+ * Quatre panneaux — la liste complete, l analyse d une adresse, la tendance,
+ * la methode — sont utiles mais ne sont jamais ce qu on vient chercher en
+ * arrivant. Depliees d office, elles poussaient le verdict hors de l ecran.
+ * `<details>` plutot qu un basculement en JS : c est le navigateur qui gere
+ * l ouverture, le clavier et la recherche dans la page, et une section repliee
+ * reste trouvable au Ctrl+F. Un panneau qu on code soi-meme perd les trois. */
+.pli{display:none;margin-top:22px;border:1px solid var(--line);border-radius:var(--r);
+  background:var(--panel);padding:0 16px}
+.pli[open]{padding-bottom:16px}
+.pli>summary{list-style:none;cursor:pointer;padding:14px 0;display:flex;align-items:baseline;
+  gap:12px;flex-wrap:wrap;font-family:'Space Mono',monospace;font-size:11px;
+  letter-spacing:.16em;text-transform:uppercase;color:var(--paper);font-weight:500}
+.pli>summary::-webkit-details-marker{display:none}
+.pli>summary::after{content:"+";margin-left:auto;font-size:15px;color:var(--dim);
+  font-family:inherit;letter-spacing:0}
+.pli[open]>summary::after{content:"\2212"}
+.pli>summary:hover{color:var(--gold)}
+.pli>summary:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
+/* La question a laquelle la section repond, en clair : un titre en capitales
+   espacees dit de quoi ca parle, pas ce qu on y trouvera. */
+.pli-q{font-family:inherit;font-size:11px;letter-spacing:0;text-transform:none;
+  color:var(--dim);font-weight:400}
+.pli[open]>summary{border-bottom:1px solid var(--line);margin-bottom:14px}
+/* Les titres internes de ces panneaux faisaient doublon avec leur resume. */
+.pli>h2,.pli>h3{display:none}
+.dotb{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px;vertical-align:0}
+
+/* stat strip */
+.stat{background:var(--panel);padding:15px 16px}
+.stat .n{font-family:'Space Mono',monospace;font-size:23px;font-weight:600;letter-spacing:-.02em}
+.stat .k{font-family:'Space Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin-top:3px}
+.stat .n.b{color:var(--believer)} .stat .n.s{color:var(--serpent)}
+
+/* concentration */
+.section{display:none;margin-top:34px}
+.section h2{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);margin:0 0 4px;font-weight:500}
+.section .cap{color:var(--dim);font-size:12px;margin:0 0 16px}
+
+/* holder rows */
+.holder{display:grid;grid-template-columns:26px 1fr auto;gap:12px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)}
+.rank{font-family:'Space Mono',monospace;font-size:11px;color:var(--dim);text-align:right}
+.hmain{min-width:0}
+.haddr{font-family:'Space Mono',monospace;font-size:12.5px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.haddr a{color:var(--paper);text-decoration:none;border-bottom:1px solid transparent}
+.haddr a:hover{border-bottom-color:var(--believer)}
+.chip{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.08em;text-transform:uppercase;padding:2px 6px;border-radius:2px;white-space:nowrap}
+.chip.b{background:rgba(95,209,160,.14);color:var(--believer)}
+.chip.s{background:rgba(232,120,92,.14);color:var(--serpent)}
+.chip.n{background:rgba(199,161,94,.14);color:var(--neutral)}
+.chip.p{background:rgba(91,141,217,.16);color:var(--pool)}
+.htrack{height:5px;background:var(--panel2);border-radius:3px;margin-top:6px;overflow:hidden}
+.hfill{height:100%;border-radius:3px}
+.hpct{font-family:'Space Mono',monospace;font-size:13px;font-weight:600;text-align:right;white-space:nowrap}
+.hbal{font-family:'Space Mono',monospace;font-size:10.5px;color:var(--dim);text-align:right;margin-top:2px}
+.flow{font-family:'Space Mono',monospace;font-size:10px;color:var(--dim);margin-top:3px}
+.flow .out{color:var(--serpent)} .flow .in{color:var(--believer)}
+
+.note{font-family:'Space Mono',monospace;font-size:10.5px;color:var(--dim);line-height:1.7;margin-top:10px}
+.filters{display:none;gap:8px;flex-wrap:wrap;margin-top:26px;align-items:center}
+.filters .lbl{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin-right:2px}
+.fbtn{font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:.04em;text-transform:none;background:var(--panel);color:var(--dim);border:1px solid var(--line);border-radius:20px;padding:6px 13px;cursor:pointer;font-weight:500}
+.fbtn:hover{color:var(--paper);filter:none;border-color:var(--dim)}
+.fbtn.on{background:var(--believer);color:#FFFFFF;border-color:var(--believer);font-weight:600}
+.fbtn.on.s{background:var(--serpent);color:#FFFFFF;border-color:var(--serpent)}
+.fbtn.on.n{background:var(--neutral);color:#FFFFFF;border-color:var(--neutral)}
+.fbtn.on.p{background:var(--pool);color:#FFFFFF;border-color:var(--pool)}
+.srch{flex:1;min-width:120px;background:var(--panel);color:var(--paper);border:1px solid var(--line);border-radius:20px;padding:6px 13px;font-family:'Space Mono',monospace;font-size:11px}
+.srch:focus{outline:1px solid var(--believer)}
+.copybar{display:none;gap:8px;flex-wrap:wrap;align-items:center;margin-top:14px}
+.copybar button{background:transparent;color:var(--believer);border:1px solid rgba(95,209,160,.4);border-radius:var(--r);padding:8px 14px;font-family:'Space Mono',monospace;font-size:10.5px}
+.copybar button:hover{background:rgba(95,209,160,.1);filter:none}
+.copybar .hint{font-family:'Space Mono',monospace;font-size:10.5px;color:var(--dim)}
+.age{font-family:'Space Mono',monospace;font-size:10px;color:var(--neutral);white-space:nowrap}
+.more{margin-top:16px;text-align:center}
+.more button{background:transparent;color:var(--dim);border:1px solid var(--line);border-radius:var(--r);padding:10px 22px}
+.more button:hover{color:var(--paper);border-color:var(--believer)}
+.count{font-family:'Space Mono',monospace;font-size:10.5px;color:var(--dim);text-align:center;margin-top:8px}
+.inspect{display:none;margin-top:34px}
+.ibar{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.ibar input{flex:1;min-width:0;background:var(--panel);color:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;font-family:'Space Mono',monospace;font-size:12px}
+.ibar input:focus{outline:2px solid var(--believer);outline-offset:1px}
+.icard{display:none;margin-top:14px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:18px 20px}
+.icard.b{border-left:4px solid var(--believer)} .icard.s{border-left:4px solid var(--serpent)}
+.icard.n{border-left:4px solid var(--neutral)} .icard.p{border-left:4px solid var(--pool)} .icard.x{border-left:4px solid var(--line)}
+.iverdict{font-family:'Anton',sans-serif;font-size:26px;text-transform:uppercase;letter-spacing:.02em;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.iverdict .badge{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;padding:4px 11px;border-radius:20px;font-weight:600}
+.icard.b .badge{background:var(--believer);color:#FFFFFF} .icard.s .badge{background:var(--serpent);color:#FFFFFF}
+.icard.n .badge{background:var(--neutral);color:#FFFFFF} .icard.p .badge{background:var(--pool);color:#FFFFFF}
+.icard.x .badge{background:var(--line);color:var(--paper)}
+.iline{font-size:13.5px;color:var(--paper);margin-top:10px;line-height:1.6}
+.igrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-top:16px}
+.icell{background:#F5F8FD;border:1px solid var(--line);border-radius:var(--r);padding:11px 13px}
+.icell .k{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
+.icell .v{font-family:'Space Mono',monospace;font-size:15px;font-weight:600;margin-top:3px;word-break:break-all}
+.ilink{font-family:'Space Mono',monospace;font-size:11px;margin-top:14px}
+.ilink a{color:var(--believer);text-decoration:none;border-bottom:1px solid rgba(95,209,160,.35)}
+.mom{display:none;margin-top:34px}
+.mgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
+@media(max-width:640px){.mgrid{grid-template-columns:1fr}}
+.mcard{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:15px 16px}
+.mcard .lbl{font-family:'Space Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+.mcard .val{font-family:'Space Mono',monospace;font-size:20px;font-weight:600;margin-top:4px}
+.mbar{height:8px;border-radius:4px;overflow:hidden;display:flex;margin-top:10px;background:var(--panel2)}
+.mbar .buy{background:var(--believer)} .mbar .sell{background:var(--serpent)}
+.mnote{font-family:'Space Mono',monospace;font-size:11px;color:var(--dim);margin-top:10px;line-height:1.6}
+.track{display:none;margin-top:34px}
+.trow{display:grid;grid-template-columns:auto 1fr auto;gap:14px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line);font-family:'Space Mono',monospace;font-size:12px}
+.trow .d{color:var(--dim)}
+.trow .delta{text-align:right;font-weight:600}
+.trow .delta.up{color:var(--believer)} .trow .delta.down{color:var(--serpent)} .trow .delta.flat{color:var(--dim)}
+.tempty{font-family:'Space Mono',monospace;font-size:11.5px;color:var(--dim);margin-top:10px;line-height:1.7}
+.method{display:none;margin-top:40px;border-top:1px solid var(--line);padding-top:16px}
+.method h3{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);margin:0 0 8px}
+.method p{color:var(--dim);font-size:12px;margin:0 0 8px;max-width:640px}
+.method b{color:var(--paper)}
+footer{margin-top:44px;font-family:'Space Mono',monospace;font-size:10px;color:var(--dim);line-height:1.8;border-top:1px solid var(--line);padding-top:14px}
+
+/* ── mobile ── */
+@media(max-width:560px){
+  .wrap{padding:20px 14px 70px}
+  .igrid{grid-template-columns:1fr 1fr}
+  .holder{grid-template-columns:22px 1fr auto;gap:9px}
+  .haddr{font-size:11.5px}
+  .hpct{font-size:12px}
+  .trow{grid-template-columns:1fr;gap:4px;text-align:left}
+  .trow .delta{text-align:left}
+  .health{padding:15px 15px}
+  .health .grade{font-size:20px}
+  .iverdict{font-size:22px}
+  .filters{gap:6px}
+  .fbtn{padding:5px 10px;font-size:10px}
+  .copybar{gap:6px}
+  .copybar button{width:100%}
+  /* ---- CETTE REGLE FRAPPAIT LE MAUVAIS TITRE ----
+   * Elle grossissait TOUS les h2 a vingt-sept pixels sur telephone, avec un
+   * `!important`. Or cette page n'a qu'un seul h2 — l'etiquette en capitales
+   * espacees de la section Concentration, calee a onze pixels — et le grand
+   * titre du hero est un h1. Le seul effet de la regle etait donc de casser
+   * l'etiquette qu'elle n'avait aucune raison de toucher : trois lignes de
+   * capitales geantes au milieu de la page. Elle vient d'un gabarit partage
+   * ou un h2 est un titre de section ; ici, non. */
+  .bar{flex-direction:column}
+  .bar button{width:100%}
+  .ibar{flex-direction:column}
+  .ibar button{width:100%}
+}
+@media(max-width:380px){
+  .igrid{grid-template-columns:1fr}
+}
+
+/* hero scanner avec fond gym + doge */
+.top{position:relative;border-radius:10px;overflow:hidden;padding:34px 30px;margin-bottom:6px;
+  background:linear-gradient(90deg,rgba(7,11,20,.92) 0%,rgba(7,11,20,.75) 45%,rgba(7,11,20,.30) 100%),url('img/c6973b275593.jpg');
+  background-size:cover;background-position:center right;border:1px solid var(--line)}
+.top .kick,.top h1,.top .sub,.top .bar,.top .state{position:relative;z-index:2}
+.top .sub{max-width:440px}
+.scandoge{position:absolute;right:-10px;bottom:-10px;width:230px;opacity:.9;z-index:1;
+  -webkit-mask-image:linear-gradient(to left,#000 55%,transparent);mask-image:linear-gradient(to left,#000 55%,transparent);
+  pointer-events:none;border-radius:10px}
+@media(max-width:640px){.scandoge{display:none} .top{padding:24px 20px}}
+/* séparateur EKG */
+.ekg{height:60px;margin:30px 0 4px;background:url('img/96df36ce665c.jpg') center/contain no-repeat;opacity:.7}
+
+/* ---- LA BANNIERE RESTE SOMBRE, SON TEXTE RESTE CLAIR ----
+ * `.top` est une photo sous un voile noir : c est la SURFACE de la page, pas
+ * sa navigation, elle garde donc son habillage. Mais son texte heritait de
+ * `--paper`, qui vient de passer au marine — il serait devenu marine sur
+ * noir. On le repose ici en clair, explicitement. */
+.top .kick,.top .sub{color:rgba(255,255,255,.74)}
+.top h1{color:#FFFFFF}
+.top h1 em{color:#FFC53D}
+.top .state{color:rgba(255,255,255,.74)}
+.top .state.err{color:#FF9C8C}
+.top .bar input{background:#FFFFFF;color:#0B1B36;border-color:#FFFFFF}
+.top .spin{border-color:rgba(255,255,255,.35);border-top-color:#FFC53D}
+
+/* ==================== LA NOUVELLE BARRE, BLANCHE ====================
+   DEMANDE : « tous se qu on viens de faire a blackjack html et spin html » —
+   meme barre que `games.html`, `index.html`, `swogebet.html`,
+   `swoge_blackjack.html` et `swoge_spin.html` : marque, chiffres du serveur,
+   solde, connexion, avatar. Seule la BARRE, les panneaux de compte et le
+   fond de page passent au blanc — le tapis et les cartes gardent leur
+   propre habillage or-sur-noir, qui est celui de la TABLE et non de la
+   navigation. Couleurs ECRITES ICI, comme sur les quatre autres pages. */
+.sw-haut{
+  display:flex; align-items:center; gap:14px; padding:10px 16px;
+  background:#FFFFFF; border-bottom:1px solid #E1E9F6;
+  position:sticky; top:0; z-index:30;
+}
+.sw-marque{display:flex; align-items:center; gap:9px; flex:0 0 auto}
+nav.sb-ancre{display:flex;align-items:center;gap:12px;
+  background:none;backdrop-filter:none;padding:0;border-bottom:none;
+  position:static;z-index:auto;}
+.sw-patte{
+  width:34px;height:34px;border-radius:10px;background:#EAF1FF;
+  display:grid;place-items:center;font-size:19px;
+}
+.sw-marque b{display:block;font:800 17px/1 'Inter',system-ui,sans-serif;letter-spacing:.4px;color:#1B5FE0}
+.sw-marque i{display:block;font:700 9.5px/1.4 'Inter',system-ui,sans-serif;font-style:normal;
+  letter-spacing:2.6px;color:#6B7C99}
+.sw-chiffres{
+  flex:1 1 auto; min-width:0; display:flex; gap:8px; overflow-x:auto;
+  padding:8px 10px; background:#EEF3FB; border:1px solid #E1E9F6;
+  border-radius:12px; scrollbar-width:none;
+}
+.sw-chiffres::-webkit-scrollbar{display:none}
+/* La bande de stats ne pouvait pas se cacher : le script d'echec pose
+   `bloc.hidden = true`, mais `.sw-chiffres{display:flex}` est une regle
+   d'AUTEUR et l'emporte sur le `[hidden]{display:none}` du navigateur.
+   Quand le fetch de /vitrine.json echouait, la bande restait donc a
+   l'ecran avec ses quatre tirets — l'allure d'un compteur en direct sans
+   compteur derriere. Une ligne, et l'intention du script tient. */
+.sw-chiffres[hidden]{display:none}
+.sw-ch{display:flex;align-items:center;gap:8px;padding:0 12px;flex:0 0 auto}
+.sw-ch+.sw-ch{border-left:1px solid #E1E9F6}
+.sw-ch .ic{width:26px;height:26px;border-radius:8px;background:#EAF1FF;
+  display:grid;place-items:center;font-size:13px}
+.sw-ch small{display:block;font:700 9px/1 'Inter',system-ui,sans-serif;letter-spacing:.9px;color:#6B7C99}
+.sw-ch b{display:block;font:800 14px/1.3 'Inter',system-ui,sans-serif;color:#0A1F44}
+.sb-ancre .chip{font:800 12px/1 'Inter',system-ui,sans-serif;color:#0A1F44;
+  border:1px solid #E1E9F6;border-radius:999px;padding:9px 13px;background:#FFFFFF;
+  box-shadow:0 1px 2px rgba(11,27,54,.06), 0 8px 24px rgba(11,27,54,.05);white-space:nowrap}
+.sb-ancre .chip b{color:#0A1F44}
+.sw-b{
+  padding:10px 16px;border-radius:10px;cursor:pointer;border:none;
+  font:700 12.5px/1 'Inter',system-ui,sans-serif;letter-spacing:.3px;white-space:nowrap;
+}
+.sw-b-plein{background:#1B5FE0;color:#fff}
+.sw-b-plein:hover{background:#1750c4}
+.sw-b-vide{background:#FFFFFF;color:#1B5FE0;border:1.5px solid #1B5FE0}
+.sw-b-vide:hover{background:#EAF1FF}
+.connrow{ position:static !important; flex:0 0 auto;
+  flex-direction:row !important; flex-wrap:nowrap !important;
+  justify-content:flex-start !important; gap:8px; padding:0 !important; }
+.connrow .sw-b{ margin:0 !important; }
+.sw-avatar{
+  width:38px;height:38px;border-radius:11px;border:1px solid #E1E9F6;
+  background:#EEF3FB;display:grid;place-items:center;font-size:16px;flex:0 0 auto;cursor:pointer;
+}
+.gx-menu{position:absolute;top:60px;right:14px;z-index:70;width:236px;
+  background:#FFFFFF;border:1px solid #E1E9F6;border-radius:14px;
+  box-shadow:0 1px 2px rgba(11,27,54,.06), 0 8px 24px rgba(11,27,54,.05);padding:6px;display:flex;flex-direction:column;gap:1px}
+.gx-menu[hidden]{display:none}
+.gx-menu a{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:9px;
+  font:700 12px/1 'Inter',system-ui,sans-serif;color:#0B1B36;text-decoration:none}
+.gx-menu a:hover{background:#EAF1FF;color:#1B5FE0}
+.gx-menu .gx-sep{height:1px;background:#E1E9F6;margin:5px 2px}
+.gx-menu .gx-g{padding:9px 10px 4px;font:800 9px/1 'Inter',system-ui,sans-serif;
+  letter-spacing:1.1px;text-transform:uppercase;color:#6B7C99}
+.gx-menu .gx-g:first-child{padding-top:4px}
+.gx-menu{max-height:min(74vh,560px);overflow-y:auto;scrollbar-width:thin}
+.gx-menu a i{font-style:normal;font-size:14px;width:18px;text-align:center;flex:0 0 auto}
+@media(max-width:520px){ .gx-menu{right:8px;left:8px;width:auto} }
+@media (max-width:620px){
+  .sw-haut{ flex-wrap:wrap; row-gap:8px; }
+  .sw-marque{ order:1 }
+  /* ---- LA RANGEE DE PASTILLES DOIT POUVOIR SE REPLIER ----
+     `stakebubble.js` ajoute DEUX pastilles a cette rangee quand la connexion
+     s'etablit — le rendement en jeu et le nombre de joueurs — soit une seconde
+     ou deux apres l'ouverture. Mesure faite : la rangee passe de 54 a 243 px.
+     En `flex:0 0 auto` elle ne pouvait ni retrecir ni se replier : elle
+     poussait donc la ligne, le document devenait plus large que l'ecran, et
+     le telephone dezoomait toute la page pour la faire tenir — c'est l'en-tete
+     coupe en pleine largeur, deux secondes apres le chargement.
+     Elle peut desormais retrecir ET passer a la ligne. A noter : le garde-fou
+     de `stakebubble.js` ne pouvait pas s'en charger, il ne se retire que s'il
+     mesure un debordement du DOCUMENT — or ici l'en-tete l'absorbait en
+     grandissant en hauteur, sans jamais rien faire deborder. */
+  nav.sb-ancre{ order:2; flex:0 1 auto; min-width:0; margin-left:auto;
+                flex-wrap:wrap; justify-content:flex-end; row-gap:6px }
+  .menubtn, #gxProfil{ order:3 }
+  /* ---- ET ELLE PEUT SE REPLIER QUAND LA LIGNE N EST PLUS ASSEZ LARGE ----
+     Les deux boutons portent `white-space:nowrap` : la paire fait 332 px que
+     rien ne peut retrecir. Sur un ecran de 320 (un iPhone en zoom d affichage,
+     un iPhone SE) il ne reste que 288 px : la rangee debordait, le telephone
+     elargissait la fenetre de mise en page a 348, et TOUTE la page se decalait
+     de 28 px — en-tete coupe a gauche, contenu sous le bord droit.
+     `wrap` ne fait rien tant que la place existe : de 350 a 620 px la rangee
+     reste sur une ligne comme avant. Le `nowrap` de la regle du dessus visait
+     une mise en page en COLONNE ; ici la direction est deja forcee en `row`,
+     donc replier ne la ramene pas. */
+  .connrow{ order:4; flex:1 1 100% !important; justify-content:center !important;
+            flex-wrap:wrap !important }
+  /* ---- ET AVANT DE SE REPLIER, ELLE SE RESSERRE ----
+     Se replier repare le decalage mais coute une rangee d en-tete. A 360 px —
+     la moitie des telephones Android — il ne manquait que quatre pixels : dix
+     de moins de chaque cote des deux boutons les rendent, et la paire reste
+     sur sa ligne comme avant. Sous 340 il n y a plus rien a gratter, et c est
+     `wrap` qui prend le relais. */
+  @media (max-width:400px){
+    .connrow .sw-b{ padding-left:11px !important; padding-right:11px !important }
+  }
+  .sw-chiffres{ order:5; flex:1 1 100% }
+}
+
+/* ==================== LES DEUX COTES DE LA TABLE ====================
+   Meme grille que `swoge_blackjack.html` : les deux colonnes ne mesurent pas
+   la meme chose (208 px de navigation contre 300 px d affiches), une grille a
+   trois colonnes garde donc la colonne du milieu au centre EXACT de l ecran,
+   quelle que soit la largeur de ce qu on pose a cote. */
+.sw-corps{display:grid; grid-template-columns:minmax(208px,1fr) auto minmax(208px,1fr);
+  align-items:start; gap:14px; padding:14px; max-width:1680px; margin:0 auto}
+.sw-corps main{min-width:0}
+.sw-cote{position:sticky; top:74px; width:100%; display:flex; flex-direction:column; gap:12px; justify-self:end}
+.sw-nav{background:#FFFFFF;border:1px solid #E1E9F6;border-radius:14px;
+  padding:8px; box-shadow:0 1px 2px rgba(11,27,54,.06), 0 8px 24px rgba(11,27,54,.05)}
+.sw-nav a{display:flex;align-items:center;gap:11px;padding:11px 12px;border-radius:10px;
+  font:600 13.5px/1 'Inter',system-ui,sans-serif;color:#0B1B36}
+.sw-nav a .ic{width:20px;text-align:center;font-size:15px;opacity:.75}
+.sw-nav a:hover{background:#EEF3FB}
+.sw-nav a.on{background:#EAF1FF;color:#1B5FE0}
+.sw-nav a.on .ic{opacity:1}
+.sw-reseaux{display:flex;gap:8px;justify-content:center;padding-top:4px}
+.sw-reseaux a{width:34px;height:34px;border-radius:10px;background:#FFFFFF;border:1px solid #E1E9F6;
+  display:grid;place-items:center;font-size:14px;color:#6B7C99}
+.sw-reseaux a:hover{color:#1B5FE0;border-color:#1B5FE0}
+.uni{position:relative;border-radius:14px;overflow:hidden;min-height:258px;
+  display:flex;flex-direction:column;justify-content:flex-end;background:#0A1F44;
+  box-shadow:0 1px 2px rgba(11,27,54,.06), 0 8px 24px rgba(11,27,54,.05)}
+.uni img,.uni .film{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+  object-position:center top;border:0;background:#0A1F44}
+@media (prefers-reduced-motion:reduce){ .uni .film{display:none} }
+.uni .voile{position:absolute;inset:0;
+  background:linear-gradient(180deg,rgba(8,24,58,0) 34%,rgba(8,24,58,.88) 74%,rgba(8,24,58,.97) 100%)}
+.uni .dit{position:relative;padding:14px;text-align:center}
+.uni b{display:block;font:900 20px/1 'Inter',system-ui,sans-serif;color:#fff;letter-spacing:.4px}
+.uni i{display:block;font-style:normal;font:600 11px/1.4 'Inter',system-ui,sans-serif;
+  color:rgba(255,255,255,.76);margin:5px 0 11px}
+.uni .sw-b{width:100%;background:rgba(255,255,255,.94);color:#0A1F44;
+  display:block;text-align:center;border-radius:10px}
+.sw-lat{width:300px; position:sticky; top:74px; display:flex; flex-direction:column; gap:14px; justify-self:start}
+.sw-lat .carte{background:#FFFFFF;border:1px solid #E1E9F6;border-radius:14px;
+  box-shadow:0 1px 2px rgba(11,27,54,.06), 0 8px 24px rgba(11,27,54,.05); overflow:hidden}
+.sw-solde{display:flex;align-items:center;gap:12px;padding:14px 16px}
+.sw-solde .ic{flex:0 0 auto;width:38px;height:38px;border-radius:11px;background:#EAF1FF;
+  display:grid;place-items:center;font-size:17px}
+.sw-solde .tx{min-width:0}
+.sw-solde .tx small{display:block;font:800 9.5px/1 'Inter',system-ui,sans-serif;
+  letter-spacing:1.1px;color:#6B7C99}
+.sw-solde .tx b{display:block;margin-top:4px;font:800 17px/1 'Inter',system-ui,sans-serif;
+  color:#0A1F44;font-variant-numeric:tabular-nums}
+.sw-lat .salon{position:relative;display:block;min-height:172px;overflow:hidden;background:#0A1F44}
+.sw-lat .salon img,.sw-lat .salon .film{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+  object-position:34% 8%;border:0;background:#0A1F44}
+@media (prefers-reduced-motion:reduce){ .sw-lat .salon .film{display:none} }
+.sw-lat .salon .voile{position:absolute;inset:auto 0 0 0;height:58%;
+  background:linear-gradient(180deg,rgba(6,16,40,0) 0%,rgba(6,16,40,.86) 78%,rgba(6,16,40,.95) 100%)}
+.sw-lat .salon .dit{position:absolute;left:16px;right:16px;bottom:14px;
+  font:800 12px/1 'Inter',system-ui,sans-serif;letter-spacing:1.4px;color:#fff}
+.sw-lat .salon:hover img,.sw-lat .salon:hover .film{transform:scale(1.03)}
+.sw-lat .salon img,.sw-lat .salon .film{transition:transform .2s}
+@media (max-width:1360px){
+  .sw-cote, .sw-lat{ display:none }
+  .sw-corps{ padding:0; display:block; max-width:none }
+}
+/* ---- LA COLONNE DE GAUCHE NE GONFLE PLUS (memes deux colonnes de bord que
+   `swoge_poker.html`) ----
+ * BUG MESURE : `minmax(208px,1fr)` sur les deux colonnes de bord absorbe TOUT
+ * l'espace libre que la colonne du milieu (`auto`, calee sur le contenu du
+ * jeu) ne reclame pas — a 1920px, `.sw-cote` faisait 594px de large au lieu
+ * des ~208px voulus (documentes plus haut : « 208 px de navigation »). Des
+ * colonnes de bord FIXES, et la colonne du milieu absorbe le reste (sans
+ * effet sous 1360px : la regle juste au-dessus y cache deja `.sw-cote`). */
+.sw-corps{ grid-template-columns:230px minmax(0,1fr) 300px; }
+.sw-cote{ width:auto; max-width:230px; }
+/* `swoge_casino.html` pose un `a{color:inherit;text-decoration:none}` general
+   en tete de feuille ; cette page-ci n en a pas, et les liens de la barre et
+   des deux cotes arrivaient donc soulignes en bleu de navigateur. On repose la
+   meme remise a zero, mais BORNEE au decor : les liens du contenu (`.haddr a`,
+   `.ilink a`) gardent leur propre habillage. */
+.sw-haut a, .sw-cote a, .sw-lat a{ color:inherit; text-decoration:none; }
+</style>
+
+<!-- LA BARRE BLANCHE, recopiee de `swoge_studio.html`. Ici la page CONNECTE
+     un portefeuille : `stakebubble.js` (en bas) pose ses boutons dans cette
+     barre et range le jeton de session dans `localStorage.swogeSession`, que le
+     chat envoie en `Authorization: Bearer`. Le serveur en tire l'adresse ; la
+     page ne choisit jamais qui est debite. -->
+<header class="sw-haut">
+  <a class="sw-marque" href="nexus.html" id="gxMonde">
+    <span class="sw-patte">&#128062;</span>
+    <span><b>SWOGE</b><i>WORLD</i></span>
+  </a>
+  <div class="sw-chiffres" id="gxChiffres" hidden>
+    <div class="sw-ch"><span class="ic">&#128100;</span><span><small>PLAYERS</small><b data-n="joueurs">&mdash;</b></span></div>
+    <div class="sw-ch"><span class="ic">&#127922;</span><span><small>CASINO VOLUME</small><b data-n="volume">&mdash;</b></span></div>
+    <div class="sw-ch"><span class="ic">&#127918;</span><span><small>ROUNDS PLAYED</small><b data-n="manches">&mdash;</b></span></div>
+    <div class="sw-ch"><span class="ic">&#127942;</span><span><small>WINNINGS PAID</small><b data-n="rendus">&mdash;</b></span></div>
+  </div>
+</header>
+
+<!-- Les quatre chiffres de la vitrine, lus sur le serveur — meme script que
+     `swoge_blackjack.html` et `swoge_spin.html`. -->
+<script>
+(function(){
+  "use strict";
+  var bloc = document.getElementById("gxChiffres");
+  if(!bloc) return;
+  function serveur(){
+    try{ var q=new URLSearchParams(location.search).get("server"); if(q)
+      return String(q).replace(/^ws/,"http"); }catch(e){}
+    return "https://web-production-220a3.up.railway.app";
+  }
+  function court(n){
+    n = Number(n) || 0;
+    var t = function(v, s){ return (Math.floor(v*10)/10).toFixed(1).replace(/\.0$/,"") + s; };
+    if(n >= 1e9) return t(n/1e9, "B");
+    if(n >= 1e6) return t(n/1e6, "M");
+    if(n >= 1e3) return t(n/1e3, "k");
+    return String(Math.floor(n));
+  }
+  fetch(serveur()+"/vitrine.json", { cache:"no-store" })
+    .then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); })
+    .then(function(j){
+      [].forEach.call(bloc.querySelectorAll("b[data-n]"), function(b){
+        var v = j[b.getAttribute("data-n")];
+        b.textContent = (typeof v === "number" && isFinite(v)) ? court(v) : "\u2014";
+      });
+      bloc.hidden = false;
+    })
+    ['catch'](function(){ bloc.hidden = true; });
+})();
+</script>
+
+<div class="sw-corps">
+
+  <aside class="sw-cote">
+    <nav class="sw-nav">
+      <a href="index.html"><span class="ic">&#127968;</span>Home</a>
+      <a href="games.html"><span class="ic">&#127920;</span>Casino</a>
+      <a href="swogebet.html"><span class="ic">&#9917;</span>Sports</a>
+      <a href="swoge_wallet.html"><span class="ic">&#129433;</span>Wallet</a>
+      <a href="swoge_ai.html"><span class="ic">&#129302;</span>SWOGE AI</a>
+      <a href="swoge_perp.html"><span class="ic">&#128200;</span>AI Perp</a>
+      <a href="swoge_predict.html"><span class="ic">&#128302;</span>Predict</a>
+      <a href="swoge_osint.html"><span class="ic">&#128269;</span>OSINT</a>
+      <a href="swolemind.html"><span class="ic">&#129504;</span>SwoleMind</a>
+      <a href="swogeagentic.html" class="on" aria-current="page"><span class="ic">&#129302;</span>SwogeAgentic</a>
+      <a href="whitepaper.html"><span class="ic">&#128220;</span>Docs</a>
+    </nav>
+    <div class="sw-reseaux">
+      <a href="https://x.com/SwoleDogeSwoge" target="_blank" rel="noopener"
+         title="X — @SwoleDogeSwoge">&#120143;</a>
+      <a href="https://t.me/swoleswoge" target="_blank" rel="noopener"
+         title="Telegram — t.me/swoleswoge">&#9992;</a>
+      <a href="https://dexscreener.com/robinhood/0x2dc0fb72d9284228046cc95910eeaabebfe48456"
+         target="_blank" rel="noopener" title="Dexscreener — $SWOGE chart">&#128200;</a>
+    </div>
+    <article class="uni">
+      <video class="film" src="media/monde_carte.mp4" poster="img/site/monde_carte_poster.webp"
+             muted autoplay loop playsinline disablepictureinpicture
+             aria-hidden="true"></video><div class="voile"></div>
+      <div class="dit"><b>SWOGE WORLD</b><i>Meet. Explore. Own.</i>
+        <a class="sw-b" href="nexus.html">ENTER</a></div>
+    </article>
+  </aside>
+
+
+<main class="chat-main doc">
+<style>
+/* ==================== SWOGEAGENTIC — LA DOCUMENTATION DE L'API ====================
+ * Etape 4 (demande du proprietaire, 26 septembre 2026) : que les developpeurs
+ * et leurs agents trouvent l'API. Le tableau des outils et leurs prix est LU
+ * en direct dans /agentic/tools : la page ne recopie aucun prix. */
+.doc{max-width:860px}
+.doc h1{font:400 34px/1.05 Anton,Impact,sans-serif;letter-spacing:.02em;margin:6px 0 8px;color:var(--paper)}
+.doc h2{font:800 18px/1.2 Archivo,sans-serif;margin:26px 0 8px;color:var(--paper)}
+.doc p,.doc li{font-size:14px;line-height:1.55;color:var(--paper)}
+.doc .dim{color:var(--dim)}
+.doc code{font-family:'Space Mono',monospace;font-size:12.5px;background:var(--panel2);border-radius:6px;padding:1px 5px;overflow-wrap:anywhere}
+.doc pre{font-family:'Space Mono',monospace;font-size:12px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px;white-space:pre-wrap;overflow-wrap:anywhere;margin:8px 0}
+.doc table{width:100%;border-collapse:collapse;font-size:13px;margin:8px 0}
+.doc th,.doc td{text-align:left;border-bottom:1px solid var(--line);padding:7px 6px;vertical-align:top}
+.doc th{font:700 11px/1.2 'Space Mono',monospace;text-transform:uppercase;letter-spacing:.06em;color:var(--dim)}
+.doc td code{white-space:nowrap}
+.doc .outils td:nth-child(2){min-width:0;overflow-wrap:anywhere}
+.doc .cartes{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:10px;margin:10px 0}
+.doc .carte-doc{border:1px solid var(--line);background:var(--panel);border-radius:14px;padding:12px}
+.doc .carte-doc b{display:block;margin-bottom:4px}
+.doc a{color:var(--pool)}
+@media (max-width:640px){ .doc .outils thead{display:none} .doc .outils tr{display:block;border-bottom:1px solid var(--line);padding:6px 0} .doc .outils td{display:block;border:0;padding:2px 0} }
+</style>
+  <h1>SwogeAgentic API</h1>
+  <p>Pay-per-call tools for AI agents: token scans with what the <a href="swoge_ai.html">SWOGE AI colony</a> measured, the colony's newest launches and live activity, wallet and infrastructure OSINT, the $SWOGE economy, web search, image generation and a full research agent. Use them over REST or <b>MCP</b> (Claude Desktop, Claude Code, Cursor, any MCP client). For agents: <a href="llms.txt">llms.txt</a>.</p>
+  <div class="cartes">
+    <div class="carte-doc"><b>&#128274; Read-only</b><span class="dim">No tool buys, sells, signs or posts. A leaked key can only spend its daily cap on reads.</span></div>
+    <div class="carte-doc"><b>&#129534; Quote first</b><span class="dim">Every tool takes <code>quote: true</code>: the price, nothing charged. Paid calls return the exact amount and a receipt.</span></div>
+    <div class="carte-doc"><b>&#128184; Paid in $SWOGE</b><span class="dim">From your SWOGE balance, within a daily cap per key. Refused calls are never billed.</span></div>
+  </div>
+
+  <h2>1. Get a key</h2>
+  <p>Open <a href="swogeagentic.html">SwogeAgentic</a>, sign in with your wallet (top right), open <b>&#128268; Use SwogeAgentic from your own agent</b>, name the key and set its <b>daily cap</b> in $SWOGE. The key (<code>swg_…</code>) is shown <b>once</b>: the server keeps only its SHA-256 fingerprint. Up to 5 active keys per wallet; revoke any time. A key cannot create or revoke keys.</p>
+  <p>Send it as <code>Authorization: Bearer swg_…</code> (or <code>x-api-key: swg_…</code>).</p>
+
+  <h2>2. Tools and prices <span class="dim" id="coursDoc"></span></h2>
+  <table class="outils"><thead><tr><th>Tool</th><th>What it does</th><th>Arguments</th><th>Price</th></tr></thead>
+    <tbody id="outilsDoc"><tr><td colspan="4" class="dim">Loading the live catalogue…</td></tr></tbody></table>
+  <p class="dim">Prices are read live from <code id="urlCat">/agentic/tools</code>. Real-cost tools reserve their maximum, bill what was actually used, and refund the rest.</p>
+
+  <h2>3. REST</h2>
+  <pre id="exRest"></pre>
+  <p>A paid call answers:</p>
+  <pre>{
+  "ok": true,
+  "outil": "scan_token",
+  "resultat": { "token": { "sym": "PEPE", "liqUsd": 31995193, "alertes": ["Pausable"], … }, "sources": [ … ] },
+  "texte": "Token 0x6982…: Market (DexScreener, deepest of 30 pools) …",
+  "facture": { "swoge": "357.01535", "usd": 0.01 },
+  "solde": "199642.98465",
+  "recu": "9f2c1a7e44b0d3a8"
+}</pre>
+  <p><code>facture.swoge</code> is a string on purpose: it is exactly what was debited, to the wei.</p>
+
+  <h2>4. MCP</h2>
+  <p>Streamable HTTP endpoint <code id="urlMcp"></code>. It speaks protocol <b>2026-07-28</b> (per-request <code>_meta</code>, <code>server/discover</code>) and <b>2025-11-25 / 2025-06-18 / 2025-03-26</b> through <code>initialize</code>.</p>
+  <pre id="exMcp"></pre>
+  <p class="dim">Clients that cannot send headers can use <code>/mcp/k/&lt;key&gt;</code> — prefer the header: a URL can end up in HTTP logs. The daily cap bounds what a leak can cost.</p>
+
+  <h2>5. Errors</h2>
+  <table><thead><tr><th>Status</th><th>Meaning</th><th>Billed?</th></tr></thead><tbody>
+    <tr><td><code>400</code></td><td>Bad input (address format, empty query, unsupported target)</td><td>No</td></tr>
+    <tr><td><code>401</code></td><td>Missing or revoked key</td><td>No</td></tr>
+    <tr><td><code>402</code></td><td>Balance too low, or the key's daily cap would be exceeded</td><td>No</td></tr>
+    <tr><td><code>404</code></td><td>Unknown tool</td><td>No</td></tr>
+    <tr><td><code>429</code></td><td>More than 60 calls per minute on one key</td><td>No</td></tr>
+    <tr><td><code>502</code> / <code>503</code></td><td>The tool or a provider failed / the service is unavailable</td><td>No — everything reserved is refunded</td></tr>
+  </tbody></table>
+  <p class="dim">Over MCP, a tool failure comes back as a result with <code>isError: true</code> so the model can read it and correct itself; an unknown tool is JSON-RPC error <code>-32602</code>.</p>
+
+  <h2>6. Rules</h2>
+  <ul>
+    <li>The colony's numbers are <b>measurements with their sample size</b>, never buy or sell signals. "Unknown" means unknown, not safe.</li>
+    <li><code>wallet_intel</code> and <code>osint_lookup</code> are <b>passive</b>: the target never sees our requests. <code>osint_lookup</code> accepts infrastructure only (domain, IP, URL, AS number, CVE) — <b>never people</b>: no e-mails, usernames, phone numbers or names.</li>
+    <li>Your receipts are listed on the SwogeAgentic page and at <code>GET /agentic/recus</code>.</li>
+  </ul>
+<script>
+/* La doc lit le catalogue en direct : outils, arguments, prix. Aucun prix recopie. */
+(function(){
+  "use strict";
+  function serveur(){
+    try { var q = new URLSearchParams(location.search).get("server"); if (q) return String(q).replace(/^ws/, "http").replace(/\/$/, ""); } catch (e) {}
+    return "https://web-production-220a3.up.railway.app";
+  }
+  var $ = function(id){ return document.getElementById(id); };
+  var api = serveur();
+  $("urlCat").textContent = api + "/agentic/tools";
+  $("urlMcp").textContent = api + "/mcp";
+  $("exRest").textContent = "# 1. the catalogue (public)\ncurl -s " + api + "/agentic/tools\n\n# 2. the price of a call (free)\ncurl -s -X POST " + api + "/agentic/call/scan_token \\\n  -H \"Authorization: Bearer swg_YOUR_KEY\" -H \"content-type: application/json\" \\\n  -d '{\"arguments\":{\"address\":\"0x6982508145454ce325ddbe47a25d4ec3d2311933\"},\"quote\":true}'\n\n# 3. the call itself\ncurl -s -X POST " + api + "/agentic/call/scan_token \\\n  -H \"Authorization: Bearer swg_YOUR_KEY\" -H \"content-type: application/json\" \\\n  -d '{\"arguments\":{\"address\":\"0x6982508145454ce325ddbe47a25d4ec3d2311933\"}}'";
+  $("exMcp").textContent = "# Claude Code\nclaude mcp add --transport http swogeagentic " + api + "/mcp \\\n  --header \"Authorization: Bearer swg_YOUR_KEY\"\n\n// Cursor (~/.cursor/mcp.json) or .mcp.json\n" + JSON.stringify({ mcpServers: { swogeagentic: { url: api + "/mcp", headers: { Authorization: "Bearer swg_YOUR_KEY" } } } }, null, 2);
+  function cellule(t){ var td = document.createElement("td"); td.textContent = t; return td; }
+  fetch(api + "/agentic/tools", { cache: "no-store" }).then(function(r){ return r.json(); }).then(function(c){
+    var b = $("outilsDoc"); b.innerHTML = "";
+    if (c.coursUsd) $("coursDoc").textContent = "· at $" + Number(c.coursUsd).toPrecision(4) + " per $SWOGE";
+    (c.outils || []).forEach(function(o){
+      var tr = document.createElement("tr");
+      var n = document.createElement("td"), code = document.createElement("code"); code.textContent = o.name; n.appendChild(code); tr.appendChild(n);
+      tr.appendChild(cellule(String(o.description || "").split(". ")[0].replace(/\.$/, "") + "."));
+      var props = (o.inputSchema && o.inputSchema.properties) || {}, req = (o.inputSchema && o.inputSchema.required) || [];
+      tr.appendChild(cellule(Object.keys(props).map(function(k){ return k + (req.indexOf(k) >= 0 ? "" : "?"); }).join(", ") || "—"));
+      var p = o.prix || {};
+      tr.appendChild(cellule(p.variable ? "real cost, up to $" + p.maxUsd + (p.maxSwoge ? " (" + Number(p.maxSwoge).toLocaleString("en-US", { maximumFractionDigits: 0 }) + " $SWOGE)" : "")
+        : "$" + p.usd + (p.swoge ? " (" + Number(p.swoge).toLocaleString("en-US", { maximumFractionDigits: 2 }) + " $SWOGE)" : "")));
+      b.appendChild(tr);
+    });
+  })["catch"](function(){ $("outilsDoc").innerHTML = '<tr><td colspan="4" class="dim">The live catalogue could not be read right now.</td></tr>'; });
+})();
+</script>
+
+</main>
+
+  <!-- LA COLONNE DE DROITE, sans la carte « YOUR BALANCE » : cette page ne
+       suit pas de solde, il n y a pas de `#bal` a recopier — une carte de
+       solde y afficherait un chiffre invente. Restent les deux affiches, qui
+       pointent vers des pages reelles. -->
+  <aside class="sw-lat">
+    <a class="carte salon" href="swoge_blackjack.html">
+      <img src="img/site/jeu_blackjack.webp" alt="" loading="lazy">
+      <span class="voile"></span>
+      <span class="dit">GOLD TABLE &nbsp;&rarr;</span>
+    </a>
+    <a class="carte salon" href="swogebet.html">
+      <video class="film" src="media/doge_sport.mp4" poster="img/site/doge_sport_poster.webp"
+             muted autoplay loop playsinline disablepictureinpicture
+             aria-label="SWOGE Sports"></video>
+      <span class="voile"></span>
+      <span class="dit">SWOGE SPORTS &mdash; BET NOW &nbsp;&rarr;</span>
+    </a>
+  </aside>
+
+</div>
+
+<!-- ---- LES SCRIPTS PARTAGES, EN BAS ----
+     `stakebubble.js` porte la connexion par portefeuille ; `SWOGE_SOCKET='aucune'`
+     lui dit que cette page n'a pas de socket a elle et qu'il ouvre celle de
+     jeu (c'est par elle qu'arrive le jeton de session). Meme ordre que
+     `swoge_predict.html`. -->
+<script>window.SWOGE_SOCKET = 'aucune';</script>
+<script src="stakebubble.min.js?v=c324151c"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+
+</body>
+</html>

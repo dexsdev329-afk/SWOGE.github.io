@@ -1,0 +1,32 @@
+# SwogeAgentic
+
+> Pay-per-call tools for AI agents from SWOGE WORLD: token scans (DexScreener, GoPlus, and what the SWOGE AI colony measured on Robinhood Chain, with sample sizes), the colony's newest launches and live activity, wallet and infrastructure OSINT (passive), the $SWOGE economy, web search, image generation and a full research agent. Read-only: nothing here buys, sells or signs. Each call is paid from the key owner's $SWOGE balance, within a daily cap they set.
+
+Get an API key at https://swoleeswoge.dog/swogeagentic.html (sign in with a wallet, set a daily cap; the key is shown once). Send it as `Authorization: Bearer swg_…`.
+
+REST: `GET https://web-production-220a3.up.railway.app/agentic/tools` lists tools, prices and input schemas. `POST https://web-production-220a3.up.railway.app/agentic/call/<tool>` with `{"arguments": {...}}` runs one; add `"quote": true` to get the price without paying. Every paid call returns `facture` (the exact amount billed, as a string), `recu` (a receipt id) and `solde` (the balance left). Refused calls (bad input, tool failure, cap reached) are never billed. Errors: 400 bad input, 401 no/revoked key, 402 balance or daily cap, 404 unknown tool, 429 over 60 calls/minute/key, 502 tool failed, 503 unavailable.
+
+MCP: Streamable HTTP at `https://web-production-220a3.up.railway.app/mcp` with the same bearer key (protocol 2026-07-28, and 2025-11-25 / 2025-06-18 / 2025-03-26 via initialize). Every tool also takes `quote: true`. Claude Code: `claude mcp add --transport http swogeagentic https://web-production-220a3.up.railway.app/mcp --header "Authorization: Bearer swg_…"`.
+
+Tools:
+
+- `scan_token(address)` — $0.01. Read live data on a token by its EVM contract address (0x…): market (DexScreener, deepest pool on any chain), contract security (GoPlus: honeypot, taxes, owner powers, holder concentration) and, for Robinhood Chain tokens, what the SWOGE AI colony measured on tokens with the same traits (with observation counts).
+- `colony_activity(token?)` — $0.005. What the SWOGE AI colony (an autonomous paper-trading colony on Robinhood Chain that learns from every token it watches) is doing: open positions, latest buys and sells with their results, the real-money mirror record, and its overall paper ledger.
+- `swoge_economy()` — $0.001. The $SWOGE token economy read on-chain: total supply, burnt, casino vault, and the current $SWOGE price in USD.
+- `new_launches(limit?)` — $0.005. The newest tokens the SWOGE AI colony just found on Robinhood Chain (minutes old), with pool size, cap, 5-minute move and why the colony did or did not buy each one, plus the older tokens it keeps watching and its verdict on each.
+- `wallet_intel(address)` — $0.02. What is known about an EVM wallet address: whether it launched tokens on the launchpads we index, which tokens it deployed, and what the SWOGE AI colony measured on launchers like it (with observation counts).
+- `osint_lookup(target)` — $0.02. Passive reconnaissance on infrastructure: a domain, an IP address, a website URL, an autonomous system (AS15169) or a CVE.
+- `web_search(query)` — $0.0075. Search the web (Perplexity).
+- `ask_agent(task, model?)` — real cost, up to $1.278. Give a whole task to SwogeAgentic (a Claude agent that chains the tools above and answers with the numbers it read, with sources).
+- `generate_image(prompt, provider?, count?)` — real cost, up to $0.7037. Create an image with Grok Imagine or ChatGPT Image.
+
+## Docs
+
+- [API documentation](https://swoleeswoge.dog/swogeagentic_api.html): authentication, endpoints, MCP setup, errors, examples
+- [Live tool catalogue (JSON)](https://web-production-220a3.up.railway.app/agentic/tools): tools, prices in $ and $SWOGE, input schemas
+- [Live llms.txt](https://web-production-220a3.up.railway.app/llms.txt): this file, generated from the live catalogue
+
+## Optional
+
+- [SwogeAgentic in the browser](https://swoleeswoge.dog/swogeagentic.html): the same agent for humans, and where API keys are created
+- [SWOGE AI colony](https://swoleeswoge.dog/swoge_ai.html): the autonomous colony whose measurements these tools return

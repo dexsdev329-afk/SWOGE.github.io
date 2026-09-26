@@ -44,10 +44,33 @@ const CAT = { ouvert: true, note: null, monnaie: '$SWOGE', defaut: 'opus-5-5', e
   const port = srv.address().port;
   const nav = await chromium.launch();
   let lectures = 0;
-  const ouvre = async (page, cat) => {
-    const p = await nav.newPage({ viewport: { width: 1200, height: 900 } });
+  const MED = { ouvert: true,
+    image: { modeles: [{ id: 'rapide', nom: 'Speed', parImageSwoge: 1071 }, { id: 'qualite', nom: 'Quality (2.0)', parImageSwoge: 2142 }], formats: ['auto', '1:1', '16:9', '9:16'], nombres: [1, 2, 4] },
+    video: { modeles: [{ id: 'rapide', nom: 'Speed', parSecondeSwoge: 2678, typiqueSwoge: 16065 }, { id: 'qualite', nom: 'Quality (1.5)', parSecondeSwoge: 4284, typiqueSwoge: 25704 }], formats: ['auto', '16:9', '9:16', '1:1'], durees: [6, 10], resolutions: ['480p', '720p'] } };
+  const envois = [];
+  let polls = 0;
+  const ouvre = async (page, cat, session) => {
+    const ctx = await nav.newContext({ viewport: { width: 1200, height: 900 } });
+    if (session) await ctx.addInitScript((j) => { try { localStorage.setItem('swogeSession', j); } catch (e) {} }, session);
+    const p = await ctx.newPage();
     await p.route((u) => !u.href.startsWith('http://127.0.0.1:' + port), (r) => {
       const u = r.request().url();
+      if (/\/studio\/media\/catalogue/.test(u)) return r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(MED) });
+      if (/\/studio\/media\/(image|video)$/.test(u)) {
+        envois.push({ u, auth: r.request().headers().authorization, corps: JSON.parse(r.request().postData() || '{}') });
+        if (/image$/.test(u)) return r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, urls: ['https://imgen.x.ai/a.png', 'https://imgen.x.ai/b.png'], factureSwoge: '4284.18', solde: '195715' }) });
+        return r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, id: 'v1', status: 'pending' }) });
+      }
+      if (/\/studio\/media\/video\/v1/.test(u)) {
+        polls++;
+        const fini = polls >= 2;
+        return r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(fini
+          ? { ok: true, status: 'done', url: 'https://vidgen.x.ai/v1.mp4', duree: 6, resolution: '480p', factureSwoge: '16065', solde: '179650' }
+          : { ok: true, status: 'pending', progress: 50 }) });
+      }
+      if (/\/studio\/chat\/solde/.test(u)) return r.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true,"solde":"200000.0"}' });
+      if (/\/studio\/chat$/.test(u)) { envois.push({ u, corps: JSON.parse(r.request().postData() || '{}') });
+        return r.fulfill({ status: 200, contentType: 'text/event-stream', body: 'event: fin\ndata: ' + JSON.stringify({ ok: true, texte: 'ok', sources: [], factureSwoge: '1', usage: {}, solde: '1' }) + '\n\n' }); }
       if (/\/studio\/chat\/catalogue/.test(u)) { lectures++; return r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(cat || CAT) }); }
       if (/vitrine\.json/.test(u)) return r.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
       return r.abort();
@@ -88,6 +111,55 @@ const CAT = { ouvert: true, note: null, monnaie: '$SWOGE', defaut: 'opus-5-5', e
     const sansCommentaires = html.replace(/<!--[\s\S]*?-->/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
     ok(!/id="generer"|In preparation|class="genre"/.test(sansCommentaires), 'plus de bouton « Generate » d image ou de video qui ne genere rien');
     ok(!/sk-ant-|sk-[a-z0-9]{20}|xai-[a-z0-9]|ANTHROPIC_API_KEY\s*=|OPENAI_API_KEY\s*=/i.test(html), 'aucune cle de fournisseur dans la page');
+  }
+
+  console.log('\n-- 5. facon Grok : Chat, Image, Video dans le meme composeur --');
+  {
+    envois.length = 0; polls = 0;
+    const p = await ouvre('swoge_studio.html', null, 'jeton-test');
+    const vis = (sel) => p.isVisible(sel);
+    ok(await vis('.mode[data-mode="chat"]') && await vis('.mode[data-mode="image"]') && await vis('.mode[data-mode="video"]'), 'les trois modes sont dans le composeur');
+    ok(await vis('#modeleBtn') && !(await vis('#reglages')) && !(await vis('#joindre')), 'en Chat : le choix du modele, pas de reglages d image');
+    await p.click('.mode[data-mode="image"]');
+    ok(!(await vis('#modeleBtn')) && !(await vis('#web')), 'en Image : le choix du modele de chat et « Search » disparaissent');
+    ok(await vis('#vitesse') && await vis('#nombre') && await vis('#format') && await vis('#joindre'), 'et Speed | Quality, le nombre, le format et « + » apparaissent');
+    ok(/Describe the image/.test(await p.getAttribute('#question', 'placeholder')), 'le composeur dit quoi decrire');
+    await p.click('#vitesse button[data-v="rapide"]');
+    await p.click('#nombre'); await p.click('#nombre');                   /* 1 -> 2 -> 4 */
+    await p.click('#format'); await p.click('#format');                   /* auto -> 1:1 -> 16:9 */
+    await p.fill('#question', 'a buff doge');
+    await p.click('#envoyer');
+    await p.waitForSelector('.grille img');
+    const e = envois.find((x) => /image$/.test(x.u));
+    ok(e && e.corps.modele === 'rapide' && e.corps.n === 4 && e.corps.format === '16:9' && e.corps.prompt === 'a buff doge', 'la demande porte le modele, le nombre et le format choisis');
+    eq(e.auth, 'Bearer jeton-test', 'avec le jeton de session');
+    ok(!/0x[0-9a-f]{40}|"addr"/i.test(JSON.stringify(e.corps)), 'et JAMAIS une adresse');
+    eq((await p.$$('.grille img')).length, 2, 'les images arrivent en grille dans le fil');
+    ok(/4,284 \$SWOGE/.test(await p.textContent('.msg.ia .meta')), 'avec ce qu elles ont coute');
+    ok(/195,715/.test(await p.textContent('#solde')), 'et le solde suit');
+
+    await p.click('.mode[data-mode="video"]');
+    ok(await vis('#duree') && await vis('#resolution') && !(await vis('#nombre')), 'en Video : duree et resolution, pas de nombre');
+    await p.click('#duree'); await p.click('#resolution');                /* 6 -> 10 s, 480p -> 720p */
+    /* Une photo jointe a animer. */
+    await p.setInputFiles('#fichier', { name: 'p.png', mimeType: 'image/png', buffer: Buffer.from('iVBORw0KGgo=', 'base64') });
+    await p.waitForSelector('#jointe:not([hidden])');
+    ok(!(await p.isDisabled('#envoyer')), 'une photo jointe suffit pour lancer une video (sans texte)');
+    await p.click('#envoyer');
+    await p.waitForSelector('.msg.ia video', { timeout: 15000 });
+    const v = envois.find((x) => /video$/.test(x.u));
+    ok(v && v.corps.duree === 10 && v.corps.resolution === '720p' && /^data:image\/png;base64,/.test(v.corps.image), 'la video part avec la duree, la resolution et la photo');
+    ok(polls >= 2 && await p.getAttribute('.msg.ia video', 'src') === 'https://vidgen.x.ai/v1.mp4', 'la page suit la video sur le serveur jusqu a ce qu elle arrive, puis la joue');
+    ok(await vis('.telecharger'), 'avec un lien pour la telecharger');
+
+    await p.click('.mode[data-mode="chat"]');
+    await p.fill('#question', 'hello'); await p.click('#envoyer');
+    await p.waitForTimeout(400);
+    const c = envois.filter((x) => /chat$/.test(x.u)).pop();
+    ok(c && c.corps.messages.length === 1 && c.corps.messages[0].content === 'hello', 'le chat n envoie pas au modele les images et videos du fil, seulement le texte');
+    const sauve = await p.evaluate(() => localStorage.getItem('swogeChats') || '');
+    ok(!/data:image/.test(sauve), 'la photo jointe n est jamais gardee dans le navigateur');
+    await p.close();
   }
 
   console.log('\n-- 4. l ancienne adresse renvoie ici --');

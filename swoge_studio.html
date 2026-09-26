@@ -769,6 +769,43 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex:0 0 38px}
 .outils .envoi:disabled{opacity:.35;cursor:not-allowed}
 .prixq{font-family:'Space Mono',monospace;font-size:10.5px;color:var(--dim);text-align:center;margin-top:6px}
+/* ---- FACON GROK : un seul composeur, trois modes ----
+ * Chat, Image, Video dans la boite ; les reglages du mode (vitesse/qualite,
+ * nombre, format, duree) en pastilles au-dessus ; « + » pour joindre une photo
+ * (retouche, ou photo a animer). Demande du proprietaire, captures de Grok a
+ * l'appui, le 26 septembre 2026. */
+.modes{display:inline-flex;background:var(--panel2);border-radius:999px;padding:3px;gap:2px}
+.mode{border:0;background:transparent;border-radius:999px;padding:6px 11px;font:600 13px/1 inherit;font-family:inherit;
+  color:var(--dim);cursor:pointer;text-transform:none;letter-spacing:0;display:inline-flex;align-items:center;gap:5px}
+.mode[aria-pressed="true"]{background:var(--panel);color:var(--paper);box-shadow:0 1px 3px rgba(11,27,54,.12)}
+.mode:hover,.plus:hover,.puce:hover,.seg button:hover{transform:none;filter:none}
+.plus{width:36px;height:36px;border-radius:50%;border:1px solid var(--line);background:transparent;font-size:20px;line-height:1;
+  cursor:pointer;color:var(--paper);display:inline-flex;align-items:center;justify-content:center;padding:0}
+.plus[hidden]{display:none}
+/* `display:inline-flex` l'emporte sur `hidden` : sans cette ligne, le choix du
+   modele de chat et « Search » restaient affiches en mode Image et Video. */
+.outil[hidden],.puce[hidden]{display:none}
+.reglages{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.reglages[hidden]{display:none}
+.seg{display:inline-flex;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:3px}
+.seg button{border:0;background:transparent;border-radius:999px;padding:6px 12px;font:600 12.5px/1 inherit;font-family:inherit;
+  color:var(--dim);cursor:pointer;text-transform:none;letter-spacing:0}
+.seg button[aria-pressed="true"]{background:var(--paper);color:var(--void)}
+.puce{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:7px 12px;font:600 12.5px/1 inherit;
+  font-family:inherit;color:var(--paper);cursor:pointer;text-transform:none;letter-spacing:0;white-space:nowrap}
+.jointe{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.jointe[hidden]{display:none}
+.jointe img{width:54px;height:54px;object-fit:cover;border-radius:10px;border:1px solid var(--line)}
+.jointe span{font-size:12px;color:var(--dim)}
+.jointe button{border:0;background:var(--panel2);border-radius:50%;width:24px;height:24px;cursor:pointer;color:var(--paper);padding:0}
+.grille{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,220px),1fr));gap:8px}
+.grille a{display:block;border-radius:12px;overflow:hidden;background:var(--panel2);min-height:120px}
+.grille img{display:block;width:100%;height:auto}
+.msg.ia video{display:block;width:100%;max-height:70vh;border-radius:12px;background:#000}
+.telecharger{display:inline-block;margin-top:8px;font:600 12px/1 'Space Mono',monospace;color:var(--pool)}
+.progres{height:6px;border-radius:999px;background:var(--panel2);overflow:hidden;margin-top:8px;max-width:320px}
+.progres i{display:block;height:100%;width:0;background:var(--pool);transition:width .4s}
+.msg.moi img.vignette{display:block;max-width:140px;border-radius:10px;margin-bottom:6px}
 
 /* ---- la feuille de choix du modele, facon Claude ---- */
 .voile-feuille{position:fixed;inset:0;background:rgba(11,27,54,.35);z-index:60;display:flex;align-items:flex-end;justify-content:center}
@@ -809,7 +846,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 
 <div class="chat">
   <div class="chat-tete">
-    <div class="titre">SWOGE <em>AI</em> Chat</div>
+    <div class="titre">SWOGE <em>Studio</em></div>
     <div class="droite">
       <span class="pastille" id="solde" title="Your SWOGE gaming balance">Balance <b>—</b></span>
       <button class="btn-fin" id="histoBtn" type="button" aria-expanded="false">&#128172; Chats</button>
@@ -821,22 +858,43 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 
   <section class="accueil" id="accueil">
     <h1>What can I help with?</h1>
-    <p>Ask any top AI model — Claude Opus 5.5, Fable 5.1, Sonnet 5, Haiku 4.5 — and search the live web with sources.
-       You pay per question in $SWOGE, only for what the answer actually used.</p>
+    <p>Chat with top AI models — Claude Opus 5.5, Fable 5.1, Sonnet 5, Haiku 4.5 — search the live web,
+       and create images and videos with Grok Imagine. You pay in $SWOGE, only for what each request actually costs.</p>
     <div class="suggestions" id="suggestions">
       <button class="suggestion" type="button" data-sugg="web"><span class="ic">&#127760;</span>Search the web</button>
       <button class="suggestion" type="button" data-sugg="ecrire"><span class="ic">&#9998;&#65039;</span>Write or edit</button>
       <button class="suggestion" type="button" data-sugg="expliquer"><span class="ic">&#128161;</span>Explain something simply</button>
       <button class="suggestion" type="button" data-sugg="code"><span class="ic">&#128187;</span>Help me with code</button>
+      <button class="suggestion" type="button" data-sugg="image"><span class="ic">&#128444;&#65039;</span>Create an image</button>
+      <button class="suggestion" type="button" data-sugg="video"><span class="ic">&#127916;</span>Make a video</button>
     </div>
   </section>
 
   <section class="fil" id="fil" hidden aria-live="polite"></section>
 
   <div class="compose">
+    <div class="reglages" id="reglages" hidden>
+      <div class="seg" id="vitesse" role="group" aria-label="Speed or quality">
+        <button type="button" data-v="rapide" aria-pressed="false">Speed</button>
+        <button type="button" data-v="qualite" aria-pressed="true" id="qualiteNom">Quality</button>
+      </div>
+      <button class="puce" id="nombre" type="button" title="How many images">&#128444;&#65039; &times;1</button>
+      <button class="puce" id="duree" type="button" title="Video length">&#9201;&#65039; 6 s</button>
+      <button class="puce" id="resolution" type="button" title="Video resolution">480p</button>
+      <button class="puce" id="format" type="button" title="Aspect ratio">&#9635; Auto</button>
+    </div>
     <div class="boite">
+      <div class="jointe" id="jointe" hidden><img id="jointeImg" alt=""><span id="jointeTxt">Photo attached</span>
+        <button type="button" id="retirer" aria-label="Remove the photo">&#10005;</button></div>
       <textarea id="question" rows="1" placeholder="Ask SWOGE AI" aria-label="Your question"></textarea>
       <div class="outils">
+        <button class="plus" id="joindre" type="button" title="Attach a photo" aria-label="Attach a photo" hidden>+</button>
+        <input type="file" id="fichier" accept="image/png,image/jpeg,image/webp" hidden>
+        <div class="modes" role="group" aria-label="What to make">
+          <button class="mode" type="button" data-mode="chat" aria-pressed="true">&#128172; Chat</button>
+          <button class="mode" type="button" data-mode="image" aria-pressed="false">&#128444;&#65039; Image</button>
+          <button class="mode" type="button" data-mode="video" aria-pressed="false">&#127916; Video</button>
+        </div>
         <button class="outil" id="modeleBtn" type="button" aria-haspopup="dialog">&#10024; <span id="modeleNom">Opus 5.5</span> &#9662;</button>
         <button class="outil" id="web" type="button" aria-pressed="false" title="Search the web and cite sources">&#127760; Search</button>
         <button class="envoi" id="envoyer" type="button" disabled aria-label="Send">&#8593;</button>
@@ -895,8 +953,12 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     web: { texte: "", web: true, place: "Search the web for…" },
     ecrire: { texte: "Help me write ", web: false },
     expliquer: { texte: "Explain simply: ", web: false },
-    code: { texte: "Help me with this code:\n", web: false }
+    code: { texte: "Help me with this code:\n", web: false },
+    image: { texte: "", mode: "image" },
+    video: { texte: "", mode: "video" }
   };
+  var PLACE = { chat: "Ask SWOGE AI", image: "Describe the image to create", video: "Describe the video \u2014 or attach a photo to animate" };
+  var FORMAT_NOM = { auto: "Auto" };
   function lisLocal(k, d){ try { var v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } }
   function ecrisLocal(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
   function jeton(){ try { return localStorage.getItem("swogeSession"); } catch (e) { return null; } }
@@ -904,8 +966,13 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 
   var etat = {
     cat: null, modele: lisLocal("swogeChatModele", null), effort: lisLocal("swogeChatEffort", null),
-    web: false, occupe: false, conv: null, convs: lisLocal("swogeChats", [])
+    web: false, occupe: false, conv: null, convs: lisLocal("swogeChats", []),
+    /* Studio facon Grok : le mode du composeur et ses reglages, retenus. */
+    media: null, mode: lisLocal("swogeStudioMode", "chat"), jointe: null,
+    reg: Object.assign({ vitesse: "qualite", nombre: 1, formatI: "auto", formatV: "auto", duree: 6, resolution: "480p" },
+                       lisLocal("swogeStudioReglages", {}))
   };
+  if (["chat", "image", "video"].indexOf(etat.mode) < 0) etat.mode = "chat";
 
   /* ---- le rendu Markdown, SUR : tout est echappe AVANT d'etre mis en forme ----
      Le texte vient d'un modele : il ne doit jamais pouvoir injecter de HTML. */
@@ -946,14 +1013,60 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     var c = etat.cat; if (!c) return null;
     return c.modeles.filter(function(m){ return m.id === etat.modele; })[0] || c.modeles.filter(function(m){ return m.id === c.defaut; })[0] || c.modeles[0];
   }
+  function modeleMedia(){
+    var c = etat.media && etat.media[etat.mode]; if (!c) return null;
+    return c.modeles.filter(function(m){ return m.id === etat.reg.vitesse; })[0] || c.modeles[0];
+  }
   function peintPrix(){
+    if (etat.mode !== "chat") {
+      var mm = modeleMedia(), p = $("prixq");
+      if (!etat.media) { p.textContent = "Loading\u2026"; return; }
+      if (!etat.media.ouvert) { p.textContent = etat.media.note || TXT.ferme; return; }
+      if (!mm) return;
+      if (etat.mode === "image") {
+        var n = etat.jointe ? etat.reg.nombre + 1 : etat.reg.nombre;
+        p.textContent = mm.nom + " \u00b7 ~" + nombre(mm.parImageSwoge) + " $SWOGE per image" + (n > 1 ? " \u00b7 \u2248 " + nombre(mm.parImageSwoge * n) + " in all" : "") + " \u00b7 you pay the real cost";
+      } else {
+        p.textContent = mm.nom + " \u00b7 ~" + nombre(mm.parSecondeSwoge * etat.reg.duree) + " $SWOGE for " + etat.reg.duree + " s at 480p" + (etat.reg.resolution !== "480p" ? " (" + etat.reg.resolution + " costs more)" : "") + " \u00b7 you pay the real cost";
+      }
+      return;
+    }
     var m = modeleCourant();
     $("modeleNom").textContent = m ? m.nom : "Model";
     $("web").hidden = !(m && m.recherche);
     if (!m) return;
     $("prixq").textContent = m.nom + " · ~" + nombre(m.typiqueSwoge) + " $SWOGE per question (max " + nombre(m.maxSwoge) + ") · you pay only what the answer uses";
   }
-  function peintBoutons(){ $("envoyer").disabled = etat.occupe || !$("question").value.trim(); }
+  function peintBoutons(){
+    var vide = !$("question").value.trim() && !(etat.mode === "video" && etat.jointe);
+    $("envoyer").disabled = etat.occupe || vide;
+  }
+  /* ---- le mode et ses reglages ---- */
+  function peintMode(){
+    var m = etat.mode;
+    Array.prototype.forEach.call(document.querySelectorAll(".mode"), function(b){ b.setAttribute("aria-pressed", String(b.getAttribute("data-mode") === m)); });
+    $("modeleBtn").hidden = m !== "chat";
+    $("web").hidden = m !== "chat" || !((modeleCourant() || {}).recherche);
+    $("joindre").hidden = m === "chat";
+    $("reglages").hidden = m === "chat";
+    $("nombre").hidden = m !== "image";
+    $("duree").hidden = m !== "video"; $("resolution").hidden = m !== "video";
+    $("question").placeholder = PLACE[m];
+    if (m === "chat" && etat.jointe) retireJointe();
+    Array.prototype.forEach.call(document.querySelectorAll("#vitesse button"), function(b){ b.setAttribute("aria-pressed", String(b.getAttribute("data-v") === etat.reg.vitesse)); });
+    if (etat.media && etat.media[m] && etat.media[m].modeles[1]) $("qualiteNom").textContent = etat.media[m].modeles[1].nom;
+    $("nombre").textContent = "\ud83d\uddbc\ufe0f \u00d7" + etat.reg.nombre;
+    $("duree").textContent = "\u23f1\ufe0f " + etat.reg.duree + " s";
+    $("resolution").textContent = etat.reg.resolution;
+    var f = m === "video" ? etat.reg.formatV : etat.reg.formatI;
+    $("format").textContent = "\u25a3 " + (FORMAT_NOM[f] || f);
+    $("jointeTxt").textContent = m === "video" ? "Photo to animate" : "Photo to edit";
+    peintPrix(); peintBoutons();
+  }
+  function changeMode(m){ etat.mode = m; ecrisLocal("swogeStudioMode", m); peintMode(); $("question").focus(); }
+  function cycle(liste, v){ var i = liste.indexOf(v); return liste[(i + 1) % liste.length]; }
+  function sauveReg(){ ecrisLocal("swogeStudioReglages", etat.reg); peintMode(); }
+  function retireJointe(){ etat.jointe = null; $("jointe").hidden = true; $("jointeImg").removeAttribute("src"); $("fichier").value = ""; peintPrix(); peintBoutons(); }
 
   /* ---- la feuille des modeles ---- */
   function peintFeuille(){
@@ -993,6 +1106,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     var c = etat.conv;
     if (!c || !c.messages.length) { $("fil").hidden = true; $("accueil").hidden = false; return; }
     c.messages.forEach(function(m){
+      if (m.genre && m.role === "assistant") { peintMedia(ajouteMsg("assistant", ""), m); return; }
       var d = ajouteMsg(m.role, m.content);
       if (m.role === "assistant") {
         d.querySelector(".corps").innerHTML = markdown(m.content);
@@ -1000,6 +1114,27 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
         if (m.meta) { var mt = document.createElement("div"); mt.className = "meta"; mt.textContent = m.meta; d.appendChild(mt); }
       }
     });
+  }
+  /* Un resultat d'image ou de video, dans le fil. Les adresses viennent du
+     serveur (le fournisseur) : https seulement, ouvertes dans un nouvel onglet. */
+  function peintMedia(d, m){
+    var corps = d.querySelector(".corps"); corps.innerHTML = "";
+    if (m.genre === "image") {
+      var g = document.createElement("div"); g.className = "grille";
+      (m.urls || []).forEach(function(u){
+        if (!/^(https:|data:image\/)/.test(u)) return;
+        var a = document.createElement("a"); a.href = u; a.target = "_blank"; a.rel = "noopener";
+        var im = document.createElement("img"); im.src = u; im.alt = "Generated image"; im.loading = "lazy";
+        a.appendChild(im); g.appendChild(a);
+      });
+      corps.appendChild(g);
+    } else if (m.url && /^https:/.test(m.url)) {
+      var v = document.createElement("video"); v.src = m.url; v.controls = true; v.playsInline = true; v.loop = true;
+      corps.appendChild(v);
+      var t = document.createElement("a"); t.className = "telecharger"; t.href = m.url; t.target = "_blank"; t.rel = "noopener"; t.textContent = "\u2193 Download the video";
+      corps.appendChild(t);
+    }
+    if (m.meta) { var mt = document.createElement("div"); mt.className = "meta"; mt.textContent = m.meta; d.appendChild(mt); }
   }
   function sourcesEl(sources){
     var s = document.createElement("div"); s.className = "sources";
@@ -1047,6 +1182,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 
   /* ---- envoyer : un flux SSE lu a la main (EventSource ne sait pas POSTer) ---- */
   function envoyer(){
+    if (etat.mode !== "chat") return envoyerMedia();
     var q = $("question").value.trim();
     if (!q || etat.occupe) return;
     var j = jeton();
@@ -1060,7 +1196,9 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     etat.occupe = true; peintBoutons(); dit("");
     var d = ajouteMsg("assistant", ""), corps = d.querySelector(".corps"), texte = "";
     var etape = document.createElement("div"); etape.className = "etape"; etape.textContent = TXT.reflexion; d.insertBefore(etape, corps);
-    var historique = etat.conv.messages.map(function(x){ return { role: x.role, content: x.content }; });
+    /* Seuls les echanges de TEXTE partent au modele : une image ou une video
+       du fil n'est pas une phrase qu'il pourrait lire. */
+    var historique = etat.conv.messages.filter(function(x){ return !x.genre; }).map(function(x){ return { role: x.role, content: x.content }; });
     var fini = false;
     function termine(){ etat.occupe = false; peintBoutons(); if (etape.parentNode) etape.remove(); }
     fetch(serveur() + "/studio/chat", {
@@ -1118,6 +1256,70 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     });
   }
 
+  /* ---- une image ou une video : meme jeton de session, meme regle d'argent
+     que le chat (reserve, cout reel, reste rendu), cote serveur. ---- */
+  function erreurMedia(d, e){
+    d.classList.add("err");
+    var raison = (e && e.raison) || TXT.erreurReseau;
+    if (e && e.code === 402) raison += " \u2014 top up your balance in the Wallet (needs ~" + nombre(e.requisSwoge) + " $SWOGE).";
+    if (e && e.code === 401) raison = TXT.signin;
+    d.querySelector(".corps").textContent = raison;
+  }
+  function envoyerMedia(){
+    var q = $("question").value.trim(), mode = etat.mode;
+    if (etat.occupe || (!q && !(mode === "video" && etat.jointe))) return;
+    var j = jeton();
+    if (!j) { dit(TXT.signin); return; }
+    if (!etat.media || !etat.media.ouvert) { dit((etat.media && etat.media.note) || TXT.ferme); return; }
+    if (!etat.conv) nouvelleConv();
+    var mm = modeleMedia(), reg = etat.reg, jointe = etat.jointe;
+    var fmt = mode === "video" ? reg.formatV : reg.formatI;
+    var libelle = (mode === "image" ? "\ud83d\uddbc\ufe0f " : "\ud83c\udfac ") + (q || "Animate this photo");
+    etat.conv.messages.push({ role: "user", content: libelle, genre: mode });
+    var du = ajouteMsg("user", libelle);
+    if (jointe) { var vi = document.createElement("img"); vi.className = "vignette"; vi.src = jointe; vi.alt = ""; du.insertBefore(vi, du.firstChild); }
+    $("question").value = ""; dimensionne(); retireJointe();
+    etat.occupe = true; peintBoutons(); dit("");
+    var d = ajouteMsg("assistant", ""), corps = d.querySelector(".corps");
+    var etape = document.createElement("div"); etape.className = "etape";
+    etape.textContent = mode === "image" ? (jointe ? "Editing your photo\u2026" : "Creating " + (reg.nombre > 1 ? reg.nombre + " images" : "the image") + "\u2026") : "Starting the video\u2026";
+    d.insertBefore(etape, corps);
+    var corpsReq = { modele: reg.vitesse, prompt: q, format: fmt, image: jointe || undefined };
+    if (mode === "image") corpsReq.n = reg.nombre; else { corpsReq.duree = reg.duree; corpsReq.resolution = reg.resolution; }
+    function fin(){ etat.occupe = false; peintBoutons(); if (etape.parentNode) etape.remove(); }
+    /* La demande non servie ne reste pas dans le fil enregistre. */
+    function echec(e){ fin(); etat.conv.messages.pop(); erreurMedia(d, e); }
+    function termine(res){
+      fin();
+      var meta = mm.nom + (mode === "image" ? " \u00b7 \u00d7" + (res.urls || []).length : " \u00b7 " + res.duree + " s \u00b7 " + res.resolution)
+        + (fmt !== "auto" ? " \u00b7 " + fmt : "") + " \u00b7 " + nombre(res.factureSwoge) + " $SWOGE";
+      var m = { role: "assistant", content: mode === "image" ? "[image]" : "[video]", genre: mode, urls: res.urls, url: res.url, meta: meta };
+      peintMedia(d, m);
+      etat.conv.messages.push(m); sauveConv();
+      if (res.solde) $("solde").innerHTML = "Balance <b>" + nombre(res.solde) + " $SWOGE</b>";
+    }
+    fetch(serveur() + "/studio/media/" + mode, { method: "POST",
+      headers: { "content-type": "application/json", authorization: "Bearer " + j }, body: JSON.stringify(corpsReq) })
+      .then(function(r){ return r.json().then(function(x){ return x; }, function(){ return { ok: false, code: r.status }; }); })
+      .then(function(res){
+        if (!res || !res.ok) return echec(res);
+        if (mode === "image") return termine(res);
+        /* La video se fabrique cote serveur : on interroge le serveur, jamais le fournisseur. */
+        etape.textContent = "Generating the video\u2026 this takes a minute or two";
+        var barre = document.createElement("div"); barre.className = "progres"; barre.innerHTML = "<i></i>"; d.insertBefore(barre, corps);
+        (function suit(){
+          fetch(serveur() + "/studio/media/video/" + encodeURIComponent(res.id), { headers: { authorization: "Bearer " + j }, cache: "no-store" })
+            .then(function(r){ return r.json(); })
+            .then(function(v){
+              if (v && v.status === "done") { barre.remove(); return termine(v); }
+              if (!v || v.status === "failed" || !v.ok) { barre.remove(); return echec(v || {}); }
+              barre.firstChild.style.width = Math.max(5, Math.min(99, Number(v.progress) || 0)) + "%";
+              setTimeout(suit, 3000);
+            })["catch"](function(){ setTimeout(suit, 5000); });
+        })();
+      })["catch"](function(){ echec({ raison: TXT.erreurReseau }); });
+  }
+
   function dimensionne(){ var t = $("question"); t.style.height = "auto"; t.style.height = Math.min(200, t.scrollHeight) + "px"; peintBoutons(); }
 
   /* ---- les gestes ---- */
@@ -1133,9 +1335,35 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   Array.prototype.forEach.call(document.querySelectorAll(".effort"), function(b){
     b.addEventListener("click", function(){ etat.effort = b.getAttribute("data-effort"); ecrisLocal("swogeChatEffort", etat.effort); peintFeuille(); });
   });
+  Array.prototype.forEach.call(document.querySelectorAll(".mode"), function(b){
+    b.addEventListener("click", function(){ changeMode(b.getAttribute("data-mode")); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("#vitesse button"), function(b){
+    b.addEventListener("click", function(){ etat.reg.vitesse = b.getAttribute("data-v"); sauveReg(); });
+  });
+  $("nombre").addEventListener("click", function(){ etat.reg.nombre = cycle((etat.media && etat.media.image.nombres) || [1, 2, 4], etat.reg.nombre); sauveReg(); });
+  $("duree").addEventListener("click", function(){ etat.reg.duree = cycle((etat.media && etat.media.video.durees) || [6, 10], etat.reg.duree); sauveReg(); });
+  $("resolution").addEventListener("click", function(){ etat.reg.resolution = cycle((etat.media && etat.media.video.resolutions) || ["480p", "720p"], etat.reg.resolution); sauveReg(); });
+  $("format").addEventListener("click", function(){
+    var v = etat.mode === "video";
+    var l = (etat.media && etat.media[v ? "video" : "image"].formats) || ["auto"];
+    if (v) etat.reg.formatV = cycle(l, etat.reg.formatV); else etat.reg.formatI = cycle(l, etat.reg.formatI);
+    sauveReg();
+  });
+  $("joindre").addEventListener("click", function(){ $("fichier").click(); });
+  $("retirer").addEventListener("click", retireJointe);
+  $("fichier").addEventListener("change", function(){
+    var f = this.files && this.files[0]; if (!f) return;
+    if (!/^image\/(png|jpeg|webp)$/.test(f.type) || f.size > 6 * 1024 * 1024) { dit("Attach a PNG, JPEG or WebP photo under 6 MB."); this.value = ""; return; }
+    var lr = new FileReader();
+    lr.onload = function(){ etat.jointe = String(lr.result); $("jointeImg").src = etat.jointe; $("jointe").hidden = false; dit(""); peintMode(); };
+    lr.readAsDataURL(f);
+  });
   Array.prototype.forEach.call(document.querySelectorAll(".suggestion"), function(b){
     b.addEventListener("click", function(){
       var s = SUGG[b.getAttribute("data-sugg")]; if (!s) return;
+      if (s.mode) { changeMode(s.mode); return; }
+      if (etat.mode !== "chat") changeMode("chat");
       if (s.web) { etat.web = true; $("web").setAttribute("aria-pressed", "true"); }
       var t = $("question"); t.value = s.texte; if (s.place) t.placeholder = s.place; t.focus(); dimensionne();
     });
@@ -1150,8 +1378,12 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       if (!c.ouvert) dit(c.note || TXT.ferme);
       peintPrix(); peintBoutons();
     })["catch"](function(){ $("prixq").textContent = TXT.ferme; });
+  fetch(serveur() + "/studio/media/catalogue", { cache: "no-store" })
+    .then(function(r){ return r.json(); })
+    .then(function(c){ etat.media = c; peintMode(); })["catch"](function(){ peintMode(); });
   chargeSolde();
   nouvelleConv();
+  peintMode();
 
   /* La connexion se fait APRES le chargement (bouton de `stakebubble.js`) :
      le jeton apparait alors dans `localStorage`, dans CET onglet — l'evenement

@@ -215,6 +215,7 @@ const PEPE = { adresse:'0x6982508145454ce325ddbe47a25d4ec3d2311933', trouve:true
     eq(lignes[0], 'scan_token | Read live data on a token. | address | $0.01 (357.02 $SWOGE)', 'la doc lit le catalogue : outil, phrase, arguments, prix en $ et $SWOGE');
     eq(lignes[1], 'ask_agent | Give a whole task to <b>SwogeAgentic</b>. | task, model? | real cost, up to $1.278 (45,627 $SWOGE)', 'un outil au reel dit son maximum ; le texte du catalogue reste du texte');
     ok((await page.$('#outilsDoc b')) === null, 'rien du catalogue ne devient du HTML');
+    ok(await page.$eval('#x402Doc', (e) => e.hidden && getComputedStyle(e).display === 'none'), 'x402 eteint cote serveur : la doc n en parle pas (pas de promesse d un paiement eteint)');
     ok(/claude mcp add --transport http swogeagentic https:\/\/web-production-220a3\.up\.railway\.app\/mcp/.test(await page.textContent('#exMcp'))
        && /"quote":true/.test(await page.textContent('#exRest')), 'les exemples MCP et curl portent la vraie adresse, et le devis gratuit');
     const larg = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
@@ -222,6 +223,22 @@ const PEPE = { adresse:'0x6982508145454ce325ddbe47a25d4ec3d2311933', trouve:true
     const html = fs.readFileSync(path.join(SITE, 'swogeagentic_api.html'), 'utf8');
     ok(/rel="canonical" href="https:\/\/swoleeswoge\.dog\/swogeagentic_api\.html"/.test(html) && /<title>SwogeAgentic API/.test(html) && !/sk-ant-|swg_[A-Za-z0-9_-]{40}/.test(html), 'son adresse canonique, son titre, aucune cle dans la page');
     await ctx.close();
+
+    /* x402 allume (etape 5) : la section apparait, remplie depuis le catalogue, en texte. */
+    const ctx2 = await nav.newContext({ viewport: { width: 360, height: 800 } });
+    const p2 = await ctx2.newPage();
+    const X = Object.assign({}, CATA, { x402: { actif: true, network: 'eip155:4663', asset: '0x8a166Fb41Cd659a0a43396272FF73973Ce29F817', payTo: '0x<b>1111111111111111111111111111111111111111', minimumUsd: 0.02 } });
+    await p2.route((u) => !u.href.startsWith('http://127.0.0.1:' + port), (r) => (/\/agentic\/tools/.test(r.request().url())
+      ? r.fulfill({ status:200, contentType:'application/json', body: JSON.stringify(X) }) : r.abort()));
+    await p2.goto('http://127.0.0.1:' + port + '/swogeagentic_api.html', { waitUntil:'domcontentloaded' });
+    await p2.waitForFunction(() => !document.getElementById('x402Doc').hidden);
+    ok(await p2.$eval('#x402Doc', (e) => getComputedStyle(e).display !== 'none'), 'x402 allume : la section apparait');
+    eq(await p2.textContent('#x402Reseau') + ' ' + await p2.textContent('#x402Min'), 'eip155:4663 0.02', 'le reseau et le minimum viennent du catalogue');
+    ok((await p2.textContent('#x402PayTo')).includes('<b>') && (await p2.$('#x402PayTo b')) === null, 'la tresorerie s ecrit en texte, jamais en HTML');
+    ok(/\/agentic\/x402$/.test(await p2.textContent('#x402Etat')), 'elle mene a l etat en direct');
+    const larg2 = await p2.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    ok(larg2 <= 1, 'a 360 px, la section x402 ne deborde pas [' + larg2 + ']');
+    await ctx2.close();
 
     const llms = fs.readFileSync(path.join(SITE, 'llms.txt'), 'utf8');
     const h2 = llms.split('\n').filter((l) => /^## /.test(l));

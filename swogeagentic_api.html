@@ -478,6 +478,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   background:#FFFFFF;border:1px solid #E1E9F6;border-radius:14px;
   box-shadow:0 1px 2px rgba(11,27,54,.06), 0 8px 24px rgba(11,27,54,.05);padding:6px;display:flex;flex-direction:column;gap:1px}
 .gx-menu[hidden]{display:none}
+#x402Doc[hidden]{display:none}
 .gx-menu a{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:9px;
   font:700 12px/1 'Inter',system-ui,sans-serif;color:#0B1B36;text-decoration:none}
 .gx-menu a:hover{background:#EAF1FF;color:#1B5FE0}
@@ -753,18 +754,37 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   <pre id="exMcp"></pre>
   <p class="dim">Clients that cannot send headers can use <code>/mcp/k/&lt;key&gt;</code> — prefer the header: a URL can end up in HTTP logs. The daily cap bounds what a leak can cost.</p>
 
-  <h2>5. Errors</h2>
+  <section id="x402Doc" hidden>
+  <h2>5. No account? Pay per call with x402</h2>
+  <p>Fixed-price tools can be paid <b>without a key or an account</b>, following the <b>x402 v2</b> standard: call the tool without a key, read the <code>402</code> and its <code>PAYMENT-REQUIRED</code> header, sign, and call again with <code>PAYMENT-SIGNATURE</code>. You pay in $SWOGE, <b>we pay the gas</b>.</p>
+  <table><tbody>
+    <tr><td>Scheme / network</td><td><code>exact</code> · <code id="x402Reseau"></code></td></tr>
+    <tr><td>Asset ($SWOGE)</td><td><code id="x402Jeton"></code></td></tr>
+    <tr><td>Paid to (treasury)</td><td><code id="x402PayTo"></code></td></tr>
+    <tr><td>Transfer method</td><td><code>permit2</code> — canonical Permit2 and x402ExactPermit2Proxy</td></tr>
+    <tr><td>Price</td><td>tool price + settlement gas, minimum $<span id="x402Min"></span></td></tr>
+  </tbody></table>
+  <ul>
+    <li>The proxy only pays the treasury above: nobody can change the amount or the recipient you signed.</li>
+    <li>First payment without a Permit2 allowance: add the <code>eip2612GasSponsoring</code> extension, a <code>permit</code> to Permit2 whose value is <b>the exact amount</b>.</li>
+    <li>If the tool fails, your signature is never submitted. If the settlement fails, the result is withheld and nothing is charged.</li>
+    <li><code>ask_agent</code> and <code>generate_image</code> have a variable price: they need an API key.</li>
+    <li>Live prices and status: <code id="x402Etat"></code></li>
+  </ul>
+  </section>
+
+  <h2>6. Errors</h2>
   <table><thead><tr><th>Status</th><th>Meaning</th><th>Billed?</th></tr></thead><tbody>
     <tr><td><code>400</code></td><td>Bad input (address format, empty query, unsupported target)</td><td>No</td></tr>
     <tr><td><code>401</code></td><td>Missing or revoked key</td><td>No</td></tr>
-    <tr><td><code>402</code></td><td>Balance too low, or the key's daily cap would be exceeded</td><td>No</td></tr>
+    <tr><td><code>402</code></td><td>Balance too low, or the key's daily cap would be exceeded — or, without a key, the x402 payment to sign</td><td>No</td></tr>
     <tr><td><code>404</code></td><td>Unknown tool</td><td>No</td></tr>
     <tr><td><code>429</code></td><td>More than 60 calls per minute on one key</td><td>No</td></tr>
     <tr><td><code>502</code> / <code>503</code></td><td>The tool or a provider failed / the service is unavailable</td><td>No — everything reserved is refunded</td></tr>
   </tbody></table>
   <p class="dim">Over MCP, a tool failure comes back as a result with <code>isError: true</code> so the model can read it and correct itself; an unknown tool is JSON-RPC error <code>-32602</code>.</p>
 
-  <h2>6. Rules</h2>
+  <h2>7. Rules</h2>
   <ul>
     <li>The colony's numbers are <b>measurements with their sample size</b>, never buy or sell signals. "Unknown" means unknown, not safe.</li>
     <li><code>wallet_intel</code> and <code>osint_lookup</code> are <b>passive</b>: the target never sees our requests. <code>osint_lookup</code> accepts infrastructure only (domain, IP, URL, AS number, CVE) — <b>never people</b>: no e-mails, usernames, phone numbers or names.</li>
@@ -788,6 +808,15 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   fetch(api + "/agentic/tools", { cache: "no-store" }).then(function(r){ return r.json(); }).then(function(c){
     var b = $("outilsDoc"); b.innerHTML = "";
     if (c.coursUsd) $("coursDoc").textContent = "· at $" + Number(c.coursUsd).toPrecision(4) + " per $SWOGE";
+    /* x402 n'est montre que si le serveur dit qu'il est allume : une doc qui
+       promet un paiement eteint enverrait des agents dans un mur. */
+    var x = c.x402;
+    if (x && x.actif) {
+      $("x402Reseau").textContent = String(x.network || ""); $("x402Jeton").textContent = String(x.asset || "");
+      $("x402PayTo").textContent = String(x.payTo || ""); $("x402Min").textContent = String(x.minimumUsd || "");
+      $("x402Etat").textContent = "GET " + api + "/agentic/x402";
+      $("x402Doc").hidden = false;
+    }
     (c.outils || []).forEach(function(o){
       var tr = document.createElement("tr");
       var n = document.createElement("td"), code = document.createElement("code"); code.textContent = o.name; n.appendChild(code); tr.appendChild(n);

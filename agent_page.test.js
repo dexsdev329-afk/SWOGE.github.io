@@ -227,7 +227,8 @@ const PEPE = { adresse:'0x6982508145454ce325ddbe47a25d4ec3d2311933', trouve:true
     /* x402 allume (etape 5) : la section apparait, remplie depuis le catalogue, en texte. */
     const ctx2 = await nav.newContext({ viewport: { width: 360, height: 800 } });
     const p2 = await ctx2.newPage();
-    const X = Object.assign({}, CATA, { x402: { actif: true, network: 'eip155:4663', asset: '0x8a166Fb41Cd659a0a43396272FF73973Ce29F817', payTo: '0x<b>1111111111111111111111111111111111111111', minimumUsd: 0.02 } });
+    const X = Object.assign({}, CATA, { x402: { actif: true, network: 'eip155:4663', asset: '0x8a166Fb41Cd659a0a43396272FF73973Ce29F817', payTo: '0x<b>1111111111111111111111111111111111111111', minimumUsd: 0.02,
+      assets: [{ symbol: 'USDG', asset: '0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168', assetTransferMethod: 'eip3009' }, { symbol: '<i>SWOGE', asset: '0x8a166Fb41Cd659a0a43396272FF73973Ce29F817', assetTransferMethod: 'permit2' }] } });
     await p2.route((u) => !u.href.startsWith('http://127.0.0.1:' + port), (r) => (/\/agentic\/tools/.test(r.request().url())
       ? r.fulfill({ status:200, contentType:'application/json', body: JSON.stringify(X) }) : r.abort()));
     await p2.goto('http://127.0.0.1:' + port + '/swogeagentic_api.html', { waitUntil:'domcontentloaded' });
@@ -235,6 +236,9 @@ const PEPE = { adresse:'0x6982508145454ce325ddbe47a25d4ec3d2311933', trouve:true
     ok(await p2.$eval('#x402Doc', (e) => getComputedStyle(e).display !== 'none'), 'x402 allume : la section apparait');
     eq(await p2.textContent('#x402Reseau') + ' ' + await p2.textContent('#x402Min'), 'eip155:4663 0.02', 'le reseau et le minimum viennent du catalogue');
     ok((await p2.textContent('#x402PayTo')).includes('<b>') && (await p2.$('#x402PayTo b')) === null, 'la tresorerie s ecrit en texte, jamais en HTML');
+    const jetons = await p2.$$eval('#x402Jetons > div', (l) => l.map((d) => d.textContent));
+    ok(jetons.length === 2 && /^USDG 0x5fc5.*eip3009$/.test(jetons[0]) && /permit2$/.test(jetons[1]) && (await p2.$('#x402Jetons i')) === null,
+       'les deux jetons acceptes, USDG d abord, lus dans le catalogue et ecrits en texte [' + jetons.join(' | ') + ']');
     ok(/\/agentic\/x402$/.test(await p2.textContent('#x402Etat')), 'elle mene a l etat en direct');
     const larg2 = await p2.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     ok(larg2 <= 1, 'a 360 px, la section x402 ne deborde pas [' + larg2 + ']');

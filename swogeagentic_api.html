@@ -756,17 +756,16 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 
   <section id="x402Doc" hidden>
   <h2>5. No account? Pay per call with x402</h2>
-  <p>Fixed-price tools can be paid <b>without a key or an account</b>, following the <b>x402 v2</b> standard: call the tool without a key, read the <code>402</code> and its <code>PAYMENT-REQUIRED</code> header, sign, and call again with <code>PAYMENT-SIGNATURE</code>. You pay in $SWOGE, <b>we pay the gas</b>.</p>
+  <p>Fixed-price tools can be paid <b>without a key or an account</b>, following the <b>x402 v2</b> standard: call the tool without a key, read the <code>402</code> and its <code>PAYMENT-REQUIRED</code> header, sign, and call again with <code>PAYMENT-SIGNATURE</code>. You pay in dollars (USDG) or in $SWOGE, <b>we pay the gas</b>.</p>
   <table><tbody>
     <tr><td>Scheme / network</td><td><code>exact</code> · <code id="x402Reseau"></code></td></tr>
-    <tr><td>Asset ($SWOGE)</td><td><code id="x402Jeton"></code></td></tr>
+    <tr><td>Pay with</td><td id="x402Jetons"></td></tr>
     <tr><td>Paid to (treasury)</td><td><code id="x402PayTo"></code></td></tr>
-    <tr><td>Transfer method</td><td><code>permit2</code> — canonical Permit2 and x402ExactPermit2Proxy</td></tr>
     <tr><td>Price</td><td>tool price + settlement gas, minimum $<span id="x402Min"></span></td></tr>
   </tbody></table>
   <ul>
-    <li>The proxy only pays the treasury above: nobody can change the amount or the recipient you signed.</li>
-    <li>First payment without a Permit2 allowance: add the <code>eip2612GasSponsoring</code> extension, a <code>permit</code> to Permit2 whose value is <b>the exact amount</b>.</li>
+    <li><b>USDG</b> uses <code>eip3009</code> (<code>transferWithAuthorization</code>, EIP-712 domain <i>Global Dollar</i>, version 1). <b>$SWOGE</b> uses <code>permit2</code> (canonical Permit2 and x402ExactPermit2Proxy). Either way, nobody can change the amount or the recipient you signed.</li>
+    <li>Paying in $SWOGE without a Permit2 allowance yet: add the <code>eip2612GasSponsoring</code> extension, a <code>permit</code> to Permit2 whose value is <b>the exact amount</b>.</li>
     <li>If the tool fails, your signature is never submitted. If the settlement fails, the result is withheld and nothing is charged.</li>
     <li><code>ask_agent</code> and <code>generate_image</code> have a variable price: they need an API key.</li>
     <li>Live prices and status: <code id="x402Etat"></code></li>
@@ -812,7 +811,15 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
        promet un paiement eteint enverrait des agents dans un mur. */
     var x = c.x402;
     if (x && x.actif) {
-      $("x402Reseau").textContent = String(x.network || ""); $("x402Jeton").textContent = String(x.asset || "");
+      $("x402Reseau").textContent = String(x.network || "");
+      /* Les jetons acceptes, lus dans le catalogue ; ecrits en texte, jamais en HTML. */
+      var jj = $("x402Jetons"); jj.textContent = "";
+      (x.assets && x.assets.length ? x.assets : [{ symbol: "SWOGE", asset: x.asset, assetTransferMethod: "permit2" }]).forEach(function(a, i){
+        var d = document.createElement("div"), b = document.createElement("b"), c = document.createElement("code");
+        b.textContent = String(a.symbol || "") + " "; c.textContent = String(a.asset || "");
+        d.appendChild(b); d.appendChild(c); d.appendChild(document.createTextNode(" · " + String(a.assetTransferMethod || "")));
+        d.style.overflowWrap = "anywhere"; jj.appendChild(d);
+      });
       $("x402PayTo").textContent = String(x.payTo || ""); $("x402Min").textContent = String(x.minimumUsd || "");
       $("x402Etat").textContent = "GET " + api + "/agentic/x402";
       $("x402Doc").hidden = false;

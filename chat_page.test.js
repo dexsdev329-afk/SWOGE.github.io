@@ -251,6 +251,29 @@ const sse = (evs) => evs.map(([t, d]) => 'event: ' + t + '\ndata: ' + JSON.strin
     await b.ctx.close();
   }
 
+  console.log('\n-- 10. Claude, ChatGPT et Grok dans le meme choix de modele --');
+  {
+    const CAT3 = JSON.parse(JSON.stringify(CAT));
+    CAT3.modeles.forEach((m) => { m.nomFournisseur = 'Claude'; m.actif = true; });
+    CAT3.modeles.push(
+      { id:'gpt-6-sol', nom:'GPT-6 Sol', note:'Strong all-rounder', fournisseur:'openai', nomFournisseur:'ChatGPT', actif:false, effort:true, recherche:false, typiqueSwoge:590, maxSwoge:9361 },
+      { id:'grok-4-3', nom:'Grok 4.3', note:'Fast and cheap from xAI', fournisseur:'xai', nomFournisseur:'Grok', actif:true, effort:false, recherche:false, typiqueSwoge:208, maxSwoge:4579 });
+    const rep = () => sse([['fin', { ok:true, texte:'yo', sources:[], factureSwoge:'3', usage:{}, solde:'1' }]]);
+    const { page, ctx, envois } = await ouvre({ session:'j', cat: CAT3, rep });
+    await page.click('#modeleBtn');
+    eq((await page.$$eval('#modeles .groupe', (l) => l.map((x) => x.textContent))).join(','), 'Claude,ChatGPT,Grok', 'la feuille groupe les modeles : Claude, ChatGPT, Grok');
+    ok(await page.isDisabled('#modeles .modele[data-modele="gpt-6-sol"]') && /Not switched on/.test(await page.textContent('#modeles .modele[data-modele="gpt-6-sol"]')), 'un modele sans cle est grise et le dit');
+    await page.click('#modeles .modele[data-modele="grok-4-3"]');
+    await page.click('#fermerFeuille');
+    eq(await page.textContent('#modeleNom'), 'Grok 4.3', 'Grok 4.3 est choisi');
+    ok(!(await page.isVisible('#web')), 'et « Search » disparait : la recherche web est une fonction des modeles Claude');
+    await pose(page, 'hello grok');
+    await page.waitForSelector('.msg.ia .meta');
+    eq(envois[0].corps.modele, 'grok-4-3', 'la question part vers Grok 4.3');
+    ok(/Grok 4\.3 · 3 \$SWOGE/.test(await page.textContent('.msg.ia .meta')), 'et le cout dit quel modele a repondu');
+    await ctx.close();
+  }
+
   console.log('\n-- 8. un bloc de code se copie d un geste, exactement --');
   {
     /* Signale le 26 septembre 2026 : un Snake en HTML demande au chat, et rien

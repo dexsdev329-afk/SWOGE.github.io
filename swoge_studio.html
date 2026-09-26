@@ -98,7 +98,7 @@ video{ max-width:100%; }
 .menubtn{ min-width:44px; min-height:44px; }
 </style>
 
-<title>SWOGE Studio · AI chat with Claude, pay per question in $SWOGE</title>
+<title>SWOGE Studio · AI chat with Claude, ChatGPT and Grok</title>
 
 <!-- ==================== REFERENCEMENT ET PARTAGE ====================
      Bloc identique sur toutes les pages, pose juste apres le titre.
@@ -119,20 +119,20 @@ video{ max-width:100%; }
      versions se font concurrence et aucune ne gagne.
      ================================================================= -->
 <link rel="canonical" href="https://swoleeswoge.dog/swoge_studio.html">
-<meta name="description" content="SWOGE Studio: chat with Claude Opus, Fable, Sonnet or Haiku, with live web search and cited sources. No subscription — each answer is billed from your $SWOGE balance at the actual cost shown.">
+<meta name="description" content="SWOGE Studio: chat with Claude, ChatGPT and Grok, search the web with sources, create images and videos. No subscription — each request is billed from your $SWOGE balance at its actual cost.">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="SWOGE WORLD">
 <meta property="og:locale" content="en_US">
-<meta property="og:title" content="SWOGE Studio · AI chat with Claude, pay per question in $SWOGE">
-<meta property="og:description" content="SWOGE Studio: chat with Claude Opus, Fable, Sonnet or Haiku, with live web search and cited sources. No subscription — each answer is billed from your $SWOGE balance at the actual cost shown.">
+<meta property="og:title" content="SWOGE Studio · AI chat with Claude, ChatGPT and Grok">
+<meta property="og:description" content="SWOGE Studio: chat with Claude, ChatGPT and Grok, search the web with sources, create images and videos. No subscription — each request is billed from your $SWOGE balance at its actual cost.">
 <meta property="og:url" content="https://swoleeswoge.dog/swoge_studio.html">
 <meta property="og:image" content="https://swoleeswoge.dog/img/site/partage.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:site" content="@SwoleDogeSwoge">
-<meta name="twitter:title" content="SWOGE Studio · AI chat with Claude, pay per question in $SWOGE">
-<meta name="twitter:description" content="SWOGE Studio: chat with Claude Opus, Fable, Sonnet or Haiku, with live web search and cited sources. No subscription — each answer is billed from your $SWOGE balance at the actual cost shown.">
+<meta name="twitter:title" content="SWOGE Studio · AI chat with Claude, ChatGPT and Grok">
+<meta name="twitter:description" content="SWOGE Studio: chat with Claude, ChatGPT and Grok, search the web with sources, create images and videos. No subscription — each request is billed from your $SWOGE balance at its actual cost.">
 <meta name="twitter:image" content="https://swoleeswoge.dog/img/site/partage.jpg">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="/img/site/icone-32.png">
@@ -847,6 +847,11 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 .modele > span:nth-child(2){flex:1 1 auto;min-width:0}
 .modele .nom{font-size:16px;font-weight:700}
 .modele .desc{font-size:12.5px;color:var(--dim);margin-top:2px}
+/* Claude, ChatGPT, Grok : un titre par fournisseur ; un modele sans cle est grise. */
+.groupe{font:700 10.5px/1 'Space Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);padding:14px 6px 4px}
+.groupe:first-child{padding-top:4px}
+.modele:disabled{opacity:.45;cursor:not-allowed}
+.modele:disabled:hover{background:transparent}
 .modele .prix{margin-left:auto;font-family:'Space Mono',monospace;font-size:10.5px;color:var(--dim);text-align:right;white-space:nowrap}
 .modele .coche{flex:0 0 18px;width:18px;color:var(--pool);font-weight:800}
 .efforts{display:flex;gap:6px;margin-top:14px;align-items:center;flex-wrap:wrap}
@@ -878,7 +883,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 
   <section class="accueil" id="accueil">
     <h1>What can I help with?</h1>
-    <p>Chat with top AI models — Claude Opus 5.5, Fable 5.1, Sonnet 5, Haiku 4.5 — search the live web,
+    <p>Chat with the top AI models — Claude, ChatGPT and Grok — search the live web with sources,
        create images with Grok Imagine or ChatGPT Image, and videos with Grok. You pay in $SWOGE, only for what each request actually costs.</p>
     <div class="suggestions" id="suggestions">
       <button class="suggestion" type="button" data-sugg="web"><span class="ic">&#127760;</span>Search the web</button>
@@ -1038,7 +1043,10 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   function dit(t){ var e = $("etat"); e.textContent = t || ""; e.hidden = !t; }
   function modeleCourant(){
     var c = etat.cat; if (!c) return null;
-    return c.modeles.filter(function(m){ return m.id === etat.modele; })[0] || c.modeles.filter(function(m){ return m.id === c.defaut; })[0] || c.modeles[0];
+    /* Un modele dont la cle manque (actif:false) n'est jamais le modele courant. */
+    var ok = c.modeles.filter(function(m){ return m.actif !== false; });
+    var l = ok.length ? ok : c.modeles;
+    return l.filter(function(m){ return m.id === etat.modele; })[0] || l.filter(function(m){ return m.id === c.defaut; })[0] || l[0];
   }
   /* Le choix du modele d'image (Grok Imagine ou ChatGPT Image), puis sa vitesse. */
   function fournisseurImage(){
@@ -1124,13 +1132,20 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   function peintFeuille(){
     var c = etat.cat, box = $("modeles"); box.innerHTML = "";
     if (!c) return;
+    var groupe = null;
     c.modeles.forEach(function(m){
+      /* Un titre a chaque fournisseur : Claude, ChatGPT, Grok. */
+      if (m.nomFournisseur && m.nomFournisseur !== groupe) {
+        groupe = m.nomFournisseur;
+        var g = document.createElement("div"); g.className = "groupe"; g.textContent = groupe; box.appendChild(g);
+      }
       var b = document.createElement("button");
       b.type = "button"; b.className = "modele"; b.setAttribute("data-modele", m.id);
+      b.disabled = m.actif === false;
       b.innerHTML = '<span class="coche">' + (m.id === (modeleCourant() || {}).id ? "&#10003;" : "") + '</span>'
-        + '<span><div class="nom">' + echappe(m.nom) + '</div><div class="desc">' + echappe(m.note) + '</div></span>'
+        + '<span><div class="nom">' + echappe(m.nom) + '</div><div class="desc">' + echappe(m.actif === false ? "Not switched on yet" : m.note) + '</div></span>'
         + '<span class="prix">~' + nombre(m.typiqueSwoge) + ' $SWOGE<br>per question</span>';
-      b.addEventListener("click", function(){ etat.modele = m.id; ecrisLocal("swogeChatModele", m.id); peintFeuille(); peintPrix(); });
+      b.addEventListener("click", function(){ if (m.actif === false) return; etat.modele = m.id; ecrisLocal("swogeChatModele", m.id); peintFeuille(); peintPrix(); peintMode(); });
       box.appendChild(b);
     });
     var mc = modeleCourant();

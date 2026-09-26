@@ -18,7 +18,9 @@ Tools:
 - `osint_lookup(target)` — $0.02. Passive reconnaissance on infrastructure: a domain, an IP address, a website URL, an autonomous system (AS15169) or a CVE.
 - `web_search(query)` — $0.0075. Search the web (Perplexity).
 - `ask_agent(task, model?)` — real cost, up to $1.278. Give a whole task to SwogeAgentic (a Claude agent that chains the tools above and answers with the numbers it read, with sources).
-- `generate_image(prompt, provider?, count?)` — real cost, up to $0.7037. Create an image with Grok Imagine or ChatGPT Image.
+- `generate_image(prompt, provider?, quality?, aspect_ratio?, count?)` — real cost, up to $0.7037. Create an image with Grok Imagine or ChatGPT Image.
+- `generate_video(prompt, quality?, duration?, resolution?, aspect_ratio?)` — real cost, up to $3.6. Create a short video with Grok Imagine (6 or 10 seconds).
+- `video_status(id)` — free. Read the status of a video you started (pending, done with its URL, or failed and not charged).
 
 ## Docs
 

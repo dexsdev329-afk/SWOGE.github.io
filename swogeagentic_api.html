@@ -767,7 +767,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     <li><b>USDG</b> uses <code>eip3009</code> (<code>transferWithAuthorization</code>, EIP-712 domain <i>Global Dollar</i>, version 1). <b>$SWOGE</b> uses <code>permit2</code> (canonical Permit2 and x402ExactPermit2Proxy). Either way, nobody can change the amount or the recipient you signed.</li>
     <li>Paying in $SWOGE without a Permit2 allowance yet: add the <code>eip2612GasSponsoring</code> extension, a <code>permit</code> to Permit2 whose value is <b>the exact amount</b>.</li>
     <li>If the tool fails, your signature is never submitted. If the settlement fails, the result is withheld and nothing is charged.</li>
-    <li><code>ask_agent</code> and <code>generate_image</code> have a variable price: they need an API key.</li>
+    <li><code>generate_image</code> can be paid this way too: the <code>402</code> quotes a fixed price for <b>that exact request</b> (provider, quality, count) — retry with the same arguments. <code>ask_agent</code> and <code>generate_video</code> are billed at their real cost, so they need an API key.</li>
     <li>Live prices and status: <code id="x402Etat"></code></li>
   </ul>
   </section>
@@ -831,7 +831,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       var props = (o.inputSchema && o.inputSchema.properties) || {}, req = (o.inputSchema && o.inputSchema.required) || [];
       tr.appendChild(cellule(Object.keys(props).map(function(k){ return k + (req.indexOf(k) >= 0 ? "" : "?"); }).join(", ") || "—"));
       var p = o.prix || {};
-      tr.appendChild(cellule(p.variable ? "real cost, up to $" + p.maxUsd + (p.maxSwoge ? " (" + Number(p.maxSwoge).toLocaleString("en-US", { maximumFractionDigits: 0 }) + " $SWOGE)" : "")
+      tr.appendChild(cellule(p.gratuit ? "free" : p.variable ? "real cost, up to $" + p.maxUsd + (p.maxSwoge ? " (" + Number(p.maxSwoge).toLocaleString("en-US", { maximumFractionDigits: 0 }) + " $SWOGE)" : "")
         : "$" + p.usd + (p.swoge ? " (" + Number(p.swoge).toLocaleString("en-US", { maximumFractionDigits: 2 }) + " $SWOGE)" : "")));
       b.appendChild(tr);
     });

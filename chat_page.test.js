@@ -266,7 +266,7 @@ const sse = (evs) => evs.map(([t, d]) => 'event: ' + t + '\ndata: ' + JSON.strin
     await page.click('#modeles .modele[data-modele="grok-4-3"]');
     await page.click('#fermerFeuille');
     eq(await page.textContent('#modeleNom'), 'Grok 4.3', 'Grok 4.3 est choisi');
-    ok(!(await page.isVisible('#web')), 'et « Search » disparait : la recherche web est une fonction des modeles Claude');
+    ok(!(await page.isVisible('#web')), 'et « Search » disparait pour un modele qui n a pas la recherche (ici : sans cle Perplexity)');
     await pose(page, 'hello grok');
     await page.waitForSelector('.msg.ia .meta');
     eq(envois[0].corps.modele, 'grok-4-3', 'la question part vers Grok 4.3');

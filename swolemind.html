@@ -840,6 +840,15 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 .progres{height:6px;border-radius:999px;background:var(--panel2);overflow:hidden;margin-top:8px;max-width:320px}
 .progres i{display:block;height:100%;width:0;background:var(--pool);transition:width .4s}
 .msg.moi img.vignette{display:block;max-width:140px;border-radius:10px;margin-bottom:6px}
+/* ---- les pieces jointes du chat : photos et PDF, en pastilles ---- */
+.pieces{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}
+.pieces[hidden]{display:none}
+.piece{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--panel2);border-radius:12px;padding:4px 6px;max-width:100%;min-width:0;font-size:12px}
+.piece img{width:40px;height:40px;object-fit:cover;border-radius:8px;display:block}
+.piece .nom{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px}
+.piece button{border:0;background:transparent;cursor:pointer;color:var(--dim);padding:0 4px;font-size:14px}
+.msg.moi .pieces{justify-content:flex-end}
+.msg.moi .piece{background:rgba(255,255,255,.18);border-color:transparent;color:inherit}
 
 /* ---- la feuille de choix du modele, facon Claude ---- */
 .voile-feuille{position:fixed;inset:0;background:rgba(11,27,54,.35);z-index:60;display:flex;align-items:flex-end;justify-content:center}
@@ -933,12 +942,14 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       <button class="puce" id="format" type="button" title="Aspect ratio">&#9635; Auto</button>
     </div>
     <div class="boite">
+      <div class="pieces" id="pieces" hidden></div>
       <div class="jointe" id="jointe" hidden><img id="jointeImg" alt=""><span id="jointeTxt">Photo attached</span>
         <button type="button" id="retirer" aria-label="Remove the photo">&#10005;</button></div>
       <textarea id="question" rows="1" placeholder="Ask SwoleMind" aria-label="Your question"></textarea>
       <div class="outils">
         <button class="plus" id="joindre" type="button" title="Attach a photo" aria-label="Attach a photo" hidden>+</button>
         <input type="file" id="fichier" accept="image/png,image/jpeg,image/webp" hidden>
+        <input type="file" id="fichierChat" accept="image/png,image/jpeg,image/webp,application/pdf" multiple hidden>
         <div class="modes" role="group" aria-label="What to make">
           <button class="mode" type="button" data-mode="chat" aria-pressed="true">&#128172; Chat</button>
           <button class="mode" type="button" data-mode="image" aria-pressed="false">&#128444;&#65039; Image</button>
@@ -1001,6 +1012,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     reflexion: "Thinking…",
     recherche: "Searching the web…",
     jeton: "Reading the token: DexScreener, GoPlus, SWOGE AI…",
+    pdfClaude: "PDFs are read by Claude models \u2014 pick Opus, Fable, Sonnet or Haiku (photos work with every model).",
     erreurReseau: "Connection lost — you were not charged for an unfinished answer.",
     vide: "No saved chats yet.",
     refus: "The model declined to answer this request."
@@ -1025,7 +1037,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     cat: null, modele: lisLocal("swogeChatModele", null), effort: lisLocal("swogeChatEffort", null),
     web: false, occupe: false, conv: null, convs: lisLocal("swogeChats", []),
     /* Studio facon Grok : le mode du composeur et ses reglages, retenus. */
-    media: null, mode: lisLocal("swogeStudioMode", "chat"), jointe: null,
+    media: null, mode: lisLocal("swogeStudioMode", "chat"), jointe: null, pieces: [],
     /* Comparer : 2 ou 3 modeles choisis dans la feuille, retenus. */
     compare: lisLocal("swogeCompare", false) === true, choix: lisLocal("swogeCompareChoix", []),
     reg: Object.assign({ fournisseur: "grok", vitesse: "qualite", nombre: 1, formatI: "auto", formatV: "auto", duree: 6, resolution: "480p" },
@@ -1133,7 +1145,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     $("prixq").textContent = m.nom + " · ~" + nombre(m.typiqueSwoge) + " $SWOGE per question (max " + nombre(m.maxSwoge) + ") · you pay only what the answer uses";
   }
   function peintBoutons(){
-    var vide = !$("question").value.trim() && !(etat.mode === "video" && etat.jointe);
+    var vide = !$("question").value.trim() && !(etat.mode === "video" && etat.jointe) && !(etat.mode === "chat" && etat.pieces.length);
     $("envoyer").disabled = etat.occupe || vide;
   }
   /* ---- le mode et ses reglages ---- */
@@ -1148,7 +1160,10 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     Array.prototype.forEach.call(document.querySelectorAll(".mode"), function(b){ b.setAttribute("aria-pressed", String(b.getAttribute("data-mode") === m)); });
     $("modeleBtn").hidden = m !== "chat";
     $("web").hidden = m !== "chat" || !(etat.compare ? modelesCompares().some(function(x){ return x.recherche; }) : (modeleCourant() || {}).recherche);
-    $("joindre").hidden = m === "chat";
+    /* « + » partout : en Chat il joint une photo ou un PDF a la question. */
+    $("joindre").hidden = false;
+    $("joindre").title = m === "chat" ? "Attach a photo or a PDF" : "Attach a photo";
+    $("pieces").hidden = m !== "chat" || !etat.pieces.length;
     $("reglages").hidden = m === "chat";
     $("fournisseur").hidden = m !== "image";
     Array.prototype.forEach.call(document.querySelectorAll("#fournisseur button"), function(b){ b.setAttribute("aria-pressed", String(b.getAttribute("data-f") === etat.reg.fournisseur)); });
@@ -1243,6 +1258,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       }
       idGroupe = null;
       var d = ajouteMsg(m.role, m.content); d.setAttribute("data-i", i);
+      if (m.role === "user") montrePieces(d, m.pieces);
       if (m.role === "assistant") {
         d.querySelector(".corps").innerHTML = markdown(m.content);
         ajouteCartes(d, m.jetons);
@@ -1369,6 +1385,83 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       d.insertBefore(carteJeton(j), corps);
     });
   }
+  /* ---- LES PIECES JOINTES DU CHAT ----
+   * Une photo est REDUITE ici (1 568 px au plus grand cote, JPEG) : le serveur
+   * refuse au-dela de 2 048 px, pour que le pire cas qu'il reserve reste borne.
+   * Les octets restent en MEMOIRE pour les questions suivantes du meme fil ;
+   * seule une vignette va dans le stockage local (quelques Ko). Apres un
+   * rechargement, le modele est prevenu que la piece n'est plus la. */
+  var MEM_PIECES = {};
+  function lisentPdf(){
+    var ms = etat.compare ? modelesCompares() : [modeleCourant()];
+    return ms.length && ms.every(function(m){ return m && m.pieces && m.pieces.pdf; });
+  }
+  function vignette(src, cote, qualite){
+    return new Promise(function(ok, ko){
+      var im = new Image();
+      im.onload = function(){
+        var k = Math.min(1, cote / Math.max(im.naturalWidth, im.naturalHeight));
+        var c = document.createElement("canvas"); c.width = Math.max(1, Math.round(im.naturalWidth * k)); c.height = Math.max(1, Math.round(im.naturalHeight * k));
+        var g = c.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, c.width, c.height); g.drawImage(im, 0, 0, c.width, c.height);
+        ok(c.toDataURL("image/jpeg", qualite));
+      };
+      im.onerror = ko; im.src = src;
+    });
+  }
+  function reduitPhoto(f){
+    var url = URL.createObjectURL(f);
+    return Promise.all([vignette(url, 1568, 0.85), vignette(url, 96, 0.7)]).then(function(v){
+      URL.revokeObjectURL(url);
+      return { genre: "image", media: "image/jpeg", data: v[0].split(",")[1], nom: String(f.name || "photo").slice(0, 80), apercu: v[1] };
+    });
+  }
+  function litPdf(f){
+    return new Promise(function(ok, ko){
+      var lr = new FileReader();
+      lr.onload = function(){ ok({ genre: "pdf", media: "application/pdf", data: String(lr.result).split(",")[1], nom: String(f.name || "document.pdf").slice(0, 80) }); };
+      lr.onerror = ko; lr.readAsDataURL(f);
+    });
+  }
+  function piecesEl(pieces, retirable){
+    var b = document.createElement("div"); b.className = "pieces";
+    pieces.forEach(function(p, i){
+      var e = document.createElement("span"); e.className = "piece";
+      if (p.apercu && /^data:image\/jpeg;base64,/.test(p.apercu)) { var im = document.createElement("img"); im.src = p.apercu; im.alt = ""; e.appendChild(im); }
+      else { var ic = document.createElement("span"); ic.textContent = p.genre === "pdf" ? "\ud83d\udcc4" : "\ud83d\uddbc\ufe0f"; e.appendChild(ic); }
+      var n = document.createElement("span"); n.className = "nom"; n.textContent = p.nom || (p.genre === "pdf" ? "PDF" : "Photo"); e.appendChild(n);
+      if (retirable) {
+        var x = document.createElement("button"); x.type = "button"; x.setAttribute("aria-label", "Remove " + (p.nom || "file")); x.textContent = "\u2715";
+        x.addEventListener("click", function(){ etat.pieces.splice(i, 1); peintPieces(); peintBoutons(); });
+        e.appendChild(x);
+      }
+      b.appendChild(e);
+    });
+    return b;
+  }
+  function peintPieces(){
+    var z = $("pieces"); z.innerHTML = "";
+    var el = piecesEl(etat.pieces, true); while (el.firstChild) z.appendChild(el.firstChild);
+    z.hidden = etat.mode !== "chat" || !etat.pieces.length;
+  }
+  /* Ce qu'un message du joueur emporte : ses pieces (si la page les a encore). */
+  function resumePieces(pj){ return pj.map(function(p){ return { genre: p.genre, nom: p.nom, apercu: p.apercu }; }); }
+  /* Les pieces en attente partent avec la question ; un PDF a un modele qui
+     ne le lit pas est arrete ICI, avant tout envoi. */
+  function prendsPieces(){
+    var pj = etat.pieces.slice();
+    if (pj.some(function(p){ return p.genre === "pdf"; }) && !lisentPdf()) { dit(TXT.pdfClaude); return null; }
+    etat.pieces = []; peintPieces();
+    return pj;
+  }
+  function montrePieces(d, pieces){ if (pieces && pieces.length) d.insertBefore(piecesEl(pieces), d.firstChild); }
+  function avecPieces(x, cle){
+    var o = { role: x.role, content: x.content };
+    if (x.role !== "user" || !x.pieces || !x.pieces.length) return o;
+    var mem = MEM_PIECES[cle];
+    if (mem) o.pieces = mem.map(function(p){ return { media: p.media, data: p.data, nom: p.nom }; });
+    else o.content += "\n\n[The user attached " + x.pieces.map(function(p){ return p.nom || p.genre; }).join(", ") + " earlier; it is no longer available \u2014 ask them to attach it again if needed.]";
+    return o;
+  }
   function sourcesEl(sources){
     var s = document.createElement("div"); s.className = "sources";
     sources.forEach(function(x, i){
@@ -1438,7 +1531,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       /* La question d'une comparaison : seulement si CE modele y a repondu. */
       if (x.role === "user") return ms.some(function(y){ return y.role === "assistant" && y.comparaison === x.comparaison && y.modele === id; });
       return x.modele === id;
-    }).map(function(x){ return { role: x.role, content: x.content }; });
+    }).map(function(x){ return avecPieces(x, x.rid || x.comparaison); });
   }
   function modelesCompares(){
     var c = etat.cat; if (!c) return [];
@@ -1501,18 +1594,22 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
    * son rid, sa reserve, sa facture — et s'ecrit dans sa colonne. */
   function envoyerComparaison(){
     var q = $("question").value.trim();
-    if (!q || etat.occupe) return;
+    if ((!q && !etat.pieces.length) || etat.occupe) return;
     var j = jeton();
     if (!j) { dit(TXT.signin); return; }
     if (!etat.cat || !etat.cat.ouvert) { dit((etat.cat && etat.cat.note) || TXT.ferme); return; }
     var ms = modelesCompares();
     if (ms.length < 2) { dit("Pick 2 or 3 models to compare (tap the model button)."); ouvreFeuille(); return; }
+    var pj = prendsPieces(); if (!pj) return;
+    if (!q) q = "What is in this file?";
     if (!etat.conv) nouvelleConv();
     var idc = nouveauRid(), rids = ms.map(function(m){ return { modele: m.id, rid: nouveauRid(), nom: m.nom }; });
-    var historiques = ms.map(function(m){ return historiquePour(m.id).concat([{ role: "user", content: q }]); });
-    etat.conv.messages.push({ role: "user", content: q, comparaison: idc, rids: rids });
+    var nouvelle = { role: "user", content: q };
+    if (pj.length) { MEM_PIECES[idc] = pj; nouvelle.pieces = pj.map(function(p){ return { media: p.media, data: p.data, nom: p.nom }; }); }
+    var historiques = ms.map(function(m){ return historiquePour(m.id).concat([nouvelle]); });
+    etat.conv.messages.push(pj.length ? { role: "user", content: q, comparaison: idc, rids: rids, pieces: resumePieces(pj) } : { role: "user", content: q, comparaison: idc, rids: rids });
     sauveConv();
-    var du = ajouteMsg("user", q); du.setAttribute("data-i", etat.conv.messages.length - 1);
+    var du = ajouteMsg("user", q); du.setAttribute("data-i", etat.conv.messages.length - 1); montrePieces(du, pj);
     $("question").value = ""; dimensionne();
     etat.occupe = true; peintBoutons(); dit("");
     var g = grilleCmp(idc), restant = ms.length, servies = 0;
@@ -1532,16 +1629,19 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     if (etat.mode !== "chat") return envoyerMedia();
     if (etat.compare) return envoyerComparaison();
     var q = $("question").value.trim();
-    if (!q || etat.occupe) return;
+    if ((!q && !etat.pieces.length) || etat.occupe) return;
     var j = jeton();
     if (!j) { dit(TXT.signin); return; }
     if (!etat.cat || !etat.cat.ouvert) { dit((etat.cat && etat.cat.note) || TXT.ferme); return; }
+    var pj = prendsPieces(); if (!pj) return;
+    if (!q) q = "What is in this file?";
     if (!etat.conv) nouvelleConv();
     var m = modeleCourant();
     var rid = nouveauRid();
-    etat.conv.messages.push({ role: "user", content: q, rid: rid });
+    if (pj.length) MEM_PIECES[rid] = pj;
+    etat.conv.messages.push(pj.length ? { role: "user", content: q, rid: rid, pieces: resumePieces(pj) } : { role: "user", content: q, rid: rid });
     sauveConv();
-    ajouteMsg("user", q);
+    montrePieces(ajouteMsg("user", q), pj);
     $("question").value = ""; dimensionne();
     etat.occupe = true; peintBoutons(); dit("");
     var d = ajouteMsg("assistant", ""), corps = d.querySelector(".corps"), texte = "";
@@ -1592,8 +1692,10 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
          rechargement — la reponse se retrouve au retour, par son rid. */
       if (etat.quitte) return;
       termine();
-      /* La question n'a pas ete servie : elle ne reste pas dans l'historique envoye. */
+      /* La question n'a pas ete servie : elle ne reste pas dans l'historique
+         envoye ; ses pieces reviennent dans le composeur, pour reessayer. */
       etat.conv.messages.pop(); sauveConv();
+      if (pj.length) { delete MEM_PIECES[rid]; etat.pieces = pj.concat(etat.pieces); peintPieces(); peintBoutons(); }
       d.classList.add("err");
       var raison = (e && e.raison) || TXT.erreurReseau;
       if (e && e.code === 402) raison += " — top up your balance in the Wallet (needs ~" + nombre(e.requisSwoge) + " $SWOGE for this model).";
@@ -1830,7 +1932,24 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     if (v) etat.reg.formatV = cycle(l, etat.reg.formatV); else etat.reg.formatI = cycle(l, etat.reg.formatI);
     sauveReg();
   });
-  $("joindre").addEventListener("click", function(){ $("fichier").click(); });
+  $("joindre").addEventListener("click", function(){ $(etat.mode === "chat" ? "fichierChat" : "fichier").click(); });
+  $("fichierChat").addEventListener("change", function(){
+    var l = Array.prototype.slice.call(this.files || []); this.value = "";
+    /* Une a la fois, dans l'ordre choisi : la reduction d'une photo prend plus
+       longtemps que la lecture d'un PDF, et l'ordre ne doit pas en dependre. */
+    l.reduce(function(suite, f){
+      return suite.then(function(){
+        var pdf = f.type === "application/pdf";
+        if (!pdf && !/^image\/(png|jpeg|webp)$/.test(f.type)) return dit("Attach photos (PNG, JPEG, WebP) or a PDF.");
+        if (pdf && f.size > 10 * 1024 * 1024) return dit("This PDF is too large (max 10 MB).");
+        if (pdf && etat.pieces.some(function(x){ return x.genre === "pdf"; })) return dit("One PDF per question.");
+        if (!pdf && etat.pieces.filter(function(x){ return x.genre === "image"; }).length >= 4) return dit("At most 4 photos per question.");
+        return (pdf ? litPdf(f) : reduitPhoto(f)).then(function(p){
+          etat.pieces.push(p); peintPieces(); peintBoutons(); dit(pdf && !lisentPdf() ? TXT.pdfClaude : "");
+        }, function(){ dit("This file could not be read."); });
+      });
+    }, Promise.resolve());
+  });
   $("retirer").addEventListener("click", retireJointe);
   $("fichier").addEventListener("change", function(){
     var f = this.files && this.files[0]; if (!f) return;

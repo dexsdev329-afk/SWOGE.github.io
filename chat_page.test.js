@@ -20,6 +20,8 @@
  *      chacune, et chaque modele ne relit que SES reponses au tour suivant.
  *   9. Une adresse de jeton : la carte des chiffres lus (marche, GoPlus,
  *      colonie avec effectifs), echappee, liens https seulement, jamais « safe ».
+ *  10. Une photo ou un PDF : la photo reduite, le fichier en memoire seulement,
+ *      un PDF arrete sur la page quand le modele ne le lit pas.
  * ==========================================================================*/
 const fs = require('fs'), path = require('path'), http = require('http');
 const SITE = __dirname;
@@ -441,6 +443,79 @@ const sse = (evs) => evs.map(([t, d]) => 'event: ' + t + '\ndata: ' + JSON.strin
     await b.page.waitForSelector('.cmp .meta');
     eq((await b.page.$$('.cmp .jeton')).length, 1, 'et toujours une seule apres rechargement');
     await b.ctx.close();
+  }
+
+  console.log('\n-- 13. une photo ou un PDF joint a la question --');
+  {
+    /* Demande du proprietaire, le 26 septembre 2026. La page REDUIT la photo
+       (le serveur refuse au-dela de 2 048 px), garde les octets en memoire pour
+       la suite du fil, et seulement une vignette dans le stockage local. */
+    const CATP = JSON.parse(JSON.stringify(CAT));
+    CATP.modeles.forEach((m) => { m.nomFournisseur = 'Claude'; m.actif = true; m.fournisseur = 'anthropic'; m.pieces = { images: true, pdf: true }; });
+    CATP.modeles.push({ id:'grok-4-3', nom:'Grok 4.3', note:'Fast', fournisseur:'xai', nomFournisseur:'Grok', actif:true, effort:false, recherche:false,
+      typiqueSwoge:208, maxSwoge:4579, pieces:{ images:true, pdf:false } });
+    let panne = false;
+    const rep = () => (panne ? sse([['erreur', { ok:false, code:400, raison:'this PDF is too long for one question' }]])
+      : sse([['fin', { ok:true, texte:'Read it.', sources:[], factureSwoge:'5', usage:{}, solde:'1' }]]));
+    const { page, ctx, envois } = await ouvre({ session:'j', cat: CATP, rep, largeur:360 });
+    ok(await page.isVisible('#joindre') && /photo or a PDF/.test(await page.getAttribute('#joindre', 'title')), '« + » est la en Chat : une photo ou un PDF');
+    const grande = Buffer.from((await page.evaluate(() => { const c = document.createElement('canvas'); c.width = 3000; c.height = 2000;
+      const g = c.getContext('2d'); g.fillStyle = '#1b5fe0'; g.fillRect(0, 0, 3000, 2000); g.fillStyle = '#fff'; g.fillRect(100, 100, 800, 600); return c.toDataURL('image/png'); })).split(',')[1], 'base64');
+    const PDF = Buffer.from('%PDF-1.4\n1 0 obj << /Type /Catalog >> endobj\ntrailer << /Root 1 0 R >>\n%%EOF', 'latin1');
+    await page.setInputFiles('#fichierChat', [{ name:'chart.png', mimeType:'image/png', buffer: grande }, { name:'whitepaper.pdf', mimeType:'application/pdf', buffer: PDF }]);
+    await page.waitForFunction(() => document.querySelectorAll('#pieces .piece').length === 2);
+    ok(!(await page.isDisabled('#envoyer')), 'avec une piece et sans texte, on peut envoyer');
+    await page.click('#envoyer');
+    await page.waitForSelector('.msg.ia .meta');
+    const c0 = envois[0].corps, der0 = c0.messages[c0.messages.length - 1];
+    eq(der0.content, 'What is in this file?', 'sans texte, une question par defaut');
+    const img = der0.pieces.find((x) => x.media === 'image/jpeg'), doc = der0.pieces.find((x) => x.media === 'application/pdf');
+    const dim = await page.evaluate((d) => new Promise((ok2) => { const i = new Image(); i.onload = () => ok2([i.naturalWidth, i.naturalHeight]); i.src = 'data:image/jpeg;base64,' + d; }), img.data);
+    ok(dim[0] === 1568 && dim[1] === 1045, 'la photo part REDUITE, en JPEG, 1 568 px au plus grand cote [' + dim.join('×') + ']');
+    eq(doc && doc.data, PDF.toString('base64'), 'le PDF part tel quel, en base64');
+    eq(doc.nom, 'whitepaper.pdf', 'avec son nom');
+    eq(await page.$$eval('.msg.moi .piece .nom', (l) => l.map((x) => x.textContent).join(',')), 'chart.png,whitepaper.pdf', 'la question montre ses pieces');
+    ok((await page.$$('#pieces .piece')).length === 0 && await page.isHidden('#pieces'), 'et le composeur est vide');
+    const garde = await page.evaluate(() => localStorage.getItem('swogeChats'));
+    /* La FIN du fichier : le debut d'un JPEG (en-tetes, tables) est le meme pour la vignette. */
+    ok(!garde.includes(img.data.slice(-200)) && !garde.includes(doc.data) && /data:image\/jpeg;base64,/.test(garde) && garde.length < 30000,
+       'le stockage local ne garde qu une vignette, jamais le fichier [' + garde.length + ' car]');
+
+    await pose(page, 'and page 2?');
+    await page.waitForFunction(() => document.querySelectorAll('.msg.ia .meta').length === 2);
+    const h1 = envois[1].corps.messages;
+    ok(h1.length === 3 && h1[0].pieces && h1[0].pieces.length === 2 && !h1[2].pieces, 'la question suivante renvoie les pieces du fil (gardees en memoire), pas en double');
+
+    await page.reload({ waitUntil:'domcontentloaded' });
+    await page.waitForSelector('.msg.ia .meta');
+    eq((await page.$$('.msg.moi .piece img')).length, 1, 'rechargee : la vignette est toujours la');
+    await pose(page, 'summarise again');
+    await page.waitForFunction(() => document.querySelectorAll('.msg.ia .meta').length === 3);
+    const h2 = envois[2].corps.messages;
+    ok(!h2[0].pieces && /attached chart\.png, whitepaper\.pdf earlier; it is no longer available/.test(h2[0].content), 'apres rechargement, le modele est PREVENU que les fichiers ne sont plus la');
+
+    /* Un PDF a Grok : arrete sur la page, rien ne part. */
+    await page.click('#modeleBtn'); await page.click('#modeles .modele[data-modele="grok-4-3"]'); await page.click('#fermerFeuille');
+    await page.setInputFiles('#fichierChat', [{ name:'w.pdf', mimeType:'application/pdf', buffer: PDF }]);
+    await page.waitForFunction(() => document.querySelectorAll('#pieces .piece').length === 1);
+    ok(/PDFs are read by Claude models/.test(await page.textContent('#etat')), 'un PDF avec Grok : la page le dit des l ajout');
+    await pose(page, 'read it');
+    await page.waitForTimeout(300);
+    ok(envois.length === 3 && (await page.$$('#pieces .piece')).length === 1, 'et rien ne part tant qu un modele Claude n est pas choisi');
+    await page.click('#pieces .piece button');
+    ok(await page.isHidden('#pieces'), '« ✕ » retire la piece');
+
+    /* Une question refusee : ses pieces reviennent dans le composeur. */
+    await page.click('#modeleBtn'); await page.click('#modeles .modele[data-modele="opus-5-5"]'); await page.click('#fermerFeuille');
+    panne = true;
+    await page.setInputFiles('#fichierChat', [{ name:'big.pdf', mimeType:'application/pdf', buffer: PDF }]);
+    await page.waitForFunction(() => document.querySelectorAll('#pieces .piece').length === 1);
+    await pose(page, 'read this long one');
+    await page.waitForSelector('.msg.ia.err');
+    ok(/too long/.test(await page.textContent('.msg.ia.err')) && (await page.$$('#pieces .piece')).length === 1, 'refusee : la raison est dite, et le PDF revient dans le composeur pour reessayer');
+    const larg = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    ok(larg <= 1, 'a 360 px, les pastilles ne debordent pas [' + larg + ']');
+    await ctx.close();
   }
 
   await nav.close(); srv.close();

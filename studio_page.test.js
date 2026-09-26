@@ -127,7 +127,8 @@ const CAT = { ouvert: true, note: null, monnaie: '$SWOGE', defaut: 'opus-5-5', e
     const p = await ouvre('swolemind.html', null, 'jeton-test');
     const vis = (sel) => p.isVisible(sel);
     ok(await vis('.mode[data-mode="chat"]') && await vis('.mode[data-mode="image"]') && await vis('.mode[data-mode="video"]'), 'les trois modes sont dans le composeur');
-    ok(await vis('#modeleBtn') && !(await vis('#reglages')) && !(await vis('#joindre')), 'en Chat : le choix du modele, pas de reglages d image');
+    /* Depuis le 26 septembre 2026, « + » sert aussi en Chat : il joint une photo ou un PDF a la question. */
+    ok(await vis('#modeleBtn') && !(await vis('#reglages')) && /photo or a PDF/.test(await p.getAttribute('#joindre', 'title')), 'en Chat : le choix du modele, pas de reglages d image, et « + » joint a la question');
     await p.click('.mode[data-mode="image"]');
     ok(!(await vis('#modeleBtn')) && !(await vis('#web')), 'en Image : le choix du modele de chat et « Search » disparaissent');
     ok(await vis('#vitesse') && await vis('#nombre') && await vis('#format') && await vis('#joindre'), 'et Speed | Quality, le nombre, le format et « + » apparaissent');

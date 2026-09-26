@@ -16,6 +16,8 @@
  *   6. Un refus (402, 429...) le dit, et la question non servie ne reste pas
  *      dans l'historique renvoye au tour suivant.
  *   7. Rien ne deborde sur un telephone de 360 px.
+ *   8. Comparer : une requete par modele (son rid, sa facture), une colonne
+ *      chacune, et chaque modele ne relit que SES reponses au tour suivant.
  * ==========================================================================*/
 const fs = require('fs'), path = require('path'), http = require('http');
 const SITE = __dirname;
@@ -296,6 +298,90 @@ const sse = (evs) => evs.map(([t, d]) => 'event: ' + t + '\ndata: ' + JSON.strin
     await page.click('.actions .copier');
     eq(await page.evaluate(() => navigator.clipboard.readText()), TEXTE, 'et « Copy » sous la reponse copie la reponse entiere');
     await ctx.close();
+  }
+
+  console.log('\n-- 11. comparer 2 ou 3 modeles cote a cote --');
+  {
+    /* Demande du proprietaire, le 26 septembre 2026 : la meme question a
+       plusieurs modeles. Chaque reponse part a part (son rid, sa facture), dans
+       sa colonne ; au tour suivant, chaque modele ne relit que SA reponse. */
+    const CATC = JSON.parse(JSON.stringify(CAT));
+    CATC.modeles.forEach((m) => { m.nomFournisseur = 'Claude'; m.actif = true; m.fournisseur = 'anthropic'; });
+    CATC.modeles.push(
+      { id:'gpt-6-sol', nom:'GPT-6 Sol', note:'Strong all-rounder', fournisseur:'openai', nomFournisseur:'ChatGPT', actif:true, effort:true, recherche:true, typiqueSwoge:590, maxSwoge:9361 },
+      { id:'grok-4-3', nom:'Grok 4.3', note:'Fast and cheap from xAI', fournisseur:'xai', nomFournisseur:'Grok', actif:true, effort:false, recherche:true, typiqueSwoge:208, maxSwoge:4579 });
+    const FACT = { 'opus-5-5': '111', 'gpt-6-sol': '222', 'grok-4-3': '33' };
+    const rep = (c) => sse([['texte', { t: 'Answer from ' + c.modele }],
+      ['fin', { ok:true, texte:'Answer from ' + c.modele, sources:[], factureSwoge: FACT[c.modele], usage:{}, solde:'1' }]]);
+    const { page, ctx, envois } = await ouvre({ session:'j', cat: CATC, rep, largeur: 360 });
+    await page.click('#comparer');
+    eq(await page.getAttribute('#comparer', 'aria-pressed'), 'true', '« Compare » s allume');
+    eq(await page.textContent('#modeleNom'), 'Opus 5.5 · GPT-6 Sol', 'il part du modele courant, plus un d un AUTRE fournisseur');
+    await page.click('#modeleBtn');
+    eq(await page.textContent('#feuille .haut b'), 'Pick 2 or 3 models to compare', 'la feuille devient un choix multiple');
+    await page.click('#modeles .modele[data-modele="grok-4-3"]');
+    eq((await page.$$eval('#modeles .modele', (l) => l.filter((b) => b.querySelector('.coche').textContent).map((b) => b.getAttribute('data-modele')))).join(','),
+       'opus-5-5,gpt-6-sol,grok-4-3', 'trois modeles coches');
+    await page.click('#modeles .modele[data-modele="sonnet-5"]');
+    eq(await page.evaluate(() => JSON.parse(localStorage.getItem('swogeCompareChoix')).join(',')), 'gpt-6-sol,grok-4-3,sonnet-5', 'un quatrieme remplace le plus ancien : jamais plus de trois');
+    await page.click('#modeles .modele[data-modele="sonnet-5"]');
+    await page.click('#modeles .modele[data-modele="opus-5-5"]');
+    await page.click('#fermerFeuille');
+    eq(await page.textContent('#prixq'), 'Compare 3 models · ~1,977 $SWOGE per question · each answer billed on its own',
+       'le prix dit la somme des trois (590 + 208 + 1 179), et que chaque reponse se facture a part');
+    await pose(page, 'which chain is fastest?');
+    await page.waitForFunction(() => document.querySelectorAll('.cmp > .msg.ia .meta').length === 3);
+    eq(envois.map((e) => e.corps.modele).sort().join(','), 'gpt-6-sol,grok-4-3,opus-5-5', 'trois requetes, une par modele');
+    eq(new Set(envois.map((e) => e.corps.rid)).size, 3, 'chacune sous son propre rid : chaque reponse se reprend et se facture a part');
+    ok(envois.every((e) => e.auth === 'Bearer j' && !('adresse' in e.corps) && e.corps.messages.length === 1), 'le jeton, jamais une adresse ; la question seule au premier tour');
+    ok(envois.find((e) => e.corps.modele === 'grok-4-3').corps.effort === undefined && envois.find((e) => e.corps.modele === 'gpt-6-sol').corps.effort === 'medium', 'l effort ne part qu aux modeles qui le prennent');
+    const cols = await page.$$eval('.cmp > .msg.ia', (l) => l.map((d) => d.querySelector('.cmp-nom').textContent + '|' + d.querySelector('.corps').textContent + '|' + d.querySelector('.meta').textContent));
+    eq(cols.length, 3, 'une colonne par modele');
+    ok(cols.every((c) => { const [nom, corps, meta] = c.split('|'); const id = { 'Opus 5.5':'opus-5-5', 'GPT-6 Sol':'gpt-6-sol', 'Grok 4.3':'grok-4-3' }[nom];
+      return id && corps === 'Answer from ' + id && meta.startsWith(nom + ' · ' + FACT[id] + ' $SWOGE'); }), 'chaque colonne porte SA reponse et SON cout ' + JSON.stringify(cols));
+    const larg = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    ok(larg <= 1, 'a 360 px les colonnes s empilent : rien ne deborde [' + larg + ']');
+    ok(!(await page.isDisabled('#question')), 'les trois finies : le chat est de nouveau libre');
+
+    await pose(page, 'and the cheapest?');
+    await page.waitForFunction(() => document.querySelectorAll('.cmp').length === 2 && document.querySelectorAll('.cmp .meta').length === 6);
+    const t2 = envois.slice(3);
+    ok(t2.length === 3 && t2.every((e) => { const m = e.corps.messages;
+      return m.length === 3 && m[0].content === 'which chain is fastest?' && m[1].content === 'Answer from ' + e.corps.modele && m[2].content === 'and the cheapest?'; }),
+       'au tour suivant, chaque modele relit la question et SA propre reponse, pas celles des autres');
+
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('.cmp .meta');
+    eq(await page.$$eval('.cmp', (l) => l.map((g) => g.querySelectorAll(':scope > .msg.ia').length).join(',')), '3,3', 'rechargee : les deux comparaisons se repeignent groupees, 3 colonnes chacune');
+    eq(await page.textContent('#modeleNom'), 'GPT-6 Sol · Grok 4.3 · Opus 5.5', 'et le choix des modeles est garde, dans l ordre ou ils ont ete coches');
+    await page.click('#comparer');
+    eq(await page.textContent('#modeleNom'), 'Opus 5.5', 'eteint : on revient au modele seul');
+    await pose(page, 'solo now');
+    await page.waitForFunction(() => document.querySelectorAll('.msg.ia .meta').length === 7);
+    const solo = envois[envois.length - 1].corps;
+    ok(envois.length === 7 && solo.modele === 'opus-5-5' && solo.messages.map((x) => x.content).join('/') === 'which chain is fastest?/Answer from opus-5-5/and the cheapest?/Answer from opus-5-5/solo now',
+       'hors comparaison, le modele seul relit ses propres reponses de la comparaison [' + solo.messages.map((x) => x.content).join('/') + ']');
+    await ctx.close();
+
+    /* Un rechargement pendant une comparaison : les colonnes non servies sont
+       redemandees au serveur, chacune sous SON rid. */
+    const vus = [];
+    const reprise = (rid) => { vus.push(rid); return { ok:true, status:'done', texte:'Recovered ' + rid.slice(0, 4), sources:[], factureSwoge:'7', usage:{}, solde:'1' }; };
+    const b = await ouvre({ session:'j', cat: CATC, reprise, rep: (c) => (c.modele === 'grok-4-3' ? rep(c) : null) });
+    await b.page.click('#comparer');
+    await b.page.click('#modeleBtn'); await b.page.click('#modeles .modele[data-modele="grok-4-3"]'); await b.page.click('#fermerFeuille');
+    await pose(b.page, 'interrupted comparison');
+    await b.page.waitForSelector('.cmp .meta');
+    await b.page.reload({ waitUntil: 'domcontentloaded' });
+    await b.page.waitForFunction(() => document.querySelectorAll('.cmp .meta').length === 3);
+    const attendus = b.envois.filter((e) => e.corps.modele !== 'grok-4-3').map((e) => e.corps.rid).sort();
+    eq(vus.slice().sort().join(','), attendus.join(','), 'les deux reponses coupees sont redemandees sous leur rid, celle deja servie ne l est pas');
+    eq(await b.page.$$eval('.cmp', (l) => l.length), 1, 'dans la MEME grille que la reponse deja la');
+    await b.page.reload({ waitUntil: 'domcontentloaded' });
+    await b.page.waitForSelector('.cmp .meta');
+    await b.page.waitForTimeout(400);
+    ok(vus.length === 2 && (await b.page.$$('.cmp > .msg.ia')).length === 3, 'rechargee encore : rien de redemande, rien en double');
+    await b.ctx.close();
   }
 
   await nav.close(); srv.close();

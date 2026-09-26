@@ -848,6 +848,11 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 .modele .nom{font-size:16px;font-weight:700}
 .modele .desc{font-size:12.5px;color:var(--dim);margin-top:2px}
 /* Claude, ChatGPT, Grok : un titre par fournisseur ; un modele sans cle est grise. */
+/* ---- COMPARER : une question, deux ou trois modeles cote a cote ---- */
+.cmp{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:12px;align-self:stretch}
+.cmp>.msg.ia{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 14px;min-width:0}
+.cmp-nom{font:700 11px/1 'Space Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--pool);margin-bottom:8px}
+#comparer[aria-pressed="true"]{background:var(--goldlite);border-color:var(--pool);color:var(--pool)}
 .groupe{font:700 10.5px/1 'Space Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);padding:14px 6px 4px}
 .groupe:first-child{padding-top:4px}
 .modele:disabled{opacity:.45;cursor:not-allowed}
@@ -925,6 +930,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
           <button class="mode" type="button" data-mode="video" aria-pressed="false">&#127916; Video</button>
         </div>
         <button class="outil" id="modeleBtn" type="button" aria-haspopup="dialog">&#10024; <span id="modeleNom">Opus 5.5</span> &#9662;</button>
+        <button class="outil" id="comparer" type="button" aria-pressed="false" title="Ask 2 or 3 models the same question, side by side">&#9878;&#65039; Compare</button>
         <button class="outil" id="web" type="button" aria-pressed="false" title="Search the web and cite sources">&#127760; Search</button>
         <button class="envoi" id="envoyer" type="button" disabled aria-label="Send">&#8593;</button>
       </div>
@@ -1003,6 +1009,8 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     web: false, occupe: false, conv: null, convs: lisLocal("swogeChats", []),
     /* Studio facon Grok : le mode du composeur et ses reglages, retenus. */
     media: null, mode: lisLocal("swogeStudioMode", "chat"), jointe: null,
+    /* Comparer : 2 ou 3 modeles choisis dans la feuille, retenus. */
+    compare: lisLocal("swogeCompare", false) === true, choix: lisLocal("swogeCompareChoix", []),
     reg: Object.assign({ fournisseur: "grok", vitesse: "qualite", nombre: 1, formatI: "auto", formatV: "auto", duree: 6, resolution: "480p" },
                        lisLocal("swogeStudioReglages", {}))
   };
@@ -1094,6 +1102,14 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       return;
     }
     var m = modeleCourant();
+    if (etat.compare) {
+      var mcs = modelesCompares();
+      $("modeleNom").textContent = mcs.length ? mcs.map(function(x){ return x.nom; }).join(" \u00b7 ") : "Pick models";
+      $("web").hidden = !mcs.some(function(x){ return x.recherche; });
+      $("prixq").textContent = mcs.length < 2 ? "Compare: pick 2 or 3 models"
+        : "Compare " + mcs.length + " models \u00b7 ~" + nombre(mcs.reduce(function(t, x){ return t + (x.typiqueSwoge || 0); }, 0)) + " $SWOGE per question \u00b7 each answer billed on its own";
+      return;
+    }
     $("modeleNom").textContent = m ? m.nom : "Model";
     $("web").hidden = !(m && m.recherche);
     if (!m) return;
@@ -1106,9 +1122,15 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   /* ---- le mode et ses reglages ---- */
   function peintMode(){
     var m = etat.mode;
+    $("comparer").hidden = m !== "chat";
+    $("comparer").setAttribute("aria-pressed", String(!!etat.compare));
+    if (m === "chat" && etat.compare) {
+      var mcs = modelesCompares();
+      $("modeleNom").textContent = mcs.length ? mcs.map(function(x){ return x.nom; }).join(" \u00b7 ") : "Pick models";
+    }
     Array.prototype.forEach.call(document.querySelectorAll(".mode"), function(b){ b.setAttribute("aria-pressed", String(b.getAttribute("data-mode") === m)); });
     $("modeleBtn").hidden = m !== "chat";
-    $("web").hidden = m !== "chat" || !((modeleCourant() || {}).recherche);
+    $("web").hidden = m !== "chat" || !(etat.compare ? modelesCompares().some(function(x){ return x.recherche; }) : (modeleCourant() || {}).recherche);
     $("joindre").hidden = m === "chat";
     $("reglages").hidden = m === "chat";
     $("fournisseur").hidden = m !== "image";
@@ -1147,14 +1169,26 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       var b = document.createElement("button");
       b.type = "button"; b.className = "modele"; b.setAttribute("data-modele", m.id);
       b.disabled = m.actif === false;
-      b.innerHTML = '<span class="coche">' + (m.id === (modeleCourant() || {}).id ? "&#10003;" : "") + '</span>'
+      var coche = etat.compare ? etat.choix.indexOf(m.id) >= 0 : m.id === (modeleCourant() || {}).id;
+      b.innerHTML = '<span class="coche">' + (coche ? "&#10003;" : "") + '</span>'
         + '<span><div class="nom">' + echappe(m.nom) + '</div><div class="desc">' + echappe(m.actif === false ? "Not switched on yet" : m.note) + '</div></span>'
         + '<span class="prix">~' + nombre(m.typiqueSwoge) + ' $SWOGE<br>per question</span>';
-      b.addEventListener("click", function(){ if (m.actif === false) return; etat.modele = m.id; ecrisLocal("swogeChatModele", m.id); peintFeuille(); peintPrix(); peintMode(); });
+      b.addEventListener("click", function(){
+        if (m.actif === false) return;
+        if (etat.compare) {
+          /* Comparer : on coche 2 ou 3 modeles ; un quatrieme remplace le plus ancien. */
+          var i = etat.choix.indexOf(m.id);
+          if (i >= 0) etat.choix.splice(i, 1); else { etat.choix.push(m.id); if (etat.choix.length > 3) etat.choix.shift(); }
+          ecrisLocal("swogeCompareChoix", etat.choix);
+        } else { etat.modele = m.id; ecrisLocal("swogeChatModele", m.id); }
+        peintFeuille(); peintPrix(); peintMode();
+      });
       box.appendChild(b);
     });
     var mc = modeleCourant();
-    $("efforts").hidden = !(mc && mc.effort);
+    var titre = document.querySelector("#feuille .haut b");
+    if (titre) titre.textContent = etat.compare ? "Pick 2 or 3 models to compare" : "Select a model";
+    $("efforts").hidden = etat.compare ? !modelesCompares().some(function(x){ return x.effort; }) : !(mc && mc.effort);
     Array.prototype.forEach.call(document.querySelectorAll(".effort"), function(b){
       b.setAttribute("aria-pressed", String(b.getAttribute("data-effort") === (etat.effort || "medium")));
     });
@@ -1177,9 +1211,20 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     $("fil").innerHTML = "";
     var c = etat.conv;
     if (!c || !c.messages.length) { $("fil").hidden = true; $("accueil").hidden = false; return; }
-    c.messages.forEach(function(m){
-      if (m.genre && m.role === "assistant") { peintMedia(ajouteMsg("assistant", ""), m); return; }
-      var d = ajouteMsg(m.role, m.content);
+    var groupe = null, idGroupe = null;
+    c.messages.forEach(function(m, i){
+      if (m.genre && m.role === "assistant") { var dm = ajouteMsg("assistant", ""); dm.setAttribute("data-i", i); peintMedia(dm, m); return; }
+      if (m.role === "assistant" && m.comparaison) {
+        if (idGroupe !== m.comparaison) { groupe = grilleCmp(m.comparaison); idGroupe = m.comparaison; }
+        var dc = colonneCmp(groupe, m.nomModele || "AI"); dc.setAttribute("data-i", i);
+        dc.querySelector(".corps").innerHTML = markdown(m.content);
+        if (m.sources && m.sources.length) dc.appendChild(sourcesEl(m.sources));
+        if (m.meta) { var mc = document.createElement("div"); mc.className = "meta"; mc.textContent = m.meta; dc.appendChild(mc); }
+        dc.appendChild(actionsEl(m.content));
+        return;
+      }
+      idGroupe = null;
+      var d = ajouteMsg(m.role, m.content); d.setAttribute("data-i", i);
       if (m.role === "assistant") {
         d.querySelector(".corps").innerHTML = markdown(m.content);
         if (m.sources && m.sources.length) d.appendChild(sourcesEl(m.sources));
@@ -1213,7 +1258,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   }
   /* La fin d'une reponse de chat : texte, sources, cout, « Copy », fil ecrit.
      Partagee par le flux et par la reprise apres rechargement. */
-  function finChat(d, data, nomModele, recu){
+  function finChat(d, data, nomModele, recu, extra){
     var corps = d.querySelector(".corps");
     var texte = data.texte || recu || "";
     if (!texte && data.stop === "refusal") texte = TXT.refus;
@@ -1223,7 +1268,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     var meta = nom + " \u00b7 " + nombre(data.factureSwoge) + " $SWOGE" + (data.usage && data.usage.recherches ? " \u00b7 " + data.usage.recherches + " web search" + (data.usage.recherches > 1 ? "es" : "") : "");
     var mt = document.createElement("div"); mt.className = "meta"; mt.textContent = meta; d.appendChild(mt);
     d.appendChild(actionsEl(texte));
-    etat.conv.messages.push({ role: "assistant", content: texte, sources: data.sources || [], meta: meta });
+    etat.conv.messages.push(Object.assign({ role: "assistant", content: texte, sources: data.sources || [], meta: meta }, extra || {}));
     sauveConv();
     if (data.solde) $("solde").innerHTML = "Balance <b>" + nombre(data.solde) + " $SWOGE</b>";
   }
@@ -1303,8 +1348,109 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   }
 
   /* ---- envoyer : un flux SSE lu a la main (EventSource ne sait pas POSTer) ---- */
+  /* L'historique envoye a UN modele : le texte seulement ; dans une
+     comparaison, il ne relit que SES propres reponses, pas celles des autres. */
+  function historiquePour(id){
+    var ms = etat.conv.messages;
+    return ms.filter(function(x){
+      if (x.genre || x.interrompu) return false;
+      if (!x.comparaison) return true;
+      /* La question d'une comparaison : seulement si CE modele y a repondu. */
+      if (x.role === "user") return ms.some(function(y){ return y.role === "assistant" && y.comparaison === x.comparaison && y.modele === id; });
+      return x.modele === id;
+    }).map(function(x){ return { role: x.role, content: x.content }; });
+  }
+  function modelesCompares(){
+    var c = etat.cat; if (!c) return [];
+    return etat.choix.map(function(id){ return c.modeles.filter(function(m){ return m.id === id && m.actif !== false; })[0]; })
+      .filter(Boolean).slice(0, 3);
+  }
+  function grilleCmp(idc){
+    $("accueil").hidden = true; $("fil").hidden = false;
+    var g = document.createElement("div"); g.className = "msg cmp"; if (idc) g.setAttribute("data-cmp", idc); $("fil").appendChild(g); return g;
+  }
+  function colonneCmp(g, nom){
+    var d = document.createElement("div"); d.className = "msg ia";
+    var t = document.createElement("div"); t.className = "cmp-nom"; t.textContent = nom;
+    var c = document.createElement("div"); c.className = "corps";
+    d.appendChild(t); d.appendChild(c); g.appendChild(d); return d;
+  }
+  /* Une reponse en flux vers UNE colonne : le meme protocole que le chat. */
+  function flux(j, corpsReq, d, m, extra, fin){
+    var corps = d.querySelector(".corps"), texte = "", fini = false;
+    var etape = document.createElement("div"); etape.className = "etape"; etape.textContent = TXT.reflexion; d.insertBefore(etape, corps);
+    fetch(serveur() + "/studio/chat", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + j }, body: JSON.stringify(corpsReq) })
+      .then(function(rep){
+        if (!rep.ok || !rep.body) return rep.json().then(function(e){ throw { code: rep.status, raison: e && e.raison }; }, function(){ throw { code: rep.status }; });
+        var lecteur = rep.body.getReader(), dec = new TextDecoder(), tampon = "";
+        function evenement(type, data){
+          if (type === "texte") { if (etape.parentNode) etape.remove(); texte += data.t; corps.innerHTML = markdown(texte); }
+          else if (type === "etape") { etape.textContent = data.quoi === "recherche" ? TXT.recherche : TXT.reflexion; }
+          else if (type === "fin") { fini = true; if (etape.parentNode) etape.remove(); finChat(d, data, m.nom, texte, extra); }
+          else if (type === "erreur") { fini = true; throw data; }
+        }
+        function lit(){
+          return lecteur.read().then(function(r){
+            if (r.done) return;
+            tampon += dec.decode(r.value, { stream: true });
+            var blocs = tampon.split("\n\n"); tampon = blocs.pop();
+            blocs.forEach(function(b){
+              var t = (b.match(/^event: (.+)$/m) || [])[1], x = (b.match(/^data: (.+)$/m) || [])[1];
+              if (t && x) { try { evenement(t, JSON.parse(x)); } catch (e) { if (e && (e.code || e.raison)) throw e; } }
+            });
+            return lit();
+          });
+        }
+        return lit();
+      })
+      .then(function(){ if (!fini) throw { raison: TXT.erreurReseau }; fin(true); })
+      ["catch"](function(e){
+        if (etat.quitte) return;
+        if (etape.parentNode) etape.remove();
+        d.classList.add("err");
+        var raison = (e && e.raison) || TXT.erreurReseau;
+        if (e && e.code === 402) raison += " \u2014 top up your balance in the Wallet (needs ~" + nombre(e.requisSwoge) + " $SWOGE for this model).";
+        if (e && e.code === 401) raison = TXT.signin;
+        corps.textContent = raison;
+        fin(false);
+      });
+  }
+  /* ---- COMPARER : la meme question a 2 ou 3 modeles, cote a cote ----
+   * Demande du proprietaire, le 26 septembre 2026. Aucune des applis officielles
+   * ne le fait : chacune ne vend que ses modeles. Chaque reponse part a part —
+   * son rid, sa reserve, sa facture — et s'ecrit dans sa colonne. */
+  function envoyerComparaison(){
+    var q = $("question").value.trim();
+    if (!q || etat.occupe) return;
+    var j = jeton();
+    if (!j) { dit(TXT.signin); return; }
+    if (!etat.cat || !etat.cat.ouvert) { dit((etat.cat && etat.cat.note) || TXT.ferme); return; }
+    var ms = modelesCompares();
+    if (ms.length < 2) { dit("Pick 2 or 3 models to compare (tap the model button)."); ouvreFeuille(); return; }
+    if (!etat.conv) nouvelleConv();
+    var idc = nouveauRid(), rids = ms.map(function(m){ return { modele: m.id, rid: nouveauRid(), nom: m.nom }; });
+    var historiques = ms.map(function(m){ return historiquePour(m.id).concat([{ role: "user", content: q }]); });
+    etat.conv.messages.push({ role: "user", content: q, comparaison: idc, rids: rids });
+    sauveConv();
+    var du = ajouteMsg("user", q); du.setAttribute("data-i", etat.conv.messages.length - 1);
+    $("question").value = ""; dimensionne();
+    etat.occupe = true; peintBoutons(); dit("");
+    var g = grilleCmp(idc), restant = ms.length, servies = 0;
+    ms.forEach(function(m, k){
+      var d = colonneCmp(g, m.nom);
+      flux(j, { rid: rids[k].rid, modele: m.id, messages: historiques[k], recherche: etat.web && m.recherche,
+                effort: m.effort ? (etat.effort || "medium") : undefined },
+           d, m, { modele: m.id, nomModele: m.nom, comparaison: idc },
+           function(ok){ if (ok) servies++; else { rids[k].interrompu = true; sauveConv(); } if (--restant === 0) {
+             etat.occupe = false; peintBoutons();
+             /* Aucune colonne servie : la question ne reste pas dans le fil. */
+             if (!servies) { var i = etat.conv.messages.findIndex(function(x){ return x.comparaison === idc && x.role === "user"; }); if (i >= 0) etat.conv.messages.splice(i, 1); sauveConv(); }
+           } });
+    });
+  }
   function envoyer(){
     if (etat.mode !== "chat") return envoyerMedia();
+    if (etat.compare) return envoyerComparaison();
     var q = $("question").value.trim();
     if (!q || etat.occupe) return;
     var j = jeton();
@@ -1322,7 +1468,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     var etape = document.createElement("div"); etape.className = "etape"; etape.textContent = TXT.reflexion; d.insertBefore(etape, corps);
     /* Seuls les echanges de TEXTE partent au modele : une image ou une video
        du fil n'est pas une phrase qu'il pourrait lire. */
-    var historique = etat.conv.messages.filter(function(x){ return !x.genre && !x.interrompu; }).map(function(x){ return { role: x.role, content: x.content }; });
+    var historique = historiquePour(m.id);
     var fini = false;
     function termine(){ etat.occupe = false; peintBoutons(); if (etape.parentNode) etape.remove(); }
     fetch(serveur() + "/studio/chat", {
@@ -1477,9 +1623,10 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   function reprend(){
     var c = etat.conv; if (!c || !c.messages.length || !jeton()) return;
     c.messages.forEach(function(m, i){
-      if (m.enCours) { var dv = $("fil").children[i]; if (dv) suisVideo(dv, m); }
+      if (m.enCours) { var dv = $("fil").querySelector('[data-i="' + i + '"]'); if (dv) suisVideo(dv, m); }
     });
     var der = c.messages[c.messages.length - 1];
+    if (der && (der.comparaison || der.rids)) return reprendComparaison();
     if (!der || der.role !== "user" || !der.rid || der.interrompu) return;
     var j = jeton(), mode = der.genre || "chat";
     etat.occupe = true; peintBoutons();
@@ -1510,6 +1657,44 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     })();
   }
 
+  /* Une comparaison coupee par un rechargement : la question porte un rid par
+     modele ; chaque colonne sans reponse est redemandee au serveur, les autres
+     restent telles quelles. Une colonne perdue le dit, sans boucler. */
+  function reprendComparaison(){
+    var c = etat.conv, u = -1;
+    for (var k = c.messages.length - 1; k >= 0; k--) if (c.messages[k].role === "user") { u = k; break; }
+    var q = c.messages[u];
+    if (!q || !q.rids || !q.comparaison) return;
+    var manquent = q.rids.filter(function(r){
+      return !r.interrompu && !c.messages.some(function(x, i){ return i > u && x.comparaison === q.comparaison && x.modele === r.modele; });
+    });
+    if (!manquent.length) return;
+    var j = jeton(), restant = manquent.length;
+    var g = $("fil").querySelector('[data-cmp="' + q.comparaison + '"]') || grilleCmp(q.comparaison);
+    etat.occupe = true; peintBoutons();
+    manquent.forEach(function(r){
+      var d = colonneCmp(g, r.nom || r.modele), corps = d.querySelector(".corps");
+      var etape = document.createElement("div"); etape.className = "etape"; etape.textContent = "Recovering the answer\u2026";
+      d.insertBefore(etape, corps);
+      function fin(){ if (etape.parentNode) etape.remove(); if (--restant === 0) { etat.occupe = false; peintBoutons(); } }
+      (function tour(){
+        fetch(serveur() + "/studio/reprise/" + encodeURIComponent(r.rid), { headers: { authorization: "Bearer " + j }, cache: "no-store" })
+          .then(function(x){ return x.json().then(function(v){ v.http = x.status; return v; }); })
+          .then(function(v){
+            if (v.status === "pending") {
+              if (v.texte) { etape.textContent = "Still writing\u2026"; corps.innerHTML = markdown(v.texte); }
+              return setTimeout(tour, 1500);
+            }
+            fin();
+            if (v.status === "done") return finChat(d, v, r.nom, v.texte, { modele: r.modele, nomModele: r.nom, comparaison: q.comparaison });
+            r.interrompu = true; sauveConv();
+            d.classList.add("err");
+            corps.textContent = v.status === "failed" ? (v.raison || TXT.erreurReseau) : "This answer could not be recovered (the page was reloaded and the server no longer has it).";
+          })["catch"](function(){ setTimeout(tour, 4000); });
+      })();
+    });
+  }
+
   function dimensionne(){ var t = $("question"); t.style.height = "auto"; t.style.height = Math.min(200, t.scrollHeight) + "px"; peintBoutons(); }
 
   /* ---- les gestes ---- */
@@ -1529,6 +1714,16 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     if (code) copie(code.textContent, b);
   });
   $("modeleBtn").addEventListener("click", ouvreFeuille);
+  $("comparer").addEventListener("click", function(){
+    etat.compare = !etat.compare; ecrisLocal("swogeCompare", etat.compare);
+    /* Premiere fois : le modele courant, plus un d'un autre fournisseur. */
+    if (etat.compare && etat.choix.length < 2 && etat.cat) {
+      var mc = modeleCourant(), autres = etat.cat.modeles.filter(function(x){ return x.actif !== false && x.fournisseur !== (mc || {}).fournisseur; });
+      etat.choix = [mc && mc.id].concat(autres.length ? [autres[0].id] : []).filter(Boolean);
+      ecrisLocal("swogeCompareChoix", etat.choix);
+    }
+    peintPrix(); peintMode(); if (etat.compare && modelesCompares().length < 2) ouvreFeuille();
+  });
   $("fermerFeuille").addEventListener("click", fermeFeuille);
   $("feuille").addEventListener("click", function(e){ if (e.target === $("feuille")) fermeFeuille(); });
   $("web").addEventListener("click", function(){ etat.web = !etat.web; $("web").setAttribute("aria-pressed", String(etat.web)); });

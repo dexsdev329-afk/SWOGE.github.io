@@ -802,6 +802,9 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 .outils .envoi{margin-left:auto;width:38px;height:38px;border-radius:50%;border:0;background:var(--pool);color:#fff;
   font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex:0 0 38px}
 .outils .envoi:disabled{opacity:.35;cursor:not-allowed}
+/* Pendant une reponse, le bouton d envoi devient STOP (carre) : on arrete pour reformuler. */
+.outils .envoi.stop{background:#1F2A44;font-size:13px}
+.msg.arrete .arret{font-family:'Space Mono',monospace;font-size:11px;color:var(--dim);margin-top:6px}
 .prixq{font-family:'Space Mono',monospace;font-size:10.5px;color:var(--dim);text-align:center;margin-top:6px}
 /* ---- FACON GROK : un seul composeur, trois modes ----
  * Chat, Image, Video dans la boite ; les reglages du mode (vitesse/qualite,
@@ -1019,6 +1022,8 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     jeton: "Reading the token: DexScreener, GoPlus, SWOGE AI…",
     pdfClaude: "PDFs are read by Claude models \u2014 pick Opus, Fable, Sonnet or Haiku (photos work with every model).",
     erreurReseau: "Connection lost — you were not charged for an unfinished answer.",
+    arrete: "Stopped. The amount reserved for this answer is kept — ask again whenever you like.",
+    arreteAvant: "Stopped before the model started — nothing was charged.",
     vide: "No saved chats yet.",
     refus: "The model declined to answer this request."
   };
@@ -1040,7 +1045,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 
   var etat = {
     cat: null, modele: lisLocal("swogeChatModele", null), effort: lisLocal("swogeChatEffort", null),
-    web: false, occupe: false, conv: null, convs: lisLocal("swogeChats", []),
+    web: false, occupe: false, enVol: {}, conv: null, convs: lisLocal("swogeChats", []),
     /* Studio facon Grok : le mode du composeur et ses reglages, retenus. */
     media: null, mode: lisLocal("swogeStudioMode", "chat"), jointe: null, pieces: [],
     /* Comparer : 2 ou 3 modeles choisis dans la feuille, retenus. */
@@ -1151,7 +1156,33 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   }
   function peintBoutons(){
     var vide = !$("question").value.trim() && !(etat.mode === "video" && etat.jointe) && !(etat.mode === "chat" && etat.pieces.length);
-    $("envoyer").disabled = etat.occupe || vide;
+    /* Une reponse en vol : le bouton devient STOP (demande du proprietaire, 26 septembre 2026). */
+    var stop = etat.occupe && Object.keys(etat.enVol).length > 0;
+    var b = $("envoyer");
+    b.classList.toggle("stop", stop);
+    b.innerHTML = stop ? "&#9632;" : "&#8593;";
+    b.setAttribute("aria-label", stop ? "Stop" : "Send");
+    b.title = stop ? "Stop this answer (the amount reserved for it is kept)" : "";
+    b.disabled = stop ? false : (etat.occupe || vide);
+  }
+  /* ---- ARRETER : le serveur d'abord (lui seul libere la place et coupe le
+     modele), puis le flux de la page. Par la session : on n'arrete que les siennes. ---- */
+  function arreter(){
+    var rids = Object.keys(etat.enVol);
+    if (!rids.length) return;
+    var j = jeton();
+    var coupe = function(){ rids.forEach(function(r){ var c = etat.enVol[r]; if (c) { c.arretDemande = true; try { c.abort(); } catch (e) {} } }); };
+    if (!j) return coupe();
+    fetch(serveur() + "/studio/chat/stop", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + j }, body: JSON.stringify({ rids: rids }) })
+      .then(coupe, coupe);
+  }
+  /* Une reponse arretee : ce qui etait deja ecrit reste lisible, avec la phrase de l'arret. */
+  function montreArret(d, texte){
+    var corps = d.querySelector(".corps");
+    d.classList.add("arrete");
+    if (texte) corps.innerHTML = markdown(texte); else corps.textContent = "";
+    var n = document.createElement("div"); n.className = "arret"; n.textContent = texte ? TXT.arrete : TXT.arreteAvant;
+    d.appendChild(n);
   }
   /* ---- le mode et ses reglages ---- */
   function peintMode(){
@@ -1661,7 +1692,8 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   function flux(j, corpsReq, d, m, extra, fin){
     var corps = d.querySelector(".corps"), texte = "", fini = false;
     var etape = document.createElement("div"); etape.className = "etape"; etape.textContent = TXT.reflexion; d.insertBefore(etape, corps);
-    fetch(serveur() + "/studio/chat", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + j }, body: JSON.stringify(corpsReq) })
+    var ctl = new AbortController(); etat.enVol[corpsReq.rid] = ctl; peintBoutons();
+    fetch(serveur() + "/studio/chat", { method: "POST", signal: ctl.signal, headers: { "content-type": "application/json", authorization: "Bearer " + j }, body: JSON.stringify(corpsReq) })
       .then(function(rep){
         if (!rep.ok || !rep.body) return rep.json().then(function(e){ throw { code: rep.status, raison: e && e.raison }; }, function(){ throw { code: rep.status }; });
         var lecteur = rep.body.getReader(), dec = new TextDecoder(), tampon = "";
@@ -1685,10 +1717,12 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
         }
         return lit();
       })
-      .then(function(){ if (!fini) throw { raison: TXT.erreurReseau }; fin(true); })
+      .then(function(){ delete etat.enVol[corpsReq.rid]; if (!fini) throw { raison: TXT.erreurReseau }; fin(true); })
       ["catch"](function(e){
+        delete etat.enVol[corpsReq.rid];
         if (etat.quitte) return;
         if (etape.parentNode) etape.remove();
+        if (ctl.arretDemande || (e && e.arrete)) { montreArret(d, texte); return fin(false); }
         d.classList.add("err");
         var raison = (e && e.raison) || TXT.erreurReseau;
         if (e && e.code === 402) raison += " \u2014 top up your balance in the Wallet (needs ~" + nombre(e.requisSwoge) + " $SWOGE for this model).";
@@ -1759,9 +1793,10 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
        du fil n'est pas une phrase qu'il pourrait lire. */
     var historique = historiquePour(m.id);
     var fini = false;
-    function termine(){ etat.occupe = false; peintBoutons(); if (etape.parentNode) etape.remove(); }
+    var ctl = new AbortController(); etat.enVol[rid] = ctl; peintBoutons();
+    function termine(){ delete etat.enVol[rid]; etat.occupe = false; peintBoutons(); if (etape.parentNode) etape.remove(); }
     fetch(serveur() + "/studio/chat", {
-      method: "POST",
+      method: "POST", signal: ctl.signal,
       headers: { "content-type": "application/json", authorization: "Bearer " + j },
       body: JSON.stringify({ rid: rid, modele: m.id, messages: historique, recherche: etat.web && m.recherche, effort: m.effort ? (etat.effort || "medium") : undefined })
     }).then(function(rep){
@@ -1801,6 +1836,16 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
          rechargement — la reponse se retrouve au retour, par son rid. */
       if (etat.quitte) return;
       termine();
+      if (ctl.arretDemande || (e && e.arrete)) {
+        /* Arretee par le joueur : la question reste dans le fil, marquee
+           interrompue (pas de reprise fantome au rechargement), la reponse
+           partielle reste lisible. Il peut en poser une autre tout de suite. */
+        var dq = etat.conv.messages[etat.conv.messages.length - 1];
+        if (dq && dq.rid === rid) { dq.interrompu = true; sauveConv(); }
+        if (pj.length) delete MEM_PIECES[rid];
+        montreArret(d, texte);
+        return;
+      }
       /* La question n'a pas ete servie : elle ne reste pas dans l'historique
          envoye ; ses pieces reviennent dans le composeur, pour reessayer. */
       etat.conv.messages.pop(); sauveConv();
@@ -1998,7 +2043,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   /* ---- les gestes ---- */
   $("question").addEventListener("input", dimensionne);
   $("question").addEventListener("keydown", function(e){ if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); envoyer(); } });
-  $("envoyer").addEventListener("click", envoyer);
+  $("envoyer").addEventListener("click", function(){ if (etat.occupe && Object.keys(etat.enVol).length) arreter(); else envoyer(); });
   /* La page qui s'en va : ses requetes coupees ne sont pas des echecs. */
   window.addEventListener("pagehide", function(){ etat.quitte = true; });
   window.addEventListener("beforeunload", function(){ etat.quitte = true; });

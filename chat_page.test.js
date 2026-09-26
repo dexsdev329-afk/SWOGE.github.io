@@ -59,12 +59,12 @@ const sse = (evs) => evs.map(([t, d]) => 'event: ' + t + '\ndata: ' + JSON.strin
   /* `rep(corps)` rend le flux SSE d'une question ; `envois` garde ce que la
      page a POSTe. Tout ce qui sort de la machine est coupe : l'essai ne
      depend ni du reseau ni du vrai serveur. */
-  const ouvre = async ({ session, cat, rep, largeur, reprise, adresses, histo, journal } = {}) => {
+  const ouvre = async ({ session, cat, rep, largeur, reprise, adresses, histo, journal, requete } = {}) => {
     const ctx = await nav.newContext({ viewport: { width: largeur || 1200, height: 900 } });
     await ctx.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: 'http://127.0.0.1:' + port });
     if (session) await ctx.addInitScript((j) => { try { localStorage.setItem('swogeSession', j); } catch (e) {} }, session);
     const page = await ctx.newPage();
-    const envois = [], soldes = [];
+    const envois = [], soldes = [], stops = [];
     await page.route((u) => !u.href.startsWith('http://127.0.0.1:' + port), async (r) => {
       const u = r.request().url();
       if (/\/studio\/chat\/catalogue/.test(u)) return r.fulfill({ status:200, contentType:'application/json', body: JSON.stringify(cat || CAT) });
@@ -86,6 +86,10 @@ const sse = (evs) => evs.map(([t, d]) => 'event: ' + t + '\ndata: ' + JSON.strin
         if (journal) journal.push({ m: q.method(), addr, id, corps: q.postData() || '' });
         return r.fulfill({ status: x.ok ? 200 : x.code, contentType:'application/json', body: JSON.stringify(x) });
       }
+      if (/\/studio\/chat\/stop$/.test(u)) {
+        stops.push({ auth: r.request().headers().authorization || null, corps: JSON.parse(r.request().postData() || '{}') });
+        return r.fulfill({ status:200, contentType:'application/json', body:'{"ok":true,"arretes":1}' });
+      }
       if (/\/studio\/chat$/.test(u) && r.request().method() === 'POST') {
         envois.push({ auth: r.request().headers().authorization || null, corps: JSON.parse(r.request().postData() || '{}') });
         const corps = (rep || (() => ''))(envois[envois.length - 1].corps);
@@ -99,9 +103,9 @@ const sse = (evs) => evs.map(([t, d]) => 'event: ' + t + '\ndata: ' + JSON.strin
       if (/vitrine\.json/.test(u)) return r.fulfill({ status:200, contentType:'application/json', body:'{}' });
       return r.abort();
     });
-    await page.goto('http://127.0.0.1:' + port + '/swolemind.html', { waitUntil:'domcontentloaded' });
+    await page.goto('http://127.0.0.1:' + port + '/swolemind.html' + (requete || ''), { waitUntil:'domcontentloaded' });
     await page.waitForFunction(() => /\$SWOGE per question/.test(document.getElementById('prixq').textContent));
-    return { page, ctx, envois, soldes };
+    return { page, ctx, envois, soldes, stops };
   };
   const pose = async (page, q) => { await page.fill('#question', q); await page.click('#envoyer'); };
 
@@ -598,6 +602,50 @@ const sse = (evs) => evs.map(([t, d]) => 'event: ' + t + '\ndata: ' + JSON.strin
       await sans.ctx.close();
       fs.rmSync(dir, { recursive: true, force: true });
     }
+  }
+
+  console.log('\n-- ARRETER une reponse (demande du proprietaire, 26 septembre 2026) --');
+  {
+    /* La reponse ne finit jamais : sans Stop, le joueur etait coince. */
+    const { page, ctx, envois, stops } = await ouvre({ session: 'j.stop', rep: () => null });
+    await pose(page, 'une question mal posee');
+    await page.waitForFunction(() => document.getElementById('envoyer').classList.contains('stop'));
+    ok(await page.$eval('#envoyer', (b) => !b.disabled && b.getAttribute('aria-label') === 'Stop' && /reserved/.test(b.title)),
+       'pendant la reponse, le bouton devient STOP, actif, et dit que la reserve est gardee');
+    await page.click('#envoyer');
+    await page.waitForFunction(() => document.querySelector('.msg.arrete .arret'));
+    const rid = envois[0].corps.rid;
+    ok(stops.length === 1 && stops[0].auth === 'Bearer j.stop' && stops[0].corps.rids.length === 1 && stops[0].corps.rids[0] === rid,
+       'Stop demande au serveur d arreter CETTE reponse (son rid), par la session');
+    ok(/Stopped before the model started/.test(await page.textContent('.msg.arrete .arret')), 'rien n etait ecrit : la page dit que rien n a ete facture');
+    ok(await page.$eval('#envoyer', (b) => !b.classList.contains('stop') && b.getAttribute('aria-label') === 'Send'), 'le bouton redevient « envoyer »');
+    const fil = await page.evaluate(() => JSON.parse(localStorage.getItem('swogeChats') || '[]'));
+    const der = fil.length && fil[0].messages.filter((m) => m.role === 'user').pop();
+    ok(der && der.rid === rid && der.interrompu === true, 'la question arretee reste dans le fil, marquee interrompue (pas de reprise fantome)');
+    await pose(page, 'la bonne question');
+    await page.waitForFunction(() => document.querySelectorAll('.msg.moi').length === 2);
+    ok(envois.length === 2 && envois[1].corps.messages.every((m) => m.content !== 'une question mal posee'),
+       'une NOUVELLE question part tout de suite, sans la question arretee dans l historique envoye');
+    await ctx.close();
+
+    /* Arretee apres un debut de reponse : un vrai flux SSE local qui ecrit le
+       debut puis se tait (une reponse simulee ne peut pas rester ouverte). */
+    const lent = http.createServer((q, r) => {
+      r.writeHead(200, { 'content-type': 'text/event-stream', 'access-control-allow-origin': '*' });
+      r.write(sse([['texte', { t: 'Voici le debut' }]]));
+    });
+    await new Promise((x) => lent.listen(0, '127.0.0.1', x));
+    const lb = 'http://127.0.0.1:' + lent.address().port;
+    const b = await ouvre({ session: 'j.stop2', rep: () => null, requete: '?server=' + encodeURIComponent(lb) });
+    await b.page.route((u) => u.href === lb + '/studio/chat', (r) => r.continue());
+    await pose(b.page, 'une autre');
+    await b.page.waitForFunction(() => /Voici le debut/.test(document.body.textContent));
+    await b.page.click('#envoyer');
+    await b.page.waitForFunction(() => document.querySelector('.msg.arrete .arret'));
+    ok(/Voici le debut/.test(await b.page.textContent('.msg.arrete .corps')) && /amount reserved for this answer is kept/.test(await b.page.textContent('.msg.arrete .arret')),
+       'arretee en cours d ecriture : le debut reste lisible, et la page dit que la reserve est gardee');
+    ok(b.stops.length === 1, 'un seul arret demande');
+    await b.ctx.close(); lent.close();
   }
 
   await nav.close(); srv.close();

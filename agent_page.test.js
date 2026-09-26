@@ -42,9 +42,11 @@ const PEPE = { adresse:'0x6982508145454ce325ddbe47a25d4ec3d2311933', trouve:true
     const ctx = await nav.newContext({ viewport: { width: largeur || 1200, height: 900 } });
     if (session) await ctx.addInitScript((j) => { try { localStorage.setItem('swogeSession', j); } catch (e) {} }, session);
     const page = await ctx.newPage();
-    const envois = [];
+    const envois = [], stops = [];
     await page.route((u) => !u.href.startsWith('http://127.0.0.1:' + port), async (r) => {
       const u = r.request().url();
+      if (/\/studio\/chat\/stop$/.test(u)) { stops.push({ auth: r.request().headers().authorization || null, corps: JSON.parse(r.request().postData() || '{}') });
+        return r.fulfill({ status:200, contentType:'application/json', body:'{"ok":true,"arretes":1}' }); }
       if (/\/studio\/agent\/catalogue/.test(u)) return r.fulfill({ status:200, contentType:'application/json', body: JSON.stringify(CAT) });
       if (/\/studio\/chat\/solde/.test(u)) return r.fulfill({ status:200, contentType:'application/json', body: JSON.stringify({ ok:true, adresse:'0xabc', solde:'200000.0' }) });
       if (/\/studio\/agent$/.test(u) && r.request().method() === 'POST') {
@@ -71,7 +73,7 @@ const PEPE = { adresse:'0x6982508145454ce325ddbe47a25d4ec3d2311933', trouve:true
     });
     await page.goto('http://127.0.0.1:' + port + '/swogeagentic.html', { waitUntil:'domcontentloaded' });
     await page.waitForFunction(() => /\$SWOGE per task/.test(document.getElementById('prixq').textContent));
-    return { page, ctx, envois };
+    return { page, ctx, envois, stops };
   };
   const pose = async (page, q) => { await page.fill('#question', q); await page.click('#envoyer'); };
 
@@ -249,6 +251,25 @@ const PEPE = { adresse:'0x6982508145454ce325ddbe47a25d4ec3d2311933', trouve:true
     ok(/^# SwogeAgentic\n\n> /.test(llms) && !/^#{3,} /m.test(llms), 'llms.txt : un H1, puis le resume en citation, aucun titre plus profond (format llmstxt.org)');
     ok(h2.join(',') === '## Docs,## Optional', 'des listes de liens sous des H2, « Optional » en dernier');
     ok(llms.includes('(https://swoleeswoge.dog/swogeagentic_api.html)') && llms.includes('/agentic/tools)'), 'il mene a la doc et au catalogue en direct');
+  }
+
+  console.log('\n-- 8. arreter une tache (demande du proprietaire, 26 septembre 2026) --');
+  {
+    const { page, ctx, envois, stops } = await ouvre({ session: 'j.stopA', rep: () => null });
+    await pose(page, 'une tache mal posee');
+    await page.waitForFunction(() => document.getElementById('envoyer').classList.contains('stop'));
+    ok(await page.$eval('#envoyer', (b) => !b.disabled && b.getAttribute('aria-label') === 'Stop'), 'pendant la tache, le bouton devient STOP, actif');
+    await page.click('#envoyer');
+    await page.waitForFunction(() => document.querySelector('.msg.arrete .arret'));
+    ok(stops.length === 1 && stops[0].auth === 'Bearer j.stopA' && stops[0].corps.rid === envois[0].corps.rid, 'Stop demande au serveur d arreter CETTE tache (son rid), par la session');
+    ok(/nothing was charged/.test(await page.textContent('.msg.arrete .arret')), 'arretee avant tout : la page dit que rien n a ete facture');
+    ok(await page.$eval('#envoyer', (b) => b.getAttribute('aria-label') === 'Run' && !b.classList.contains('stop')), 'le bouton redevient « lancer »');
+    const fil = await page.evaluate(() => JSON.parse(localStorage.getItem('swogeAgentFil') || '[]'));
+    ok(fil.length && fil[fil.length - 1].interrompu === true, 'la tache arretee reste dans le fil, marquee interrompue');
+    await pose(page, 'la bonne tache');
+    await page.waitForFunction(() => document.querySelectorAll('.msg.moi').length === 2);
+    ok(envois.length === 2 && envois[1].corps.messages.every((m) => m.content !== 'une tache mal posee'), 'une NOUVELLE tache part tout de suite, sans l arretee dans l historique');
+    await ctx.close();
   }
 
   await nav.close(); srv.close();

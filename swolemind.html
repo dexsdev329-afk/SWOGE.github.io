@@ -1295,6 +1295,14 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       corps.appendChild(t);
     }
     if (m.meta) { var mt = document.createElement("div"); mt.className = "meta"; mt.textContent = m.meta; d.appendChild(mt); }
+    /* Ce que le serveur a compris de la demande : le joueur voit pourquoi
+       l'image est ce qu'elle est (le bateau repris du fil, SWOGE reconnu). */
+    if (m.compris || m.reference === "swoge") {
+      var cp = document.createElement("div"); cp.className = "meta compris";
+      cp.textContent = (m.reference === "swoge" ? "\ud83d\udc36 Drawn from the official SWOGE reference" + (m.compris ? " \u00b7 " : "") : "")
+        + (m.compris ? "Understood as: " + m.compris : "");
+      d.appendChild(cp);
+    }
   }
   /* La fin d'une reponse de chat : texte, sources, cout, « Copy », fil ecrit.
      Partagee par le flux et par la reprise apres rechargement. */
@@ -1825,6 +1833,11 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     var mm = modeleMedia(), reg = etat.reg, jointe = etat.jointe, nomM = nomMedia(mm);
     var fmt = mode === "video" ? reg.formatV : reg.formatI;
     var libelle = (mode === "image" ? "\ud83d\uddbc\ufe0f " : "\ud83c\udfac ") + (q || "Animate this photo");
+    /* La memoire des images : les demandes d'image precedentes de CE fil. Le
+       serveur s'en sert quand la nouvelle y renvoie (« refais », « sur un
+       bateau »), et il reconnait SWOGE pour partir de son image officielle. */
+    var contexte = etat.conv.messages.filter(function(x){ return x.role === "user" && x.genre === "image"; })
+      .map(function(x){ return String(x.content || "").replace(/^\ud83d\uddbc\ufe0f\s*/, ""); }).slice(-6);
     var rid = nouveauRid();
     etat.conv.messages.push({ role: "user", content: libelle, genre: mode, rid: rid, nomModele: nomM, format: fmt });
     sauveConv();
@@ -1837,7 +1850,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     etape.textContent = mode === "image" ? (jointe ? "Editing your photo\u2026" : "Creating " + (reg.nombre > 1 ? reg.nombre + " images" : "the image") + "\u2026") : "Starting the video\u2026";
     d.insertBefore(etape, corps);
     var corpsReq = { rid: rid, modele: reg.vitesse, prompt: q, format: fmt, image: jointe || undefined };
-    if (mode === "image") { corpsReq.n = reg.nombre; corpsReq.fournisseur = (fournisseurImage() || {}).id || "grok"; }
+    if (mode === "image") { corpsReq.n = reg.nombre; corpsReq.fournisseur = (fournisseurImage() || {}).id || "grok"; if (contexte.length) corpsReq.contexte = contexte; }
     else { corpsReq.duree = reg.duree; corpsReq.resolution = reg.resolution; }
     function fin(){ etat.occupe = false; peintBoutons(); if (etape.parentNode) etape.remove(); }
     /* La demande non servie ne reste pas dans le fil enregistre. */
@@ -1865,6 +1878,8 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       + (fmt && fmt !== "auto" ? " \u00b7 " + fmt : "") + " \u00b7 " + nombre(res.factureSwoge) + " $SWOGE";
     var m = place || { role: "assistant", genre: mode };
     m.content = mode === "image" ? "[image]" : "[video]"; m.urls = res.urls; m.url = res.url; m.meta = meta; delete m.enCours;
+    if (res.compris) m.compris = String(res.compris).slice(0, 1500);
+    if (res.reference === "swoge") m.reference = "swoge";
     peintMedia(d, m);
     if (!place) etat.conv.messages.push(m);
     sauveConv();

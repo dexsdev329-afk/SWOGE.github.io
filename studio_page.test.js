@@ -63,7 +63,11 @@ const CAT = { ouvert: true, note: null, monnaie: '$SWOGE', defaut: 'opus-5-5', e
         envois.push({ u, auth: r.request().headers().authorization, corps: JSON.parse(r.request().postData() || '{}') });
         if (/image$/.test(u)) {
           const oa = envois[envois.length - 1].corps.fournisseur === 'openai';
+          /* Comme le vrai serveur : une demande qui nomme SWOGE dit qu'elle est partie de sa reference, et comment elle a ete comprise. */
+          const cq = envois[envois.length - 1].corps;
+          const sw = /\bswoge\b/i.test([cq.prompt].concat(cq.contexte || []).join(' '));
           return r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true,
+            reference: sw ? 'swoge' : null, compris: sw ? 'SWOGE standing on the deck of a boat <b>at sea</b>' : null,
             urls: oa ? ['/studio/media/fichier/' + 'b'.repeat(48) + '.jpg'] : ['https://imgen.x.ai/a.png', 'https://imgen.x.ai/b.png'],
             factureSwoge: oa ? '9012' : '4284.18', solde: '195715' }) });
         }
@@ -157,6 +161,8 @@ const CAT = { ouvert: true, note: null, monnaie: '$SWOGE', defaut: 'opus-5-5', e
     await p.waitForFunction(() => document.querySelectorAll('.msg.ia .grille img').length >= 3);
     const eo = envois.filter((x) => /image$/.test(x.u)).pop();
     eq(eo.corps.fournisseur, 'openai', 'la demande part vers ChatGPT Image');
+    ok(!e.corps.contexte && JSON.stringify(eo.corps.contexte) === JSON.stringify(['a buff doge']),
+       'la memoire des images : la premiere demande part seule, la suivante emporte les demandes d image precedentes du fil (sans l emoji)');
     const src = await p.$$eval('.msg.ia .grille img', (l) => l[l.length - 1].getAttribute('src'));
     ok(/^https:\/\/web-production-220a3\.up\.railway\.app\/studio\/media\/fichier\/b{48}\.jpg$/.test(src), 'une image rangee sur notre serveur s affiche depuis lui [' + src.slice(0, 60) + '…]');
     const metaO = await p.$$eval('.msg.ia .meta', (l) => l[l.length - 1].textContent);
@@ -184,6 +190,30 @@ const CAT = { ouvert: true, note: null, monnaie: '$SWOGE', defaut: 'opus-5-5', e
     ok(c && c.corps.messages.length === 1 && c.corps.messages[0].content === 'hello', 'le chat n envoie pas au modele les images et videos du fil, seulement le texte');
     const sauve = await p.evaluate(() => localStorage.getItem('swogeChats') || '');
     ok(!/data:image/.test(sauve), 'la photo jointe n est jamais gardee dans le navigateur');
+    await p.close();
+  }
+
+  console.log('\n-- 5 bis. l image comprise : SWOGE reconnu, le fil repris --');
+  {
+    /* Signale le 26 septembre 2026 : « swoge sur un bateau » donnait un chien
+       quelconque, puis « refais » oubliait le bateau. Le serveur comprend la
+       demande (studio_comprend.js) ; la page le MONTRE. */
+    envois.length = 0;
+    const p = await ouvre('swolemind.html', null, 'jeton-test');
+    await p.click('.mode[data-mode="image"]');
+    await p.fill('#question', 'crée moi une image de swoge sur un bateaux'); await p.click('#envoyer');
+    await p.waitForSelector('.msg.ia .compris');
+    await p.fill('#question', 'fait le sur un bateaux'); await p.click('#envoyer');
+    await p.waitForFunction(() => document.querySelectorAll('.msg.ia .compris').length === 2);
+    const d = envois.filter((x) => /image$/.test(x.u)).pop();
+    eq(JSON.stringify(d.corps.contexte), JSON.stringify(['crée moi une image de swoge sur un bateaux']), 'la deuxieme demande emporte la premiere');
+    const c = await p.textContent('.msg.ia .compris');
+    ok(/Drawn from the official SWOGE reference/.test(c) && /Understood as: SWOGE standing on the deck of a boat <b>at sea<\/b>/.test(c),
+       'sous l image : partie de la reference officielle, et la demande telle que comprise — en TEXTE, jamais en HTML');
+    eq(await p.$('.msg.ia .compris b'), null, 'le texte compris ne peut pas injecter de balise');
+    await p.reload({ waitUntil: 'domcontentloaded' });
+    await p.waitForSelector('.msg.ia .compris');
+    eq((await p.$$('.msg.ia .compris')).length, 2, 'rechargee : c est toujours dit');
     await p.close();
   }
 

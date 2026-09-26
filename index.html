@@ -942,14 +942,27 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px}
                documente. Ecrire une part d equipe qu on ne peut pas prouver
                serait pire que de ne rien ecrire : c est la premiere chose qu un
                investisseur verifiera, et un chiffre dementi coute plus cher
-               qu une case vide. -->
-          <div class="eco">
-            <div><small>TOTAL SUPPLY</small><b>1,000,000,000</b><i>FIXED &middot; NOT MINTABLE</i></div>
-            <div><small>CASINO VAULT</small><b>99,826,711</b><i>&asymp;10% OF SUPPLY</i></div>
-            <div><small>BURNED</small><b>6,827,534</b><i>0.68% &middot; PERMANENT</i></div>
-            <div><small>STAKING APR</small><b>100%</b><i>CAP 200,000,000</i></div>
+               qu une case vide.
+
+               ET ILS SE LISENT, ILS NE SE RECOPIENT PLUS. Signale par un joueur
+               le 26 septembre 2026 : la carte annoncait 6 827 534 brules et un
+               coffre a ≈10 % quand la chaine disait 13 389 118 (1,34 %) et
+               15 155 373 (1,52 %). Chaque retrait brule 1 %, chaque depot fait
+               bouger le coffre : un chiffre ecrit a la main est faux le
+               lendemain. Le script du bas les relit sur `/economie.json` (le
+               serveur les lit sur le contrat, toutes les cinq minutes). Ceux
+               ecrits ici ne sont que la derniere lecture connue, pour la
+               seconde avant la reponse. -->
+          <div class="eco" id="ecoCarte">
+            <div><small>TOTAL SUPPLY</small><b data-eco="offre">1,000,000,000</b><i>FIXED &middot; NOT MINTABLE</i></div>
+            <div><small>CASINO VAULT</small><b data-eco="coffre">15,155,373</b><i data-eco-i="coffre">1.52% OF SUPPLY</i></div>
+            <div><small>BURNED</small><b data-eco="brule">13,389,118</b><i data-eco-i="brule">1.34% &middot; PERMANENT</i></div>
+            <div><small>STAKING APR</small><b data-eco="apr">100%</b><i data-eco-i="apr">CAP 200,000,000</i></div>
           </div>
-          <div style="margin-top:13px"><a href="#" style="font:700 11px/1 'Inter',system-ui,sans-serif;letter-spacing:.8px;color:var(--bleu)">VIEW TOKENOMICS &nbsp;&rarr;</a></div>
+          <div style="margin-top:13px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+            <a href="whitepaper.html" style="font:700 11px/1 'Inter',system-ui,sans-serif;letter-spacing:.8px;color:var(--bleu)">VIEW TOKENOMICS &nbsp;&rarr;</a>
+            <small id="ecoSource" style="font:600 9px/1.3 'Inter',system-ui,sans-serif;color:var(--gris)">Read on-chain</small>
+          </div>
         </div>
         <!-- ================== LE NIVEAU, SANS LE MENTIR ==================
              Cette carte annoncait « YOUR SWOGE LEVEL / BEAST / NEXT LEVEL:
@@ -1317,6 +1330,48 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px}
     var e = document.getElementById(i);
     if (e) e.addEventListener("click", va);
   });
+})();
+</script>
+<!-- ---- L ECONOMIE $SWOGE, LUE SUR LA CHAINE ----
+     Le serveur lit l offre, le solde de l adresse morte et celui du coffre sur
+     le contrat (`/economie.json`, cinq minutes de cache) ; on relit toutes les
+     cinq minutes pour une page restee ouverte. Si la reponse n arrive pas, on
+     garde les chiffres deja ecrits et on dit qu ils ne sont pas frais — on ne
+     remplace jamais un chiffre par un zero. -->
+<script>
+(function(){
+  "use strict";
+  var carte = document.getElementById("ecoCarte");
+  if(!carte) return;
+  function serveur(){
+    try{ var q=new URLSearchParams(location.search).get("server"); if(q)
+      return String(q).replace(/^ws/,"http"); }catch(e){}
+    return "https://web-production-220a3.up.railway.app";
+  }
+  /* Entier, arrondi vers le BAS : on n annonce jamais plus de brule qu il n y en a. */
+  function entier(n){ return Math.floor(Number(n)).toLocaleString("en-US"); }
+  function pct(n){ return (Math.floor(Number(n) * 100) / 100).toFixed(2) + "%"; }
+  function pose(cle, texte){ var e = carte.querySelector('[data-eco="' + cle + '"]'); if(e && texte) e.textContent = texte; }
+  function sous(cle, texte){ var e = carte.querySelector('[data-eco-i="' + cle + '"]'); if(e && texte) e.textContent = texte; }
+  function source(t){ var e = document.getElementById("ecoSource"); if(e) e.textContent = t; }
+  function lit(){
+    fetch(serveur() + "/economie.json", { cache: "no-store" })
+      .then(function(r){ return r.json(); })
+      .then(function(j){
+        if(!j || !j.ok) throw new Error("vide");
+        if(isFinite(j.offre)) pose("offre", entier(j.offre));
+        if(isFinite(j.coffre) && j.coffre !== null){ pose("coffre", entier(j.coffre)); sous("coffre", pct(j.coffrePct) + " OF SUPPLY"); }
+        if(isFinite(j.brule) && j.brule !== null){ pose("brule", entier(j.brule)); sous("brule", pct(j.brulePct) + " \u00b7 PERMANENT"); }
+        if(isFinite(j.stakingAprPct)) pose("apr", Math.round(j.stakingAprPct) + "%");
+        if(isFinite(j.stakingPlafond) && j.stakingPlafond !== null) sous("apr", "CAP " + entier(j.stakingPlafond));
+        var h = new Date(j.lu);
+        var hh = ("0" + h.getUTCHours()).slice(-2) + ":" + ("0" + h.getUTCMinutes()).slice(-2);
+        source((j.frais ? "Live on-chain \u00b7 " : "Last on-chain read \u00b7 ") + hh + " UTC");
+      })
+      ["catch"](function(){ source("On-chain read unavailable \u00b7 last known figures"); });
+  }
+  lit();
+  setInterval(lit, 5 * 60 * 1000);
 })();
 </script>
 <!-- Les quatre chiffres de la vitrine, lus sur le serveur. -->

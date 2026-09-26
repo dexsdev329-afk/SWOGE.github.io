@@ -828,8 +828,9 @@ frees up as soon as someone leaves, and the gauge is shown on the page
 
 <div class="note risk">
 <strong>What SWOGE does today, without hedging.</strong> The live model is
-<strong>B</strong>: a fixed 100&nbsp;% rate funded by a team allocation. The vault holds
-<strong>99,826,711 $SWOGE</strong>, roughly 10&nbsp;% of supply, put there by the team —
+<strong>B</strong>: a fixed 100&nbsp;% rate funded by a team allocation. The team funded the vault with
+<strong>99,826,711 $SWOGE</strong> (about 10&nbsp;% of supply, on-chain on 14 August 2026); it holds
+<strong><span data-eco="coffre">15,155,373</span> $SWOGE</strong> today (<span data-eco="coffrePct">1.52</span>&nbsp;% of supply, read live) —
 verifiable on-chain at
 <code>0x5593c8141303D14999Df7aa03dd3d3a6d4335fAb</code>.
 <br><br>
@@ -877,7 +878,7 @@ kind of hole you only find through a complaint.
 <section id="s14">
 <h2><span class="num">14</span> The burn</h2>
 <div class="grid2">
-  <div class="stat"><span>Already burned, verified on-chain</span><b>6,827,534</b><i>$SWOGE at <code>0x…dEaD</code> — 0.68 % of supply</i></div>
+  <div class="stat"><span>Already burned, verified on-chain</span><b><span data-eco="brule">13,389,118</span></b><i>$SWOGE at <code>0x…dEaD</code> — <span data-eco="brulePct">1.34</span> % of supply, read live</i></div>
   <div class="stat"><span>Continuous source</span><b>1 % of every withdrawal</b><i>taken from the gross, never reinjected</i></div>
 </div>
 
@@ -1295,7 +1296,7 @@ Telegram channel, your referral link pays for life, and your invitee arrives wit
 <h2><span class="num">26</span> Treasury</h2>
 <h3>What exists and is measured</h3>
 <div class="grid3">
-  <div class="stat"><span>In the vault, on-chain</span><b>99,826,711</b><i>$SWOGE on 14 August 2026 — player deposits + team allocation</i></div>
+  <div class="stat"><span>In the vault, on-chain</span><b><span data-eco="coffre">15,155,373</span></b><i>$SWOGE, read live (99,826,711 on 14 August 2026) — player deposits + team allocation</i></div>
   <div class="stat"><span>Owed to players</span><b>computed continuously</b><i>balances + staked + yield + jackpot</i></div>
   <div class="stat"><span>Available surplus</span><b>vault − owed</b><i>the only amount withdrawable without touching player funds</i></div>
 </div>
@@ -1331,8 +1332,8 @@ The admin dashboard compares these three continuously, warns when the margin dro
     <tr><td>Decimals</td><td class="n">18</td><td>Contract</td></tr>
     <tr><td>Total supply</td><td class="n">1,000,000,000</td><td>Contract · fixed</td></tr>
     <tr><td>Mintable</td><td class="n">no</td><td>No mint function</td></tr>
-    <tr><td>Already burned</td><td class="n">6,827,534</td><td>Balance of <code>0x…dEaD</code> · 0.68 % of supply</td></tr>
-    <tr><td>In the gaming vault</td><td class="n">99,826,711</td><td>Vault contract balance · ~10 %</td></tr>
+    <tr><td>Already burned</td><td class="n"><span data-eco="brule">13,389,118</span></td><td>Balance of <code>0x…dEaD</code> · <span data-eco="brulePct">1.34</span> % of supply</td></tr>
+    <tr><td>In the gaming vault</td><td class="n"><span data-eco="coffre">15,155,373</span></td><td>Vault contract balance · <span data-eco="coffrePct">1.52</span> %</td></tr>
   </tbody>
 </table></div>
 
@@ -1340,7 +1341,7 @@ The admin dashboard compares these three continuously, warns when the margin dro
 <div class="note def">
 <strong>The full allocation table is <span class="chip def">undecided</span>, and it is
 the project's most visible documentation gap.</strong> Two figures are publicly
-verifiable — 6,827,534 burned and 99,826,711 in the vault — but where the remaining 893
+verifiable — <span data-eco="brule">13,389,118</span> burned and <span data-eco="coffre">15,155,373</span> in the vault — but where the remaining <span data-eco="reste">971</span>
 million sits is not documented. An investor or partner will ask this first, and the
 absence of an answer will weigh more heavily than an imperfect but published split.
 </div>
@@ -1350,10 +1351,10 @@ absence of an answer will weigh more heavily than an imperfect but published spl
     <tr><td>Liquidity</td><td class="n">—</td><td>—</td><td><span class="chip def">Undecided</span></td></tr>
     <tr><td>Team</td><td class="n">—</td><td>—</td><td><span class="chip def">Undecided</span> — the most scrutinised bucket; with no published cliff or vesting it is assumed unlocked</td></tr>
     <tr><td>Treasury</td><td class="n">—</td><td>—</td><td><span class="chip def">Undecided</span></td></tr>
-    <tr><td>Gaming vault and staking</td><td class="n">≈ 10 %</td><td>Not applicable</td><td><span class="chip ok">Verifiable</span> — 99,826,711 in the vault contract</td></tr>
+    <tr><td>Gaming vault and staking</td><td class="n"><span data-eco="coffrePct">1.52</span> %</td><td>Not applicable</td><td><span class="chip ok">Verifiable</span> — <span data-eco="coffre">15,155,373</span> in the vault contract</td></tr>
     <tr><td>Marketing</td><td class="n">—</td><td>—</td><td><span class="chip def">Undecided</span></td></tr>
     <tr><td>Ecosystem and partnerships</td><td class="n">—</td><td>—</td><td><span class="chip def">Undecided</span></td></tr>
-    <tr><td>Burned</td><td class="n">0.68 %</td><td>Permanent</td><td><span class="chip ok">Verifiable</span> — rising with every withdrawal</td></tr>
+    <tr><td>Burned</td><td class="n"><span data-eco="brulePct">1.34</span> %</td><td>Permanent</td><td><span class="chip ok">Verifiable</span> — rising with every withdrawal</td></tr>
   </tbody>
 </table></div>
 <p>
@@ -1855,7 +1856,7 @@ continuous burn tied to a real action. Clearly above the sector average.<br>
 <strong>Weak:</strong> the fixed 100&nbsp;% staking rate is the only item that does not
 contract with activity.<br>
 <strong>Missing:</strong> the allocation table.<br>
-<strong>Attackable:</strong> "who holds the 893 million that are not documented?" — the
+<strong>Attackable:</strong> "who holds the <span data-eco="reste">971</span> million that are not documented?" — the
 first question, and the only one with no answer today.<br>
 <strong>Before launch:</strong> publish the allocation and vesting, imperfect or not.</p>
 </div>
@@ -1936,7 +1937,7 @@ everything about the thesis.</p>
   <tbody>
     <tr><td class="n">1</td><td>External audit of the vault and the launchpad</td><td>Two contracts hold third-party funds with no outside review</td></tr>
     <tr><td class="n">2</td><td>Multisig on the vault and the launchpad</td><td>Removes the most severe single point of failure</td></tr>
-    <tr><td class="n">3</td><td>Publish the allocation table and vesting</td><td>893 million undocumented; the first question any partner asks</td></tr>
+    <tr><td class="n">3</td><td>Publish the allocation table and vesting</td><td><span data-eco="reste">971</span> million undocumented; the first question any partner asks</td></tr>
     <tr><td class="n">4</td><td>Align the staking cap with revenue, or make the rate variable</td><td>The only item that does not contract with activity</td></tr>
     <tr><td class="n">5</td><td>Legal opinion on the classification of the activity</td><td>Conditions the entire model</td></tr>
     <tr><td class="n">6</td><td>Minimum age and geographic restrictions</td><td>Near-zero cost, high exposure without</td></tr>
@@ -2135,7 +2136,7 @@ month by month, and it funds the rewards — all expressed as a share of real re
 as a fixed amount.</p>
 
 <h4>What leaves circulation</h4>
-<p>1&nbsp;% of every withdrawal is burned permanently. <strong>6,827,534 $SWOGE</strong>
+<p>1&nbsp;% of every withdrawal is burned permanently. <strong><span data-eco="brule">13,389,118</span> $SWOGE</strong>
 have already left circulation, verifiable on-chain. Supply is fixed and can only fall.</p>
 
 <h4>What is verifiable without trust</h4>

@@ -92,3 +92,16 @@ correspondante dans les deux langues.
 
 `chrome-site.html` ne sert qu'à fournir la barre de navigation et la feuille de
 style de la page du site ; son contenu est ignoré.
+
+## Les chiffres de la chaîne se lisent en direct (26 septembre 2026)
+
+Brûlé, coffre, leurs parts de l'offre et les millions non documentés étaient
+recopiés à la main, et faux (6 827 534 brûlés affichés contre 13 389 118 réels ;
+un coffre « ≈10 % » à 1,52 %). Ils portent désormais `data-eco="brule|coffre|
+brulePct|coffrePct|reste"` (et `data-l="fr"` côté français), aux quatre sources et
+dans `../whitepaper.html`. Le chiffre écrit n'est que la dernière lecture connue :
+le script en bas de `../whitepaper.html` les relit sur `/economie.json`.
+
+**Ce script vit dans la page, pas dans la chrome** : avant de refabriquer,
+reportez-le dans `chrome-site.html` avec le reste (voir plus haut), sinon la
+fabrication rendrait des chiffres figés.

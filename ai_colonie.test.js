@@ -626,6 +626,28 @@ async function panneaux() {
   ok(/37 banned/.test(v.survN),
      'et les bannis sont comptes a part : ils ne reviendront jamais (' + v.survN + ')');
 
+  console.log('\n-- les canaux Telegram surveilles (26 septembre 2026) --');
+  {
+    const TG = { canaux: [{ canal: 'Exceptionalmemes', lectures: 12, erreurs: 0, messages: 20, horsChaine: 3, proposes: 1 }],
+      trouvailles: [
+        { addr: '0x39dbed3a2bd333467115de45665cc57f813c4571', canal: 'Exceptionalmemes', post: 'Exceptionalmemes/4460', statut: 'proposé', sym: 'PONS<img src=x onerror=alert(1)>', verdict: 'too old (9000 min): watched only, never bought', note: 12 },
+        { addr: '0x2222222222222222222222222222222222222222', canal: 'Exceptionalmemes', post: 'javascript:alert(1)//1', statut: 'hors robinhood' }],
+      rejetsEnCours: 1, rejetHeures: 6 };
+    const o = await ouvre(nav, port, { vue: Object.assign(vueFausse(), { telegram: TG }) });
+    const t = await o.page.evaluate(() => ({ n: document.getElementById('tgN').textContent, txt: document.getElementById('telegram').textContent.replace(/\s+/g, ' '),
+      img: document.querySelectorAll('#telegram img').length, liens: [...document.querySelectorAll('#telegram a')].map((a) => a.href) }));
+    ok(/1 watched · 1 proposed/.test(t.n), 'le compte : canaux surveilles, jetons proposes (' + t.n + ')');
+    ok(/@Exceptionalmemes · 20 posts read · 3 off-chain ignored/.test(t.txt), 'par canal : messages lus, hors chaine ignores');
+    ok(/judged by the colony/.test(t.txt) && /too old/.test(t.txt) && /not on Robinhood Chain/.test(t.txt), 'chaque trouvaille dit son statut et le verdict de la colonie');
+    ok(t.img === 0, 'un symbole piege ne devient pas du HTML');
+    ok(t.liens.includes('https://t.me/Exceptionalmemes/4460') && !t.liens.some((h) => /^javascript/i.test(h)) && t.liens.includes('https://dexscreener.com/robinhood/0x39dbed3a2bd333467115de45665cc57f813c4571'),
+       'le lien du message et le graphique Robinhood ; un lien de message piege n est pas rendu');
+    await o.ctx.close();
+    const vide = await ouvre(nav, port, { vue: Object.assign(vueFausse(), { telegram: { canaux: [{ canal: 'Exceptionalmemes', messages: 20, horsChaine: 1 }], trouvailles: [] } }) });
+    ok(/No Robinhood Chain contract in the latest posts/.test(await vide.page.textContent('#telegram')), 'rien trouve : la page dit pourquoi (Solana, autres chaines, tickers ignores)');
+    await vide.ctx.close();
+  }
+
   console.log('\n-- ou elle a regarde, et ce qu elle n a pas encore juge --');
   console.log('   ' + v.flowcount);
   ok(/0-5 min ×3/.test(v.flowcount) && /20-60 min ×1/.test(v.flowcount),

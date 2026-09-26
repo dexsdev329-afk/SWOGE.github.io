@@ -40,7 +40,7 @@
  * une fois par session pour savoir si le serveur en a une plus recente.
  * Sans ca, un joueur garde des semaines une version corrigee depuis
  * longtemps — et ici, cela voudrait dire un agent qui a cesse d'apprendre. */
-var MARQUE_PAGE = '27de6414';
+var MARQUE_PAGE = '8a53af07';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -1042,6 +1042,10 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
           <h2><span data-t="tSurv">Watchlist</span> <span class="count" id="survN">0</span></h2>
           <div id="surveillance"><div class="empty" data-t="vSurv">Nothing on the watchlist yet.</div></div>
         </div>
+        <div class="card" data-pan="telegram">
+          <h2><span data-t="tTg">Telegram channels</span> <span class="count" id="tgN">—</span></h2>
+          <div id="telegram"><div class="empty" data-t="vServeur">—</div></div>
+        </div>
         <div class="card" data-pan="fermees">
           <h2><span data-t="tFermees">Closed positions</span> <span class="count" id="fermN">—</span></h2>
           <div class="feed" id="feed"><div class="empty" data-t="vFeed">No trade yet…</div></div>
@@ -1613,6 +1617,21 @@ const PHRASES = {
   pasDeReleve:  ['No method has a record yet: comparing takes closed positions, and it keeps the count.',
                  'Aucune methode n\'a encore de releve : il faut des positions fermees pour comparer, '
                       + 'et il en garde le compte.'],
+
+  /* --- les canaux Telegram (tg_canal.js ; demande du proprietaire, 26 septembre 2026) --- */
+  tgN:          [(c, p) => c + ' watched · ' + p + ' proposed', (c, p) => c + ' surveille(s) · ' + p + ' propose(s)'],
+  tgCanal:      [(c, m, h) => '@' + c + ' · ' + m + ' posts read · ' + h + ' off-chain ignored',
+                 (c, m, h) => '@' + c + ' · ' + m + ' messages lus · ' + h + ' hors chaine ignores'],
+  tgVide:       ['No Robinhood Chain contract in the latest posts. Only 0x contracts and DexScreener '
+                      + 'links on Robinhood Chain are taken; Solana mints, other chains and bare tickers are ignored. '
+                      + 'Every token found is judged by the colony like any other source — never bought on sight.',
+                 'Aucun contrat Robinhood Chain dans les derniers messages. Seuls les contrats 0x et les liens '
+                      + 'DexScreener sur Robinhood Chain sont pris ; Solana, les autres chaines et les tickers seuls '
+                      + 'sont ignores. Chaque jeton trouve est juge par la colonie comme toute autre source — jamais achete a vue.'],
+  tgAucun:      ['No channel watched. The owner adds channels in the admin panel (TG_SURV_CANAUX).',
+                 'Aucun canal surveille. Le proprietaire les ajoute dans le panneau d\'admin (TG_SURV_CANAUX).'],
+  tgStatut:     [(st) => (st === 'hors robinhood' ? 'not on Robinhood Chain' : 'judged by the colony'),
+                 (st) => (st === 'hors robinhood' ? 'pas sur Robinhood Chain' : 'juge par la colonie')],
 
   /* --- la surveillance --- */
   survN:        [(l, b) => l + ' · ' + b + ' banned', (l, b) => l + ' · ' + b + ' bannis'],
@@ -2667,6 +2686,25 @@ function peintSurveillance(){
   </div>`).join("");
 }
 
+/* ---- LES CANAUX TELEGRAM SURVEILLES ----
+ * Ce qu'on y lit, ce qu'on en tire, et ce que la colonie en a pense. Un jeton
+ * trouve ici est une PROPOSITION, jugee comme toute autre source. */
+function peintTelegram(){
+  const v = VUE && VUE.telegram;
+  if(!VUE){ $("tgN").textContent = "—"; return; }
+  if(!v || !(v.canaux || []).length){ $("tgN").textContent = "0"; $("telegram").innerHTML = '<div class="empty">' + ph("tgAucun") + '</div>'; return; }
+  const tr2 = v.trouvailles || [];
+  $("tgN").textContent = ph("tgN", v.canaux.length, tr2.filter(x=>x.statut !== "hors robinhood").length);
+  const canaux = v.canaux.map(c=>`<div class="mini">${echappe(ph("tgCanal", c.canal, c.messages||0, c.horsChaine||0))}${c.erreurs?' · <span class="n">'+echappe(String(c.derniereErreur||"error"))+'</span>':''}</div>`).join("");
+  const post = (x) => (/^[A-Za-z0-9_]+\/\d+$/.test(String(x.post||"")) ? `<a href="https://t.me/${echappe(x.post)}" target="_blank" rel="noopener">post</a> · ` : "");
+  const lignes = tr2.slice(0, 12).map(x=>`<div class="tok">
+    <span class="sym">${x.sym ? "$" + echappe(x.sym) : echappe(String(x.addr).slice(0,8) + "…")}</span>
+    <span class="meta">${post(x)}<a href="https://dexscreener.com/robinhood/${echappe(x.addr)}" target="_blank" rel="noopener">chart</a> · ${echappe(ph("tgStatut", x.statut))}${x.verdict ? " · " + echappe(String(x.verdict)).slice(0,40) : ""}</span>
+    <span class="pnl n" style="font-size:12px">${x.note===null||x.note===undefined?"—":echappe(String(x.note))}</span>
+  </div>`).join("");
+  $("telegram").innerHTML = canaux + (lignes || '<div class="empty">' + ph("tgVide") + '</div>');
+}
+
 /* ---- CE QUE LA COLONIE A CHANGE A ELLE-MEME ----
  * Sans ce panneau, « les agents s'auto-developpent » est une phrase que
  * personne ne peut verifier. Chaque ligne porte la mesure qui l'a decidee. */
@@ -3025,7 +3063,7 @@ async function demande(manuel){
     majVillage(v.roster);
     verseCandidats();
     peintStats(); peintPositions(); peintAppris(); peintFluxTrades();
-    peintFlux(); peintBanque(); peintSurveillance(); peintStructure(); peintServices();
+    peintFlux(); peintBanque(); peintSurveillance(); peintTelegram(); peintStructure(); peintServices();
     peintAlertes(); peintAudit(); peintReel(); peintBancs(); peintTraits();
 
 /* ==========================================================================
@@ -3215,7 +3253,7 @@ const FR = {
   tPositions:"Positions ouvertes", vPositions:"Aucune position ouverte.",
   tMirPos:"Votre miroir · positions ouvertes", vMirPos:"Connectez-vous et créez un portefeuille miroir pour voir vos positions ici.",
   tBanque:"Banquier", vServeur:"En attente du serveur…",
-  tSurv:"Surveillance", vSurv:"Rien sous surveillance pour l'instant.",
+  tSurv:"Surveillance", vSurv:"Rien sous surveillance pour l'instant.", tTg:"Canaux Telegram",
   tPipe:"Jetons en vol", vPipe:"En attente de nouveaux jetons…",
   tAgents:"Agents · ce que chacun fait",
   tAppris:"Ce que l'Oracle a appris",
@@ -3437,7 +3475,7 @@ setInterval(function(){ if(document.visibilityState !== "hidden"){ peintPosition
 /* ============================ DEPART ============================ */
 poseLesBots();
 peintAgents(); peintStats(); peintPositions(); peintAppris(); peintFluxTrades();
-peintPicks(); peintFlux(); peintBanque(); peintSurveillance(); peintStructure(); peintServices();
+peintPicks(); peintFlux(); peintBanque(); peintSurveillance(); peintTelegram(); peintStructure(); peintServices();
 peintAlertes(); peintAudit(); peintReel(); peintBancs(); peintTraits();
 dessineCourbe(); pastille(); majPouls();
 $("stagetag").textContent = phraseFond();

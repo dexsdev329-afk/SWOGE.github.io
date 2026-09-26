@@ -26,6 +26,7 @@ Tools:
 
 - [API documentation](https://swoleeswoge.dog/swogeagentic_api.html): authentication, endpoints, MCP setup, errors, examples
 - [Live tool catalogue (JSON)](https://web-production-220a3.up.railway.app/agentic/tools): tools, prices in $ and $SWOGE, input schemas
+- [OpenAPI 3.1](https://web-production-220a3.up.railway.app/openapi.json): every tool as an operation, with x-payment-info on those payable without a key
 - [Live llms.txt](https://web-production-220a3.up.railway.app/llms.txt): this file, generated from the live catalogue
 
 ## Optional

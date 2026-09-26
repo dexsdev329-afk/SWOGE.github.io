@@ -733,7 +733,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   <h2>2. Tools and prices <span class="dim" id="coursDoc"></span></h2>
   <table class="outils"><thead><tr><th>Tool</th><th>What it does</th><th>Arguments</th><th>Price</th></tr></thead>
     <tbody id="outilsDoc"><tr><td colspan="4" class="dim">Loading the live catalogue…</td></tr></tbody></table>
-  <p class="dim">Prices are read live from <code id="urlCat">/agentic/tools</code>. Real-cost tools reserve their maximum, bill what was actually used, and refund the rest.</p>
+  <p class="dim">Prices are read live from <code id="urlCat">/agentic/tools</code>. Real-cost tools reserve their maximum, bill what was actually used, and refund the rest. The same API as OpenAPI 3.1: <code id="urlOpenapi">/openapi.json</code>.</p>
 
   <h2>3. REST</h2>
   <pre id="exRest"></pre>
@@ -800,6 +800,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   var $ = function(id){ return document.getElementById(id); };
   var api = serveur();
   $("urlCat").textContent = api + "/agentic/tools";
+  $("urlOpenapi").textContent = api + "/openapi.json";
   $("urlMcp").textContent = api + "/mcp";
   $("exRest").textContent = "# 1. the catalogue (public)\ncurl -s " + api + "/agentic/tools\n\n# 2. the price of a call (free)\ncurl -s -X POST " + api + "/agentic/call/scan_token \\\n  -H \"Authorization: Bearer swg_YOUR_KEY\" -H \"content-type: application/json\" \\\n  -d '{\"arguments\":{\"address\":\"0x6982508145454ce325ddbe47a25d4ec3d2311933\"},\"quote\":true}'\n\n# 3. the call itself\ncurl -s -X POST " + api + "/agentic/call/scan_token \\\n  -H \"Authorization: Bearer swg_YOUR_KEY\" -H \"content-type: application/json\" \\\n  -d '{\"arguments\":{\"address\":\"0x6982508145454ce325ddbe47a25d4ec3d2311933\"}}'";
   $("exMcp").textContent = "# Claude Code\nclaude mcp add --transport http swogeagentic " + api + "/mcp \\\n  --header \"Authorization: Bearer swg_YOUR_KEY\"\n\n// Cursor (~/.cursor/mcp.json) or .mcp.json\n" + JSON.stringify({ mcpServers: { swogeagentic: { url: api + "/mcp", headers: { Authorization: "Bearer swg_YOUR_KEY" } } } }, null, 2);

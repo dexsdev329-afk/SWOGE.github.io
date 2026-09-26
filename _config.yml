@@ -1,0 +1,4 @@
+# GitHub Pages (Jekyll) ignore les dossiers qui commencent par un point :
+# on inclut .well-known, et lui seul (la preuve de domaine du registre MCP).
+include:
+  - .well-known

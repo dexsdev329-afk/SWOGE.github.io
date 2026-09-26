@@ -98,7 +98,7 @@ video{ max-width:100%; }
 .menubtn{ min-width:44px; min-height:44px; }
 </style>
 
-<title>SwoleMind · AI chat with Claude, ChatGPT and Grok</title>
+<title>SwogeAgentic · an AI agent with SWOGE tools</title>
 
 <!-- ==================== REFERENCEMENT ET PARTAGE ====================
      Bloc identique sur toutes les pages, pose juste apres le titre.
@@ -118,21 +118,21 @@ video{ max-width:100%; }
      atteignable avec un `?game=`, un `#` ou un `www`. Sans elle, les deux
      versions se font concurrence et aucune ne gagne.
      ================================================================= -->
-<link rel="canonical" href="https://swoleeswoge.dog/swolemind.html">
-<meta name="description" content="SwoleMind: chat with Claude, ChatGPT and Grok, search the web with sources, create images and videos. No subscription — each request is billed from your $SWOGE balance at its actual cost.">
+<link rel="canonical" href="https://swoleeswoge.dog/swogeagentic.html">
+<meta name="description" content="SwogeAgentic: give an AI agent a task and it reads tokens (DexScreener, GoPlus), the SWOGE AI colony, the $SWOGE economy and the web, then answers with sources. Read-only. Billed from your $SWOGE balance at its actual cost.">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="SWOGE WORLD">
 <meta property="og:locale" content="en_US">
-<meta property="og:title" content="SwoleMind · AI chat with Claude, ChatGPT and Grok">
-<meta property="og:description" content="SwoleMind: chat with Claude, ChatGPT and Grok, search the web with sources, create images and videos. No subscription — each request is billed from your $SWOGE balance at its actual cost.">
-<meta property="og:url" content="https://swoleeswoge.dog/swolemind.html">
+<meta property="og:title" content="SwogeAgentic · an AI agent with SWOGE tools">
+<meta property="og:description" content="SwogeAgentic: give an AI agent a task and it reads tokens (DexScreener, GoPlus), the SWOGE AI colony, the $SWOGE economy and the web, then answers with sources. Read-only. Billed from your $SWOGE balance at its actual cost.">
+<meta property="og:url" content="https://swoleeswoge.dog/swogeagentic.html">
 <meta property="og:image" content="https://swoleeswoge.dog/img/site/partage.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:site" content="@SwoleDogeSwoge">
-<meta name="twitter:title" content="SwoleMind · AI chat with Claude, ChatGPT and Grok">
-<meta name="twitter:description" content="SwoleMind: chat with Claude, ChatGPT and Grok, search the web with sources, create images and videos. No subscription — each request is billed from your $SWOGE balance at its actual cost.">
+<meta name="twitter:title" content="SwogeAgentic · an AI agent with SWOGE tools">
+<meta name="twitter:description" content="SwogeAgentic: give an AI agent a task and it reads tokens (DexScreener, GoPlus), the SWOGE AI colony, the $SWOGE economy and the web, then answers with sources. Read-only. Billed from your $SWOGE balance at its actual cost.">
 <meta name="twitter:image" content="https://swoleeswoge.dog/img/site/partage.jpg">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="/img/site/icone-32.png">
@@ -671,8 +671,8 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       <a href="swoge_perp.html"><span class="ic">&#128200;</span>AI Perp</a>
       <a href="swoge_predict.html"><span class="ic">&#128302;</span>Predict</a>
       <a href="swoge_osint.html"><span class="ic">&#128269;</span>OSINT</a>
-      <a href="swolemind.html" class="on" aria-current="page"><span class="ic">&#129504;</span>SwoleMind</a>
-      <a href="swogeagentic.html"><span class="ic">&#129302;</span>SwogeAgentic</a>
+      <a href="swolemind.html"><span class="ic">&#129504;</span>SwoleMind</a>
+      <a href="swogeagentic.html" class="on" aria-current="page"><span class="ic">&#129302;</span>SwogeAgentic</a>
       <a href="whitepaper.html"><span class="ic">&#128220;</span>Docs</a>
     </nav>
     <div class="sw-reseaux">
@@ -693,7 +693,30 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   </aside>
 
 
-<main class="chat-main">
+<main class="chat-main ag">
+<style>
+/* ==================== SWOGEAGENTIC ====================
+ * Une page a part (demande du proprietaire, le 26 septembre 2026 : « garder
+ * SwoleMind, creer une nouvelle page en reutilisant ce qu'on a »). Les
+ * styles du fil, du code, des sources et de la carte d'un jeton sont ceux de
+ * SwoleMind (bloc ci-dessous, recopie) ; ici, seulement ce qui est propre a
+ * l'agent : les outils, la chronologie de ses gestes, la tache. */
+.ag-tete{display:flex;flex-wrap:wrap;align-items:flex-end;gap:8px 16px;margin:6px 0 12px}
+.ag-tete h1{font:400 34px/1 Anton,Impact,sans-serif;letter-spacing:.02em;margin:0;color:var(--paper)}
+.ag-tete p{margin:0;color:var(--dim);font-size:13.5px;max-width:560px}
+.ag-outils{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
+.ag-outil{font:700 11px/1 'Space Mono',monospace;border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:6px 10px;color:var(--paper)}
+.ag-outil[data-off]{opacity:.45}
+.ag-lit{font-size:12px;color:var(--dim);margin:-4px 0 12px}
+.etapes{display:flex;flex-direction:column;gap:6px;margin:0 0 10px;padding:0;list-style:none}
+.etapes li{display:flex;gap:8px;align-items:flex-start;font-size:12.5px;border-left:2px solid var(--line);padding:2px 0 2px 10px;min-width:0}
+.etapes li b{font-family:'Space Mono',monospace;font-size:11.5px;white-space:nowrap}
+.etapes li .quoi{color:var(--dim);overflow-wrap:anywhere;min-width:0}
+.etapes li[data-etat="ok"]{border-left-color:var(--believer)}
+.etapes li[data-etat="err"]{border-left-color:var(--serpent)}
+.etapes li[data-etat="cours"]{border-left-color:var(--pool)}
+.ag-compose select{border:1px solid var(--line);background:var(--panel);color:var(--paper);border-radius:999px;padding:7px 10px;font:600 12.5px/1 inherit;font-family:inherit;max-width:100%}
+</style>
 <style>
 /* ==================== SWOGE AI CHAT — ce qui est propre a cette page ====================
  * La palette, la nav et les correctifs communs viennent du bloc partage
@@ -901,157 +924,70 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 .histo .ligne button.ouvre{flex:1;min-width:0}
 .histo .ligne button.efface{width:auto;flex:0 0 auto;color:var(--dim);padding:8px 10px}
 </style>
-
-<div class="chat">
-  <div class="chat-tete">
-    <div class="titre">Swole<em>Mind</em></div>
-    <div class="droite">
-      <span class="pastille" id="solde" title="Your SWOGE gaming balance">Balance <b>—</b></span>
-      <button class="btn-fin" id="histoBtn" type="button" aria-expanded="false">&#128172; Chats</button>
-      <button class="btn-fin" id="nouveau" type="button">&#10133; New chat</button>
-    </div>
+  <div class="ag-tete">
+    <h1>SwogeAgentic</h1>
+    <p>An AI agent that works with SWOGE's own data: it reads tokens, the SWOGE AI colony, the $SWOGE economy and the web, chains the lookups itself, then answers with the numbers it read.</p>
   </div>
-  <div class="histo" id="histo" hidden></div>
-  <div class="etat" id="etat" hidden></div>
-
-  <section class="accueil" id="accueil">
-    <h1>What can I help with?</h1>
-    <p>Chat with the top AI models — Claude, ChatGPT and Grok — search the live web with sources,
-       create images with Grok Imagine or ChatGPT Image, and videos with Grok. You pay in $SWOGE, only for what each request actually costs.</p>
+  <div class="ag-outils" id="outils" aria-label="Tools the agent can use"></div>
+  <div class="ag-lit">&#128274; Read-only: the agent can't buy, sell, sign or post anything.</div>
+  <div class="barre-fin">
+    <span class="pastille" id="solde" title="Your SWOGE gaming balance">Balance <b>&mdash;</b></span>
+    <button class="btn-fin" id="nouveau" type="button">&#10133; New task</button>
+  </div>
+  <div class="accueil" id="accueil">
     <div class="suggestions" id="suggestions">
-      <button class="suggestion" type="button" data-sugg="web"><span class="ic">&#127760;</span>Search the web</button>
-      <button class="suggestion" type="button" data-sugg="ecrire"><span class="ic">&#9998;&#65039;</span>Write or edit</button>
-      <button class="suggestion" type="button" data-sugg="expliquer"><span class="ic">&#128161;</span>Explain something simply</button>
-      <button class="suggestion" type="button" data-sugg="code"><span class="ic">&#128187;</span>Help me with code</button>
-      <button class="suggestion" type="button" data-sugg="jeton"><span class="ic">&#128269;</span>Check a token</button>
-      <button class="suggestion" type="button" data-sugg="image"><span class="ic">&#128444;&#65039;</span>Create an image</button>
-      <button class="suggestion" type="button" data-sugg="video"><span class="ic">&#127916;</span>Make a video</button>
+      <button class="suggestion" type="button" data-t="Check this token and tell me what you find: "><span class="ic">&#128269;</span>Check a token</button>
+      <button class="suggestion" type="button" data-t="What is the SWOGE AI colony doing right now? Open positions, latest buys and sells, and how the real-money mirror is doing."><span class="ic">&#129302;</span>What is the colony doing?</button>
+      <button class="suggestion" type="button" data-t="How much $SWOGE has been burnt, what is in the casino vault, and what is the price now?"><span class="ic">&#128293;</span>$SWOGE economy</button>
+      <button class="suggestion" type="button" data-t="Research this project on the web and summarise what it does, with sources: "><span class="ic">&#127760;</span>Research a project</button>
     </div>
-  </section>
-
-  <section class="fil" id="fil" hidden aria-live="polite"></section>
-
-  <div class="compose">
-    <div class="reglages" id="reglages" hidden>
-      <div class="seg" id="fournisseur" role="group" aria-label="Image model">
-        <button type="button" data-f="grok" aria-pressed="true">Grok Imagine</button>
-        <button type="button" data-f="openai" aria-pressed="false">ChatGPT Image</button>
-      </div>
-      <div class="seg" id="vitesse" role="group" aria-label="Speed or quality">
-        <button type="button" data-v="rapide" aria-pressed="false">Speed</button>
-        <button type="button" data-v="qualite" aria-pressed="true" id="qualiteNom">Quality</button>
-      </div>
-      <button class="puce" id="nombre" type="button" title="How many images">&#128444;&#65039; &times;1</button>
-      <button class="puce" id="duree" type="button" title="Video length">&#9201;&#65039; 6 s</button>
-      <button class="puce" id="resolution" type="button" title="Video resolution">480p</button>
-      <button class="puce" id="format" type="button" title="Aspect ratio">&#9635; Auto</button>
-    </div>
+  </div>
+  <div class="fil" id="fil" hidden></div>
+  <div class="etat" id="etat" hidden></div>
+  <div class="compose ag-compose">
     <div class="boite">
-      <div class="pieces" id="pieces" hidden></div>
-      <div class="jointe" id="jointe" hidden><img id="jointeImg" alt=""><span id="jointeTxt">Photo attached</span>
-        <button type="button" id="retirer" aria-label="Remove the photo">&#10005;</button></div>
-      <textarea id="question" rows="1" placeholder="Ask SwoleMind" aria-label="Your question"></textarea>
+      <textarea id="question" rows="1" placeholder="Give SwogeAgentic a task" aria-label="Your task"></textarea>
       <div class="outils">
-        <button class="plus" id="joindre" type="button" title="Attach a photo" aria-label="Attach a photo" hidden>+</button>
-        <input type="file" id="fichier" accept="image/png,image/jpeg,image/webp" hidden>
-        <input type="file" id="fichierChat" accept="image/png,image/jpeg,image/webp,application/pdf" multiple hidden>
-        <div class="modes" role="group" aria-label="What to make">
-          <button class="mode" type="button" data-mode="chat" aria-pressed="true">&#128172; Chat</button>
-          <button class="mode" type="button" data-mode="image" aria-pressed="false">&#128444;&#65039; Image</button>
-          <button class="mode" type="button" data-mode="video" aria-pressed="false">&#127916; Video</button>
-        </div>
-        <button class="outil" id="modeleBtn" type="button" aria-haspopup="dialog">&#10024; <span id="modeleNom">Opus 5.5</span> &#9662;</button>
-        <button class="outil" id="comparer" type="button" aria-pressed="false" title="Ask 2 or 3 models the same question, side by side">&#9878;&#65039; Compare</button>
-        <button class="outil" id="web" type="button" aria-pressed="false" title="Search the web and cite sources">&#127760; Search</button>
-        <button class="envoi" id="envoyer" type="button" disabled aria-label="Send">&#8593;</button>
+        <select id="modele" aria-label="Model"></select>
+        <button class="envoi" id="envoyer" type="button" disabled aria-label="Run">&#8593;</button>
       </div>
     </div>
-    <div class="prixq" id="prixq">Loading models…</div>
+    <div class="prixq" id="prixq">&nbsp;</div>
   </div>
-</div>
-
-<div class="voile-feuille" id="feuille" hidden role="dialog" aria-modal="true" aria-label="Select a model">
-  <div class="feuille">
-    <div class="haut"><b>Select a model</b><button class="fermer" id="fermerFeuille" type="button" aria-label="Close">&#10005;</button></div>
-    <div id="modeles"></div>
-    <div class="efforts" id="efforts" hidden>
-      <span class="lbl">Effort</span>
-      <button class="effort" type="button" data-effort="low" aria-pressed="false">Low</button>
-      <button class="effort" type="button" data-effort="medium" aria-pressed="false">Medium</button>
-      <button class="effort" type="button" data-effort="high" aria-pressed="false">High</button>
-    </div>
-  </div>
-</div>
-
 <script>
-/* ---- SWOLEMIND (ex-« SWOGE Studio », renomme le 26 septembre 2026 par le
- * proprietaire : « SWOGE AI » designait deja la colonie, et « Studio » ne
- * disait pas que c'est une IA). Adresse swolemind.html ; swoge_studio.html,
- * swoge_chat.html et swolemind.htm y renvoient. Meme origine : les fils gardes
- * dans le navigateur (localStorage) sont retrouves tels quels. ----
- * ---- STUDIO EST LE CHAT ----
- * Demande du proprietaire, le 26 septembre 2026 : « quand on arrive sur la
- * page on doit cliquer sur open chat — il devrait n'y avoir que la page du
- * chat, et on ameliore a partir de la ». `swoge_studio.html` EST donc
- * l'application de chat, comme ChatGPT ou Claude : on arrive sur le
- * composeur, sans vitrine ni bouton intermediaire. L'ancien atelier
- * d'images et de videos n'a jamais genere quoi que ce soit (« in
- * preparation ») : il reviendra ici, comme une fonction du chat, quand il
- * marchera. `swoge_chat.html` redirige ici. */
-/* ==================== SWOGE AI CHAT — la page ====================
- * La page MONTRE et TRANSPORTE ; elle ne decide rien. Le prix, le debit et
- * le remboursement sont calcules par le serveur (`/studio/chat`), qui ne
- * debite QUE l'adresse de la session. Aucune cle de fournisseur ne touche ce
- * navigateur. L'historique des conversations reste dans CE navigateur
- * (`localStorage`), jamais envoye ailleurs que dans la question elle-meme. */
+/* ==================== SWOGEAGENTIC — la page ====================
+ * La page MONTRE et TRANSPORTE : le serveur (`/studio/agent`) authentifie par
+ * la session, reserve le pire cas de l'agent, facture le cout reel, rend le
+ * reste — la meme regle que SwoleMind. Les fonctions d'affichage (Markdown
+ * echappe, carte d'un jeton, sources, copie) sont celles de SwoleMind,
+ * recopiees telles quelles : la meme securite, sans fichier partage (le site
+ * n'a pas de bundler). */
 (function(){
   "use strict";
+  var $ = function(id){ return document.getElementById(id); };
+  var TXT = {
+    signin: "Sign in with your wallet (top right) to run the agent.",
+    ferme: "SwogeAgentic is warming up.",
+    reflexion: "Thinking…",
+    erreurReseau: "Connection lost — you were not charged for an unfinished task.",
+    refus: "The model declined this task."
+  };
+  /* Ce qu'un outil fait, dit au joueur (le nom technique reste a cote). */
+  var OUTIL = {
+    scan_token: { ic: "🔍", dit: function(e){ return "Reading token " + String(e.address || "").slice(0, 8) + "…" + String(e.address || "").slice(-4); } },
+    colony_activity: { ic: "🤖", dit: function(e){ return "Reading the SWOGE AI colony" + (e.token ? " on " + e.token : ""); } },
+    swoge_economy: { ic: "🔥", dit: function(){ return "Reading the $SWOGE economy on-chain"; } },
+    web_search: { ic: "🌐", dit: function(e){ return "Searching the web: “" + String(e.query || "").slice(0, 80) + "”"; } }
+  };
+  /* ---- recopie de swolemind.html, a l'identique : serveur, lisLocal, ecrisLocal, jeton, nombre, echappe, enLigne, markdown, copie, actionsEl, usdCourt, lienSur, carteJeton, sourcesEl, nouveauRid ---- */
   function serveur(){
     try { var q = new URLSearchParams(location.search).get("server"); if (q) return String(q).replace(/^ws/, "http").replace(/\/$/, ""); } catch (e) {}
     return "https://web-production-220a3.up.railway.app";
   }
-  var $ = function(id){ return document.getElementById(id); };
-  var TXT = {
-    signin: "Sign in with your wallet (top right) to start chatting.",
-    ferme: "AI Chat is warming up.",
-    reflexion: "Thinking…",
-    recherche: "Searching the web…",
-    jeton: "Reading the token: DexScreener, GoPlus, SWOGE AI…",
-    pdfClaude: "PDFs are read by Claude models \u2014 pick Opus, Fable, Sonnet or Haiku (photos work with every model).",
-    erreurReseau: "Connection lost — you were not charged for an unfinished answer.",
-    vide: "No saved chats yet.",
-    refus: "The model declined to answer this request."
-  };
-  var SUGG = {
-    web: { texte: "", web: true, place: "Search the web for…" },
-    ecrire: { texte: "Help me write ", web: false },
-    expliquer: { texte: "Explain simply: ", web: false },
-    code: { texte: "Help me with this code:\n", web: false },
-    jeton: { texte: "Check this token: ", web: false, place: "Paste a token address (0x\u2026)" },
-    image: { texte: "", mode: "image" },
-    video: { texte: "", mode: "video" }
-  };
-  var PLACE = { chat: "Ask SwoleMind", image: "Describe the image to create", video: "Describe the video \u2014 or attach a photo to animate" };
-  var FORMAT_NOM = { auto: "Auto" };
   function lisLocal(k, d){ try { var v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } }
   function ecrisLocal(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
   function jeton(){ try { return localStorage.getItem("swogeSession"); } catch (e) { return null; } }
   function nombre(x){ var n = Number(x); if (!isFinite(n)) return "—"; return n >= 1000 ? Math.round(n).toLocaleString("en-US") : n.toLocaleString("en-US", { maximumFractionDigits: 2 }); }
-
-  var etat = {
-    cat: null, modele: lisLocal("swogeChatModele", null), effort: lisLocal("swogeChatEffort", null),
-    web: false, occupe: false, conv: null, convs: lisLocal("swogeChats", []),
-    /* Studio facon Grok : le mode du composeur et ses reglages, retenus. */
-    media: null, mode: lisLocal("swogeStudioMode", "chat"), jointe: null, pieces: [],
-    /* Comparer : 2 ou 3 modeles choisis dans la feuille, retenus. */
-    compare: lisLocal("swogeCompare", false) === true, choix: lisLocal("swogeCompareChoix", []),
-    reg: Object.assign({ fournisseur: "grok", vitesse: "qualite", nombre: 1, formatI: "auto", formatV: "auto", duree: 6, resolution: "480p" },
-                       lisLocal("swogeStudioReglages", {}))
-  };
-  if (["chat", "image", "video"].indexOf(etat.mode) < 0) etat.mode = "chat";
-
-  /* ---- le rendu Markdown, SUR : tout est echappe AVANT d'etre mis en forme ----
-     Le texte vient d'un modele : il ne doit jamais pouvoir injecter de HTML. */
   function echappe(s){ return String(s).replace(/[&<>"']/g, function(c){ return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]; }); }
   function enLigne(s){
     return s.replace(/`([^`]+)`/g, "<code>$1</code>")
@@ -1086,234 +1022,6 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     }
     return html;
   }
-
-  function dit(t){ var e = $("etat"); e.textContent = t || ""; e.hidden = !t; }
-  function modeleCourant(){
-    var c = etat.cat; if (!c) return null;
-    /* Un modele dont la cle manque (actif:false) n'est jamais le modele courant. */
-    var ok = c.modeles.filter(function(m){ return m.actif !== false; });
-    var l = ok.length ? ok : c.modeles;
-    return l.filter(function(m){ return m.id === etat.modele; })[0] || l.filter(function(m){ return m.id === c.defaut; })[0] || l[0];
-  }
-  /* Le choix du modele d'image (Grok Imagine ou ChatGPT Image), puis sa vitesse. */
-  function fournisseurImage(){
-    var im = etat.media && etat.media.image; if (!im) return null;
-    var l = im.fournisseurs || [{ id: "grok", nom: "Grok Imagine", actif: etat.media.ouvert, modeles: im.modeles }];
-    return l.filter(function(f){ return f.id === etat.reg.fournisseur; })[0] || l[0];
-  }
-  function modeleMedia(){
-    if (!etat.media) return null;
-    var l = etat.mode === "image" ? (fournisseurImage() || {}).modeles : (etat.media.video || {}).modeles;
-    if (!l || !l.length) return null;
-    return l.filter(function(m){ return m.id === etat.reg.vitesse; })[0] || l[0];
-  }
-  function nomMedia(mm){
-    if (etat.mode !== "image") return mm.nom;
-    var f = fournisseurImage(); return (f ? f.nom + " \u00b7 " : "") + mm.nom;
-  }
-  /* Ce qui empeche de generer dans ce mode, ou null. */
-  function fermeMedia(){
-    var c = etat.media; if (!c) return TXT.ferme;
-    if (etat.mode === "video") return c.videoOuverte === false || (c.videoOuverte === undefined && !c.ouvert) ? (c.videoNote || c.note || TXT.ferme) : null;
-    var f = fournisseurImage();
-    if (!c.ouvert) return c.note || TXT.ferme;
-    if (f && f.actif === false) return f.nom + " is not switched on yet \u2014 pick the other model.";
-    return null;
-  }
-  function peintPrix(){
-    if (etat.mode !== "chat") {
-      var mm = modeleMedia(), p = $("prixq");
-      if (!etat.media) { p.textContent = "Loading\u2026"; return; }
-      var ferme = fermeMedia();
-      if (ferme) { p.textContent = ferme; return; }
-      if (!mm) return;
-      if (etat.mode === "image") {
-        var n = etat.jointe ? etat.reg.nombre + 1 : etat.reg.nombre;
-        p.textContent = nomMedia(mm) + " \u00b7 ~" + nombre(mm.parImageSwoge) + " $SWOGE per image" + (mm.estime ? " (estimate)" : "") + (n > 1 ? " \u00b7 \u2248 " + nombre(mm.parImageSwoge * n) + " in all" : "") + " \u00b7 you pay the real cost";
-      } else {
-        p.textContent = mm.nom + " \u00b7 ~" + nombre(mm.parSecondeSwoge * etat.reg.duree) + " $SWOGE for " + etat.reg.duree + " s at 480p" + (etat.reg.resolution !== "480p" ? " (" + etat.reg.resolution + " costs more)" : "") + " \u00b7 you pay the real cost";
-      }
-      return;
-    }
-    var m = modeleCourant();
-    if (etat.compare) {
-      var mcs = modelesCompares();
-      $("modeleNom").textContent = mcs.length ? mcs.map(function(x){ return x.nom; }).join(" \u00b7 ") : "Pick models";
-      $("web").hidden = !mcs.some(function(x){ return x.recherche; });
-      $("prixq").textContent = mcs.length < 2 ? "Compare: pick 2 or 3 models"
-        : "Compare " + mcs.length + " models \u00b7 ~" + nombre(mcs.reduce(function(t, x){ return t + (x.typiqueSwoge || 0); }, 0)) + " $SWOGE per question \u00b7 each answer billed on its own";
-      return;
-    }
-    $("modeleNom").textContent = m ? m.nom : "Model";
-    $("web").hidden = !(m && m.recherche);
-    if (!m) return;
-    $("prixq").textContent = m.nom + " · ~" + nombre(m.typiqueSwoge) + " $SWOGE per question (max " + nombre(m.maxSwoge) + ") · you pay only what the answer uses";
-  }
-  function peintBoutons(){
-    var vide = !$("question").value.trim() && !(etat.mode === "video" && etat.jointe) && !(etat.mode === "chat" && etat.pieces.length);
-    $("envoyer").disabled = etat.occupe || vide;
-  }
-  /* ---- le mode et ses reglages ---- */
-  function peintMode(){
-    var m = etat.mode;
-    $("comparer").hidden = m !== "chat";
-    $("comparer").setAttribute("aria-pressed", String(!!etat.compare));
-    if (m === "chat" && etat.compare) {
-      var mcs = modelesCompares();
-      $("modeleNom").textContent = mcs.length ? mcs.map(function(x){ return x.nom; }).join(" \u00b7 ") : "Pick models";
-    }
-    Array.prototype.forEach.call(document.querySelectorAll(".mode"), function(b){ b.setAttribute("aria-pressed", String(b.getAttribute("data-mode") === m)); });
-    $("modeleBtn").hidden = m !== "chat";
-    $("web").hidden = m !== "chat" || !(etat.compare ? modelesCompares().some(function(x){ return x.recherche; }) : (modeleCourant() || {}).recherche);
-    /* « + » partout : en Chat il joint une photo ou un PDF a la question. */
-    $("joindre").hidden = false;
-    $("joindre").title = m === "chat" ? "Attach a photo or a PDF" : "Attach a photo";
-    $("pieces").hidden = m !== "chat" || !etat.pieces.length;
-    $("reglages").hidden = m === "chat";
-    $("fournisseur").hidden = m !== "image";
-    Array.prototype.forEach.call(document.querySelectorAll("#fournisseur button"), function(b){ b.setAttribute("aria-pressed", String(b.getAttribute("data-f") === etat.reg.fournisseur)); });
-    $("nombre").hidden = m !== "image";
-    $("duree").hidden = m !== "video"; $("resolution").hidden = m !== "video";
-    $("question").placeholder = PLACE[m];
-    if (m === "chat" && etat.jointe) retireJointe();
-    Array.prototype.forEach.call(document.querySelectorAll("#vitesse button"), function(b){ b.setAttribute("aria-pressed", String(b.getAttribute("data-v") === etat.reg.vitesse)); });
-    var lm = m === "image" ? (fournisseurImage() || {}).modeles : (etat.media && etat.media.video && etat.media.video.modeles);
-    if (lm && lm[1]) $("qualiteNom").textContent = lm[1].nom;
-    $("nombre").textContent = "\ud83d\uddbc\ufe0f \u00d7" + etat.reg.nombre;
-    $("duree").textContent = "\u23f1\ufe0f " + etat.reg.duree + " s";
-    $("resolution").textContent = etat.reg.resolution;
-    var f = m === "video" ? etat.reg.formatV : etat.reg.formatI;
-    $("format").textContent = "\u25a3 " + (FORMAT_NOM[f] || f);
-    $("jointeTxt").textContent = m === "video" ? "Photo to animate" : "Photo to edit";
-    peintPrix(); peintBoutons();
-  }
-  function changeMode(m){ etat.mode = m; ecrisLocal("swogeStudioMode", m); peintMode(); $("question").focus(); }
-  function cycle(liste, v){ var i = liste.indexOf(v); return liste[(i + 1) % liste.length]; }
-  function sauveReg(){ ecrisLocal("swogeStudioReglages", etat.reg); peintMode(); }
-  function retireJointe(){ etat.jointe = null; $("jointe").hidden = true; $("jointeImg").removeAttribute("src"); $("fichier").value = ""; peintPrix(); peintBoutons(); }
-
-  /* ---- la feuille des modeles ---- */
-  function peintFeuille(){
-    var c = etat.cat, box = $("modeles"); box.innerHTML = "";
-    if (!c) return;
-    var groupe = null;
-    c.modeles.forEach(function(m){
-      /* Un titre a chaque fournisseur : Claude, ChatGPT, Grok. */
-      if (m.nomFournisseur && m.nomFournisseur !== groupe) {
-        groupe = m.nomFournisseur;
-        var g = document.createElement("div"); g.className = "groupe"; g.textContent = groupe; box.appendChild(g);
-      }
-      var b = document.createElement("button");
-      b.type = "button"; b.className = "modele"; b.setAttribute("data-modele", m.id);
-      b.disabled = m.actif === false;
-      var coche = etat.compare ? etat.choix.indexOf(m.id) >= 0 : m.id === (modeleCourant() || {}).id;
-      b.innerHTML = '<span class="coche">' + (coche ? "&#10003;" : "") + '</span>'
-        + '<span><div class="nom">' + echappe(m.nom) + '</div><div class="desc">' + echappe(m.actif === false ? "Not switched on yet" : m.note) + '</div></span>'
-        + '<span class="prix">~' + nombre(m.typiqueSwoge) + ' $SWOGE<br>per question</span>';
-      b.addEventListener("click", function(){
-        if (m.actif === false) return;
-        if (etat.compare) {
-          /* Comparer : on coche 2 ou 3 modeles ; un quatrieme remplace le plus ancien. */
-          var i = etat.choix.indexOf(m.id);
-          if (i >= 0) etat.choix.splice(i, 1); else { etat.choix.push(m.id); if (etat.choix.length > 3) etat.choix.shift(); }
-          ecrisLocal("swogeCompareChoix", etat.choix);
-        } else { etat.modele = m.id; ecrisLocal("swogeChatModele", m.id); }
-        peintFeuille(); peintPrix(); peintMode();
-      });
-      box.appendChild(b);
-    });
-    var mc = modeleCourant();
-    var titre = document.querySelector("#feuille .haut b");
-    if (titre) titre.textContent = etat.compare ? "Pick 2 or 3 models to compare" : "Select a model";
-    $("efforts").hidden = etat.compare ? !modelesCompares().some(function(x){ return x.effort; }) : !(mc && mc.effort);
-    Array.prototype.forEach.call(document.querySelectorAll(".effort"), function(b){
-      b.setAttribute("aria-pressed", String(b.getAttribute("data-effort") === (etat.effort || "medium")));
-    });
-  }
-  function ouvreFeuille(){ peintFeuille(); $("feuille").hidden = false; }
-  function fermeFeuille(){ $("feuille").hidden = true; }
-
-  /* ---- le fil ---- */
-  function ajouteMsg(role, texte){
-    $("accueil").hidden = true; $("fil").hidden = false;
-    var d = document.createElement("div");
-    d.className = "msg " + (role === "user" ? "moi" : "ia");
-    if (role === "user") d.textContent = texte;
-    else d.innerHTML = '<div class="corps"></div>';
-    $("fil").appendChild(d);
-    d.scrollIntoView({ block: "end" });
-    return d;
-  }
-  function peintConv(){
-    $("fil").innerHTML = "";
-    var c = etat.conv;
-    if (!c || !c.messages.length) { $("fil").hidden = true; $("accueil").hidden = false; return; }
-    var groupe = null, idGroupe = null;
-    c.messages.forEach(function(m, i){
-      if (m.genre && m.role === "assistant") { var dm = ajouteMsg("assistant", ""); dm.setAttribute("data-i", i); peintMedia(dm, m); return; }
-      if (m.role === "assistant" && m.comparaison) {
-        if (idGroupe !== m.comparaison) { groupe = grilleCmp(m.comparaison); idGroupe = m.comparaison; }
-        var dc = colonneCmp(groupe, m.nomModele || "AI"); dc.setAttribute("data-i", i);
-        dc.querySelector(".corps").innerHTML = markdown(m.content);
-        ajouteCartes(dc, m.jetons);
-        if (m.sources && m.sources.length) dc.appendChild(sourcesEl(m.sources));
-        if (m.meta) { var mc = document.createElement("div"); mc.className = "meta"; mc.textContent = m.meta; dc.appendChild(mc); }
-        dc.appendChild(actionsEl(m.content));
-        return;
-      }
-      idGroupe = null;
-      var d = ajouteMsg(m.role, m.content); d.setAttribute("data-i", i);
-      if (m.role === "user") montrePieces(d, m.pieces);
-      if (m.role === "assistant") {
-        d.querySelector(".corps").innerHTML = markdown(m.content);
-        ajouteCartes(d, m.jetons);
-        if (m.sources && m.sources.length) d.appendChild(sourcesEl(m.sources));
-        if (m.meta) { var mt = document.createElement("div"); mt.className = "meta"; mt.textContent = m.meta; d.appendChild(mt); }
-        d.appendChild(actionsEl(m.content));
-      }
-    });
-  }
-  /* Un resultat d'image ou de video, dans le fil. Les adresses viennent du
-     serveur (le fournisseur) : https seulement, ouvertes dans un nouvel onglet. */
-  function peintMedia(d, m){
-    var corps = d.querySelector(".corps"); corps.innerHTML = "";
-    if (m.genre === "image") {
-      var g = document.createElement("div"); g.className = "grille";
-      (m.urls || []).forEach(function(u){
-        /* Une image rangee chez nous arrive en adresse relative : on la sert depuis le serveur. */
-        if (/^\/studio\/media\/fichier\/[0-9a-f]{48}\.(png|jpg|webp)$/.test(u)) u = serveur() + u;
-        if (!/^(https:|data:image\/)/.test(u)) return;
-        var a = document.createElement("a"); a.href = u; a.target = "_blank"; a.rel = "noopener";
-        var im = document.createElement("img"); im.src = u; im.alt = "Generated image"; im.loading = "lazy";
-        a.appendChild(im); g.appendChild(a);
-      });
-      corps.appendChild(g);
-    } else if (m.url && /^https:/.test(m.url)) {
-      var v = document.createElement("video"); v.src = m.url; v.controls = true; v.playsInline = true; v.loop = true;
-      corps.appendChild(v);
-      var t = document.createElement("a"); t.className = "telecharger"; t.href = m.url; t.target = "_blank"; t.rel = "noopener"; t.textContent = "\u2193 Download the video";
-      corps.appendChild(t);
-    }
-    if (m.meta) { var mt = document.createElement("div"); mt.className = "meta"; mt.textContent = m.meta; d.appendChild(mt); }
-  }
-  /* La fin d'une reponse de chat : texte, sources, cout, « Copy », fil ecrit.
-     Partagee par le flux et par la reprise apres rechargement. */
-  function finChat(d, data, nomModele, recu, extra){
-    var corps = d.querySelector(".corps");
-    var texte = data.texte || recu || "";
-    if (!texte && data.stop === "refusal") texte = TXT.refus;
-    corps.innerHTML = markdown(texte);
-    ajouteCartes(d, data.jetons);
-    if (data.sources && data.sources.length) d.appendChild(sourcesEl(data.sources));
-    var nom = nomModele || ((etat.cat && etat.cat.modeles.filter(function(x){ return x.id === data.modele; })[0]) || {}).nom || "AI";
-    var meta = nom + " \u00b7 " + nombre(data.factureSwoge) + " $SWOGE" + (data.usage && data.usage.recherches ? " \u00b7 " + data.usage.recherches + " web search" + (data.usage.recherches > 1 ? "es" : "") : "");
-    var mt = document.createElement("div"); mt.className = "meta"; mt.textContent = meta; d.appendChild(mt);
-    d.appendChild(actionsEl(texte));
-    etat.conv.messages.push(Object.assign({ role: "assistant", content: texte, sources: data.sources || [], meta: meta }, data.jetons && data.jetons.length ? { jetons: data.jetons } : {}, extra || {}));
-    sauveConv();
-    if (data.solde) $("solde").innerHTML = "Balance <b>" + nombre(data.solde) + " $SWOGE</b>";
-  }
-  /* ---- COPIER : le presse-papiers, et un repli pour les navigateurs qui le refusent ---- */
   function copie(texte, bouton){
     var fait = function(){ var t = bouton.textContent; bouton.textContent = "\u2713 Copied"; setTimeout(function(){ bouton.textContent = t; }, 1600); };
     var repli = function(){
@@ -1330,11 +1038,6 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     b.addEventListener("click", function(){ copie(String(texte || ""), b); });
     a.appendChild(b); return a;
   }
-  /* ---- LA CARTE D'UN JETON ----
-   * Ce que le serveur a LU (DexScreener, GoPlus, la colonie) : des chiffres
-   * avec leur source, et chaque case de la colonie avec son effectif. Jamais
-   * « safe » : une securite inconnue se dit inconnue. Dans une comparaison, la
-   * carte ne se montre qu'une fois par grille. */
   function usdCourt(x){
     var n = Number(x); if (x === null || x === undefined || !isFinite(n)) return "\u2014";
     if (n >= 1e9) return "$" + (n / 1e9).toFixed(2) + "B";
@@ -1382,91 +1085,6 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     h += '<div class="jeton-avis">Read live. Measurements, never a buy signal.</div>';
     c.innerHTML = h; return c;
   }
-  function ajouteCartes(d, jetons){
-    if (!jetons || !jetons.length) return;
-    var g = d.closest(".cmp"), corps = d.querySelector(".corps");
-    jetons.forEach(function(j){
-      if (g && g.querySelector('.jeton[data-adr="' + j.adresse + '"]')) return;
-      d.insertBefore(carteJeton(j), corps);
-    });
-  }
-  /* ---- LES PIECES JOINTES DU CHAT ----
-   * Une photo est REDUITE ici (1 568 px au plus grand cote, JPEG) : le serveur
-   * refuse au-dela de 2 048 px, pour que le pire cas qu'il reserve reste borne.
-   * Les octets restent en MEMOIRE pour les questions suivantes du meme fil ;
-   * seule une vignette va dans le stockage local (quelques Ko). Apres un
-   * rechargement, le modele est prevenu que la piece n'est plus la. */
-  var MEM_PIECES = {};
-  function lisentPdf(){
-    var ms = etat.compare ? modelesCompares() : [modeleCourant()];
-    return ms.length && ms.every(function(m){ return m && m.pieces && m.pieces.pdf; });
-  }
-  function vignette(src, cote, qualite){
-    return new Promise(function(ok, ko){
-      var im = new Image();
-      im.onload = function(){
-        var k = Math.min(1, cote / Math.max(im.naturalWidth, im.naturalHeight));
-        var c = document.createElement("canvas"); c.width = Math.max(1, Math.round(im.naturalWidth * k)); c.height = Math.max(1, Math.round(im.naturalHeight * k));
-        var g = c.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, c.width, c.height); g.drawImage(im, 0, 0, c.width, c.height);
-        ok(c.toDataURL("image/jpeg", qualite));
-      };
-      im.onerror = ko; im.src = src;
-    });
-  }
-  function reduitPhoto(f){
-    var url = URL.createObjectURL(f);
-    return Promise.all([vignette(url, 1568, 0.85), vignette(url, 96, 0.7)]).then(function(v){
-      URL.revokeObjectURL(url);
-      return { genre: "image", media: "image/jpeg", data: v[0].split(",")[1], nom: String(f.name || "photo").slice(0, 80), apercu: v[1] };
-    });
-  }
-  function litPdf(f){
-    return new Promise(function(ok, ko){
-      var lr = new FileReader();
-      lr.onload = function(){ ok({ genre: "pdf", media: "application/pdf", data: String(lr.result).split(",")[1], nom: String(f.name || "document.pdf").slice(0, 80) }); };
-      lr.onerror = ko; lr.readAsDataURL(f);
-    });
-  }
-  function piecesEl(pieces, retirable){
-    var b = document.createElement("div"); b.className = "pieces";
-    pieces.forEach(function(p, i){
-      var e = document.createElement("span"); e.className = "piece";
-      if (p.apercu && /^data:image\/jpeg;base64,/.test(p.apercu)) { var im = document.createElement("img"); im.src = p.apercu; im.alt = ""; e.appendChild(im); }
-      else { var ic = document.createElement("span"); ic.textContent = p.genre === "pdf" ? "\ud83d\udcc4" : "\ud83d\uddbc\ufe0f"; e.appendChild(ic); }
-      var n = document.createElement("span"); n.className = "nom"; n.textContent = p.nom || (p.genre === "pdf" ? "PDF" : "Photo"); e.appendChild(n);
-      if (retirable) {
-        var x = document.createElement("button"); x.type = "button"; x.setAttribute("aria-label", "Remove " + (p.nom || "file")); x.textContent = "\u2715";
-        x.addEventListener("click", function(){ etat.pieces.splice(i, 1); peintPieces(); peintBoutons(); });
-        e.appendChild(x);
-      }
-      b.appendChild(e);
-    });
-    return b;
-  }
-  function peintPieces(){
-    var z = $("pieces"); z.innerHTML = "";
-    var el = piecesEl(etat.pieces, true); while (el.firstChild) z.appendChild(el.firstChild);
-    z.hidden = etat.mode !== "chat" || !etat.pieces.length;
-  }
-  /* Ce qu'un message du joueur emporte : ses pieces (si la page les a encore). */
-  function resumePieces(pj){ return pj.map(function(p){ return { genre: p.genre, nom: p.nom, apercu: p.apercu }; }); }
-  /* Les pieces en attente partent avec la question ; un PDF a un modele qui
-     ne le lit pas est arrete ICI, avant tout envoi. */
-  function prendsPieces(){
-    var pj = etat.pieces.slice();
-    if (pj.some(function(p){ return p.genre === "pdf"; }) && !lisentPdf()) { dit(TXT.pdfClaude); return null; }
-    etat.pieces = []; peintPieces();
-    return pj;
-  }
-  function montrePieces(d, pieces){ if (pieces && pieces.length) d.insertBefore(piecesEl(pieces), d.firstChild); }
-  function avecPieces(x, cle){
-    var o = { role: x.role, content: x.content };
-    if (x.role !== "user" || !x.pieces || !x.pieces.length) return o;
-    var mem = MEM_PIECES[cle];
-    if (mem) o.pieces = mem.map(function(p){ return { media: p.media, data: p.data, nom: p.nom }; });
-    else o.content += "\n\n[The user attached " + x.pieces.map(function(p){ return p.nom || p.genre; }).join(", ") + " earlier; it is no longer available \u2014 ask them to attach it again if needed.]";
-    return o;
-  }
   function sourcesEl(sources){
     var s = document.createElement("div"); s.className = "sources";
     sources.forEach(function(x, i){
@@ -1477,190 +1095,108 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     });
     return s;
   }
-  /* ---- LE FIL SURVIT AU RECHARGEMENT ----
-   * Signale le 26 septembre 2026 : « si l'utilisateur actualise, il perd toutes
-   * ses donnees du chat ». Le fil etait bien garde, mais la page rechargee en
-   * ouvrait un VIDE, et une question n'etait ecrite qu'une fois sa reponse
-   * finie. Desormais : le fil courant est retenu (`swogeChatCourant`) et
-   * rouvert, et chaque question est ecrite AVANT de partir, avec l'identifiant
-   * (`rid`) sous lequel le serveur garde sa reponse une heure (/studio/reprise). */
   function nouveauRid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2, 10); }
-  function nouvelleConv(){
-    etat.conv = { id: String(Date.now()), titre: "", messages: [] };
-    ecrisLocal("swogeChatCourant", null);
-    peintConv(); $("question").focus();
-  }
-  function sauveConv(){
-    var c = etat.conv; if (!c) return;
-    if (!c.messages.length) {
-      etat.convs = etat.convs.filter(function(x){ return x.id !== c.id; });
-      ecrisLocal("swogeChats", etat.convs); ecrisLocal("swogeChatCourant", null); return;
-    }
-    c.titre = c.titre || String(c.messages[0].content || "").slice(0, 60);
-    c.maj = Date.now();
-    etat.convs = [c].concat(etat.convs.filter(function(x){ return x.id !== c.id; })).slice(0, 50);
-    ecrisLocal("swogeChats", etat.convs);
-    ecrisLocal("swogeChatCourant", c.id);
-    planifiePousse();
-  }
+  var etat = { cat: null, modele: lisLocal("swogeAgentModele", null), occupe: false, fil: lisLocal("swogeAgentFil", []), quitte: false };
 
-  /* ---- L'HISTORIQUE ATTACHE AU PORTEFEUILLE ----
-   * Demande du proprietaire, le 26 septembre 2026. Le serveur garde les
-   * conversations de l'adresse de la SESSION (jamais une adresse que la page
-   * choisirait). A chaque ouverture et a chaque retour sur l'onglet, la page
-   * lit ce qui a change depuis sa derniere visite (horloge du serveur) ; la
-   * plus recente gagne ; une suppression se propage. Seule une vignette des
-   * pieces jointes voyage, jamais le fichier. Sans session : tout reste local. */
-  var SYNC = lisLocal("swogeHistoSync", { adresse: null, t: 0 });
-  var pousseT = null, enSync = false;
-  function histoActif(){ return !!(jeton() && SYNC.adresse); }
-  function aPousser(c){ return c.messages && c.messages.length && (!c.adr || c.pousse !== c.maj) && (!c.adr || c.adr === SYNC.adresse); }
-  function planifiePousse(){
-    if (!histoActif()) return;
-    clearTimeout(pousseT); pousseT = setTimeout(pousseTout, 1500);
+  function dit(t){ var e = $("etat"); e.textContent = t || ""; e.hidden = !t; }
+  function modeleCourant(){
+    var c = etat.cat; if (!c) return null;
+    return c.modeles.filter(function(m){ return m.id === etat.modele; })[0] || c.modeles.filter(function(m){ return m.id === c.defaut; })[0] || c.modeles[0];
   }
-  function pousseTout(){
-    if (!histoActif()) return Promise.resolve();
-    var j = jeton(), a = SYNC.adresse;
-    return etat.convs.filter(aPousser).reduce(function(suite, c){
-      return suite.then(function(){
-        var maj = c.maj || Date.now();
-        return fetch(serveur() + "/studio/histo/" + encodeURIComponent(c.id), { method: "PUT",
-          headers: { "content-type": "application/json", authorization: "Bearer " + j },
-          body: JSON.stringify({ titre: c.titre, maj: maj, messages: c.messages }) })
-          .then(function(r){ return r.json().then(function(d){ d.http = r.status; return d; }); })
-          .then(function(d){
-            if (d.ok) { c.adr = a; c.pousse = maj; if (etat.conv && etat.conv.id === c.id) { etat.conv.adr = a; etat.conv.pousse = maj; } }
-            else if (d.http === 409 && d.conv) fusionne(d.conv, a);
-          })["catch"](function(){});
-      });
-    }, Promise.resolve()).then(function(){ ecrisLocal("swogeChats", etat.convs); });
+  function peintPrix(){
+    var m = modeleCourant(); if (!m) return;
+    $("prixq").textContent = m.nom + " · ~" + nombre(m.typiqueSwoge) + " $SWOGE per task (max " + nombre(m.maxSwoge) + ") · up to " + etat.cat.etapesMax + " steps · you pay only what the agent uses";
   }
-  function fusionne(sc, a){
-    var i = -1; etat.convs.forEach(function(x, k){ if (x.id === sc.id) i = k; });
-    var l = i >= 0 ? etat.convs[i] : null, courante = etat.conv && etat.conv.id === sc.id;
-    if (sc.supprime) {
-      if (l && (l.maj || 0) <= sc.maj) {
-        etat.convs.splice(i, 1);
-        if (courante && !etat.occupe) nouvelleConv();
-      }
-      return;
-    }
-    if (l && (l.maj || 0) >= sc.maj) return;
-    var c = { id: sc.id, titre: sc.titre, maj: sc.maj, messages: sc.messages || [], adr: a, pousse: sc.maj };
-    if (i >= 0) etat.convs[i] = c; else etat.convs.push(c);
-    if (courante && !etat.occupe) { etat.conv = JSON.parse(JSON.stringify(c)); peintConv(); }
+  function peintBoutons(){ $("envoyer").disabled = etat.occupe || !$("question").value.trim(); }
+  function dimensionne(){ var t = $("question"); t.style.height = "auto"; t.style.height = Math.min(200, t.scrollHeight) + "px"; peintBoutons(); }
+  function sauve(){ ecrisLocal("swogeAgentFil", etat.fil.slice(-30)); }
+
+  function ajouteMsg(role, texte){
+    $("accueil").hidden = true; $("fil").hidden = false;
+    var d = document.createElement("div"); d.className = "msg " + (role === "user" ? "moi" : "ia");
+    if (role === "user") d.textContent = texte;
+    else d.innerHTML = '<ol class="etapes"></ol><div class="corps"></div>';
+    $("fil").appendChild(d); d.scrollIntoView({ block: "end" });
+    return d;
   }
-  function syncHisto(adresse){
-    var a = String(adresse || "").toLowerCase(), j = jeton();
-    if (!/^0x[0-9a-f]{40}$/.test(a) || !j || enSync) return;
-    if (SYNC.adresse !== a) {
-      /* Un autre portefeuille sur cet appareil : on ne lui montre pas les chats
-         de l'autre (ils restent sur le serveur, a leur adresse). Les chats
-         jamais synchronises sont rattaches a celui-ci. */
-      etat.convs = etat.convs.filter(function(c){ return !c.adr || c.adr === a; });
-      if (etat.conv && etat.conv.adr && etat.conv.adr !== a) nouvelleConv();
-      SYNC = { adresse: a, t: 0 };
-    }
-    enSync = true;
-    fetch(serveur() + "/studio/histo?depuis=" + encodeURIComponent(SYNC.t || 0), { headers: { authorization: "Bearer " + j }, cache: "no-store" })
-      .then(function(r){ return r.json(); })
-      .then(function(d){
-        if (!d || !d.ok) return;
-        (d.convs || []).forEach(function(sc){ fusionne(sc, a); });
-        etat.convs.sort(function(x, y){ return (y.maj || 0) - (x.maj || 0); });
-        etat.convs = etat.convs.slice(0, 50);
-        SYNC.t = d.maintenant || SYNC.t; ecrisLocal("swogeHistoSync", SYNC);
-        ecrisLocal("swogeChats", etat.convs);
-        if (!$("histo").hidden) peintHisto();
-        return pousseTout();
-      })["catch"](function(){})
-      .then(function(){ enSync = false; });
+  function ligneEtape(d, o){
+    var li = document.createElement("li"); li.setAttribute("data-id", o.id || ""); li.setAttribute("data-etat", "cours");
+    var f = OUTIL[o.nom] || { ic: "🛠️", dit: function(){ return o.nom; } };
+    var b = document.createElement("b"); b.textContent = f.ic + " " + o.nom;
+    var q = document.createElement("span"); q.className = "quoi"; q.textContent = f.dit(o.entree || {});
+    li.appendChild(b); li.appendChild(q); d.querySelector(".etapes").appendChild(li);
+    return li;
   }
-  function effaceConv(c){
-    etat.convs = etat.convs.filter(function(x){ return x.id !== c.id; });
-    ecrisLocal("swogeChats", etat.convs);
-    if (etat.conv && etat.conv.id === c.id) nouvelleConv();
-    if (histoActif() && c.adr === SYNC.adresse) {
-      fetch(serveur() + "/studio/histo/" + encodeURIComponent(c.id) + "?maj=" + Date.now(), { method: "DELETE", headers: { authorization: "Bearer " + jeton() } })["catch"](function(){});
-    }
-    peintHisto();
+  function finEtape(d, o){
+    var li = d.querySelector('.etapes li[data-id="' + String(o.id || "").replace(/[^\w-]/g, "") + '"]'); if (!li) return;
+    li.setAttribute("data-etat", o.ok ? "ok" : "err");
+    if (!o.ok) li.querySelector(".quoi").textContent += " — " + String(o.resume || "failed");
   }
-  function peintHisto(){
-    var h = $("histo"); h.innerHTML = "";
-    var note = document.createElement("div"); note.className = "note";
-    note.textContent = histoActif() ? "Synced to your wallet " + SYNC.adresse.slice(0, 6) + "\u2026" + SYNC.adresse.slice(-4) + " \u2014 open it on any device."
-      : "Saved on this device. Sign in to sync your chats across devices.";
-    h.appendChild(note);
-    if (!etat.convs.length) { var v = document.createElement("div"); v.className = "vide"; v.textContent = TXT.vide; h.appendChild(v); return; }
-    etat.convs.forEach(function(c){
-      var l = document.createElement("div"); l.className = "ligne";
-      var b = document.createElement("button"); b.type = "button"; b.className = "ouvre"; b.textContent = c.titre || "Chat";
-      b.addEventListener("click", function(){ etat.conv = JSON.parse(JSON.stringify(c)); ecrisLocal("swogeChatCourant", c.id); peintConv(); basculeHisto(false); reprend(); });
-      var x = document.createElement("button"); x.type = "button"; x.className = "efface"; x.textContent = "\u2715";
-      x.setAttribute("aria-label", "Delete " + (c.titre || "chat"));
-      x.addEventListener("click", function(){ effaceConv(c); });
-      l.appendChild(b); l.appendChild(x); h.appendChild(l);
+  function peintReponse(d, m){
+    var corps = d.querySelector(".corps");
+    corps.innerHTML = markdown(m.content);
+    (m.etapes || []).forEach(function(o){ ligneEtape(d, o); finEtape(d, o); });
+    (m.jetons || []).forEach(function(j){ d.insertBefore(carteJeton(j), corps); });
+    if (m.sources && m.sources.length) d.appendChild(sourcesEl(m.sources));
+    if (m.meta) { var mt = document.createElement("div"); mt.className = "meta"; mt.textContent = m.meta; d.appendChild(mt); }
+    d.appendChild(actionsEl(m.content));
+  }
+  function peintFil(){
+    $("fil").innerHTML = "";
+    if (!etat.fil.length) { $("fil").hidden = true; $("accueil").hidden = false; return; }
+    etat.fil.forEach(function(m){
+      if (m.role === "user") ajouteMsg("user", m.content);
+      else peintReponse(ajouteMsg("assistant", ""), m);
     });
   }
-  function basculeHisto(ouvre){
-    var h = $("histo"); var o = typeof ouvre === "boolean" ? ouvre : h.hidden;
-    if (o) peintHisto(); h.hidden = !o; $("histoBtn").setAttribute("aria-expanded", String(o));
-  }
-
-  /* ---- le solde ---- */
   function chargeSolde(){
     var j = jeton();
     if (!j) { $("solde").innerHTML = "Balance <b>sign in</b>"; return; }
     fetch(serveur() + "/studio/chat/solde", { headers: { authorization: "Bearer " + j }, cache: "no-store" })
       .then(function(r){ return r.json(); })
-      .then(function(d){
-        if (d && d.ok) { $("solde").innerHTML = "Balance <b>" + nombre(d.solde) + " $SWOGE</b>"; syncHisto(d.adresse); }
-        else $("solde").innerHTML = "Balance <b>sign in</b>";
-      })
-      ["catch"](function(){});
+      .then(function(d){ $("solde").innerHTML = d && d.ok ? "Balance <b>" + nombre(d.solde) + " $SWOGE</b>" : "Balance <b>sign in</b>"; })["catch"](function(){});
   }
 
-  /* ---- envoyer : un flux SSE lu a la main (EventSource ne sait pas POSTer) ---- */
-  /* L'historique envoye a UN modele : le texte seulement ; dans une
-     comparaison, il ne relit que SES propres reponses, pas celles des autres. */
-  function historiquePour(id){
-    var ms = etat.conv.messages;
-    return ms.filter(function(x){
-      if (x.genre || x.interrompu) return false;
-      if (!x.comparaison) return true;
-      /* La question d'une comparaison : seulement si CE modele y a repondu. */
-      if (x.role === "user") return ms.some(function(y){ return y.role === "assistant" && y.comparaison === x.comparaison && y.modele === id; });
-      return x.modele === id;
-    }).map(function(x){ return avecPieces(x, x.rid || x.comparaison); });
-  }
-  function modelesCompares(){
-    var c = etat.cat; if (!c) return [];
-    return etat.choix.map(function(id){ return c.modeles.filter(function(m){ return m.id === id && m.actif !== false; })[0]; })
-      .filter(Boolean).slice(0, 3);
-  }
-  function grilleCmp(idc){
-    $("accueil").hidden = true; $("fil").hidden = false;
-    var g = document.createElement("div"); g.className = "msg cmp"; if (idc) g.setAttribute("data-cmp", idc); $("fil").appendChild(g); return g;
-  }
-  function colonneCmp(g, nom){
-    var d = document.createElement("div"); d.className = "msg ia";
-    var t = document.createElement("div"); t.className = "cmp-nom"; t.textContent = nom;
-    var c = document.createElement("div"); c.className = "corps";
-    d.appendChild(t); d.appendChild(c); g.appendChild(d); return d;
-  }
-  /* Une reponse en flux vers UNE colonne : le meme protocole que le chat. */
-  function flux(j, corpsReq, d, m, extra, fin){
-    var corps = d.querySelector(".corps"), texte = "", fini = false;
-    var etape = document.createElement("div"); etape.className = "etape"; etape.textContent = TXT.reflexion; d.insertBefore(etape, corps);
-    fetch(serveur() + "/studio/chat", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + j }, body: JSON.stringify(corpsReq) })
+  function envoyer(){
+    var q = $("question").value.trim();
+    if (!q || etat.occupe) return;
+    var j = jeton();
+    if (!j) { dit(TXT.signin); return; }
+    if (!etat.cat || !etat.cat.ouvert) { dit((etat.cat && etat.cat.note) || TXT.ferme); return; }
+    var m = modeleCourant(), rid = nouveauRid();
+    etat.fil.push({ role: "user", content: q, rid: rid }); sauve();
+    ajouteMsg("user", q);
+    $("question").value = ""; dimensionne();
+    etat.occupe = true; peintBoutons(); dit("");
+    var d = ajouteMsg("assistant", ""), corps = d.querySelector(".corps"), texte = "", fini = false, etapes = [];
+    var attente = document.createElement("div"); attente.className = "etape"; attente.textContent = TXT.reflexion; d.insertBefore(attente, corps);
+    /* L'historique : le texte des taches precedentes de ce fil, rien d'autre. */
+    var historique = etat.fil.filter(function(x){ return !x.interrompu; }).map(function(x){ return { role: x.role, content: x.content }; });
+    function termine(){ etat.occupe = false; peintBoutons(); if (attente.parentNode) attente.remove(); }
+    fetch(serveur() + "/studio/agent", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + j },
+      body: JSON.stringify({ rid: rid, modele: m.id, messages: historique }) })
       .then(function(rep){
-        if (!rep.ok || !rep.body) return rep.json().then(function(e){ throw { code: rep.status, raison: e && e.raison }; }, function(){ throw { code: rep.status }; });
+        if (!rep.ok || !rep.body) return rep.json().then(function(e){ throw { code: rep.status, raison: e && e.raison, requisSwoge: e && e.requisSwoge }; }, function(){ throw { code: rep.status }; });
         var lecteur = rep.body.getReader(), dec = new TextDecoder(), tampon = "";
         function evenement(type, data){
-          if (type === "texte") { if (etape.parentNode) etape.remove(); texte += data.t; corps.innerHTML = markdown(texte); }
-          else if (type === "etape") { etape.textContent = data.quoi === "recherche" ? TXT.recherche : data.quoi === "jeton" ? TXT.jeton : TXT.reflexion; }
-          else if (type === "fin") { fini = true; if (etape.parentNode) etape.remove(); finChat(d, data, m.nom, texte, extra); }
+          if (type === "texte") { if (attente.parentNode) attente.remove(); texte += data.t; corps.innerHTML = markdown(texte); }
+          else if (type === "etape") { if (!attente.parentNode) d.insertBefore(attente, corps); attente.textContent = TXT.reflexion; }
+          else if (type === "outil") { etapes.push({ id: data.id, nom: data.nom, entree: data.entree }); ligneEtape(d, data); }
+          else if (type === "resultat") {
+            etapes.forEach(function(x){ if (x.id === data.id) { x.ok = data.ok; x.resume = data.ok ? "" : data.resume; } });
+            finEtape(d, data);
+          }
+          else if (type === "fin") {
+            fini = true; if (attente.parentNode) attente.remove();
+            var t = data.texte || texte || (data.stop === "refusal" ? TXT.refus : "");
+            var meta = m.nom + " · " + nombre(data.factureSwoge) + " $SWOGE · " + (data.etapes || 1) + " step" + ((data.etapes || 1) > 1 ? "s" : "")
+              + (data.stop === "max_steps" ? " (step limit reached)" : "");
+            var rep2 = { role: "assistant", content: t, sources: data.sources || [], jetons: data.jetons || [], etapes: etapes, meta: meta, modele: m.id };
+            d.querySelector(".etapes").innerHTML = ""; corps.innerHTML = "";
+            peintReponse(d, rep2);
+            etat.fil.push(rep2); sauve();
+            if (data.solde) $("solde").innerHTML = "Balance <b>" + nombre(data.solde) + " $SWOGE</b>";
+          }
           else if (type === "erreur") { fini = true; throw data; }
         }
         function lit(){
@@ -1677,434 +1213,87 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
         }
         return lit();
       })
-      .then(function(){ if (!fini) throw { raison: TXT.erreurReseau }; fin(true); })
+      .then(function(){ if (!fini) throw { raison: TXT.erreurReseau }; termine(); })
       ["catch"](function(e){
+        /* La page s'en va : la tache continue sur le serveur, on la retrouvera par son rid. */
         if (etat.quitte) return;
-        if (etape.parentNode) etape.remove();
+        termine();
+        etat.fil.pop(); sauve();
         d.classList.add("err");
         var raison = (e && e.raison) || TXT.erreurReseau;
-        if (e && e.code === 402) raison += " \u2014 top up your balance in the Wallet (needs ~" + nombre(e.requisSwoge) + " $SWOGE for this model).";
+        if (e && e.code === 402) raison += " — top up your balance in the Wallet (this model needs ~" + nombre(e.requisSwoge) + " $SWOGE reserved; you pay only what the agent uses).";
         if (e && e.code === 401) raison = TXT.signin;
         corps.textContent = raison;
-        fin(false);
       });
   }
-  /* ---- COMPARER : la meme question a 2 ou 3 modeles, cote a cote ----
-   * Demande du proprietaire, le 26 septembre 2026. Aucune des applis officielles
-   * ne le fait : chacune ne vend que ses modeles. Chaque reponse part a part —
-   * son rid, sa reserve, sa facture — et s'ecrit dans sa colonne. */
-  function envoyerComparaison(){
-    var q = $("question").value.trim();
-    if ((!q && !etat.pieces.length) || etat.occupe) return;
-    var j = jeton();
-    if (!j) { dit(TXT.signin); return; }
-    if (!etat.cat || !etat.cat.ouvert) { dit((etat.cat && etat.cat.note) || TXT.ferme); return; }
-    var ms = modelesCompares();
-    if (ms.length < 2) { dit("Pick 2 or 3 models to compare (tap the model button)."); ouvreFeuille(); return; }
-    var pj = prendsPieces(); if (!pj) return;
-    if (!q) q = "What is in this file?";
-    if (!etat.conv) nouvelleConv();
-    var idc = nouveauRid(), rids = ms.map(function(m){ return { modele: m.id, rid: nouveauRid(), nom: m.nom }; });
-    var nouvelle = { role: "user", content: q };
-    if (pj.length) { MEM_PIECES[idc] = pj; nouvelle.pieces = pj.map(function(p){ return { media: p.media, data: p.data, nom: p.nom }; }); }
-    var historiques = ms.map(function(m){ return historiquePour(m.id).concat([nouvelle]); });
-    etat.conv.messages.push(pj.length ? { role: "user", content: q, comparaison: idc, rids: rids, pieces: resumePieces(pj) } : { role: "user", content: q, comparaison: idc, rids: rids });
-    sauveConv();
-    var du = ajouteMsg("user", q); du.setAttribute("data-i", etat.conv.messages.length - 1); montrePieces(du, pj);
-    $("question").value = ""; dimensionne();
-    etat.occupe = true; peintBoutons(); dit("");
-    var g = grilleCmp(idc), restant = ms.length, servies = 0;
-    ms.forEach(function(m, k){
-      var d = colonneCmp(g, m.nom);
-      flux(j, { rid: rids[k].rid, modele: m.id, messages: historiques[k], recherche: etat.web && m.recherche,
-                effort: m.effort ? (etat.effort || "medium") : undefined },
-           d, m, { modele: m.id, nomModele: m.nom, comparaison: idc },
-           function(ok){ if (ok) servies++; else { rids[k].interrompu = true; sauveConv(); } if (--restant === 0) {
-             etat.occupe = false; peintBoutons();
-             /* Aucune colonne servie : la question ne reste pas dans le fil. */
-             if (!servies) { var i = etat.conv.messages.findIndex(function(x){ return x.comparaison === idc && x.role === "user"; }); if (i >= 0) etat.conv.messages.splice(i, 1); sauveConv(); }
-           } });
-    });
-  }
-  function envoyer(){
-    if (etat.mode !== "chat") return envoyerMedia();
-    if (etat.compare) return envoyerComparaison();
-    var q = $("question").value.trim();
-    if ((!q && !etat.pieces.length) || etat.occupe) return;
-    var j = jeton();
-    if (!j) { dit(TXT.signin); return; }
-    if (!etat.cat || !etat.cat.ouvert) { dit((etat.cat && etat.cat.note) || TXT.ferme); return; }
-    var pj = prendsPieces(); if (!pj) return;
-    if (!q) q = "What is in this file?";
-    if (!etat.conv) nouvelleConv();
-    var m = modeleCourant();
-    var rid = nouveauRid();
-    if (pj.length) MEM_PIECES[rid] = pj;
-    etat.conv.messages.push(pj.length ? { role: "user", content: q, rid: rid, pieces: resumePieces(pj) } : { role: "user", content: q, rid: rid });
-    sauveConv();
-    montrePieces(ajouteMsg("user", q), pj);
-    $("question").value = ""; dimensionne();
-    etat.occupe = true; peintBoutons(); dit("");
-    var d = ajouteMsg("assistant", ""), corps = d.querySelector(".corps"), texte = "";
-    var etape = document.createElement("div"); etape.className = "etape"; etape.textContent = TXT.reflexion; d.insertBefore(etape, corps);
-    /* Seuls les echanges de TEXTE partent au modele : une image ou une video
-       du fil n'est pas une phrase qu'il pourrait lire. */
-    var historique = historiquePour(m.id);
-    var fini = false;
-    function termine(){ etat.occupe = false; peintBoutons(); if (etape.parentNode) etape.remove(); }
-    fetch(serveur() + "/studio/chat", {
-      method: "POST",
-      headers: { "content-type": "application/json", authorization: "Bearer " + j },
-      body: JSON.stringify({ rid: rid, modele: m.id, messages: historique, recherche: etat.web && m.recherche, effort: m.effort ? (etat.effort || "medium") : undefined })
-    }).then(function(rep){
-      if (!rep.ok || !rep.body) {
-        return rep.json().then(function(e){ throw { code: rep.status, raison: e && e.raison }; }, function(){ throw { code: rep.status }; });
-      }
-      var lecteur = rep.body.getReader(), dec = new TextDecoder(), tampon = "";
-      function evenement(type, data){
-        if (type === "texte") { if (etape.parentNode) etape.remove(); texte += data.t; corps.innerHTML = markdown(texte); }
-        else if (type === "etape") { etape.textContent = data.quoi === "recherche" ? TXT.recherche : data.quoi === "jeton" ? TXT.jeton : TXT.reflexion; if (!etape.parentNode) d.insertBefore(etape, corps); }
-        else if (type === "fin") {
-          fini = true;
-          finChat(d, data, m.nom, texte);
-        } else if (type === "erreur") {
-          fini = true; throw data;
-        }
-      }
-      function lit(){
-        return lecteur.read().then(function(r){
-          if (r.done) return;
-          tampon += dec.decode(r.value, { stream: true });
-          var blocs = tampon.split("\n\n"); tampon = blocs.pop();
-          blocs.forEach(function(b){
-            var t = (b.match(/^event: (.+)$/m) || [])[1], x = (b.match(/^data: (.+)$/m) || [])[1];
-            if (t && x) { try { evenement(t, JSON.parse(x)); } catch (e) { if (e && (e.code || e.raison)) throw e; } }
-          });
-          return lit();
-        });
-      }
-      return lit();
-    }).then(function(){
-      if (!fini) throw { raison: TXT.erreurReseau };
-      termine();
-    })["catch"](function(e){
-      /* La page s'en va (rechargement) : le navigateur coupe la requete, ce
-         n'est PAS un echec. Effacer la question ici la perdait juste avant le
-         rechargement — la reponse se retrouve au retour, par son rid. */
-      if (etat.quitte) return;
-      termine();
-      /* La question n'a pas ete servie : elle ne reste pas dans l'historique
-         envoye ; ses pieces reviennent dans le composeur, pour reessayer. */
-      etat.conv.messages.pop(); sauveConv();
-      if (pj.length) { delete MEM_PIECES[rid]; etat.pieces = pj.concat(etat.pieces); peintPieces(); peintBoutons(); }
-      d.classList.add("err");
-      var raison = (e && e.raison) || TXT.erreurReseau;
-      if (e && e.code === 402) raison += " — top up your balance in the Wallet (needs ~" + nombre(e.requisSwoge) + " $SWOGE for this model).";
-      if (e && e.code === 401) raison = TXT.signin;
-      corps.textContent = raison;
-    });
-  }
-
-  /* ---- une image ou une video : meme jeton de session, meme regle d'argent
-     que le chat (reserve, cout reel, reste rendu), cote serveur. ---- */
-  function erreurMedia(d, e){
-    d.classList.add("err");
-    var raison = (e && e.raison) || TXT.erreurReseau;
-    if (e && e.code === 402) raison += " \u2014 top up your balance in the Wallet (needs ~" + nombre(e.requisSwoge) + " $SWOGE).";
-    if (e && e.code === 401) raison = TXT.signin;
-    d.querySelector(".corps").textContent = raison;
-  }
-  function envoyerMedia(){
-    var q = $("question").value.trim(), mode = etat.mode;
-    if (etat.occupe || (!q && !(mode === "video" && etat.jointe))) return;
-    var j = jeton();
-    if (!j) { dit(TXT.signin); return; }
-    var ferme = fermeMedia();
-    if (ferme) { dit(ferme); return; }
-    if (!etat.conv) nouvelleConv();
-    var mm = modeleMedia(), reg = etat.reg, jointe = etat.jointe, nomM = nomMedia(mm);
-    var fmt = mode === "video" ? reg.formatV : reg.formatI;
-    var libelle = (mode === "image" ? "\ud83d\uddbc\ufe0f " : "\ud83c\udfac ") + (q || "Animate this photo");
-    var rid = nouveauRid();
-    etat.conv.messages.push({ role: "user", content: libelle, genre: mode, rid: rid, nomModele: nomM, format: fmt });
-    sauveConv();
-    var du = ajouteMsg("user", libelle);
-    if (jointe) { var vi = document.createElement("img"); vi.className = "vignette"; vi.src = jointe; vi.alt = ""; du.insertBefore(vi, du.firstChild); }
-    $("question").value = ""; dimensionne(); retireJointe();
-    etat.occupe = true; peintBoutons(); dit("");
-    var d = ajouteMsg("assistant", ""), corps = d.querySelector(".corps");
-    var etape = document.createElement("div"); etape.className = "etape";
-    etape.textContent = mode === "image" ? (jointe ? "Editing your photo\u2026" : "Creating " + (reg.nombre > 1 ? reg.nombre + " images" : "the image") + "\u2026") : "Starting the video\u2026";
-    d.insertBefore(etape, corps);
-    var corpsReq = { rid: rid, modele: reg.vitesse, prompt: q, format: fmt, image: jointe || undefined };
-    if (mode === "image") { corpsReq.n = reg.nombre; corpsReq.fournisseur = (fournisseurImage() || {}).id || "grok"; }
-    else { corpsReq.duree = reg.duree; corpsReq.resolution = reg.resolution; }
-    function fin(){ etat.occupe = false; peintBoutons(); if (etape.parentNode) etape.remove(); }
-    /* La demande non servie ne reste pas dans le fil enregistre. */
-    function echec(e){ if (etat.quitte) return; fin(); etat.conv.messages.pop(); sauveConv(); erreurMedia(d, e); }
-    function termine(res){ fin(); finMedia(d, mode, res, nomM, fmt, null); }
-    fetch(serveur() + "/studio/media/" + mode, { method: "POST",
-      headers: { "content-type": "application/json", authorization: "Bearer " + j }, body: JSON.stringify(corpsReq) })
-      .then(function(r){ return r.json().then(function(x){ return x; }, function(){ return { ok: false, code: r.status }; }); })
-      .then(function(res){
-        if (!res || !res.ok) return echec(res);
-        if (mode === "image") return termine(res);
-        /* La video se fabrique cote serveur : son identifiant est ecrit dans le
-           fil tout de suite, pour qu'une page rechargee la reprenne. */
-        fin();
-        var attente = { role: "assistant", content: "[video]", genre: "video", enCours: res.id, nomModele: nomM, format: fmt };
-        etat.conv.messages.push(attente); sauveConv();
-        suisVideo(d, attente);
-      })["catch"](function(){ echec({ raison: TXT.erreurReseau }); });
-  }
-
-  /* La fin d'une generation : l'image ou la video dans le fil, son cout, le fil ecrit.
-     `place` : le message d'attente d'une video, complete sur place. */
-  function finMedia(d, mode, res, nomModele, fmt, place){
-    var meta = nomModele + (mode === "image" ? " \u00b7 \u00d7" + (res.urls || []).length : " \u00b7 " + res.duree + " s \u00b7 " + res.resolution)
-      + (fmt && fmt !== "auto" ? " \u00b7 " + fmt : "") + " \u00b7 " + nombre(res.factureSwoge) + " $SWOGE";
-    var m = place || { role: "assistant", genre: mode };
-    m.content = mode === "image" ? "[image]" : "[video]"; m.urls = res.urls; m.url = res.url; m.meta = meta; delete m.enCours;
-    peintMedia(d, m);
-    if (!place) etat.conv.messages.push(m);
-    sauveConv();
-    if (res.solde) $("solde").innerHTML = "Balance <b>" + nombre(res.solde) + " $SWOGE</b>";
-  }
-  /* Suit une video sur le SERVEUR (jamais chez le fournisseur) jusqu'a son arrivee. */
-  function suisVideo(d, attente){
-    var j = jeton(); if (!j) return;
-    var corps = d.querySelector(".corps");
-    var etape = document.createElement("div"); etape.className = "etape"; etape.textContent = "Generating the video\u2026 this takes a minute or two";
-    var barre = document.createElement("div"); barre.className = "progres"; barre.innerHTML = "<i></i>";
-    d.insertBefore(etape, corps); d.insertBefore(barre, corps);
-    (function suit(){
-      fetch(serveur() + "/studio/media/video/" + encodeURIComponent(attente.enCours), { headers: { authorization: "Bearer " + j }, cache: "no-store" })
-        .then(function(r){ return r.json(); })
-        .then(function(v){
-          if (v && v.status === "done") { etape.remove(); barre.remove(); return finMedia(d, "video", v, attente.nomModele || "Video", attente.format, attente); }
-          if (!v || v.status === "failed" || !v.ok) {
-            etape.remove(); barre.remove();
-            /* Ratee, ou oubliee par le serveur : le fil ne garde pas une attente eternelle. */
-            var i = etat.conv.messages.indexOf(attente);
-            if (i >= 0) etat.conv.messages.splice(i, 1);
-            if (etat.conv.messages[i - 1] && etat.conv.messages[i - 1].genre === "video") etat.conv.messages[i - 1].interrompu = true;
-            sauveConv();
-            return erreurMedia(d, v || {});
-          }
-          barre.firstChild.style.width = Math.max(5, Math.min(99, Number(v.progress) || 0)) + "%";
-          setTimeout(suit, 3000);
-        })["catch"](function(){ setTimeout(suit, 5000); });
-    })();
-  }
-
-  /* ---- LA REPRISE APRES UN RECHARGEMENT ----
-   * Une question partie sans reponse dans le fil (la page a ete rechargee
-   * pendant qu'elle s'ecrivait) : on redemande au serveur ce qu'il a garde sous
-   * son `rid`. En cours : on montre ce qui est deja arrive et on repasse. Finie :
-   * on l'affiche comme si de rien n'etait (elle a ete facturee, elle est a lui).
-   * Oubliee (serveur redemarre) : on le DIT, et la question reste marquee. */
+  /* Rechargee pendant une tache : la reponse est retrouvee sur le serveur, par son rid. */
   function reprend(){
-    var c = etat.conv; if (!c || !c.messages.length || !jeton()) return;
-    c.messages.forEach(function(m, i){
-      if (m.enCours) { var dv = $("fil").querySelector('[data-i="' + i + '"]'); if (dv) suisVideo(dv, m); }
-    });
-    var der = c.messages[c.messages.length - 1];
-    if (der && (der.comparaison || der.rids)) return reprendComparaison();
-    if (!der || der.role !== "user" || !der.rid || der.interrompu) return;
-    var j = jeton(), mode = der.genre || "chat";
+    var der = etat.fil[etat.fil.length - 1], j = jeton();
+    if (!der || der.role !== "user" || !der.rid || der.interrompu || !j) return;
     etat.occupe = true; peintBoutons();
     var d = ajouteMsg("assistant", ""), corps = d.querySelector(".corps");
-    var etape = document.createElement("div"); etape.className = "etape"; etape.textContent = "Recovering the answer\u2026";
-    d.insertBefore(etape, corps);
-    function fin(){ etat.occupe = false; peintBoutons(); if (etape.parentNode) etape.remove(); }
+    var attente = document.createElement("div"); attente.className = "etape"; attente.textContent = "Recovering the task…"; d.insertBefore(attente, corps);
     (function tour(){
       fetch(serveur() + "/studio/reprise/" + encodeURIComponent(der.rid), { headers: { authorization: "Bearer " + j }, cache: "no-store" })
-        .then(function(r){ return r.json().then(function(x){ x.http = r.status; return x; }); })
+        .then(function(r){ return r.json(); })
         .then(function(v){
-          if (v.status === "pending") {
-            if (mode === "chat" && v.texte) { etape.textContent = "Still writing\u2026"; corps.innerHTML = markdown(v.texte); }
-            return setTimeout(tour, 1500);
+          if (v.status === "pending") { if (v.texte) corps.innerHTML = markdown(v.texte); return setTimeout(tour, 1500); }
+          etat.occupe = false; peintBoutons(); if (attente.parentNode) attente.remove();
+          if (v.status === "done") {
+            var m = (etat.cat && etat.cat.modeles.filter(function(x){ return x.id === v.modele; })[0]) || { nom: "Claude" };
+            var rep2 = { role: "assistant", content: v.texte || "", sources: v.sources || [], jetons: v.jetons || [], etapes: [],
+              meta: m.nom + " · " + nombre(v.factureSwoge) + " $SWOGE · " + (v.etapes || 1) + " step" + ((v.etapes || 1) > 1 ? "s" : "") };
+            corps.innerHTML = ""; peintReponse(d, rep2); etat.fil.push(rep2); sauve(); return;
           }
-          fin();
-          if (v.status === "done" && mode === "chat") return finChat(d, v, null, v.texte);
-          if (v.status === "done" && mode === "image") return finMedia(d, "image", v, der.nomModele || "Image", der.format, null);
-          if (v.status === "started" && v.id) {
-            var attente = { role: "assistant", content: "[video]", genre: "video", enCours: v.id, nomModele: der.nomModele, format: der.format };
-            etat.conv.messages.push(attente); sauveConv(); return suisVideo(d, attente);
-          }
-          if (v.status === "failed") { etat.conv.messages.pop(); sauveConv(); d.classList.add("err"); corps.textContent = v.raison || TXT.erreurReseau; return; }
-          der.interrompu = true; sauveConv();
-          d.classList.add("err");
-          corps.textContent = "This answer could not be recovered (the page was reloaded and the server no longer has it). Ask again if you need it.";
+          der.interrompu = true; sauve(); d.classList.add("err");
+          corps.textContent = v.status === "failed" ? (v.raison || TXT.erreurReseau) : "This task could not be recovered (the page was reloaded and the server no longer has it). Run it again if you need it.";
         })["catch"](function(){ setTimeout(tour, 4000); });
     })();
   }
 
-  /* Une comparaison coupee par un rechargement : la question porte un rid par
-     modele ; chaque colonne sans reponse est redemandee au serveur, les autres
-     restent telles quelles. Une colonne perdue le dit, sans boucler. */
-  function reprendComparaison(){
-    var c = etat.conv, u = -1;
-    for (var k = c.messages.length - 1; k >= 0; k--) if (c.messages[k].role === "user") { u = k; break; }
-    var q = c.messages[u];
-    if (!q || !q.rids || !q.comparaison) return;
-    var manquent = q.rids.filter(function(r){
-      return !r.interrompu && !c.messages.some(function(x, i){ return i > u && x.comparaison === q.comparaison && x.modele === r.modele; });
-    });
-    if (!manquent.length) return;
-    var j = jeton(), restant = manquent.length;
-    var g = $("fil").querySelector('[data-cmp="' + q.comparaison + '"]') || grilleCmp(q.comparaison);
-    etat.occupe = true; peintBoutons();
-    manquent.forEach(function(r){
-      var d = colonneCmp(g, r.nom || r.modele), corps = d.querySelector(".corps");
-      var etape = document.createElement("div"); etape.className = "etape"; etape.textContent = "Recovering the answer\u2026";
-      d.insertBefore(etape, corps);
-      function fin(){ if (etape.parentNode) etape.remove(); if (--restant === 0) { etat.occupe = false; peintBoutons(); } }
-      (function tour(){
-        fetch(serveur() + "/studio/reprise/" + encodeURIComponent(r.rid), { headers: { authorization: "Bearer " + j }, cache: "no-store" })
-          .then(function(x){ return x.json().then(function(v){ v.http = x.status; return v; }); })
-          .then(function(v){
-            if (v.status === "pending") {
-              if (v.texte) { etape.textContent = "Still writing\u2026"; corps.innerHTML = markdown(v.texte); }
-              return setTimeout(tour, 1500);
-            }
-            fin();
-            if (v.status === "done") return finChat(d, v, r.nom, v.texte, { modele: r.modele, nomModele: r.nom, comparaison: q.comparaison });
-            r.interrompu = true; sauveConv();
-            d.classList.add("err");
-            corps.textContent = v.status === "failed" ? (v.raison || TXT.erreurReseau) : "This answer could not be recovered (the page was reloaded and the server no longer has it).";
-          })["catch"](function(){ setTimeout(tour, 4000); });
-      })();
-    });
-  }
-
-  function dimensionne(){ var t = $("question"); t.style.height = "auto"; t.style.height = Math.min(200, t.scrollHeight) + "px"; peintBoutons(); }
-
-  /* ---- les gestes ---- */
   $("question").addEventListener("input", dimensionne);
   $("question").addEventListener("keydown", function(e){ if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); envoyer(); } });
   $("envoyer").addEventListener("click", envoyer);
-  /* La page qui s'en va : ses requetes coupees ne sont pas des echecs. */
+  $("nouveau").addEventListener("click", function(){ etat.fil = []; sauve(); peintFil(); dit(""); $("question").focus(); });
+  $("modele").addEventListener("change", function(){ etat.modele = this.value; ecrisLocal("swogeAgentModele", etat.modele); peintPrix(); });
   window.addEventListener("pagehide", function(){ etat.quitte = true; });
   window.addEventListener("beforeunload", function(){ etat.quitte = true; });
-  /* Un seul ecouteur pour tous les « Copy » des blocs de code : le fil se
-     repeint a chaque morceau de texte recu, les boutons avec. On copie le
-     texte BRUT du bloc — exactement le code, sans le HTML de l'affichage. */
   $("fil").addEventListener("click", function(e){
     var b = e.target && e.target.closest && e.target.closest('.copier[data-copie="code"]');
     if (!b) return;
     var c = b.closest(".code"), code = c && c.querySelector("pre code");
     if (code) copie(code.textContent, b);
   });
-  $("modeleBtn").addEventListener("click", ouvreFeuille);
-  $("comparer").addEventListener("click", function(){
-    etat.compare = !etat.compare; ecrisLocal("swogeCompare", etat.compare);
-    /* Premiere fois : le modele courant, plus un d'un autre fournisseur. */
-    if (etat.compare && etat.choix.length < 2 && etat.cat) {
-      var mc = modeleCourant(), autres = etat.cat.modeles.filter(function(x){ return x.actif !== false && x.fournisseur !== (mc || {}).fournisseur; });
-      etat.choix = [mc && mc.id].concat(autres.length ? [autres[0].id] : []).filter(Boolean);
-      ecrisLocal("swogeCompareChoix", etat.choix);
-    }
-    peintPrix(); peintMode(); if (etat.compare && modelesCompares().length < 2) ouvreFeuille();
-  });
-  $("fermerFeuille").addEventListener("click", fermeFeuille);
-  $("feuille").addEventListener("click", function(e){ if (e.target === $("feuille")) fermeFeuille(); });
-  $("web").addEventListener("click", function(){ etat.web = !etat.web; $("web").setAttribute("aria-pressed", String(etat.web)); });
-  $("nouveau").addEventListener("click", function(){ nouvelleConv(); basculeHisto(false); });
-  $("histoBtn").addEventListener("click", function(){ basculeHisto(); });
-  Array.prototype.forEach.call(document.querySelectorAll(".effort"), function(b){
-    b.addEventListener("click", function(){ etat.effort = b.getAttribute("data-effort"); ecrisLocal("swogeChatEffort", etat.effort); peintFeuille(); });
-  });
-  Array.prototype.forEach.call(document.querySelectorAll(".mode"), function(b){
-    b.addEventListener("click", function(){ changeMode(b.getAttribute("data-mode")); });
-  });
-  Array.prototype.forEach.call(document.querySelectorAll("#vitesse button"), function(b){
-    b.addEventListener("click", function(){ etat.reg.vitesse = b.getAttribute("data-v"); sauveReg(); });
-  });
-  Array.prototype.forEach.call(document.querySelectorAll("#fournisseur button"), function(b){
-    b.addEventListener("click", function(){ etat.reg.fournisseur = b.getAttribute("data-f"); sauveReg(); });
-  });
-  $("nombre").addEventListener("click", function(){ etat.reg.nombre = cycle((etat.media && etat.media.image.nombres) || [1, 2, 4], etat.reg.nombre); sauveReg(); });
-  $("duree").addEventListener("click", function(){ etat.reg.duree = cycle((etat.media && etat.media.video.durees) || [6, 10], etat.reg.duree); sauveReg(); });
-  $("resolution").addEventListener("click", function(){ etat.reg.resolution = cycle((etat.media && etat.media.video.resolutions) || ["480p", "720p"], etat.reg.resolution); sauveReg(); });
-  $("format").addEventListener("click", function(){
-    var v = etat.mode === "video";
-    var l = (etat.media && etat.media[v ? "video" : "image"].formats) || ["auto"];
-    if (v) etat.reg.formatV = cycle(l, etat.reg.formatV); else etat.reg.formatI = cycle(l, etat.reg.formatI);
-    sauveReg();
-  });
-  $("joindre").addEventListener("click", function(){ $(etat.mode === "chat" ? "fichierChat" : "fichier").click(); });
-  $("fichierChat").addEventListener("change", function(){
-    var l = Array.prototype.slice.call(this.files || []); this.value = "";
-    /* Une a la fois, dans l'ordre choisi : la reduction d'une photo prend plus
-       longtemps que la lecture d'un PDF, et l'ordre ne doit pas en dependre. */
-    l.reduce(function(suite, f){
-      return suite.then(function(){
-        var pdf = f.type === "application/pdf";
-        if (!pdf && !/^image\/(png|jpeg|webp)$/.test(f.type)) return dit("Attach photos (PNG, JPEG, WebP) or a PDF.");
-        if (pdf && f.size > 10 * 1024 * 1024) return dit("This PDF is too large (max 10 MB).");
-        if (pdf && etat.pieces.some(function(x){ return x.genre === "pdf"; })) return dit("One PDF per question.");
-        if (!pdf && etat.pieces.filter(function(x){ return x.genre === "image"; }).length >= 4) return dit("At most 4 photos per question.");
-        return (pdf ? litPdf(f) : reduitPhoto(f)).then(function(p){
-          etat.pieces.push(p); peintPieces(); peintBoutons(); dit(pdf && !lisentPdf() ? TXT.pdfClaude : "");
-        }, function(){ dit("This file could not be read."); });
-      });
-    }, Promise.resolve());
-  });
-  $("retirer").addEventListener("click", retireJointe);
-  $("fichier").addEventListener("change", function(){
-    var f = this.files && this.files[0]; if (!f) return;
-    if (!/^image\/(png|jpeg|webp)$/.test(f.type) || f.size > 6 * 1024 * 1024) { dit("Attach a PNG, JPEG or WebP photo under 6 MB."); this.value = ""; return; }
-    var lr = new FileReader();
-    lr.onload = function(){ etat.jointe = String(lr.result); $("jointeImg").src = etat.jointe; $("jointe").hidden = false; dit(""); peintMode(); };
-    lr.readAsDataURL(f);
-  });
   Array.prototype.forEach.call(document.querySelectorAll(".suggestion"), function(b){
-    b.addEventListener("click", function(){
-      var s = SUGG[b.getAttribute("data-sugg")]; if (!s) return;
-      if (s.mode) { changeMode(s.mode); return; }
-      if (etat.mode !== "chat") changeMode("chat");
-      if (s.web) { etat.web = true; $("web").setAttribute("aria-pressed", "true"); }
-      var t = $("question"); t.value = s.texte; if (s.place) t.placeholder = s.place; t.focus(); dimensionne();
-    });
+    b.addEventListener("click", function(){ var t = $("question"); t.value = b.getAttribute("data-t"); t.focus(); dimensionne(); });
   });
 
-  /* ---- demarrage : le catalogue d'abord, le solde ensuite ---- */
-  if (!jeton()) dit(TXT.signin);
-  fetch(serveur() + "/studio/chat/catalogue", { cache: "no-store" })
+  fetch(serveur() + "/studio/agent/catalogue", { cache: "no-store" })
     .then(function(r){ return r.json(); })
     .then(function(c){
       etat.cat = c;
+      var s = $("modele"); s.innerHTML = "";
+      c.modeles.forEach(function(m){ var o = document.createElement("option"); o.value = m.id; o.textContent = m.nom; s.appendChild(o); });
+      s.value = (modeleCourant() || {}).id || "";
+      var o = $("outils"); o.innerHTML = "";
+      c.outils.forEach(function(x){
+        var e = document.createElement("span"); e.className = "ag-outil"; e.title = x.description;
+        e.textContent = ((OUTIL[x.nom] || {}).ic || "🛠️") + " " + x.nom; o.appendChild(e);
+      });
       if (!c.ouvert) dit(c.note || TXT.ferme);
       peintPrix(); peintBoutons();
     })["catch"](function(){ $("prixq").textContent = TXT.ferme; });
-  fetch(serveur() + "/studio/media/catalogue", { cache: "no-store" })
-    .then(function(r){ return r.json(); })
-    .then(function(c){ etat.media = c; peintMode(); })["catch"](function(){ peintMode(); });
   chargeSolde();
-  (function(){
-    var id = lisLocal("swogeChatCourant", null);
-    var c = id && etat.convs.filter(function(x){ return x.id === id; })[0];
-    if (c) { etat.conv = JSON.parse(JSON.stringify(c)); peintConv(); } else nouvelleConv();
-  })();
-  peintMode();
+  peintFil();
   reprend();
-
-  /* La connexion se fait APRES le chargement (bouton de `stakebubble.js`) :
-     le jeton apparait alors dans `localStorage`, dans CET onglet — l'evenement
-     `storage` ne le signalerait pas. On le guette, et le solde suit. */
-  /* De retour sur l'onglet : ce qui a change sur un autre appareil. */
-  document.addEventListener("visibilitychange", function(){ if (!document.hidden && histoActif()) syncHisto(SYNC.adresse); });
   var dernierJeton = jeton();
   setInterval(function(){
-    var j = jeton();
-    if (j === dernierJeton) return;
-    dernierJeton = j;
-    if (j && $("etat").textContent === TXT.signin) dit("");
-    chargeSolde();
+    var j = jeton(); if (j === dernierJeton) return;
+    dernierJeton = j; if (j && $("etat").textContent === TXT.signin) dit(""); chargeSolde();
   }, 2000);
 })();
 </script>
+
 </main>
 
   <!-- LA COLONNE DE DROITE, sans la carte « YOUR BALANCE » : cette page ne

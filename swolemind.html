@@ -771,6 +771,20 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   text-overflow:ellipsis;white-space:nowrap}
 .source:hover{border-color:var(--pool)}
 .meta{font-family:'Space Mono',monospace;font-size:10.5px;color:var(--dim);margin-top:8px}
+/* ---- la carte d'un jeton : des chiffres lus, jamais un verdict ---- */
+.jeton{border:1px solid var(--line);background:var(--panel);border-radius:14px;padding:10px 12px;margin:0 0 10px;font-size:13px;min-width:0}
+.jeton-tete{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 10px}
+.jeton-tete b{font-size:15px}
+.jeton-tete .dim,.jeton .dim{color:var(--dim);font-size:12px}
+.jeton-tete a{margin-left:auto;font-family:'Space Mono',monospace;font-size:11px;color:var(--pool);text-decoration:none}
+.jeton-chiffres{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,110px),1fr));gap:6px;margin:8px 0}
+.jeton-chiffres div{background:var(--panel2);border-radius:10px;padding:6px 8px;min-width:0}
+.jeton-chiffres span{display:block;font-family:'Space Mono',monospace;font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em}
+.jeton-chiffres b{font-size:13px;overflow-wrap:anywhere}
+.jeton-ligne{margin-top:6px;overflow-wrap:anywhere}
+.jeton-alerte{display:inline-block;background:rgba(214,69,65,.12);color:var(--serpent);border-radius:999px;padding:2px 8px;margin:2px 4px 2px 0;font-size:12px;font-weight:700}
+.jeton-case{font-family:'Space Mono',monospace;font-size:11.5px;margin-top:3px;overflow-wrap:anywhere}
+.jeton-avis{font-size:11px;color:var(--dim);margin-top:8px}
 .msg.err .corps{color:var(--serpent)}
 
 /* ---- le composeur, en bas, facon ChatGPT ---- */
@@ -895,6 +909,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       <button class="suggestion" type="button" data-sugg="ecrire"><span class="ic">&#9998;&#65039;</span>Write or edit</button>
       <button class="suggestion" type="button" data-sugg="expliquer"><span class="ic">&#128161;</span>Explain something simply</button>
       <button class="suggestion" type="button" data-sugg="code"><span class="ic">&#128187;</span>Help me with code</button>
+      <button class="suggestion" type="button" data-sugg="jeton"><span class="ic">&#128269;</span>Check a token</button>
       <button class="suggestion" type="button" data-sugg="image"><span class="ic">&#128444;&#65039;</span>Create an image</button>
       <button class="suggestion" type="button" data-sugg="video"><span class="ic">&#127916;</span>Make a video</button>
     </div>
@@ -985,6 +1000,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     ferme: "AI Chat is warming up.",
     reflexion: "Thinking…",
     recherche: "Searching the web…",
+    jeton: "Reading the token: DexScreener, GoPlus, SWOGE AI…",
     erreurReseau: "Connection lost — you were not charged for an unfinished answer.",
     vide: "No saved chats yet.",
     refus: "The model declined to answer this request."
@@ -994,6 +1010,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     ecrire: { texte: "Help me write ", web: false },
     expliquer: { texte: "Explain simply: ", web: false },
     code: { texte: "Help me with this code:\n", web: false },
+    jeton: { texte: "Check this token: ", web: false, place: "Paste a token address (0x\u2026)" },
     image: { texte: "", mode: "image" },
     video: { texte: "", mode: "video" }
   };
@@ -1218,6 +1235,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
         if (idGroupe !== m.comparaison) { groupe = grilleCmp(m.comparaison); idGroupe = m.comparaison; }
         var dc = colonneCmp(groupe, m.nomModele || "AI"); dc.setAttribute("data-i", i);
         dc.querySelector(".corps").innerHTML = markdown(m.content);
+        ajouteCartes(dc, m.jetons);
         if (m.sources && m.sources.length) dc.appendChild(sourcesEl(m.sources));
         if (m.meta) { var mc = document.createElement("div"); mc.className = "meta"; mc.textContent = m.meta; dc.appendChild(mc); }
         dc.appendChild(actionsEl(m.content));
@@ -1227,6 +1245,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       var d = ajouteMsg(m.role, m.content); d.setAttribute("data-i", i);
       if (m.role === "assistant") {
         d.querySelector(".corps").innerHTML = markdown(m.content);
+        ajouteCartes(d, m.jetons);
         if (m.sources && m.sources.length) d.appendChild(sourcesEl(m.sources));
         if (m.meta) { var mt = document.createElement("div"); mt.className = "meta"; mt.textContent = m.meta; d.appendChild(mt); }
         d.appendChild(actionsEl(m.content));
@@ -1263,12 +1282,13 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     var texte = data.texte || recu || "";
     if (!texte && data.stop === "refusal") texte = TXT.refus;
     corps.innerHTML = markdown(texte);
+    ajouteCartes(d, data.jetons);
     if (data.sources && data.sources.length) d.appendChild(sourcesEl(data.sources));
     var nom = nomModele || ((etat.cat && etat.cat.modeles.filter(function(x){ return x.id === data.modele; })[0]) || {}).nom || "AI";
     var meta = nom + " \u00b7 " + nombre(data.factureSwoge) + " $SWOGE" + (data.usage && data.usage.recherches ? " \u00b7 " + data.usage.recherches + " web search" + (data.usage.recherches > 1 ? "es" : "") : "");
     var mt = document.createElement("div"); mt.className = "meta"; mt.textContent = meta; d.appendChild(mt);
     d.appendChild(actionsEl(texte));
-    etat.conv.messages.push(Object.assign({ role: "assistant", content: texte, sources: data.sources || [], meta: meta }, extra || {}));
+    etat.conv.messages.push(Object.assign({ role: "assistant", content: texte, sources: data.sources || [], meta: meta }, data.jetons && data.jetons.length ? { jetons: data.jetons } : {}, extra || {}));
     sauveConv();
     if (data.solde) $("solde").innerHTML = "Balance <b>" + nombre(data.solde) + " $SWOGE</b>";
   }
@@ -1288,6 +1308,66 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     b.title = "Copy the whole answer";
     b.addEventListener("click", function(){ copie(String(texte || ""), b); });
     a.appendChild(b); return a;
+  }
+  /* ---- LA CARTE D'UN JETON ----
+   * Ce que le serveur a LU (DexScreener, GoPlus, la colonie) : des chiffres
+   * avec leur source, et chaque case de la colonie avec son effectif. Jamais
+   * « safe » : une securite inconnue se dit inconnue. Dans une comparaison, la
+   * carte ne se montre qu'une fois par grille. */
+  function usdCourt(x){
+    var n = Number(x); if (x === null || x === undefined || !isFinite(n)) return "\u2014";
+    if (n >= 1e9) return "$" + (n / 1e9).toFixed(2) + "B";
+    if (n >= 1e6) return "$" + (n / 1e6).toFixed(2) + "M";
+    if (n >= 1e3) return "$" + (n / 1e3).toFixed(1) + "K";
+    if (n >= 1) return "$" + n.toFixed(2);
+    return "$" + n.toPrecision(3);
+  }
+  function lienSur(u){ return /^https:\/\//i.test(String(u || "")) ? String(u) : null; }
+  function carteJeton(j){
+    var c = document.createElement("div"); c.className = "jeton"; c.setAttribute("data-adr", j.adresse);
+    if (!j.trouve) { c.innerHTML = '<div class="jeton-ligne">No pool found for <b>' + echappe(j.adresse) + '</b> on DexScreener.</div>'; return c; }
+    var u = lienSur(j.url);
+    var h = '<div class="jeton-tete"><b>$' + echappe(j.sym || "?") + '</b><span class="dim">' + echappe(j.nom || "") + ' \u00b7 ' + echappe(j.chaine || "") + '</span>'
+      + (u ? '<a href="' + echappe(u) + '" target="_blank" rel="noopener nofollow">DexScreener \u2197</a>' : "") + '</div>';
+    var v = j.var24h;
+    h += '<div class="jeton-chiffres">'
+      + '<div><span>Price</span><b>' + usdCourt(j.prixUsd) + '</b></div>'
+      + '<div><span>Liquidity</span><b>' + usdCourt(j.liqUsd) + '</b></div>'
+      + '<div><span>Market cap</span><b>' + usdCourt(j.mcUsd) + '</b></div>'
+      + '<div><span>24h volume</span><b>' + usdCourt(j.vol24Usd) + '</b></div>'
+      + '<div><span>24h change</span><b>' + (v === null || v === undefined ? "\u2014" : (v > 0 ? "+" : "") + nombre(v) + "%") + '</b></div></div>';
+    var sec = { failed: "Security lookup failed \u2014 unknown, not safe.", uncovered: "GoPlus does not cover this chain \u2014 security unknown.",
+                unknown: "GoPlus has no record of this token yet \u2014 unknown, not safe." }[j.securite];
+    if (sec) h += '<div class="jeton-ligne"><b>Security</b> <span class="dim">' + sec + '</span></div>';
+    else {
+      h += '<div class="jeton-ligne"><b>Security (GoPlus)</b> ' + (j.alertes && j.alertes.length
+        ? j.alertes.map(function(a){ return '<span class="jeton-alerte">' + echappe(a) + '</span>'; }).join("")
+        : '<span class="dim">no red flag among the checks GoPlus returned</span>') + '</div>';
+      h += '<div class="jeton-ligne dim">Tax ' + (j.taxeAchat === null ? "?" : nombre(j.taxeAchat) + "%") + ' buy / ' + (j.taxeVente === null ? "?" : nombre(j.taxeVente) + "%") + ' sell'
+        + ' \u00b7 ' + (j.porteurs === null ? "holders unknown" : nombre(j.porteurs) + " holders")
+        + (j.premierPorteur === null ? "" : ' \u00b7 top wallet ' + nombre(j.premierPorteur) + '%')
+        + (j.dixPremiers === null ? "" : ' \u00b7 top 10 ' + nombre(j.dixPremiers) + '%') + '</div>';
+    }
+    if (j.colonie) {
+      var cs = j.colonie.cases || [], sc = lienSur(j.colonie.scan);
+      h += '<div class="jeton-ligne"><b>SWOGE AI colony</b> <span class="dim">' + nombre(j.colonie.observations) + ' observations in memory</span>'
+        + (sc ? ' \u00b7 <a href="' + echappe(sc) + '" target="_blank" rel="noopener">full scan</a>' : "") + '</div>';
+      if (!cs.length) h += '<div class="jeton-case dim">None of its traits has enough observations yet \u2014 no conclusion.</div>';
+      cs.forEach(function(x){
+        h += '<div class="jeton-case">' + echappe(x.trait) + ' = ' + echappe(x.case) + ' \u2192 ' + (x.moyenne > 0 ? "+" : "") + nombre(x.moyenne) + '% avg over '
+          + nombre(x.n) + ' obs' + (x.assez ? "" : ' <span class="dim">(too few to conclude)</span>') + '</div>';
+      });
+    }
+    h += '<div class="jeton-avis">Read live. Measurements, never a buy signal.</div>';
+    c.innerHTML = h; return c;
+  }
+  function ajouteCartes(d, jetons){
+    if (!jetons || !jetons.length) return;
+    var g = d.closest(".cmp"), corps = d.querySelector(".corps");
+    jetons.forEach(function(j){
+      if (g && g.querySelector('.jeton[data-adr="' + j.adresse + '"]')) return;
+      d.insertBefore(carteJeton(j), corps);
+    });
   }
   function sourcesEl(sources){
     var s = document.createElement("div"); s.className = "sources";
@@ -1385,7 +1465,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
         var lecteur = rep.body.getReader(), dec = new TextDecoder(), tampon = "";
         function evenement(type, data){
           if (type === "texte") { if (etape.parentNode) etape.remove(); texte += data.t; corps.innerHTML = markdown(texte); }
-          else if (type === "etape") { etape.textContent = data.quoi === "recherche" ? TXT.recherche : TXT.reflexion; }
+          else if (type === "etape") { etape.textContent = data.quoi === "recherche" ? TXT.recherche : data.quoi === "jeton" ? TXT.jeton : TXT.reflexion; }
           else if (type === "fin") { fini = true; if (etape.parentNode) etape.remove(); finChat(d, data, m.nom, texte, extra); }
           else if (type === "erreur") { fini = true; throw data; }
         }
@@ -1482,7 +1562,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       var lecteur = rep.body.getReader(), dec = new TextDecoder(), tampon = "";
       function evenement(type, data){
         if (type === "texte") { if (etape.parentNode) etape.remove(); texte += data.t; corps.innerHTML = markdown(texte); }
-        else if (type === "etape") { etape.textContent = data.quoi === "recherche" ? TXT.recherche : TXT.reflexion; if (!etape.parentNode) d.insertBefore(etape, corps); }
+        else if (type === "etape") { etape.textContent = data.quoi === "recherche" ? TXT.recherche : data.quoi === "jeton" ? TXT.jeton : TXT.reflexion; if (!etape.parentNode) d.insertBefore(etape, corps); }
         else if (type === "fin") {
           fini = true;
           finChat(d, data, m.nom, texte);

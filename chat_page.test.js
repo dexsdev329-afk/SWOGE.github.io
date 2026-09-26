@@ -18,6 +18,8 @@
  *   7. Rien ne deborde sur un telephone de 360 px.
  *   8. Comparer : une requete par modele (son rid, sa facture), une colonne
  *      chacune, et chaque modele ne relit que SES reponses au tour suivant.
+ *   9. Une adresse de jeton : la carte des chiffres lus (marche, GoPlus,
+ *      colonie avec effectifs), echappee, liens https seulement, jamais « safe ».
  * ==========================================================================*/
 const fs = require('fs'), path = require('path'), http = require('http');
 const SITE = __dirname;
@@ -381,6 +383,63 @@ const sse = (evs) => evs.map(([t, d]) => 'event: ' + t + '\ndata: ' + JSON.strin
     await b.page.waitForSelector('.cmp .meta');
     await b.page.waitForTimeout(400);
     ok(vus.length === 2 && (await b.page.$$('.cmp > .msg.ia')).length === 3, 'rechargee encore : rien de redemande, rien en double');
+    await b.ctx.close();
+  }
+
+  console.log('\n-- 12. une adresse de jeton : la carte des chiffres lus --');
+  {
+    /* Demande du proprietaire, le 26 septembre 2026. Le serveur lit
+       DexScreener, GoPlus et la colonie (studio_jeton.js) ; la page montre les
+       chiffres avec leur source, chaque case avec son effectif, jamais « safe ». */
+    const PEPE = { adresse:'0x6982508145454ce325ddbe47a25d4ec3d2311933', trouve:true, sym:'PEPE', nom:'Pepe', chaine:'ethereum',
+      prixUsd:0.000004431, liqUsd:25000000, mcUsd:1860000000, vol24Usd:9100000, var24h:3.2, url:'https://dexscreener.com/ethereum/0xprofonde',
+      securite:'read', honeypot:false, taxeAchat:0, taxeVente:5, alertes:['Pausable','Blacklist'], porteurs:593837, premierPorteur:8.8, dixPremiers:15.4, colonie:null };
+    const RH = { adresse:'0x1111111111111111111111111111111111111111', trouve:true, sym:'<img src=x onerror=window.pirate=1>', nom:'Doge', chaine:'robinhood',
+      prixUsd:0.0012, liqUsd:4200, mcUsd:90000, vol24Usd:300, var24h:-12, url:'javascript:alert(1)', securite:'unknown', alertes:[],
+      taxeAchat:null, taxeVente:null, porteurs:null, premierPorteur:null, dixPremiers:null,
+      colonie:{ observations:48213, scan:'https://swoleeswoge.dog/swoge_scan.html?t=0x1111111111111111111111111111111111111111',
+        cases:[{ trait:'deployeur', case:'4+', n:642, moyenne:-43.7, assez:true }, { trait:'liq', case:'<5k', n:12, moyenne:18.2, assez:false }] } };
+    const rep = () => sse([['etape', { quoi:'jeton' }], ['texte', { t:'Numbers above.' }],
+      ['fin', { ok:true, texte:'Numbers above.', sources:[{ url: PEPE.url, titre:'DexScreener · $PEPE' }], jetons:[PEPE, RH], factureSwoge:'9', usage:{}, solde:'1' }]]);
+    const { page, ctx } = await ouvre({ session:'j', rep, largeur:360 });
+    await page.click('.suggestion[data-sugg="jeton"]');
+    eq(await page.inputValue('#question'), 'Check this token: ', '« Check a token » prepare la question');
+    ok(/token address/.test(await page.getAttribute('#question', 'placeholder')), 'et dit quoi coller');
+    await page.type('#question', PEPE.adresse + ' ' + RH.adresse);
+    await page.click('#envoyer');
+    await page.waitForSelector('.msg.ia .meta');
+    const cartes = await page.$$eval('.msg.ia .jeton', (l) => l.map((c) => c.textContent));
+    eq(cartes.length, 2, 'une carte par jeton, au-dessus de la reponse');
+    ok(/\$PEPE/.test(cartes[0]) && /ethereum/.test(cartes[0]) && /\$4\.43e-6|\$0\.00000443/.test(cartes[0]) && /\$25\.00M/.test(cartes[0]) && /\$1\.86B/.test(cartes[0]) && /\+3\.2%/.test(cartes[0]),
+       'le marche : prix, liquidite, capitalisation, variation [' + cartes[0].slice(0, 160) + ']');
+    ok(/Pausable/.test(cartes[0]) && /Blacklist/.test(cartes[0]) && /5% sell/.test(cartes[0]) && /593,837 holders/.test(cartes[0]) && /top wallet 8\.8%/.test(cartes[0]), 'la securite GoPlus : alertes, taxes, porteurs');
+    ok(/unknown, not safe/.test(cartes[1]) && !/no red flag/.test(cartes[1]), 'GoPlus muet : « inconnu, pas sur », jamais « rien a signaler »');
+    ok(/48,213 observations/.test(cartes[1]) && /deployeur = 4\+ → -43\.7% avg over 642 obs/.test(cartes[1]) && /liq = <5k → \+18\.2% avg over 12 obs \(too few to conclude\)/.test(cartes[1]),
+       'la colonie : chaque case avec son effectif, « too few to conclude » sous le seuil');
+    ok(cartes.every((c) => /never a buy signal/.test(c)), 'chaque carte dit que ce n est jamais un signal d achat');
+    ok(!(await page.evaluate(() => window.pirate)) && (await page.$('.jeton img')) === null, 'un symbole de jeton ne peut pas injecter de HTML');
+    eq(await page.$$eval('.jeton a', (l) => l.map((a) => a.getAttribute('href')).join(' ')), PEPE.url + ' ' + RH.colonie.scan, 'liens https seulement : le javascript: d un service ne devient jamais un lien');
+    const larg = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    ok(larg <= 1, 'a 360 px la carte ne deborde pas [' + larg + ']');
+    await page.reload({ waitUntil:'domcontentloaded' });
+    await page.waitForSelector('.msg.ia .meta');
+    eq((await page.$$('.msg.ia .jeton')).length, 2, 'rechargee : les cartes sont toujours la');
+    await ctx.close();
+
+    /* Dans une comparaison, les trois colonnes rendent la meme fiche : une seule carte. */
+    const CATC = JSON.parse(JSON.stringify(CAT));
+    CATC.modeles.forEach((m) => { m.fournisseur = 'anthropic'; m.actif = true; });
+    const repc = (c) => sse([['fin', { ok:true, texte:'A ' + c.modele, sources:[], jetons:[PEPE], factureSwoge:'1', usage:{}, solde:'1' }]]);
+    const b = await ouvre({ session:'j', cat: CATC, rep: repc });
+    await b.page.click('#comparer');
+    ok(await b.page.isVisible('#feuille'), 'un seul fournisseur : « Compare » ouvre lui-meme le choix, faute d un second modele a proposer');
+    await b.page.click('#modeles .modele[data-modele="haiku-4-5"]'); await b.page.click('#fermerFeuille');
+    await pose(b.page, 'check ' + PEPE.adresse);
+    await b.page.waitForFunction(() => document.querySelectorAll('.cmp .meta').length === 2);
+    eq((await b.page.$$('.cmp .jeton')).length, 1, 'comparaison : une seule carte par grille');
+    await b.page.reload({ waitUntil:'domcontentloaded' });
+    await b.page.waitForSelector('.cmp .meta');
+    eq((await b.page.$$('.cmp .jeton')).length, 1, 'et toujours une seule apres rechargement');
     await b.ctx.close();
   }
 

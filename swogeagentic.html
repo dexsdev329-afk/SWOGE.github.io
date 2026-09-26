@@ -941,7 +941,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 </style>
   <div class="ag-tete">
     <h1>SwogeAgentic</h1>
-    <p>An AI agent that works with SWOGE's own data: it reads tokens, the SWOGE AI colony, the $SWOGE economy and the web, chains the lookups itself, then answers with the numbers it read.</p>
+    <p>An AI agent that works with SWOGE's own data: it reads tokens, the newest launches, wallets, the SWOGE AI colony, the $SWOGE economy, infrastructure and the web, chains the lookups itself, then answers with the numbers it read.</p>
   </div>
   <div class="ag-outils" id="outils" aria-label="Tools the agent can use"></div>
   <div class="ag-lit">&#128274; Read-only: the agent can't buy, sell, sign or post anything.</div>
@@ -1014,7 +1014,10 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     scan_token: { ic: "🔍", dit: function(e){ return "Reading token " + String(e.address || "").slice(0, 8) + "…" + String(e.address || "").slice(-4); } },
     colony_activity: { ic: "🤖", dit: function(e){ return "Reading the SWOGE AI colony" + (e.token ? " on " + e.token : ""); } },
     swoge_economy: { ic: "🔥", dit: function(){ return "Reading the $SWOGE economy on-chain"; } },
-    web_search: { ic: "🌐", dit: function(e){ return "Searching the web: “" + String(e.query || "").slice(0, 80) + "”"; } }
+    web_search: { ic: "🌐", dit: function(e){ return "Searching the web: “" + String(e.query || "").slice(0, 80) + "”"; } },
+    new_launches: { ic: "\ud83d\ude80", dit: function(){ return "Reading the newest tokens the colony found"; } },
+    wallet_intel: { ic: "\ud83d\udc5b", dit: function(e){ return "Reading wallet " + String(e.address || "").slice(0, 8) + "\u2026" + String(e.address || "").slice(-4); } },
+    osint_lookup: { ic: "\ud83d\udd0e", dit: function(e){ return "Passive recon on " + String(e.target || "").slice(0, 60); } }
   };
   /* ---- recopie de swolemind.html, a l'identique : serveur, lisLocal, ecrisLocal, jeton, nombre, echappe, enLigne, markdown, copie, actionsEl, usdCourt, lienSur, carteJeton, sourcesEl, nouveauRid ---- */
   function serveur(){

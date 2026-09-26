@@ -40,7 +40,7 @@
  * une fois par session pour savoir si le serveur en a une plus recente.
  * Sans ca, un joueur garde des semaines une version corrigee depuis
  * longtemps — et ici, cela voudrait dire un agent qui a cesse d'apprendre. */
-var MARQUE_PAGE = '8a53af07';
+var MARQUE_PAGE = '0d24239b';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -1630,6 +1630,12 @@ const PHRASES = {
                       + 'sont ignores. Chaque jeton trouve est juge par la colonie comme toute autre source — jamais achete a vue.'],
   tgAucun:      ['No channel watched. The owner adds channels in the admin panel (TG_SURV_CANAUX).',
                  'Aucun canal surveille. Le proprietaire les ajoute dans le panneau d\'admin (TG_SURV_CANAUX).'],
+  tgScore:      [(c, n, med, up) => '@' + c + ' · ' + n + ' fresh calls · median ' + (med > 0 ? '+' : '') + med + ' % since the call · ' + up + ' % up',
+                 (c, n, med, up) => '@' + c + ' · ' + n + ' appels frais · mediane ' + (med > 0 ? '+' : '') + med + ' % depuis l appel · ' + up + ' % en hausse'],
+  tgPasAssez:   [(c, n) => '@' + c + ' · ' + n + ' fresh call(s): not enough to judge (10 needed)',
+                 (c, n) => '@' + c + ' · ' + n + ' appel(s) frais : pas assez pour juger (10 requis)'],
+  tgAuto:       [(c, r) => '@' + c + ' · added by discovery (' + r + ' Robinhood Chain tokens in its latest posts)',
+                 (c, r) => '@' + c + ' · ajoute par la decouverte (' + r + ' jetons Robinhood Chain dans ses derniers messages)'],
   tgStatut:     [(st) => (st === 'hors robinhood' ? 'not on Robinhood Chain' : 'judged by the colony'),
                  (st) => (st === 'hors robinhood' ? 'pas sur Robinhood Chain' : 'juge par la colonie')],
 
@@ -2702,7 +2708,11 @@ function peintTelegram(){
     <span class="meta">${post(x)}<a href="https://dexscreener.com/robinhood/${echappe(x.addr)}" target="_blank" rel="noopener">chart</a> · ${echappe(ph("tgStatut", x.statut))}${x.verdict ? " · " + echappe(String(x.verdict)).slice(0,40) : ""}</span>
     <span class="pnl n" style="font-size:12px">${x.note===null||x.note===undefined?"—":echappe(String(x.note))}</span>
   </div>`).join("");
-  $("telegram").innerHTML = canaux + (lignes || '<div class="empty">' + ph("tgVide") + '</div>');
+  /* Le score de chaque canal : sur ses appels FRAIS, avec l'effectif, et rien sous dix (tg_appels.js). */
+  const sc = (v.scores || []).filter(x=>x.calls > 0).slice(0, 8).map(x=>`<div class="mini">${echappe(x.medianChangePct === null
+      ? ph("tgPasAssez", x.channel, x.freshMeasured || 0) : ph("tgScore", x.channel, x.freshMeasured, x.medianChangePct, x.upSharePct))}</div>`).join("");
+  const au = ((v.decouverte && v.decouverte.auto) || []).map(x=>`<div class="mini">${echappe(ph("tgAuto", x.canal, x.robinhood))}</div>`).join("");
+  $("telegram").innerHTML = canaux + au + sc + (lignes || '<div class="empty">' + ph("tgVide") + '</div>');
 }
 
 /* ---- CE QUE LA COLONIE A CHANGE A ELLE-MEME ----

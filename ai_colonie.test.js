@@ -643,6 +643,15 @@ async function panneaux() {
     ok(t.liens.includes('https://t.me/Exceptionalmemes/4460') && !t.liens.some((h) => /^javascript/i.test(h)) && t.liens.includes('https://dexscreener.com/robinhood/0x39dbed3a2bd333467115de45665cc57f813c4571'),
        'le lien du message et le graphique Robinhood ; un lien de message piege n est pas rendu');
     await o.ctx.close();
+    /* les scores (tg_appels) et les canaux ajoutes par la decouverte (tg_decouverte) */
+    const sc = await ouvre(nav, port, { vue: Object.assign(vueFausse(), { telegram: Object.assign({}, TG, {
+      scores: [{ channel: 'XandersOGCALLS', calls: 14, freshMeasured: 12, medianChangePct: 18.5, upSharePct: 58 }, { channel: 'ChinaGamble', calls: 3, freshMeasured: 2, medianChangePct: null }],
+      decouverte: { auto: [{ canal: 'NewCallsRH', robinhood: 3 }] } }) }) });
+    const ts = (await sc.page.textContent('#telegram')).replace(/\s+/g, ' ');
+    ok(/@XandersOGCALLS · 12 fresh calls · median \+18.5 % since the call · 58 % up/.test(ts), 'un canal note : effectif, mediane depuis l appel, part en hausse');
+    ok(/@ChinaGamble · 2 fresh call\(s\): not enough to judge \(10 needed\)/.test(ts), 'sous dix appels frais : pas de score, et la raison');
+    ok(/@NewCallsRH · added by discovery \(3 Robinhood Chain tokens/.test(ts), 'un canal ajoute par la decouverte dit pourquoi il est entre');
+    await sc.ctx.close();
     const vide = await ouvre(nav, port, { vue: Object.assign(vueFausse(), { telegram: { canaux: [{ canal: 'Exceptionalmemes', messages: 20, horsChaine: 1 }], trouvailles: [] } }) });
     ok(/No Robinhood Chain contract in the latest posts/.test(await vide.page.textContent('#telegram')), 'rien trouve : la page dit pourquoi (Solana, autres chaines, tickers ignores)');
     await vide.ctx.close();

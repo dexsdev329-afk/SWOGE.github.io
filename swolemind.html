@@ -854,6 +854,43 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 .msg.moi .pieces{justify-content:flex-end}
 .msg.moi .piece{background:rgba(255,255,255,.18);border-color:transparent;color:inherit}
 
+/* ---- series et pubs : les memes personnages et les memes voix a chaque scene ---- */
+.prod-feuille,.essai-feuille{max-width:640px}
+.prod-feuille label,.essai-feuille label{display:block;font-size:12.5px;font-weight:700;margin:10px 0 4px;color:var(--paper)}
+.prod-feuille input[type=text],.prod-feuille textarea,.prod-feuille select,.essai-feuille textarea,.essai-feuille select{width:100%;box-sizing:border-box;border:1px solid var(--line);
+  border-radius:10px;padding:9px 10px;font:14px/1.35 inherit;font-family:inherit;background:var(--panel);color:var(--paper)}
+.prod-feuille textarea,.essai-feuille textarea{resize:vertical;min-height:64px}
+.prod-feuille .rang{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.prod-feuille .rang > *{flex:1 1 140px;min-width:0}
+.prod-feuille .aide,.essai-feuille .aide{font-size:12.5px;color:var(--muted,#5a6b85);margin:6px 0}
+.prod-feuille .erreur,.essai-feuille .erreur{color:#b3261e;font-size:13px;margin:8px 0}
+.prod-feuille .erreur:empty,.essai-feuille .erreur:empty{display:none}
+.prod-carte,.essai-carte{border:1px solid var(--line);border-radius:14px;padding:10px 12px;margin:8px 0;background:var(--panel)}
+.prod-carte.clic{cursor:pointer}
+.prod-carte .titre,.essai-carte .titre{font-weight:800}
+.prod-carte .sous,.essai-carte .sous{font-size:12.5px;color:var(--muted,#5a6b85)}
+.prod-perso{display:flex;gap:10px;align-items:flex-start}
+.prod-perso .vign{width:56px;height:56px;border-radius:10px;object-fit:cover;background:var(--panel2);flex:0 0 56px}
+.prod-perso .champs{flex:1 1 auto;min-width:0}
+.prod-boutons,.essai-boutons{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.prod-boutons button,.essai-boutons button{text-transform:none;letter-spacing:0}
+.prod-scene video{width:100%;max-height:360px;border-radius:10px;background:#000;margin-top:6px}
+.prod-scene .texte{white-space:pre-wrap;font-size:13.5px}
+.prod-mode{display:inline-block;font-size:11px;font-weight:800;border-radius:999px;padding:2px 8px;background:var(--panel2);margin-left:6px;vertical-align:middle}
+/* ---- essai de restylage (proprietaire) : l'original et le resultat cote a cote, empiles sous 600 px.
+   Ses propres classes (essai-*) : les selecteurs de la feuille des series (prod-*) ne doivent pas l'attraper. ---- */
+.essai-feuille input[type=file]{display:block;max-width:100%;font:13px inherit;font-family:inherit;color:var(--paper)}
+.essai-feuille textarea{margin-top:8px}
+.essai-feuille progress{display:block;width:100%;margin-top:6px}
+.essai-duo{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.essai-duo figure{margin:0;min-width:0}
+.essai-duo figcaption{font-size:12px;font-weight:800;margin-bottom:4px}
+.essai-duo video{display:block;width:100%;max-height:320px;border-radius:10px;background:#000}
+@media(max-width:600px){.essai-duo{grid-template-columns:1fr}}
+.essai-ligne{display:flex;flex-wrap:wrap;gap:2px 10px;font-size:12.5px;padding:6px 0;border-bottom:1px solid var(--line)}
+.essai-ligne:last-child{border-bottom:0}
+.essai-ligne > *{min-width:0;overflow-wrap:anywhere}
+.essai-ligne .statut{font-weight:800}
 /* ---- la feuille de choix du modele, facon Claude ---- */
 .voile-feuille{position:fixed;inset:0;background:rgba(11,27,54,.35);z-index:60;display:flex;align-items:flex-end;justify-content:center}
 .voile-feuille[hidden]{display:none}
@@ -983,6 +1020,8 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
         <button class="outil" id="modeleBtn" type="button" aria-haspopup="dialog">&#10024; <span id="modeleNom">Opus 5.5</span> &#9662;</button>
         <button class="outil" id="comparer" type="button" aria-pressed="false" title="Ask 2 or 3 models the same question, side by side">&#9878;&#65039; Compare</button>
         <button class="outil" id="web" type="button" aria-pressed="false" title="Search the web and cite sources">&#127760; Search</button>
+        <button class="outil" id="prodBtn" type="button" title="Same characters and voices in every scene" hidden>&#127902;&#65039; Series &amp; Ads</button>
+        <button class="outil" id="essaiBtn" type="button" title="Owner-only: restyle one short clip with Grok Imagine video editing" aria-haspopup="dialog" hidden>&#129514; Restyle test</button>
         <button class="envoi" id="envoyer" type="button" disabled aria-label="Send">&#8593;</button>
       </div>
     </div>
@@ -990,6 +1029,36 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   </div>
 </div>
 
+<div class="voile-feuille" id="prod" hidden role="dialog" aria-modal="true" aria-label="Series and ads">
+  <div class="feuille prod-feuille">
+    <div class="haut"><b id="prodTitre">Series &amp; Ads</b><button class="fermer" id="fermerProd" type="button" aria-label="Close">&#10005;</button></div>
+    <div class="erreur" id="prodErreur" role="alert"></div>
+    <div id="prodCorps"></div>
+  </div>
+</div>
+<!-- L'essai de restylage : proprietaire seulement (AI_OWNER, reverifie par le
+     serveur a chaque geste). La page ne fait que montrer la feuille. -->
+<div class="voile-feuille" id="essai" hidden role="dialog" aria-modal="true" aria-label="Restyle test">
+  <div class="feuille essai-feuille">
+    <div class="haut"><b>Restyle test</b><button class="fermer" id="fermerEssai" type="button" aria-label="Close">&#10005;</button></div>
+    <p class="aide">Owner-only test: one short clip (8.7 s max) restyled by Grok Imagine video editing. Use a clip you have the rights to.</p>
+    <div class="aide" id="essaiReste"></div>
+    <label for="essaiFichier">Clip (MP4, 8.7 s and 25 MB max)</label>
+    <input type="file" id="essaiFichier" accept="video/mp4">
+    <div class="aide" id="essaiInfo"></div>
+    <label for="essaiSens">Direction</label>
+    <select id="essaiSens">
+      <option value="reel">Anime &rarr; live action</option>
+      <option value="anime">Live action &rarr; anime</option>
+      <option value="libre">Custom</option>
+    </select>
+    <textarea id="essaiPrompt" maxlength="1000" rows="3" hidden aria-label="Custom instruction" placeholder="How should Grok Imagine restyle the clip? Same shots, same timing."></textarea>
+    <div class="erreur" id="essaiErreur" role="alert"></div>
+    <div class="essai-boutons"><button class="outil essai-lance" id="essaiLance" type="button">Run test</button></div>
+    <div id="essaiSuivi" aria-live="polite"></div>
+    <div id="essaiListe"></div>
+  </div>
+</div>
 <div class="voile-feuille" id="feuille" hidden role="dialog" aria-modal="true" aria-label="Select a model">
   <div class="feuille">
     <div class="haut"><b>Select a model</b><button class="fermer" id="fermerFeuille" type="button" aria-label="Close">&#10005;</button></div>
@@ -1222,6 +1291,8 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     Array.prototype.forEach.call(document.querySelectorAll("#fournisseur button"), function(b){ b.setAttribute("aria-pressed", String(b.getAttribute("data-f") === etat.reg.fournisseur)); });
     $("nombre").hidden = m !== "image";
     $("duree").hidden = m !== "video"; $("resolution").hidden = m !== "video";
+    $("prodBtn").hidden = m !== "video";
+    peintEssaiBtn();
     $("question").placeholder = PLACE[m];
     if (m === "chat" && etat.jointe) retireJointe();
     Array.prototype.forEach.call(document.querySelectorAll("#vitesse button"), function(b){ b.setAttribute("aria-pressed", String(b.getAttribute("data-v") === etat.reg.vitesse)); });
@@ -2117,6 +2188,460 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   $("fermerFeuille").addEventListener("click", fermeFeuille);
   $("feuille").addEventListener("click", function(e){ if (e.target === $("feuille")) fermeFeuille(); });
   $("web").addEventListener("click", function(){ etat.web = !etat.web; $("web").setAttribute("aria-pressed", String(etat.web)); });
+  /* ---- SERIES ET PUBS ----
+   * Demande du proprietaire, 26 septembre 2026 : « une mini-serie, que la voix
+   * et les personnages soient les memes a chaque scene », en mode serie ou pub.
+   * Le serveur garde la production (personnages ou produit, leurs images, leurs
+   * voix) sous l'adresse de la SESSION et envoie les MEMES references a chaque
+   * scene ; la page ne fait que montrer et envoyer. Tout texte venu du serveur
+   * passe par textContent, jamais par innerHTML. */
+  var PROD = { cat: null, vue: "liste", courante: null, brouillon: null, suivi: null, occupe: false };
+  function el(tag, cls, texte){ var e = document.createElement(tag); if (cls) e.className = cls; if (texte != null) e.textContent = texte; return e; }
+  function bouton(texte, cls, fn){ var b = el("button", cls || "outil", texte); b.type = "button"; b.addEventListener("click", fn); return b; }
+  function prodErreur(t){ $("prodErreur").textContent = t || ""; }
+  /* Une image d'un personnage : l'image officielle de SWOGE, une image rangee chez
+     nous (adresse relative verifiee), ou une photo pas encore envoyee (data URL). */
+  function srcImage(x){
+    if (x === "swoge") return (PROD.cat && /^https:\/\//.test(PROD.cat.swoge)) ? PROD.cat.swoge : "img/site/swoge_reference.jpg";
+    if (/^\/studio\/production\/image\/[0-9a-f]{48}\.(png|jpg|webp)$/.test(String(x))) return serveur() + x;
+    if (/^data:image\/jpeg;base64,/.test(String(x))) return x;
+    return "";
+  }
+  function prodApi(chemin, methode, corps){
+    var j = jeton();
+    if (!j) return Promise.reject(new Error(TXT.signin));
+    return fetch(serveur() + chemin, { method: methode || "GET", headers: { "content-type": "application/json", authorization: "Bearer " + j },
+      body: corps ? JSON.stringify(corps) : undefined, cache: "no-store" })
+      .then(function(r){ return r.json().catch(function(){ return {}; }).then(function(o){ if (!r.ok || o.ok === false) throw new Error(o.raison || ("error " + r.status)); return o; }); });
+  }
+  function ouvreProd(){
+    $("prod").hidden = false; prodErreur("");
+    if (!jeton()) { PROD.vue = "liste"; $("prodCorps").innerHTML = ""; $("prodCorps").appendChild(el("p", "aide", TXT.signin)); return; }
+    chargeProd();
+  }
+  function fermeProd(){ $("prod").hidden = true; if (PROD.suivi) { clearTimeout(PROD.suivi); PROD.suivi = null; } }
+  function chargeProd(){
+    return prodApi("/studio/production").then(function(c){
+      PROD.cat = c;
+      if (PROD.courante) PROD.courante = c.productions.filter(function(p){ return p.id === PROD.courante.id; })[0] || null;
+      if (PROD.vue === "prod" && !PROD.courante) PROD.vue = "liste";
+      peintProd();
+    })["catch"](function(e){ prodErreur(e.message); });
+  }
+  function nomVoix(id){ var v = ((PROD.cat && PROD.cat.voix) || []).filter(function(x){ return x.id === id; })[0]; return v ? v.nom + " (" + v.ton + ")" : "no voice"; }
+  function peintProd(){
+    var box = $("prodCorps"); box.innerHTML = "";
+    if (PROD.suivi) { clearTimeout(PROD.suivi); PROD.suivi = null; }
+    if (PROD.vue === "edit") return peintEdition(box);
+    if (PROD.vue === "prod" && PROD.courante) return peintProduction(box, PROD.courante);
+    $("prodTitre").textContent = "Series & Ads";
+    box.appendChild(el("p", "aide", "Same characters, same voices, every scene. A series keeps up to 3 characters; an ad keeps your product, its presenter and the setting."));
+    var bs = el("div", "prod-boutons");
+    bs.appendChild(bouton("+ New series", "outil", function(){ PROD.brouillon = { mode: "serie", titre: "", style: "", format: "16:9", personnages: [{ nom: "SWOGE", image: "swoge", voix: "rex", description: "" }] }; PROD.vue = "edit"; peintProd(); }));
+    bs.appendChild(bouton("+ New ad", "outil", function(){ PROD.brouillon = { mode: "pub", titre: "", style: "", format: "9:16", produit: { nom: "", image: null, presentateur: "swoge", presentateurNom: "SWOGE", decor: null, voix: "rex", slogan: "", appel: "" } }; PROD.vue = "edit"; peintProd(); }));
+    box.appendChild(bs);
+    var ps = (PROD.cat && PROD.cat.productions) || [];
+    if (!ps.length) box.appendChild(el("p", "aide", "No production yet."));
+    ps.forEach(function(p){
+      var c = el("div", "prod-carte clic prod-item");
+      var t = el("div", "titre", p.titre); t.appendChild(el("span", "prod-mode", p.mode === "pub" ? "AD" : "SERIES")); c.appendChild(t);
+      c.appendChild(el("div", "sous", (p.scenes || []).length + " scene" + ((p.scenes || []).length === 1 ? "" : "s") + " · " + p.format));
+      c.addEventListener("click", function(){ PROD.courante = p; PROD.vue = "prod"; peintProd(); });
+      box.appendChild(c);
+    });
+  }
+  /* Une photo choisie : reduite ici (1 568 px, JPEG), envoyee avec la production. */
+  function choisitPhoto(fn){
+    var i = document.createElement("input"); i.type = "file"; i.accept = "image/png,image/jpeg,image/webp";
+    i.addEventListener("change", function(){ var f = i.files && i.files[0]; if (!f) return; var u = URL.createObjectURL(f);
+      vignette(u, 1568, 0.85).then(function(d){ URL.revokeObjectURL(u); fn(d); })["catch"](function(){ prodErreur("This photo could not be read."); }); });
+    i.click();
+  }
+  function champ(parent, label, valeur, fn, opts){
+    parent.appendChild(el("label", null, label));
+    var i = (opts && opts.long) ? el("textarea") : el("input"); if (!(opts && opts.long)) i.type = "text";
+    i.value = valeur || ""; if (opts && opts.max) i.maxLength = opts.max; if (opts && opts.place) i.placeholder = opts.place;
+    i.addEventListener("input", function(){ fn(i.value); }); parent.appendChild(i); return i;
+  }
+  function choix(parent, label, liste, valeur, fn){
+    if (label) parent.appendChild(el("label", null, label));
+    var s = el("select"); liste.forEach(function(o){ var x = el("option", null, o[1]); x.value = o[0]; s.appendChild(x); });
+    s.value = valeur == null ? "" : valeur; s.addEventListener("change", function(){ fn(s.value); }); parent.appendChild(s); return s;
+  }
+  function voixListe(){ return [["", "No voice"]].concat(((PROD.cat && PROD.cat.voix) || []).map(function(v){ return [v.id, v.nom + " — " + v.ton]; })); }
+  function blocImage(parent, label, valeur, fn, avecSwoge, facultatif){
+    parent.appendChild(el("label", null, label));
+    var r = el("div", "prod-perso");
+    var im = el("img", "vign"); im.alt = ""; var s = srcImage(valeur); if (s) im.src = s; r.appendChild(im);
+    var bs = el("div", "rang");
+    bs.appendChild(bouton("Upload photo", "puce", function(){ choisitPhoto(function(d){ fn(d); peintProd(); }); }));
+    if (avecSwoge) bs.appendChild(bouton("Use SWOGE", "puce", function(){ fn("swoge"); peintProd(); }));
+    if (facultatif && valeur) bs.appendChild(bouton("None", "puce", function(){ fn(null); peintProd(); }));
+    r.appendChild(bs); parent.appendChild(r);
+  }
+  function peintEdition(box){
+    var b = PROD.brouillon;
+    $("prodTitre").textContent = b.id ? "Edit " + (b.mode === "pub" ? "ad" : "series") : (b.mode === "pub" ? "New ad" : "New series");
+    champ(box, "Title", b.titre, function(v){ b.titre = v; }, { max: 80, place: b.mode === "pub" ? "Swole Shaker launch" : "Gym Wars" });
+    var r = el("div", "rang"); box.appendChild(r);
+    var c1 = el("div"), c2 = el("div"); r.appendChild(c1); r.appendChild(c2);
+    choix(c1, "Format", [["16:9", "16:9 landscape"], ["9:16", "9:16 vertical"], ["1:1", "1:1 square"]], b.format, function(v){ b.format = v; });
+    champ(c2, "Visual style (optional)", b.style, function(v){ b.style = v; }, { max: 200, place: "anime, 90s VHS, cinematic…" });
+    if (b.mode === "serie") {
+      box.appendChild(el("p", "aide", "Each character keeps their face, fur or skin and build from their picture, and their voice, in every scene. Outfits and poses follow the scene."));
+      b.personnages.forEach(function(c, i){
+        var carte = el("div", "prod-carte prod-edit-perso");
+        champ(carte, "Character " + (i + 1) + " name", c.nom, function(v){ c.nom = v; }, { max: 40 });
+        blocImage(carte, "Reference picture", c.image, function(v){ c.image = v; }, true, false);
+        choix(carte, "Voice", voixListe(), c.voix || "", function(v){ c.voix = v || null; });
+        champ(carte, "Short description (optional)", c.description, function(v){ c.description = v; }, { max: 160, place: "a grey cat, SWOGE's rival" });
+        if (b.personnages.length > 1) carte.appendChild(bouton("Remove this character", "puce", function(){ b.personnages.splice(i, 1); peintProd(); }));
+        box.appendChild(carte);
+      });
+      var max = (PROD.cat && PROD.cat.personnagesMax) || 3;
+      if (b.personnages.length < max) box.appendChild(bouton("+ Add a character", "outil", function(){ b.personnages.push({ nom: "", image: null, voix: null, description: "" }); peintProd(); }));
+    } else {
+      var p = b.produit;
+      champ(box, "Product name", p.nom, function(v){ p.nom = v; }, { max: 60 });
+      blocImage(box, "Product photo", p.image, function(v){ p.image = v; }, false, false);
+      blocImage(box, "Presenter (optional)", p.presentateur, function(v){ p.presentateur = v; }, true, true);
+      champ(box, "Presenter name (optional)", p.presentateurNom, function(v){ p.presentateurNom = v; }, { max: 40 });
+      blocImage(box, "Setting photo (optional)", p.decor, function(v){ p.decor = v; }, false, true);
+      choix(box, "Voice", voixListe(), p.voix || "", function(v){ p.voix = v || null; });
+      champ(box, "Slogan (optional)", p.slogan, function(v){ p.slogan = v; }, { max: 160 });
+      champ(box, "Call to action (optional)", p.appel, function(v){ p.appel = v; }, { max: 120, place: "Order at swoleeswoge.dog" });
+    }
+    var bs = el("div", "prod-boutons");
+    bs.appendChild(bouton(b.id ? "Save" : "Create", "outil prod-sauve", function(){
+      if (PROD.occupe) return; PROD.occupe = true; prodErreur("");
+      /* Les photos deja rangees repartent par leur adresse, les nouvelles en data URL. */
+      prodApi("/studio/production" + (b.id ? "/" + b.id : ""), "POST", { production: b })
+        .then(function(o){ PROD.courante = o.production; PROD.vue = "prod"; return chargeProd(); })
+        ["catch"](function(e){ prodErreur(e.message); })
+        .then(function(){ PROD.occupe = false; });
+    }));
+    bs.appendChild(bouton("Cancel", "outil prod-annule", function(){ PROD.vue = PROD.courante ? "prod" : "liste"; peintProd(); }));
+    box.appendChild(bs);
+  }
+  function peintProduction(box, p){
+    $("prodTitre").textContent = p.titre;
+    var h = el("div", "prod-carte");
+    if (p.mode === "serie") {
+      p.personnages.forEach(function(c){
+        var r = el("div", "prod-perso"); var im = el("img", "vign"); im.alt = ""; var s = srcImage(c.image); if (s) im.src = s; r.appendChild(im);
+        var t = el("div", "champs"); t.appendChild(el("div", "titre", c.nom)); t.appendChild(el("div", "sous", nomVoix(c.voix) + (c.description ? " · " + c.description : "")));
+        r.appendChild(t); h.appendChild(r);
+      });
+    } else {
+      var q = p.produit, r2 = el("div", "prod-perso"), im2 = el("img", "vign"); im2.alt = ""; var s2 = srcImage(q.image); if (s2) im2.src = s2; r2.appendChild(im2);
+      var t2 = el("div", "champs"); t2.appendChild(el("div", "titre", q.nom));
+      t2.appendChild(el("div", "sous", (q.presentateur ? "Presented by " + (q.presentateurNom || "the presenter") + " · " : "") + nomVoix(q.voix) + (q.slogan ? " · “" + q.slogan + "”" : "")));
+      r2.appendChild(t2); h.appendChild(r2);
+    }
+    box.appendChild(h);
+    var bs = el("div", "prod-boutons");
+    bs.appendChild(bouton("← All productions", "puce prod-retour", function(){ PROD.vue = "liste"; PROD.courante = null; peintProd(); chargeProd(); }));
+    bs.appendChild(bouton("Edit", "puce prod-modifie", function(){ PROD.brouillon = JSON.parse(JSON.stringify(p)); delete PROD.brouillon.scenes; PROD.vue = "edit"; peintProd(); }));
+    bs.appendChild(bouton("Delete", "puce prod-supprime", function(){
+      if (!window.confirm("Delete “" + p.titre + "” and its pictures? The videos already made stay downloadable from their links until they expire.")) return;
+      prodApi("/studio/production/" + p.id, "DELETE").then(function(){ PROD.courante = null; PROD.vue = "liste"; return chargeProd(); })["catch"](function(e){ prodErreur(e.message); });
+    }));
+    box.appendChild(bs);
+    var enCours = false;
+    (p.scenes || []).forEach(function(sc, i){
+      var c = el("div", "prod-carte prod-scene");
+      c.appendChild(el("div", "titre", "Scene " + (i + 1)));
+      if (sc.texte) c.appendChild(el("div", "texte", sc.texte));
+      if (sc.statut === "done" && /^https:\/\//.test(String(sc.url))) {
+        var v = el("video"); v.controls = true; v.playsInline = true; v.preload = "metadata"; v.src = sc.url; c.appendChild(v);
+        var a = el("a", "sous", "Download"); a.href = sc.url; a.target = "_blank"; a.rel = "noopener"; c.appendChild(a);
+        if (sc.factureSwoge) c.appendChild(el("span", "sous", " · " + nombre(sc.factureSwoge) + " $SWOGE"));
+      } else if (sc.statut === "pending") { enCours = true; c.appendChild(el("div", "sous", "Filming… a minute or two")); }
+      else c.appendChild(el("div", "sous", sc.raison || "This scene did not finish — you were not charged."));
+      box.appendChild(c);
+    });
+    var nouveau = el("div", "prod-carte");
+    var ta = champ(nouveau, "Scene " + ((p.scenes || []).length + 1), "", function(){}, { long: true, max: 1200,
+      place: p.mode === "pub" ? "Optional: what the ad shows (the product, slogan and call to action are added)" : "What happens? Spoken lines in quotes — SWOGE says \"Let's go!\"" });
+    ta.className = "prod-texte";
+    var durees = (PROD.cat && PROD.cat.durees) || [6, 10];
+    var d = choix(nouveau, "Length", durees.map(function(x){ return [String(x), x + " s"]; }), String(durees[durees.length - 1]), function(){});
+    nouveau.appendChild(el("p", "aide", "Charged like a Quality (1.5) video: the real cost, and nothing if it fails."));
+    nouveau.appendChild(bouton("🎬 Film this scene", "outil prod-filme", function(){
+      if (PROD.occupe) return; PROD.occupe = true; prodErreur("");
+      prodApi("/studio/production/" + p.id + "/scene", "POST", { texte: ta.value, duree: Number(d.value) })
+        .then(function(o){ if (o.solde) $("solde").innerHTML = "Balance <b>" + nombre(o.solde) + " $SWOGE</b>"; return chargeProd(); })
+        ["catch"](function(e){ prodErreur(e.message); })
+        .then(function(){ PROD.occupe = false; });
+    }));
+    box.appendChild(nouveau);
+    /* Une scene en cours : on repasse tant que la fenetre est ouverte. */
+    if (enCours && !$("prod").hidden) PROD.suivi = setTimeout(chargeProd, 4000);
+  }
+  $("prodBtn").addEventListener("click", ouvreProd);
+  $("fermerProd").addEventListener("click", fermeProd);
+  $("prod").addEventListener("click", function(e){ if (e.target === $("prod")) fermeProd(); });
+  /* ---- ESSAI DE RESTYLAGE (proprietaire seulement) ----
+   * Demande du proprietaire, 26 septembre 2026 : essayer UNE video courte a la
+   * fois avec l'edition video de Grok Imagine (anime -> prise de vue reelle, ou
+   * l'inverse) pour MESURER la qualite, le cout reel et l'attente avant de
+   * construire un « refaire une video » complet. Le serveur reverifie AI_OWNER
+   * a chaque geste et n'agit que sur l'adresse de la session ; la page ne fait
+   * que montrer le bouton quand le serveur a repondu `proprietaire: true`, et
+   * elle n'envoie jamais d'adresse. La duree est lue ICI dans la boite `mvhd`
+   * du MP4 (meme lecture que le serveur) pour refuser un clip trop long avant
+   * d'envoyer 30 Mo pour rien ; le serveur la relit de toute facon. */
+  var ESSAI = { proprietaire: false, vue: null, fichier: null, dureeS: null, original: null,
+                id: null, depart: 0, suivi: null, occupe: false, dernier: null };
+  var ESSAI_SENS = { reel: "Anime → live action", anime: "Live action → anime", libre: "Custom" };
+  var ESSAI_STATUT = { pending: "running", done: "done", failed: "failed", timeout: "timed out" };
+  function peintEssaiBtn(){ $("essaiBtn").hidden = !(etat.mode === "video" && ESSAI && ESSAI.proprietaire); }
+  function essaiErreur(t){ $("essaiErreur").textContent = t || ""; }
+  /* Les bornes : celles que le serveur annonce, sinon les siennes (docs xAI :
+     8,7 s au plus en entree ; 25 Mo par fichier cote serveur). */
+  function essaiDureeMax(){ var v = ESSAI.vue && Number(ESSAI.vue.dureeMaxS); return v > 0 ? v : 8.7; }
+  function essaiOctetsMax(){ var v = ESSAI.vue && Number(ESSAI.vue.octetsMax); return v > 0 ? v : 25 * 1024 * 1024; }
+  /* La duree d'un MP4 : l'arbre des boites (taille 32 bits, 64 bits quand elle
+     vaut 1, jusqu'a la fin quand elle vaut 0), `ftyp` en premier, puis
+     moov > mvhd. v0 : creation u32, modification u32, echelle u32, duree u32 ;
+     v1 : creation u64, modification u64, echelle u32, duree u64. null quand ce
+     n'est pas un MP4, qu'il n'y a pas de mvhd ou que l'echelle vaut 0.
+     Un `mvex` dans moov = MP4 FRAGMENTE : mvhd n'y couvre que moov, pas les
+     fragments (un clip ffmpeg frag_keyframe de 12 s y porte 1 s) ; la duree
+     est alors celle de mvex > mehd, sinon null — meme lecture que le serveur.
+     Une duree nulle ou « inconnue » (tous les bits a 1) : null aussi. */
+  function dureeMp4(tampon){
+    var v = new DataView(tampon), n = v.byteLength;
+    function boite(pos, fin){
+      if (pos + 8 > fin) return null;
+      var taille = v.getUint32(pos), entete = 8, type = "";
+      for (var i = 4; i < 8; i++) type += String.fromCharCode(v.getUint8(pos + i));
+      if (taille === 1) { if (pos + 16 > fin) return null; taille = v.getUint32(pos + 8) * 4294967296 + v.getUint32(pos + 12); entete = 16; }
+      else if (taille === 0) taille = fin - pos;
+      if (taille < entete || pos + taille > fin) return null;
+      return { type: type, debut: pos + entete, fin: pos + taille };
+    }
+    function cherche(debut, fin, type){
+      for (var p = debut; p < fin;) { var b = boite(p, fin); if (!b) return null; if (b.type === type) return b; p = b.fin; }
+      return null;
+    }
+    var premiere = boite(0, n);
+    if (!premiere || premiere.type !== "ftyp") return null;
+    var moov = cherche(0, n, "moov"); if (!moov) return null;
+    var mvhd = cherche(moov.debut, moov.fin, "mvhd"); if (!mvhd) return null;
+    var d = mvhd.debut, echelle, duree, inconnue;
+    if (d + 1 > mvhd.fin) return null;
+    if (v.getUint8(d) === 1) {
+      if (d + 32 > mvhd.fin) return null;
+      echelle = v.getUint32(d + 20); duree = v.getUint32(d + 24) * 4294967296 + v.getUint32(d + 28);
+      inconnue = v.getUint32(d + 24) === 4294967295 && v.getUint32(d + 28) === 4294967295;
+    } else {
+      if (d + 20 > mvhd.fin) return null;
+      echelle = v.getUint32(d + 12); duree = v.getUint32(d + 16); inconnue = duree === 4294967295;
+    }
+    if (!echelle) return null;
+    var mvex = cherche(moov.debut, moov.fin, "mvex");
+    if (mvex) {
+      /* fragmente : seule la duree de mehd compte */
+      var mehd = cherche(mvex.debut, mvex.fin, "mehd"), m = mehd && mehd.debut;
+      duree = 0; inconnue = false;
+      if (mehd && m + 1 <= mehd.fin) {
+        if (v.getUint8(m) === 1 && m + 12 <= mehd.fin) {
+          duree = v.getUint32(m + 4) * 4294967296 + v.getUint32(m + 8);
+          inconnue = v.getUint32(m + 4) === 4294967295 && v.getUint32(m + 8) === 4294967295;
+        } else if (v.getUint8(m) === 0 && m + 8 <= mehd.fin) { duree = v.getUint32(m + 4); inconnue = duree === 4294967295; }
+      }
+    }
+    return !duree || inconnue ? null : duree / echelle;
+  }
+  function usd(x){
+    var n = Number(x);
+    if (x == null || x === "" || !isFinite(n) || n < 0) return "—";
+    if (n === 0) return "$0";
+    if (n >= 1) return "$" + n.toFixed(2);
+    if (n < 0.0001) return "<$0.0001";
+    return "$" + n.toPrecision(3);
+  }
+  function secondesTxt(s){ var n = Math.round(Number(s)); if (!isFinite(n) || n < 0) return "—"; return n < 60 ? n + " s" : Math.floor(n / 60) + " min " + (n % 60) + " s"; }
+  function statutEssai(o){ return String((o && (o.statut || o.status)) || ""); }
+  function urlSure(u){ return /^https:\/\//.test(String(u || "")) ? String(u) : ""; }
+  /* Comme prodApi, mais l'erreur garde le code HTTP : un essai que le serveur
+     ne connait plus (404) arrete le suivi au lieu de le relancer sans fin. */
+  function essaiApi(chemin, methode, corps){
+    var j = jeton();
+    if (!j) return Promise.reject(new Error(TXT.signin));
+    return fetch(serveur() + chemin, { method: methode || "GET", headers: { "content-type": "application/json", authorization: "Bearer " + j },
+      body: corps ? JSON.stringify(corps) : undefined, cache: "no-store" })
+      .then(function(r){ return r.json().catch(function(){ return {}; }).then(function(o){
+        if (!r.ok || o.ok === false) { var e = new Error(o.raison || ("error " + r.status)); e.code = r.status; throw e; }
+        return o;
+      }); });
+  }
+  /* Le serveur dit s'il s'agit du proprietaire. Sans session : aucune requete,
+     le bouton reste cache. */
+  function verifieEssai(){
+    var j = jeton();
+    ESSAI.proprietaire = false; ESSAI.vue = null; peintEssaiBtn();
+    if (!j) { if (!$("essai").hidden) fermeEssai(); return; }
+    essaiApi("/studio/essai-montage").then(function(o){
+      if (jeton() !== j) return;
+      ESSAI.proprietaire = o.proprietaire === true;
+      ESSAI.vue = ESSAI.proprietaire ? o : null;
+      peintEssaiBtn();
+    })["catch"](function(){});
+  }
+  function ouvreEssai(){
+    if (!ESSAI.proprietaire) return;
+    $("essai").hidden = false; essaiErreur("");
+    chargeEssai().then(function(){
+      /* Un essai encore en cours (onglet recharge, feuille refermee) : on le reprend. */
+      if (!ESSAI.id) {
+        var enCours = ((ESSAI.vue && ESSAI.vue.essais) || []).filter(function(x){ return statutEssai(x) === "pending" && x.id; })[0];
+        if (enCours) { ESSAI.id = String(enCours.id); ESSAI.depart = 0; ESSAI.dernier = enCours; peintSuivi(enCours); }
+      }
+      if (ESSAI.id) suisEssai();
+    });
+  }
+  function fermeEssai(){ $("essai").hidden = true; if (ESSAI.suivi) { clearTimeout(ESSAI.suivi); ESSAI.suivi = null; } }
+  function chargeEssai(){
+    return essaiApi("/studio/essai-montage").then(function(o){
+      if (o.proprietaire !== true) { ESSAI.proprietaire = false; ESSAI.vue = null; peintEssaiBtn(); fermeEssai(); return; }
+      ESSAI.vue = o; peintVueEssai();
+    })["catch"](function(e){ essaiErreur(e.message); });
+  }
+  function peintVueEssai(){
+    var v = ESSAI.vue || {};
+    var reste = Number(v.reste), par = Number(v.parJour);
+    var r = isFinite(reste) ? "Tests left today: " + reste + (isFinite(par) && par > 0 ? " of " + par : "") : "";
+    if (v.actif === false) r += (r ? " · " : "") + "video editing is not configured on the server right now.";
+    $("essaiReste").textContent = r;
+    var box = $("essaiListe"); box.innerHTML = "";
+    var l = Array.isArray(v.essais) ? v.essais : [];
+    box.appendChild(el("label", null, "Past tests"));
+    if (!l.length) { box.appendChild(el("p", "aide", "No test yet.")); return; }
+    l.forEach(function(x){
+      var st = statutEssai(x), ligne = el("div", "essai-ligne");
+      ligne.appendChild(el("span", null, ESSAI_SENS[x.sens] || String(x.sens || "?")));
+      ligne.appendChild(el("span", null, isFinite(Number(x.dureeS)) && x.dureeS != null ? Number(x.dureeS).toFixed(1) + " s" : "—"));
+      ligne.appendChild(el("span", null, x.usdParSeconde != null ? usd(x.usdParSeconde) + "/s" : "no cost"));
+      if (x.secondes != null) ligne.appendChild(el("span", null, "waited " + secondesTxt(x.secondes)));
+      ligne.appendChild(el("span", "statut", ESSAI_STATUT[st] || st || "?"));
+      var u = st === "done" && urlSure(x.url);
+      if (u) { var a = el("a", null, "Result"); a.href = u; a.target = "_blank"; a.rel = "noopener"; ligne.appendChild(a); }
+      box.appendChild(ligne);
+    });
+  }
+  function peintLance(){ $("essaiLance").disabled = !!(ESSAI.occupe || ESSAI.id); }
+  /* Le suivi : la progression, puis l'original et le resultat cote a cote, le
+     cout et l'attente ; ou la raison du serveur. */
+  function peintSuivi(o){
+    var box = $("essaiSuivi"); box.innerHTML = "";
+    if (!o) return;
+    var st = statutEssai(o), c = el("div", "essai-carte");
+    if (st === "pending") {
+      var pr = Math.max(0, Math.min(100, Math.round(Number(o.progress != null ? o.progress : o.progres) || 0)));
+      var t = "Restyling with Grok Imagine… " + pr + "%";
+      if (ESSAI.depart) t += " · " + secondesTxt((Date.now() - ESSAI.depart) / 1000);
+      c.appendChild(el("div", "sous essai-progres", t));
+      var b = el("progress"); b.max = 100; b.value = pr; c.appendChild(b);
+      box.appendChild(c); return;
+    }
+    if (st !== "done") {
+      c.appendChild(el("div", "titre", "The test did not finish" + (st && st !== "failed" ? " (" + (ESSAI_STATUT[st] || st) + ")" : "")));
+      c.appendChild(el("div", "sous essai-raison", String(o.erreur || o.raison || "No reason given by the server.")));
+      box.appendChild(c); return;
+    }
+    var duo = el("div", "essai-duo");
+    function vid(titre, src, cls){
+      var f = el("figure", cls); f.appendChild(el("figcaption", null, titre));
+      if (src) { var v = el("video"); v.controls = true; v.playsInline = true; v.preload = "metadata"; v.src = src; f.appendChild(v); }
+      else f.appendChild(el("div", "sous", titre === "Original" ? "The original is only kept in the tab that sent it." : "No playable https link for the result."));
+      duo.appendChild(f);
+    }
+    var u = urlSure(o.url);
+    vid("Original", ESSAI.original && ESSAI.dernierOriginal === String(o.id) ? ESSAI.original : "", "essai-original");
+    vid("Restyled", u, "essai-resultat");
+    c.appendChild(duo);
+    var d = Number(o.dureeS != null ? o.dureeS : ESSAI.dureeS);
+    var cout = o.coutUsd, parS = o.usdParSeconde != null ? o.usdParSeconde : (cout != null && d > 0 ? Number(cout) / d : null);
+    c.appendChild(el("div", "sous essai-cout", cout != null
+      ? usd(cout) + " for " + (d > 0 ? d.toFixed(1) : "?") + " s (" + usd(parS) + "/s)"
+      : "xAI did not report a cost for this edit."));
+    if (o.secondes != null) c.appendChild(el("div", "sous essai-attente", "Wait: " + secondesTxt(o.secondes)));
+    if (u) { var a = el("a", "sous", "Download the result"); a.href = u; a.target = "_blank"; a.rel = "noopener"; c.appendChild(a); }
+    box.appendChild(c);
+  }
+  function suisEssai(){
+    if (ESSAI.suivi) { clearTimeout(ESSAI.suivi); ESSAI.suivi = null; }
+    if (!ESSAI.id || $("essai").hidden) return;
+    var id = ESSAI.id;
+    ESSAI.suivi = setTimeout(function(){
+      ESSAI.suivi = null;
+      if (ESSAI.id !== id || $("essai").hidden) return;
+      essaiApi("/studio/essai-montage/" + encodeURIComponent(id)).then(function(o){
+        if (ESSAI.id !== id) return;
+        ESSAI.dernier = o;
+        if (statutEssai(o) === "pending") { peintSuivi(o); suisEssai(); return; }
+        if (o.id == null) o.id = id;
+        ESSAI.id = null; peintSuivi(o); peintLance(); chargeEssai();
+      })["catch"](function(e){
+        if (ESSAI.id !== id) return;
+        if (e.code === 404 || e.code === 401 || e.code === 403) { ESSAI.id = null; peintLance(); essaiErreur(e.message); peintSuivi(null); return; }
+        suisEssai();   /* le reseau a flanche : on repasse */
+      });
+    }, 4000);
+  }
+  $("essaiFichier").addEventListener("change", function(){
+    var i = this, f = i.files && i.files[0];
+    essaiErreur(""); $("essaiInfo").textContent = ""; ESSAI.fichier = null; ESSAI.dureeS = null;
+    if (!ESSAI.id) peintSuivi(null);
+    if (!f) return;
+    function refuse(t){ essaiErreur(t); i.value = ""; }
+    if (f.size > essaiOctetsMax()) return refuse("This clip is too large (" + (f.size / 1048576).toFixed(1) + " MB) — the maximum is " + Math.round(essaiOctetsMax() / 1048576) + " MB.");
+    var lr = new FileReader();
+    lr.onerror = function(){ refuse("This file could not be read."); };
+    lr.onload = function(){
+      var d = null; try { d = dureeMp4(lr.result); } catch (e) { d = null; }
+      if (d == null) return refuse("This file is not an MP4 video (or its length could not be read).");
+      if (d > essaiDureeMax()) return refuse("This clip is " + d.toFixed(1) + " s long — the maximum is " + essaiDureeMax() + " s. Trim it first.");
+      ESSAI.fichier = f; ESSAI.dureeS = d;
+      $("essaiInfo").textContent = f.name + " · " + d.toFixed(1) + " s · " + (f.size / 1048576).toFixed(1) + " MB";
+    };
+    lr.readAsArrayBuffer(f);
+  });
+  $("essaiSens").addEventListener("change", function(){ $("essaiPrompt").hidden = this.value !== "libre"; });
+  $("essaiLance").addEventListener("click", function(){
+    if (ESSAI.occupe || ESSAI.id) return;
+    essaiErreur("");
+    var f = ESSAI.fichier, sens = $("essaiSens").value, texte = $("essaiPrompt").value.trim();
+    if (!f) return essaiErreur("Choose an MP4 clip first.");
+    if (!ESSAI_SENS[sens]) return essaiErreur("Choose a direction.");
+    if (sens === "libre" && !texte) return essaiErreur("Write your instruction first.");
+    ESSAI.occupe = true; peintLance();
+    $("essaiSuivi").innerHTML = ""; $("essaiSuivi").appendChild(el("div", "sous", "Sending the clip…"));
+    new Promise(function(ok, ko){
+      var lr = new FileReader();
+      lr.onload = function(){ ok("data:video/mp4;base64," + String(lr.result).split(",")[1]); };
+      lr.onerror = function(){ ko(new Error("This file could not be read.")); };
+      lr.readAsDataURL(f);
+    }).then(function(video){
+      /* Le jeton en Authorization, jamais une adresse : le serveur prend celle de la session. */
+      var corps = { video: video, sens: sens };
+      if (sens === "libre") corps.prompt = texte.slice(0, 1000);
+      return essaiApi("/studio/essai-montage", "POST", corps);
+    }).then(function(o){
+      if (o.id == null || o.id === "") throw new Error("The server did not return a test id.");
+      if (ESSAI.original) URL.revokeObjectURL(ESSAI.original);
+      ESSAI.original = URL.createObjectURL(f); ESSAI.dernierOriginal = String(o.id);
+      ESSAI.id = String(o.id); ESSAI.depart = Date.now();
+      peintSuivi({ statut: "pending", progress: 0 }); suisEssai();
+      chargeEssai();
+    })["catch"](function(e){ peintSuivi(null); essaiErreur(e.message); })
+      .then(function(){ ESSAI.occupe = false; peintLance(); });
+  });
+  $("essaiBtn").addEventListener("click", ouvreEssai);
+  $("fermerEssai").addEventListener("click", fermeEssai);
+  $("essai").addEventListener("click", function(e){ if (e.target === $("essai")) fermeEssai(); });
   $("nouveau").addEventListener("click", function(){ nouvelleConv(); basculeHisto(false); });
   $("histoBtn").addEventListener("click", function(){ basculeHisto(); });
   $("recentsTout").addEventListener("click", function(){ basculeHisto(true); window.scrollTo(0, 0); });
@@ -2190,6 +2715,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     .then(function(r){ return r.json(); })
     .then(function(c){ etat.media = c; peintMode(); })["catch"](function(){ peintMode(); });
   chargeSolde();
+  verifieEssai();
   (function(){
     var id = lisLocal("swogeChatCourant", null);
     var c = id && etat.convs.filter(function(x){ return x.id === id; })[0];
@@ -2209,7 +2735,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     if (j === dernierJeton) return;
     dernierJeton = j;
     if (j && $("etat").textContent === TXT.signin) dit("");
-    chargeSolde();
+    chargeSolde(); verifieEssai();
   }, 2000);
 })();
 </script>

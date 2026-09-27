@@ -40,7 +40,7 @@
  * une fois par session pour savoir si le serveur en a une plus recente.
  * Sans ca, un joueur garde des semaines une version corrigee depuis
  * longtemps — et ici, cela voudrait dire un agent qui a cesse d'apprendre. */
-var MARQUE_PAGE = '14735383';
+var MARQUE_PAGE = 'fff405bb';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -796,7 +796,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   .tab-ecran .panel{ max-height:none; }
 }
 </style>
-<link rel="stylesheet" href="swoge_terminal.css?v=afbd780a">
+<link rel="stylesheet" href="swoge_terminal.css?v=e8f86119">
 
 
 <!-- ==================== LA BARRE DU SITE ====================
@@ -967,6 +967,9 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
            deplacement), juste sous le hero. -->
       <section class="tm-sec" id="tm-mirror" aria-labelledby="tmMirH">
         <div class="tm-titre"><h2 id="tmMirH" data-tt="tMiroirT">Your mirror</h2><span class="tm-pastille tm-p-vert">LIVE</span><span class="tm-sous" data-tt="sMiroirT">Real money, on a mirror wallet you create and fund yourself: the colony buys and sells in it at the same moment as its paper.</span></div>
+        <!-- Les stats du miroir (profit, taux, trades, meilleur, ouvertes) :
+             `swogemiroir.js` les pose ici des qu'un miroir existe. -->
+        <div class="tm-carte tm-miroir-bilan" id="tmMiroirBilan" hidden></div>
         <div class="tm-grille2 tm-miroir">
           <div class="tm-carte">
         <!-- ---- SUIVRE LA COLONIE AVEC SON PROPRE ARGENT ----
@@ -1333,7 +1336,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 </div>
 
 <script src="swogeprofil.js?v=aa21d613" defer></script>
-<script src="swogemiroir.js?v=ea0eaf0e" defer></script>
+<script src="swogemiroir.js?v=9fde21bb" defer></script>
 
 <!-- La carte « YOUR BALANCE » recopie #bal, jamais l'inverse. -->
 <script>

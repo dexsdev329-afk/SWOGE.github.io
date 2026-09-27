@@ -262,7 +262,12 @@
       + '@media (max-width:560px){.mir-bandeau .b-item b{font-size:14px}.mir-bandeau .b-gros b{font-size:16px}'
       + '.mir-bandeau .b-item b small{font-size:9px}.mir-bandeau .b-item i{font-size:8.5px;letter-spacing:.6px}}';
     document.head.appendChild(c);
-    papier.parentNode.insertBefore(boiteBilan, papier.nextSibling);
+    /* « Ca doit etre affiche en haut, les stats de son miroir » (27/09) : une
+       page qui porte `#tmMiroirBilan` (le terminal de SWOGE AI) la recoit la,
+       en tete ; ailleurs elle reste sous la barre du papier. */
+    var hote = document.getElementById('tmMiroirBilan');
+    if (hote) { hote.appendChild(boiteBilan); hote.hidden = false; }
+    else papier.parentNode.insertBefore(boiteBilan, papier.nextSibling);
     return boiteBilan;
   }
   function majBilan() {

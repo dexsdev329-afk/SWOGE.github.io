@@ -1985,12 +1985,16 @@ async function auditDesVetos() {
       const p = document.getElementById('bandeau');
       if (!b) return null;
       const t = (id) => (document.getElementById(id) || {}).textContent || '';
-      return { visible: !b.hidden, sous: b.getBoundingClientRect().top >= p.getBoundingClientRect().bottom - 1,
+      /* « Ca doit etre affiche en haut, les stats de son miroir » (27/09) : elle
+         etait sous la barre du papier, au fond de la console. Elle est
+         maintenant EN TETE de « Your mirror », au-dessus de la console. */
+      const m = document.getElementById('tm-mirror');
+      return { visible: !b.hidden, sous: !!(m && m.contains(b)) && b.getBoundingClientRect().bottom <= p.getBoundingClientRect().top,
                profit: t('mir-profit'), wr: t('mir-wr'), trades: t('mir-trades'), best: t('mir-best'), open: t('mir-open'),
                etiquettes: [...b.querySelectorAll('i')].map((x) => x.textContent) };
     });
     console.log('   barre : ' + JSON.stringify(bar));
-    ok(!!bar && bar.visible && bar.sous, 'la barre personnelle est la, sous celle du papier');
+    ok(!!bar && bar.visible && bar.sous, 'la barre personnelle est la, en tete de « Your mirror », au-dessus de la console');
     ok(bar.profit.indexOf('+$7.61') === 0 && /0\.0031 ETH/.test(bar.profit),
        '0,0031 ETH a 2 455,73 $ font +$7.61, avec l ETH en dessous (« ' + bar.profit + ' »)');
     ok(bar.wr === '58%' && bar.trades === '12' && bar.best === '2.40×' && bar.open === '1',

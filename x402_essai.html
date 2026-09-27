@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>SwogeAgentic — pay one call in USDC on Base</title>
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/img/site/icone-32.png">
+<link rel="apple-touch-icon" href="/img/site/icone-180.png">
+<!-- ==================================================================
+ * PAYER UN APPEL x402 EN USDC SUR BASE, DEPUIS SON PORTEFEUILLE
+ *
+ * Demande du proprietaire, 27 septembre 2026 : Coinbase ne liste un service
+ * dans son catalogue (Bazaar) qu'apres un premier paiement reel regle par son
+ * facilitateur. Cette page fait ce paiement a la main, comme un agent :
+ *   1. elle demande scan_token au serveur et recoit le 402 (PAYMENT-REQUIRED) ;
+ *   2. elle prend l'offre Base (eip155:8453, USDC) et fait SIGNER au
+ *      portefeuille l'autorisation EIP-3009 (TransferWithAuthorization) :
+ *      montant, destinataire (la tresorerie) et echeance viennent du 402 ;
+ *   3. elle rejoue la demande avec PAYMENT-SIGNATURE et montre le resultat et
+ *      la transaction rendue dans PAYMENT-RESPONSE.
+ * La page ne voit JAMAIS de cle : le portefeuille signe, le serveur verifie la
+ * signature, Coinbase regle (et paie le gaz). Hors moteurs (noindex).
+ * Le domaine EIP-712 de l'USDC sur Base (« USD Coin », version 2, chaine 8453)
+ * a ete lu sur la chaine le 27 septembre 2026 (contrat du lot Base, §A.1).
+ * ================================================================== -->
+<style>
+:root{ --fond:#EEF3FB; --carte:#fff; --encre:#0B1B36; --pale:#5a6b85; --bleu:#1652f0; --ligne:#E1E9F6; --ok:#0a7d3e; --err:#b3261e; }
+*{ box-sizing:border-box; }
+html{ -webkit-text-size-adjust:100%; }
+body{ margin:0; background:var(--fond); color:var(--encre); font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
+main{ max-width:560px; margin:0 auto; padding:20px 16px 40px; }
+h1{ font-size:22px; margin:0 0 6px; }
+p{ margin:6px 0; }
+.carte{ background:var(--carte); border:1px solid var(--ligne); border-radius:14px; padding:14px 16px; margin:14px 0; }
+.pale{ color:var(--pale); font-size:13.5px; }
+button{ font:inherit; font-weight:700; border:0; border-radius:999px; padding:12px 18px; background:var(--bleu); color:#fff; cursor:pointer; width:100%; min-height:44px; touch-action:manipulation; }
+button[disabled]{ opacity:.45; cursor:default; }
+.etape{ display:flex; gap:10px; align-items:flex-start; margin:8px 0; }
+.etape b{ flex:0 0 26px; height:26px; border-radius:50%; background:var(--ligne); display:flex; align-items:center; justify-content:center; font-size:13px; }
+.etape.fait b{ background:var(--ok); color:#fff; }
+#statut{ min-height:22px; font-weight:600; }
+#statut.err{ color:var(--err); }
+#statut.ok{ color:var(--ok); }
+code,.mono{ font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12.5px; word-break:break-all; }
+pre{ white-space:pre-wrap; word-break:break-word; font-size:12.5px; background:#f6f8fc; border-radius:10px; padding:10px; max-height:320px; overflow:auto; margin:8px 0 0; }
+a{ color:var(--bleu); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Pay one call in USDC on Base</h1>
+  <p class="pale">Pays <b id="prix">$0.02</b> in USDC on Base for one <code>scan_token</code> call of SwogeAgentic, exactly like an AI agent would with x402. Coinbase settles the payment and pays the gas: you need USDC on Base, no ETH.</p>
+
+  <div class="carte">
+    <div class="etape" id="e1"><b>1</b><span>Connect your wallet and switch to Base.</span></div>
+    <div class="etape" id="e2"><b>2</b><span>Sign the transfer authorization (the amount and the recipient come from the server's payment request).</span></div>
+    <div class="etape" id="e3"><b>3</b><span>The server checks the signature, Coinbase settles, and the scan result appears below.</span></div>
+  </div>
+
+  <div class="carte">
+    <p>Wallet: <span class="mono" id="adresse">not connected</span></p>
+    <p>USDC on Base: <span id="solde">—</span></p>
+    <p class="pale">Token scanned: <code id="jeton"></code></p>
+    <p style="margin-top:12px"><button id="connecter" type="button">Connect wallet</button></p>
+    <p style="margin-top:8px"><button id="payer" type="button" disabled>Pay $0.02 USDC and run the scan</button></p>
+    <p id="statut" role="status"></p>
+  </div>
+
+  <div class="carte" id="resultat" hidden>
+    <p><b>Payment settled</b> — <span id="tx"></span></p>
+    <pre id="sortie"></pre>
+  </div>
+
+  <p class="pale">No wallet in this browser? Open this page inside your wallet app's browser (Coinbase Wallet, MetaMask, Rabby). The page never sees a key: your wallet signs, the server verifies, Coinbase settles.</p>
+</main>
+<script>
+(function(){
+  "use strict";
+  var $ = function(id){ return document.getElementById(id); };
+  function serveur(){
+    try { var q = new URLSearchParams(location.search).get("server"); if (q) return String(q).replace(/\/$/, ""); } catch (e) {}
+    return "https://web-production-220a3.up.railway.app";
+  }
+  /* Le jeton scanne : le $SWOGE lui-meme (0x8a16…F817). */
+  var JETON = "0x8a166fb41cd659a0a43396272ff73973ce29f817";
+  var BASE_ID = "0x2105";                        /* 8453 */
+  var USDC = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
+  var etat = { compte: null, requete: null };
+  $("jeton").textContent = JETON;
+
+  function statut(t, genre){ var s = $("statut"); s.textContent = t || ""; s.className = genre || ""; }
+  function fait(n){ $("e" + n).className = "etape fait"; }
+  function b64(o){ return btoa(unescape(encodeURIComponent(JSON.stringify(o)))); }
+  function de64(s){ return JSON.parse(decodeURIComponent(escape(atob(s)))); }
+  function hex32(){ var a = new Uint8Array(32); crypto.getRandomValues(a); return "0x" + Array.prototype.map.call(a, function(x){ return ("0" + x.toString(16)).slice(-2); }).join(""); }
+  function adresseOk(a){ return /^0x[0-9a-fA-F]{40}$/.test(String(a || "")); }
+
+  function appel(entetes){
+    return fetch(serveur() + "/agentic/call/scan_token", { method: "POST", cache: "no-store",
+      headers: Object.assign({ "content-type": "application/json" }, entetes || {}),
+      body: JSON.stringify({ arguments: { address: JETON } }) });
+  }
+
+  function lisSolde(){
+    var eth = window.ethereum;
+    var data = "0x70a08231" + "000000000000000000000000" + etat.compte.slice(2).toLowerCase();
+    return eth.request({ method: "eth_call", params: [{ to: USDC, data: data }, "latest"] }).then(function(r){
+      var n = parseInt(String(r || "0x0"), 16) || 0;
+      $("solde").textContent = (n / 1e6).toLocaleString("en-US", { maximumFractionDigits: 6 }) + " USDC";
+      return n;
+    })["catch"](function(){ $("solde").textContent = "unreadable"; return null; });
+  }
+
+  function versBase(){
+    var eth = window.ethereum;
+    return eth.request({ method: "wallet_switchEthereumChain", params: [{ chainId: BASE_ID }] })["catch"](function(e){
+      if (!e || e.code !== 4902) throw e;
+      return eth.request({ method: "wallet_addEthereumChain", params: [{ chainId: BASE_ID, chainName: "Base",
+        nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 }, rpcUrls: ["https://mainnet.base.org"], blockExplorerUrls: ["https://basescan.org"] }] });
+    });
+  }
+
+  $("connecter").addEventListener("click", function(){
+    var eth = window.ethereum;
+    if (!eth) { statut("No wallet found in this browser — open this page inside your wallet app.", "err"); return; }
+    statut("Connecting…");
+    eth.request({ method: "eth_requestAccounts" }).then(function(l){
+      if (!l || !adresseOk(l[0])) throw new Error("no account");
+      etat.compte = l[0];
+      $("adresse").textContent = l[0];
+      return versBase();
+    }).then(function(){ return lisSolde(); }).then(function(n){
+      fait(1);
+      $("payer").disabled = false;
+      statut(n !== null && n < 20000 ? "This wallet has less than 0.02 USDC on Base — the payment would fail." : "Connected on Base. Ready to pay.", n !== null && n < 20000 ? "err" : "");
+    })["catch"](function(e){ statut("Connection failed: " + String(e && (e.message || e.code) || e).slice(0, 160), "err"); });
+  });
+
+  $("payer").addEventListener("click", function(){
+    var eth = window.ethereum;
+    if (!eth || !etat.compte) return;
+    $("payer").disabled = true;
+    statut("Asking the server for its payment request…");
+    appel().then(function(r){
+      if (r.status !== 402) throw new Error("the server did not ask for a payment (HTTP " + r.status + ")");
+      var h = r.headers.get("payment-required");
+      if (!h) throw new Error("no PAYMENT-REQUIRED header");
+      var req = de64(h);
+      var acc = (req.accepts || []).filter(function(a){ return a.network === "eip155:8453"; })[0];
+      if (!acc) throw new Error("the server does not offer Base right now");
+      if (String(acc.asset).toLowerCase() !== USDC.toLowerCase() || !adresseOk(acc.payTo) || !/^[0-9]+$/.test(String(acc.amount))) throw new Error("unexpected payment request");
+      $("prix").textContent = "$" + (Number(acc.amount) / 1e6);
+      etat.requete = req;
+      var s = Math.floor(Date.now() / 1000);
+      var auth = { from: etat.compte, to: acc.payTo, value: String(acc.amount), validAfter: String(s - 600),
+                   validBefore: String(s + Math.min(100, Number(acc.maxTimeoutSeconds) || 100)), nonce: hex32() };
+      var extra = acc.extra || {};
+      var typed = {
+        types: {
+          EIP712Domain: [{ name: "name", type: "string" }, { name: "version", type: "string" }, { name: "chainId", type: "uint256" }, { name: "verifyingContract", type: "address" }],
+          TransferWithAuthorization: [{ name: "from", type: "address" }, { name: "to", type: "address" }, { name: "value", type: "uint256" },
+            { name: "validAfter", type: "uint256" }, { name: "validBefore", type: "uint256" }, { name: "nonce", type: "bytes32" }]
+        },
+        primaryType: "TransferWithAuthorization",
+        domain: { name: extra.name || "USD Coin", version: extra.version || "2", chainId: 8453, verifyingContract: acc.asset },
+        message: auth
+      };
+      statut("Sign the authorization in your wallet: " + (Number(acc.amount) / 1e6) + " USDC to " + acc.payTo.slice(0, 6) + "…" + acc.payTo.slice(-4) + ".");
+      return eth.request({ method: "eth_signTypedData_v4", params: [etat.compte, JSON.stringify(typed)] }).then(function(signature){
+        fait(2);
+        statut("Signed. Settling through Coinbase…");
+        var paiement = { x402Version: 2, resource: req.resource, accepted: acc, payload: { signature: signature, authorization: auth }, extensions: req.extensions };
+        return appel({ "payment-signature": b64(paiement) });
+      });
+    }).then(function(r){
+      var rep = r.headers.get("payment-response");
+      return r.text().then(function(t){
+        var corps = null; try { corps = JSON.parse(t); } catch (e) {}
+        if (r.status !== 200 || !corps || !corps.ok) {
+          var msg = corps && (corps.raison || corps.error || corps.detail) || ("HTTP " + r.status);
+          throw new Error(String(msg).slice(0, 200));
+        }
+        var tx = null; try { tx = rep ? de64(rep) : null; } catch (e) {}
+        fait(3);
+        $("resultat").hidden = false;
+        var h = tx && tx.transaction;
+        $("tx").textContent = "";
+        if (h && /^0x[0-9a-fA-F]{64}$/.test(h)) {
+          var a = document.createElement("a"); a.href = "https://basescan.org/tx/" + h; a.target = "_blank"; a.rel = "noopener"; a.textContent = "view the transaction on BaseScan";
+          $("tx").appendChild(a);
+        } else $("tx").textContent = "transaction pending";
+        $("sortie").textContent = corps.texte || JSON.stringify(corps.resultat || corps, null, 2);
+        statut("Done: paid in USDC on Base and served.", "ok");
+        lisSolde();
+      });
+    })["catch"](function(e){
+      $("payer").disabled = false;
+      statut("Not paid: " + String(e && (e.message || e.code) || e).slice(0, 200), "err");
+    });
+  });
+})();
+</script>
+</body>
+</html>

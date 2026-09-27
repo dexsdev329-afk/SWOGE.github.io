@@ -60,7 +60,7 @@ const ADRESSES = { jA: '0x' + 'a1'.repeat(20), jB: '0x' + 'b2'.repeat(20) };
     const corps = JSON.parse(q.postData() || '{}');
     journal.push({ m: q.method(), chemin: url.pathname, auth, corps });
     if (!addr) return [401, { ok: false, raison: 'sign in with your wallet first' }];
-    const m = /^\/studio\/production\/([0-9a-f]{16})(\/scene)?$/.exec(url.pathname);
+    const m = /^\/studio\/production\/([0-9a-f]{16})(\/scene|\/imagine)?$/.exec(url.pathname);
     if (url.pathname === '/studio/production' && q.method() === 'GET') {
       const ps = S.liste(addr).map((p) => { for (const sc of p.scenes) if (sc.statut === 'pending' && pret.has(sc.video)) S.noteScene(addr, p.id, { id: sc.id, statut: 'done', url: 'https://vidgen.x.ai/' + sc.video + '.mp4', factureSwoge: '38556' }); return S.une(addr, p.id); });
       return [200, { ok: true, productions: injecte ? ps.concat(injecte) : ps, voix: VOIX, modes: P.MODES, personnagesMax: 3, productionsMax: 30, scenesMax: 60, durees: [6, 10],
@@ -75,7 +75,10 @@ const ADRESSES = { jA: '0x' + 'a1'.repeat(20), jB: '0x' + 'b2'.repeat(20) };
     }
     const prod = S.une(addr, m[1]);
     if (!prod) return [404, { ok: false, raison: 'unknown production' }];
-    const sc = P.scene(prod, corps.texte, corps.duree);
+    /* Le bouton magique : comme la route, une proposition — rien n'est filme. */
+    if (m[2] === '/imagine') return [200, { ok: true, texte: 'Next: SWOGE and Luna shake hands. Camera orbits them.' + ((prod.scenes || []).length ? ' (after ' + prod.scenes.length + ')' : ''), restant: 39 }];
+    const derniere = (prod.scenes || []).filter((x) => x && x.texte).slice(-1)[0];
+    const sc = P.scene(prod, corps.texte, corps.duree, { camera: corps.camera, precedente: corps.suite === false ? '' : (derniere && derniere.texte) });
     if (sc.erreur) return [400, { ok: false, raison: sc.erreur }];
     const video = 'v' + journal.length;
     S.noteScene(addr, prod.id, { id: 's' + journal.length, texte: sc.texte, video, statut: 'pending', duree: corps.duree });
@@ -174,6 +177,22 @@ const ADRESSES = { jA: '0x' + 'a1'.repeat(20), jB: '0x' + 'b2'.repeat(20) };
     await p.waitForSelector('.prod-scene video', { timeout: 8000 });
     eq(await p.getAttribute('.prod-scene video', 'src'), 'https://vidgen.x.ai/' + v + '.mp4', 'la page repasse seule et montre la video finie');
     ok(/38,556 \$SWOGE/.test(await p.innerText('.prod-scene')), 'avec ce qu elle a coute');
+
+    /* 27/09 : « avec le bouton magique, lancer les scenes a la suite », « des plans cinematic ». */
+    ok(sc.corps.camera === 'auto' && sc.corps.suite === false, 'la premiere scene part en camera « auto », sans suite (il n y en a pas)');
+    ok(/Imagine the next scene/.test(await p.innerText('.prod-magie')), 'une scene tournee : le bouton magique propose LA SUITE');
+    ok(await p.isChecked('.prod-suite input') && /Continue from scene 1/.test(await p.innerText('.prod-suite')), 'et « continuer la scene 1 » est coche d office');
+    journal.length = 0;
+    await p.click('.prod-magie');
+    await p.waitForFunction(() => /SWOGE and Luna shake hands/.test(document.querySelector('.prod-texte').value));
+    ok(journal.some((x) => /\/imagine$/.test(x.chemin) && x.auth === 'jA') && !journal.some((x) => /\/scene$/.test(x.chemin)), 'le bouton remplit la scene, rien n est filme');
+    await p.click('.prod-cameras [data-cam="orbit"]');
+    await p.click('.prod-filme');
+    await p.waitForFunction(() => document.querySelectorAll('.prod-scene').length >= 2);
+    const sc2 = journal.find((x) => /\/scene$/.test(x.chemin));
+    ok(sc2 && sc2.corps.camera === 'orbit' && sc2.corps.suite === true, 'la camera choisie (orbit) et la suite partent avec la scene');
+    const prompt2 = P.scene(S.liste(ADRESSES.jA)[0], sc2.corps.texte, 6, { camera: 'orbit', precedente: 'SWOGE lifts. Luna says "Not bad."' }).prompt;
+    ok(/follows directly from the previous one/.test(prompt2) && /slow orbit/.test(prompt2), 'et le serveur rappelle la scene 1 au modele, avec la camera');
   }
 
   console.log('\n-- 5. refus, echappement, liens --');
@@ -207,13 +226,14 @@ const ADRESSES = { jA: '0x' + 'a1'.repeat(20), jB: '0x' + 'b2'.repeat(20) };
     await p.waitForSelector('.prod-item');
     await p.click('.prod-item');
     await p.click('.prod-modifie');
+    const avantEdit = S.liste(ADRESSES.jA)[0].scenes.length;
     await p.fill('.prod-feuille > #prodCorps > input[type=text]', 'Gym Wars II');
     journal.length = 0;
     await p.click('.prod-sauve');
     await p.waitForSelector('#prod >> text=Scene 2');
     const e = journal.find((x) => x.m === 'POST');
     ok(/^\/studio\/production\/[0-9a-f]{16}$/.test(e.chemin) && /^\/studio\/production\/image\//.test(e.corps.production.personnages[1].image), 'la photo deja rangee repart par son adresse, pas en octets');
-    ok(S.liste(ADRESSES.jA)[0].titre === 'Gym Wars II' && S.liste(ADRESSES.jA)[0].scenes.length === 1, 'renommee, sa scene gardee');
+    ok(S.liste(ADRESSES.jA)[0].titre === 'Gym Wars II' && S.liste(ADRESSES.jA)[0].scenes.length === avantEdit && avantEdit >= 1, 'renommee, ses scenes gardees (' + avantEdit + ')');
     await p.click('.prod-supprime');
     await p.waitForSelector('#prod >> text=No production yet.');
     eq(S.liste(ADRESSES.jA).length, 0, 'supprimee (apres confirmation)');
@@ -254,9 +274,15 @@ const ADRESSES = { jA: '0x' + 'a1'.repeat(20), jB: '0x' + 'b2'.repeat(20) };
     const [ch] = await Promise.all([p.waitForEvent('filechooser'), p.click('#prod >> text=Upload photo >> nth=0')]);
     await ch.setFiles(path.join(SITE, 'img/site/icone-192.png'));
     await p.waitForFunction(() => /^data:image\/jpeg/.test(document.querySelector('#prodCorps img.vign').src));
+    /* « anime, cinematic… ca doit etre a selectionner » : des puces, avec leur courte description. */
+    const puces = await p.$$eval('.prod-styles button', (l) => l.map((b) => b.textContent));
+    ok(puces.join(',') === 'Auto,Anime,Cinematic,3D animation,Comic,90s VHS', 'le style se choisit en puces : ' + puces.join(', '));
+    await p.click('.prod-styles button >> text=Cinematic');
+    ok(/Cinematic — real lighting/.test(await p.innerText('#prodCorps')), 'la puce choisie dit en une ligne ce qu elle fait');
     await p.click('.prod-sauve');
     await p.waitForSelector('.prod-filme');
     ok(S.liste(ADRESSES.jA).some((x) => x.titre === 'My ad'), 'un titre laisse vide ne bloque plus : « My ad »');
+    ok(S.liste(ADRESSES.jA).some((x) => x.titre === 'My ad' && /cinematic/.test(x.style || '')), 'et le style choisi est garde par le serveur');
     await p.click('.prod-idees button >> nth=0');
     ok(/^Close-up of the product/.test(await p.inputValue('.prod-texte')), 'une idee remplit la scene en un clic');
     ok(/Film this scene · ~42,840 \$SWOGE/.test(await p.innerText('.prod-filme')), 'le bouton dit le prix : ' + await p.innerText('.prod-filme'));

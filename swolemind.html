@@ -895,6 +895,10 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 .prod-boutons .principal{flex:1 1 auto;background:var(--pool);color:#fff;border-color:var(--pool);font-weight:800;min-height:44px}
 .prod-idees{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 2px}
 .prod-idees button{font-size:12px;text-transform:none;letter-spacing:0}
+.prod-idees button.on{background:var(--pool);color:#fff;border-color:var(--pool)}
+.prod-suite{display:flex;align-items:center;gap:8px;font-weight:600;font-size:13px;margin:10px 0 0;cursor:pointer}
+.prod-suite input{width:18px;height:18px;flex:none}
+.prod-magie{background:linear-gradient(135deg,#7C3AED,#1B5FE0)!important;color:#fff!important;border:none!important}
 .prod-mode{display:inline-block;font-size:11px;font-weight:800;border-radius:999px;padding:2px 8px;background:var(--panel2);margin-left:6px;vertical-align:middle}
 /* ---- essai de restylage (proprietaire) : l'original et le resultat cote a cote, empiles sous 600 px.
    Ses propres classes (essai-*) : les selecteurs de la feuille des series (prod-*) ne doivent pas l'attraper. ---- */
@@ -2315,6 +2319,30 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     if (facultatif && valeur) bs.appendChild(bouton("None", "puce", function(){ fn(null); peintProd(); }));
     r.appendChild(bs); parent.appendChild(r);
   }
+  /* ---- LE STYLE, A CHOISIR ----
+   * « More options : anime, cinematic, etc. — ca doit etre a selectionner,
+   *   pour etre plus simple. » (27/09) Le style etait un champ libre replie ;
+   * c'est maintenant une rangee de puces, chacune avec sa courte description,
+   * et un champ pour decrire le sien si aucune ne va. La valeur envoyee est
+   * la meme chaine qu'avant (`style`), le serveur ne change pas. */
+  var STYLES = [["", "Auto", "the model picks what fits the scene"],
+    ["anime", "Anime", "bold outlines, vivid colours, expressive faces"],
+    ["cinematic, realistic film look", "Cinematic", "real lighting, film grain, shallow depth of field"],
+    ["3D animated feature film", "3D animation", "soft, round, colourful — like an animated movie"],
+    ["comic book, inked lines, halftone", "Comic", "inked lines and flat colours"],
+    ["90s VHS, grainy retro colours", "90s VHS", "grain, scanlines, retro colours"]];
+  function styles(box, b){
+    box.appendChild(el("label", null, "Visual style"));
+    var r = el("div", "prod-idees prod-styles"), connu = STYLES.some(function(s){ return s[0] === (b.style || ""); });
+    STYLES.forEach(function(s){
+      var x = bouton(s[1], "puce" + ((b.style || "") === s[0] ? " on" : ""), function(){ b.style = s[0]; peintProd(); });
+      x.title = s[2]; x.setAttribute("aria-pressed", (b.style || "") === s[0] ? "true" : "false"); r.appendChild(x);
+    });
+    box.appendChild(r);
+    var d = STYLES.filter(function(s){ return s[0] === (b.style || ""); })[0];
+    box.appendChild(el("p", "aide", d ? d[1] + " — " + d[2] + "." : "Your own style."));
+    champ(box, "Or describe your own", connu ? "" : b.style, function(v){ b.style = v; }, { max: 200, place: "watercolour, neon noir, claymation…" });
+  }
   function peintEdition(box){
     var b = PROD.brouillon;
     $("prodTitre").textContent = b.id ? "Edit " + (b.mode === "pub" ? "ad" : "series") : (b.mode === "pub" ? "New ad" : "New series");
@@ -2335,7 +2363,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       });
       var max = (PROD.cat && PROD.cat.personnagesMax) || 3;
       if (b.personnages.length < max) box.appendChild(bouton("+ Add a character", "outil", function(){ b.personnages.push({ nom: "", image: null, voix: null, description: "" }); peintProd(); }));
-      champ(plus(!!b.style), "Visual style", b.style, function(v){ b.style = v; }, { max: 200, place: "anime, 90s VHS, cinematic…" });
+      styles(box, b);
     } else {
       var p = b.produit;
       champ(box, "Product name", p.nom, function(v){ p.nom = v; }, { max: 60 });
@@ -2348,6 +2376,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       champ(dp, "Presenter name", p.presentateurNom, function(v){ p.presentateurNom = v; }, { max: 40 });
       blocImage(dp, "Setting photo", p.decor, function(v){ p.decor = v; }, false, true);
       champ(dp, "Call to action", p.appel, function(v){ p.appel = v; }, { max: 120, place: "Order at swoleeswoge.dog" });
+      styles(box, b);
     }
     var bs = el("div", "prod-boutons");
     bs.appendChild(bouton(b.id ? "Save" : "Create", "outil principal prod-sauve", function(){
@@ -2398,12 +2427,45 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     var ib = el("div", "prod-idees");
     idees.forEach(function(x){ ib.appendChild(bouton(x.length > 38 ? x.slice(0, 36) + "…" : x, "puce", function(){ ta.value = x; ta.focus(); })); });
     nouveau.insertBefore(ib, ta.nextSibling);
+    /* ---- LE BOUTON MAGIQUE (27/09) ----
+       « Un bouton magic pour imaginer une scene par rapport au texte et a
+         l'image », et « pouvoir lancer les scenes a la suite ». Le serveur
+         (studio_imagine.js) regarde les images des personnages, lit le
+         brouillon et les scenes deja tournees, et propose LA SUITE. Rien n'est
+         filme : le texte arrive dans le champ, le joueur le relit. Gratuit. */
+    var nb = (p.scenes || []).length;
+    var magie = bouton(nb ? "✨ Imagine the next scene" : "✨ Imagine a scene", "outil prod-magie", function(){
+      if (PROD.occupe) return; PROD.occupe = true; prodErreur(""); var avant = magie.textContent; magie.textContent = "✨ Imagining…"; magie.disabled = true;
+      prodApi("/studio/production/" + p.id + "/imagine", "POST", { texte: ta.value })
+        .then(function(o){ ta.value = o.texte || ta.value; ta.focus(); })
+        ["catch"](function(e){ prodErreur(e.message); })
+        .then(function(){ PROD.occupe = false; magie.textContent = avant; magie.disabled = false; });
+    });
+    var bm = el("div", "prod-boutons"); bm.appendChild(magie); nouveau.insertBefore(bm, ib.nextSibling);
+    /* La suite : cochee d'office des qu'une scene existe — le serveur rappelle
+       la precedente au modele (meme decor, memes tenues, memes visages). */
+    var suite = null;
+    if (nb) {
+      var ls = el("label", "prod-suite"); suite = el("input"); suite.type = "checkbox"; suite.checked = true;
+      ls.appendChild(suite); ls.appendChild(document.createTextNode(" Continue from scene " + nb + " — same setting, outfits and faces"));
+      nouveau.appendChild(ls);
+    }
+    /* La camera : « faut vraiment des plans cinematic avec des bons mouvements de camera ». */
+    var CAMS = [["auto", "🎬 Auto cinematic"], ["pushin", "Push-in"], ["tracking", "Tracking"], ["orbit", "Orbit"], ["crane", "Crane up"], ["handheld", "Handheld"], ["static", "Static"]];
+    var cam = "auto";
+    nouveau.appendChild(el("label", null, "Camera"));
+    var rc = el("div", "prod-idees prod-cameras");
+    CAMS.forEach(function(c){
+      var x = bouton(c[1], "puce" + (c[0] === cam ? " on" : ""), function(){ cam = c[0]; [].forEach.call(rc.children, function(y){ y.classList.toggle("on", y === x); y.setAttribute("aria-pressed", y === x ? "true" : "false"); }); });
+      x.setAttribute("data-cam", c[0]); x.setAttribute("aria-pressed", c[0] === cam ? "true" : "false"); rc.appendChild(x);
+    });
+    nouveau.appendChild(rc);
     var durees = (PROD.cat && PROD.cat.durees) || [6, 10];
     var d = choix(nouveau, "Length", durees.map(function(x){ return [String(x), x + " s"]; }), String(durees[durees.length - 1]), function(){});
     nouveau.appendChild(el("p", "aide", "Charged like a Quality (1.5) video: the real cost, and nothing if it fails."));
     var filme = bouton("🎬 Film this scene", "outil principal prod-filme", function(){
       if (PROD.occupe) return; PROD.occupe = true; prodErreur("");
-      prodApi("/studio/production/" + p.id + "/scene", "POST", { texte: ta.value, duree: Number(d.value) })
+      prodApi("/studio/production/" + p.id + "/scene", "POST", { texte: ta.value, duree: Number(d.value), camera: cam, suite: suite ? suite.checked : false })
         .then(function(o){ if (o.solde) $("solde").innerHTML = "Balance <b>" + nombre(o.solde) + " $SWOGE</b>"; return chargeProd(); })
         ["catch"](function(e){ prodErreur(e.message); })
         .then(function(){ PROD.occupe = false; });

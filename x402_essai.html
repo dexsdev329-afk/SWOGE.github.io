@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex">
-<title>SwogeAgentic — pay one call in USDC on Base</title>
+<title>SwogeAgentic — pay one call in USDC on Base or Solana</title>
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="/img/site/icone-32.png">
 <link rel="apple-touch-icon" href="/img/site/icone-180.png">
@@ -51,9 +51,9 @@ button[disabled]{ opacity:.45; cursor:default; }
 .choix input{ margin-top:3px; flex:0 0 auto; }
 .choix span{ min-width:0; }
 textarea{ width:100%; font:inherit; font-size:14px; border:1px solid var(--ligne); border-radius:10px; padding:10px; min-height:90px; resize:vertical; margin-top:6px; }
-#statut{ min-height:22px; font-weight:600; }
-#statut.err{ color:var(--err); }
-#statut.ok{ color:var(--ok); }
+#statut,#sol_statut{ min-height:22px; font-weight:600; }
+#statut.err,#sol_statut.err{ color:var(--err); }
+#statut.ok,#sol_statut.ok{ color:var(--ok); }
 code,.mono{ font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12.5px; word-break:break-all; }
 pre{ white-space:pre-wrap; word-break:break-word; font-size:12.5px; background:#f6f8fc; border-radius:10px; padding:10px; max-height:320px; overflow:auto; margin:8px 0 0; }
 a{ color:var(--bleu); }
@@ -61,7 +61,7 @@ a{ color:var(--bleu); }
 </head>
 <body>
 <main>
-  <h1>Pay one call in USDC on Base</h1>
+  <h1>Pay one call in USDC on Base or Solana</h1>
   <p class="pale">Pays <b id="prix">$0.02</b> in USDC on Base for one call of SwogeAgentic, exactly like an AI agent would with x402. Coinbase or PayAI settles the payment and pays the gas: you need USDC on Base, no ETH.</p>
   <p class="pale">From the SWOGE owner wallet, the payment always goes through PayAI: its first payment for a tool lists that tool in PayAI's public catalog of agent services.</p>
 
@@ -92,6 +92,15 @@ a{ color:var(--bleu); }
     <p id="statut" role="status"></p>
   </div>
 
+  <div class="carte" id="sol_carte">
+    <p><b>Or pay in USDC on Solana</b> — Phantom, Solflare or Backpack. PayAI settles and pays the network fee: you need USDC on Solana, no SOL.</p>
+    <p>Solana wallet: <span class="mono" id="sol_adresse">not connected</span></p>
+    <p>USDC on Solana: <span id="sol_solde">—</span></p>
+    <p style="margin-top:12px"><button id="sol_connecter" type="button">Connect Solana wallet</button></p>
+    <p style="margin-top:8px"><button id="sol_payer" type="button" disabled>Pay in USDC on Solana and run</button></p>
+    <p id="sol_statut" role="status"></p>
+  </div>
+
   <div class="carte" id="resultat" hidden>
     <p><b>Payment settled</b> — <span id="tx"></span></p>
     <pre id="sortie"></pre>
@@ -99,6 +108,7 @@ a{ color:var(--bleu); }
 
   <p class="pale">No wallet in this browser? Open this page inside your wallet app's browser (Coinbase Wallet, MetaMask, Rabby). The page never sees a key: your wallet signs, the server verifies, Coinbase or PayAI settles.</p>
 </main>
+<script src="x402_solana.js"></script>
 <script>
 (function(){
   "use strict";
@@ -274,6 +284,111 @@ a{ color:var(--bleu); }
     })["catch"](function(e){
       $("payer").disabled = false;
       statut("Not paid: " + String(e && (e.message || e.code) || e).slice(0, 200), "err");
+    });
+  });
+
+  /* ---- SOLANA (27 septembre 2026) : Wallet Standard + x402_solana.js ----
+     La decouverte des portefeuilles suit @wallet-standard/app (getWallets) :
+     on annonce « wallet-standard:app-ready » avec { register }, et on ecoute
+     « wallet-standard:register-wallet » (le portefeuille rappelle avec l'API).
+     Signature : features["solana:signTransaction"].signTransaction({ account,
+     transaction: octets, chain }) → [{ signedTransaction }] (types de
+     @solana/wallet-standard-features). Blockhash et solde : le RPC public de
+     Solana, comme le paywall de reference x402. */
+  var SOL = { reseau: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp", usdc: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", chaine: "solana:mainnet" };
+  var solEtat = { portefeuilles: [], wallet: null, compte: null };
+  function solStatut(t, genre){ var s = $("sol_statut"); s.textContent = t || ""; s.className = genre || ""; }
+  (function(){
+    function enregistre(){ for (var i = 0; i < arguments.length; i++) if (solEtat.portefeuilles.indexOf(arguments[i]) < 0) solEtat.portefeuilles.push(arguments[i]); return function(){}; }
+    var api = Object.freeze({ register: enregistre });
+    try { window.addEventListener("wallet-standard:register-wallet", function(e){ try { e.detail(api); } catch (x) {} }); } catch (e) {}
+    try { var ev = new Event("wallet-standard:app-ready"); Object.defineProperty(ev, "detail", { value: api }); window.dispatchEvent(ev); } catch (e) {}
+  })();
+  function solRpcUrl(){
+    try { var q = new URLSearchParams(location.search).get("solrpc"); if (q) return q; } catch (e) {}
+    return "https://api.mainnet-beta.solana.com";
+  }
+  function solRpc(m, params){
+    return fetch(solRpcUrl(), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: m, params: params }) })
+      .then(function(r){ return r.json(); }).then(function(j){ if (j.error) throw new Error("Solana RPC: " + String(j.error.message || j.error.code).slice(0, 80)); return j.result; });
+  }
+  function solPeutSigner(w){
+    var f = w && w.features || {};
+    return !!(f["solana:signTransaction"] && f["standard:connect"]) && (!w.chains || w.chains.indexOf(SOL.chaine) >= 0);
+  }
+  function solLisSolde(){
+    return SwogeSolana.ata(solEtat.compte.address, SOL.usdc).then(function(a){ return solRpc("getTokenAccountBalance", [a]); })
+      .then(function(r){ var n = Number(r && r.value && r.value.amount) || 0; solEtat.solde = n; $("sol_solde").textContent = (n / 1e6).toLocaleString("en-US", { maximumFractionDigits: 6 }) + " USDC"; return n; })
+      ["catch"](function(e){ solEtat.solde = /could not find account|Invalid param/i.test(String(e && e.message)) ? 0 : null; $("sol_solde").textContent = solEtat.solde === 0 ? "0 USDC (no USDC account yet)" : "unreadable"; return solEtat.solde; });
+  }
+  $("sol_connecter").addEventListener("click", function(){
+    var w = solEtat.portefeuilles.filter(solPeutSigner)[0];
+    if (!w) { solStatut("No Solana wallet found in this browser — install Phantom, Solflare or Backpack, or open this page in its app.", "err"); return; }
+    solStatut("Connecting to " + (w.name || "your wallet") + "…");
+    Promise.resolve(w.features["standard:connect"].connect()).then(function(r){
+      var c = (r && r.accounts && r.accounts[0]) || (w.accounts && w.accounts[0]);
+      if (!c || !c.address) throw new Error("no account");
+      solEtat.wallet = w; solEtat.compte = c;
+      $("sol_adresse").textContent = c.address;
+      return solLisSolde();
+    }).then(function(){
+      $("sol_payer").disabled = false;
+      solStatut("Connected to " + (w.name || "your wallet") + ". Ready to pay.");
+    })["catch"](function(e){ solStatut("Connection failed: " + String(e && (e.message || e.code) || e).slice(0, 160), "err"); });
+  });
+  function solRaisonServeur(){
+    return fetch(serveur() + "/agentic/x402", { cache: "no-store" }).then(function(r){ return r.json(); })
+      .then(function(d){ return d && d.solana && d.solana.raison ? " (" + String(d.solana.raison).slice(0, 200) + ")" : ""; })["catch"](function(){ return ""; });
+  }
+  $("sol_payer").addEventListener("click", function(){
+    var nom = outil(), a = args();
+    if (nom === "ask_agent") { solStatut("Hiring the agent is paid on Base only: a Solana transaction expires before the agent finishes.", "err"); return; }
+    $("sol_payer").disabled = true;
+    solStatut("Asking the server for its payment request…");
+    var req, acc;
+    appel(nom, a).then(function(r){
+      if (r.status !== 402) throw new Error("the server did not ask for a payment (HTTP " + r.status + ")");
+      var h = r.headers.get("payment-required");
+      if (!h) throw new Error("no PAYMENT-REQUIRED header");
+      req = de64(h);
+      acc = (req.accepts || []).filter(function(x){ return x.network === SOL.reseau; })[0];
+      if (!acc) return solRaisonServeur().then(function(t){ throw new Error("the server does not offer Solana right now" + t); });
+      if (acc.asset !== SOL.usdc || !/^[0-9]+$/.test(String(acc.amount)) || !(acc.extra && acc.extra.feePayer)) throw new Error("unexpected payment request");
+      if (solEtat.solde !== null && solEtat.solde !== undefined && solEtat.solde < Number(acc.amount)) throw new Error("this wallet has less than " + (Number(acc.amount) / 1e6) + " USDC on Solana");
+      var bh = acc.extra.recentBlockhash;
+      return (bh ? Promise.resolve(bh) : solRpc("getLatestBlockhash", [{ commitment: "confirmed" }]).then(function(x){ return x.value.blockhash; }));
+    }).then(function(bh){
+      return SwogeSolana.construit(acc, { payeur: solEtat.compte.address, blockhash: bh });
+    }).then(function(t){
+      solStatut("Approve in your wallet: " + (Number(acc.amount) / 1e6) + " USDC to " + acc.payTo.slice(0, 4) + "…" + acc.payTo.slice(-4) + ".");
+      return solEtat.wallet.features["solana:signTransaction"].signTransaction({ account: solEtat.compte, transaction: t.octets, chain: SOL.chaine });
+    }).then(function(sorties){
+      var signe = sorties && sorties[0] && sorties[0].signedTransaction;
+      if (!signe || !signe.length) throw new Error("the wallet returned no signed transaction");
+      solStatut("Signed. PayAI settles on Solana…");
+      var paiement = { x402Version: 2, resource: req.resource, accepted: acc, payload: { transaction: SwogeSolana.b64(new Uint8Array(signe)) }, extensions: req.extensions };
+      return appel(nom, a, { "payment-signature": b64(paiement) });
+    }).then(function(r){
+      var rep = r.headers.get("payment-response");
+      return r.text().then(function(t){
+        var corps = null; try { corps = JSON.parse(t); } catch (e) {}
+        if (r.status !== 200 || !corps || !corps.ok) throw new Error(String(corps && (corps.raison || corps.error || corps.detail) || ("HTTP " + r.status)).slice(0, 200));
+        var tx = null; try { tx = rep ? de64(rep) : null; } catch (e) {}
+        $("resultat").hidden = false;
+        $("tx").textContent = "";
+        var sig = tx && tx.transaction;
+        if (sig && /^[1-9A-HJ-NP-Za-km-z]{64,90}$/.test(sig)) {
+          var l = document.createElement("a"); l.href = "https://solscan.io/tx/" + sig; l.target = "_blank"; l.rel = "noopener"; l.textContent = "view the transaction on Solscan";
+          $("tx").appendChild(l);
+        } else $("tx").textContent = "transaction pending";
+        $("sortie").textContent = corps.texte || JSON.stringify(corps.resultat || corps, null, 2);
+        solStatut("Done: paid in USDC on Solana and served.", "ok");
+        $("sol_payer").disabled = false;
+        solLisSolde();
+      });
+    })["catch"](function(e){
+      $("sol_payer").disabled = false;
+      solStatut("Not paid: " + String(e && (e.message || e.code) || e).slice(0, 240), "err");
     });
   });
 })();

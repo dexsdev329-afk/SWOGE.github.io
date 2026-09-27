@@ -16,6 +16,11 @@
  *      arguments, le prix affiche est celui du 402, et l'echeance signee laisse
  *      au moins 180 s (le serveur refuse en dessous : 150 s de travail + 30 s
  *      pour regler) sans depasser le maxTimeoutSeconds annonce (300 s).
+ *   7. Solana (27 septembre 2026) : un portefeuille du Wallet Standard est
+ *      trouve (annonce app-ready OU inscription tardive), la transaction part
+ *      avec le feePayer et le montant du 402, signee par le SEUL payeur (sa
+ *      signature ed25519 se verifie, celle du feePayer reste vide), l'offre
+ *      absente montre la raison du serveur, ask_agent n'est pas paye sur Solana.
  * Portefeuille : une cle de test dans Node (ethers), jamais dans la page.
  * ==========================================================================*/
 const fs = require('fs'), path = require('path'), http = require('http');
@@ -203,6 +208,118 @@ const de64 = (s) => JSON.parse(Buffer.from(s, 'base64').toString());
     }
     ok(/PayAI/.test(await page.textContent('main')), 'la page dit que le portefeuille du proprietaire passe par PayAI');
     await ctx.close();
+  }
+
+  console.log('\n-- 3c. payer en USDC sur Solana (Wallet Standard) --');
+  {
+    const crypto = require('crypto');
+    const SOL_NET = 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp', USDC_SOL = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
+    const PAYTO_SOL = 'CFg86EW2ZSAgGpf4o2XAt3gU59fgMfsuZyM6QDuDTmoM', FEE = 'CjNFTjvBhbJJd2B5ePPMHRLx1ELZpa8dwQgGL727eKww';
+    const BH = '9zJ3sY2qvAoMYrgkXYWkrvBWTTjvP6T9BGFsMwAGrFg6';
+    const { privateKey, publicKey } = crypto.generateKeyPairSync('ed25519');
+    const brut = publicKey.export({ format: 'der', type: 'spki' }).slice(-32);
+    const ADR = ethers.utils.base58.encode(brut);
+    const SOLS = require('./x402_solana.js');
+    const ouvreSol = async ({ sansSolana, tardif } = {}) => {
+      const ctx = await nav.newContext({ viewport: { width: 1100, height: 900 } });
+      const page = await ctx.newPage();
+      const vu = { appels: [], signatures: 0, rpc: [] };
+      const REQ = (outil) => ({ x402Version: 2, error: 'PAYMENT-SIGNATURE header is required',
+        resource: { url: 'https://srv.example/agentic/call/' + outil, description: outil, mimeType: 'application/json' },
+        accepts: [{ scheme: 'exact', network: 'eip155:8453', amount: '20000', asset: USDC, payTo: TRESOR, maxTimeoutSeconds: 120, extra: { name: 'USD Coin', version: '2' } }]
+          .concat(sansSolana ? [] : [{ scheme: 'exact', network: SOL_NET, amount: '22000', asset: USDC_SOL, payTo: PAYTO_SOL, maxTimeoutSeconds: 120, extra: { feePayer: FEE } }]),
+        extensions: { bazaar: { info: { input: { type: 'http' } }, schema: {} } } });
+      await page.exposeFunction('__solAdresse', async () => ADR);
+      await page.exposeFunction('__solSigne', async (octets) => {
+        vu.signatures++;
+        const b = Buffer.from(octets);
+        const sig = crypto.sign(null, b.slice(1 + 128), privateKey);
+        sig.copy(b, 1 + 64);                                   /* le payeur est le 2e signataire */
+        return Array.from(b);
+      });
+      const faux = () => {
+        const acct = { address: null, publicKey: new Uint8Array(32), chains: ['solana:mainnet'], features: ['solana:signTransaction'] };
+        const wallet = { version: '1.0.0', name: 'Test Wallet', icon: 'data:image/svg+xml;base64,PHN2Zy8+', chains: ['solana:mainnet'], accounts: [],
+          features: {
+            'standard:connect': { version: '1.0.0', connect: async () => { acct.address = await window.__solAdresse(); wallet.accounts = [acct]; return { accounts: [acct] }; } },
+            'solana:signTransaction': { version: '1.0.0', supportedTransactionVersions: [0], signTransaction: async (...l) => Promise.all(l.map(async (i) => {
+              window.__vuEntree = { chain: i.chain, meme: i.account === acct, type: Object.prototype.toString.call(i.transaction) };
+              return { signedTransaction: new Uint8Array(await window.__solSigne(Array.from(i.transaction))) }; })) } } };
+        return wallet;
+      };
+      if (!tardif) await page.addInitScript(`(${faux})(); window.addEventListener('wallet-standard:app-ready', (e) => e.detail.register((${faux})()));`.replace('(' + faux + ')(); ', ''));
+      await page.route((u) => !u.href.startsWith('http://127.0.0.1:' + port), async (r) => {
+        const q = r.request(), u = q.url();
+        if (u.startsWith('https://rpc.test/')) {
+          const c = JSON.parse(q.postData() || '{}'); vu.rpc.push(c);
+          const res = c.method === 'getLatestBlockhash' ? { context: { slot: 1 }, value: { blockhash: BH, lastValidBlockHeight: 100 } }
+            : c.method === 'getTokenAccountBalance' ? { context: { slot: 1 }, value: { amount: '5000000', decimals: 6, uiAmount: 5 } } : null;
+          return r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ jsonrpc: '2.0', id: c.id, result: res }) });
+        }
+        if (/\/agentic\/x402$/.test(u)) return r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, solana: { etat: 'off', raison: 'payTo has no USDC account on Solana yet' } }) });
+        const m = /\/agentic\/call\/([a-z_]+)$/.exec(u);
+        if (!m) return r.abort();
+        const sig = q.headers()['payment-signature'];
+        vu.appels.push({ outil: m[1], corps: JSON.parse(q.postData() || '{}'), sig: sig || null });
+        if (!sig) return r.fulfill({ status: 402, headers: { 'payment-required': b64(REQ(m[1])), 'access-control-expose-headers': 'payment-required, payment-response' }, contentType: 'application/json', body: '{}' });
+        vu.paiement = de64(sig);
+        return r.fulfill({ status: 200, headers: { 'payment-response': b64({ success: true, transaction: '5' + 'A'.repeat(87), network: SOL_NET, payer: ADR }), 'access-control-expose-headers': 'payment-required, payment-response' },
+          contentType: 'application/json', body: JSON.stringify({ ok: true, outil: m[1], texte: 'Token <b>Swole Doge</b> on Solana' }) });
+      });
+      await page.goto('http://127.0.0.1:' + port + '/x402_essai.html?solrpc=https://rpc.test/', { waitUntil: 'domcontentloaded' });
+      if (tardif) await page.evaluate(`window.dispatchEvent(new CustomEvent('wallet-standard:register-wallet', { detail: (api) => api.register((${faux})()) }))`);
+      return { page, vu, ctx };
+    };
+    {
+      const { page, vu, ctx } = await ouvreSol();
+      await page.click('#sol_connecter');
+      await page.waitForFunction(() => !document.getElementById('sol_payer').disabled);
+      ok((await page.textContent('#sol_adresse')) === ADR && /5 USDC/.test(await page.textContent('#sol_solde')), 'portefeuille trouve par app-ready : adresse et solde USDC (lu au compte associe)');
+      const ataPayeur = await SOLS.ata(ADR, USDC_SOL);
+      ok(vu.rpc.some((c) => c.method === 'getTokenAccountBalance' && c.params[0] === ataPayeur), 'le solde est lu sur le compte USDC associe du payeur (' + ataPayeur.slice(0, 6) + '…)');
+      await page.click('#sol_payer');
+      await page.waitForFunction(() => /Done|Not paid/.test(document.getElementById('sol_statut').textContent), null, { timeout: 10000 });
+      ok(/Done: paid in USDC on Solana/.test(await page.textContent('#sol_statut')), 'paye et servi : ' + (await page.textContent('#sol_statut')));
+      const p = vu.paiement;
+      ok(p && p.x402Version === 2 && p.accepted.network === SOL_NET && p.accepted.extra.feePayer === FEE && p.resource.url === 'https://srv.example/agentic/call/scan_token' && p.extensions.bazaar,
+         'PAYMENT-SIGNATURE v2 : l offre Solana du 402 telle quelle, la ressource et l extension bazaar');
+      const tx = Buffer.from(p.payload.transaction, 'base64');
+      const msg = tx.slice(1 + 128);
+      const cle = crypto.createPublicKey({ key: Buffer.concat([Buffer.from('302a300506032b6570032100', 'hex'), brut]), format: 'der', type: 'spki' });
+      ok(tx[0] === 2 && tx.slice(1, 65).every((x) => x === 0) && crypto.verify(null, msg, cle, tx.slice(65, 129)),
+         'la transaction : 2 signatures, celle du feePayer vide, celle du payeur valide (ed25519 sur le message)');
+      const attendu = await SOLS.construit({ amount: '22000', asset: USDC_SOL, payTo: PAYTO_SOL, extra: { feePayer: FEE } }, { payeur: ADR, blockhash: BH, memo: msg.slice(msg.length - 33, msg.length - 1).toString() });
+      ok(Buffer.from(attendu.message).equals(msg), 'le message signe = feePayer du 402, 22000 (0,022 USDC) vers le compte USDC de payTo, blockhash du RPC, memo aleatoire');
+      const entree = await page.evaluate(() => window.__vuEntree);
+      ok(entree && entree.chain === 'solana:mainnet' && entree.meme && entree.type === '[object Uint8Array]', 'signTransaction recoit le compte connecte, des octets (Uint8Array) et la chaine solana:mainnet');
+      ok(/solscan\.io\/tx\/5A+/.test(await page.getAttribute('#tx a', 'href')) && (await page.textContent('#sortie')).includes('<b>Swole Doge</b>') && (await page.$('#sortie b')) === null,
+         'le lien Solscan de la transaction, et le resultat montre en texte');
+      await page.check('input[value="ask_agent"]');
+      const avant = vu.appels.length;
+      await page.click('#sol_payer');
+      ok(/paid on Base only/.test(await page.textContent('#sol_statut')) && vu.appels.length === avant && vu.signatures === 1, 'ask_agent : pas de paiement Solana, rien demande ni signe');
+      await ctx.close();
+    }
+    {
+      const { page, vu, ctx } = await ouvreSol({ sansSolana: true, tardif: true });
+      await page.click('#sol_connecter');
+      await page.waitForFunction(() => !document.getElementById('sol_payer').disabled);
+      ok(true, 'portefeuille inscrit apres le chargement (register-wallet) : trouve aussi');
+      await page.click('#sol_payer');
+      await page.waitForFunction(() => /Not paid/.test(document.getElementById('sol_statut').textContent), null, { timeout: 10000 });
+      ok(/does not offer Solana right now \(payTo has no USDC account/.test(await page.textContent('#sol_statut')) && vu.signatures === 0,
+         'pas d offre Solana dans le 402 : la raison du serveur est montree, rien n est signe');
+      await ctx.close();
+    }
+    {
+      const ctx = await nav.newContext();
+      const page = await ctx.newPage();
+      await page.route((u) => !u.href.startsWith('http://127.0.0.1:' + port), (r) => r.abort());
+      await page.goto('http://127.0.0.1:' + port + '/x402_essai.html', { waitUntil: 'domcontentloaded' });
+      await page.click('#sol_connecter');
+      ok(/No Solana wallet found/.test(await page.textContent('#sol_statut')) && await page.isDisabled('#sol_payer'), 'aucun portefeuille Solana : le dire, rien d autre');
+      await ctx.close();
+    }
   }
 
   console.log('\n-- 4. telephone et moteurs --');

@@ -72,7 +72,7 @@ const de64 = (s) => JSON.parse(Buffer.from(s, 'base64').toString());
     }
     await page.route((u) => !u.href.startsWith('http://127.0.0.1:' + port), async (r) => {
       const q = r.request(), u = q.url();
-      const m = /\/agentic\/call\/(scan_token|ask_agent)$/.exec(u);
+      const m = /\/agentic\/call\/(scan_token|ask_agent|can_i_sell|colony_activity|new_launches|swoge_economy)$/.exec(u);
       if (!m) return r.abort();
       const sig = q.headers()['payment-signature'];
       vu.appels.push({ outil: m[1], corps: JSON.parse(q.postData() || '{}'), sig: sig || null });
@@ -179,6 +179,29 @@ const de64 = (s) => JSON.parse(Buffer.from(s, 'base64').toString());
     await page.route((u) => !u.href.startsWith('http://127.0.0.1:' + port), (r) => r.abort());
     await page.goto('http://127.0.0.1:' + port + '/x402_essai.html?outil=ask_agent', { waitUntil: 'domcontentloaded' });
     ok(await page.isChecked('input[value="ask_agent"]') && await page.isVisible('#tache_bloc'), '?outil=ask_agent preselectionne l agent');
+    await ctx.close();
+  }
+
+  /* Les autres outils payables d ici (27/09) : un paiement du proprietaire passe
+     par PayAI et inscrit l outil dans son catalogue, un outil a la fois. */
+  console.log('\n-- 3b. les autres outils, chacun avec ses arguments --');
+  {
+    const { page, vu, ctx } = await ouvre();
+    await page.click('#connecter');
+    await page.waitForFunction(() => !document.getElementById('payer').disabled);
+    const attendu = { can_i_sell: { address: '0x8a166fb41cd659a0a43396272ff73973ce29f817' }, colony_activity: {}, new_launches: { limit: 5 }, swoge_economy: {} };
+    for (const nom of Object.keys(attendu)) {
+      await page.check('input[value="' + nom + '"]');
+      ok(await page.isHidden('#tache_bloc'), nom + ' : la case de la tache reste cachee');
+      const avant = vu.appels.length;
+      await page.click('#payer');
+      await page.waitForFunction(() => /Done/.test(document.getElementById('statut').textContent), null, { timeout: 10000 });
+      const nouveaux = vu.appels.slice(avant).filter((x) => x.outil === nom);
+      ok(nouveaux.some((x) => x.sig) && nouveaux.every((x) => JSON.stringify(x.corps.arguments) === JSON.stringify(attendu[nom])),
+         nom + ' : le paiement part vers ' + nom + ' avec ' + JSON.stringify(attendu[nom]));
+      await page.evaluate(() => { document.getElementById('statut').textContent = ''; });
+    }
+    ok(/PayAI/.test(await page.textContent('main')), 'la page dit que le portefeuille du proprietaire passe par PayAI');
     await ctx.close();
   }
 

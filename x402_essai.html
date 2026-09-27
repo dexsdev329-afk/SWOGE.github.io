@@ -24,7 +24,7 @@
  *   3. elle rejoue la demande avec PAYMENT-SIGNATURE et montre le resultat et
  *      la transaction rendue dans PAYMENT-RESPONSE.
  * La page ne voit JAMAIS de cle : le portefeuille signe, le serveur verifie la
- * signature, Coinbase regle (et paie le gaz). Hors moteurs (noindex).
+ * signature, Coinbase ou PayAI regle (et paie le gaz ; PayAI toujours pour le proprietaire). Hors moteurs (noindex).
  * Le domaine EIP-712 de l'USDC sur Base (« USD Coin », version 2, chaine 8453)
  * a ete lu sur la chaine le 27 septembre 2026 (contrat du lot Base, §A.1).
  * L'ECHEANCE vient du 402 (maxTimeoutSeconds, moins 20 s) : ask_agent annonce
@@ -62,10 +62,15 @@ a{ color:var(--bleu); }
 <body>
 <main>
   <h1>Pay one call in USDC on Base</h1>
-  <p class="pale">Pays <b id="prix">$0.02</b> in USDC on Base for one call of SwogeAgentic, exactly like an AI agent would with x402. Coinbase settles the payment and pays the gas: you need USDC on Base, no ETH.</p>
+  <p class="pale">Pays <b id="prix">$0.02</b> in USDC on Base for one call of SwogeAgentic, exactly like an AI agent would with x402. Coinbase or PayAI settles the payment and pays the gas: you need USDC on Base, no ETH.</p>
+  <p class="pale">From the SWOGE owner wallet, the payment always goes through PayAI: its first payment for a tool lists that tool in PayAI's public catalog of agent services.</p>
 
   <div class="carte">
     <label class="choix"><input type="radio" name="outil" value="scan_token" checked><span><b>Scan a token</b> — <code>scan_token</code>, <span id="prix_scan_token">about $0.02</span><br><span class="pale">Token scanned: <code id="jeton"></code></span></span></label>
+    <label class="choix"><input type="radio" name="outil" value="can_i_sell"><span><b>Can I sell it?</b> — <code>can_i_sell</code>, <span id="prix_can_i_sell">about $0.021</span><br><span class="pale">Simulates selling the same token back before you buy.</span></span></label>
+    <label class="choix"><input type="radio" name="outil" value="colony_activity"><span><b>Colony activity</b> — <code>colony_activity</code>, <span id="prix_colony_activity">about $0.02</span><br><span class="pale">What the SWOGE AI colony holds and did recently.</span></span></label>
+    <label class="choix"><input type="radio" name="outil" value="new_launches"><span><b>New launches</b> — <code>new_launches</code>, <span id="prix_new_launches">about $0.02</span><br><span class="pale">The 5 newest Robinhood Chain tokens and what the colony decided.</span></span></label>
+    <label class="choix"><input type="radio" name="outil" value="swoge_economy"><span><b>$SWOGE economy</b> — <code>swoge_economy</code>, <span id="prix_swoge_economy">about $0.02</span><br><span class="pale">The current state of the $SWOGE token.</span></span></label>
     <label class="choix"><input type="radio" name="outil" value="ask_agent"><span><b>Hire the agent</b> — <code>ask_agent</code>, <span id="prix_ask_agent">about $0.54</span><br><span class="pale">The whole agent works on your task (Sonnet 5, up to 2 000 characters, answer in 2–3 minutes).</span></span></label>
     <div id="tache_bloc" hidden>
       <label class="pale" for="tache">Task for the agent</label>
@@ -76,7 +81,7 @@ a{ color:var(--bleu); }
   <div class="carte">
     <div class="etape" id="e1"><b>1</b><span>Connect your wallet and switch to Base.</span></div>
     <div class="etape" id="e2"><b>2</b><span>Sign the transfer authorization (the amount and the recipient come from the server's payment request).</span></div>
-    <div class="etape" id="e3"><b>3</b><span>The server checks the signature, Coinbase settles, and the scan result appears below.</span></div>
+    <div class="etape" id="e3"><b>3</b><span>The server checks the signature, the payment settles, and the result appears below.</span></div>
   </div>
 
   <div class="carte">
@@ -92,7 +97,7 @@ a{ color:var(--bleu); }
     <pre id="sortie"></pre>
   </div>
 
-  <p class="pale">No wallet in this browser? Open this page inside your wallet app's browser (Coinbase Wallet, MetaMask, Rabby). The page never sees a key: your wallet signs, the server verifies, Coinbase settles.</p>
+  <p class="pale">No wallet in this browser? Open this page inside your wallet app's browser (Coinbase Wallet, MetaMask, Rabby). The page never sees a key: your wallet signs, the server verifies, Coinbase or PayAI settles.</p>
 </main>
 <script>
 (function(){
@@ -110,7 +115,14 @@ a{ color:var(--bleu); }
   $("jeton").textContent = JETON;
   /* L'outil choisi (?outil=ask_agent le preselectionne). */
   function outil(){ var r = document.querySelector('input[name="outil"]:checked'); return r ? r.value : "scan_token"; }
-  function args(){ return outil() === "ask_agent" ? { task: String($("tache").value || "").trim() } : { address: JETON }; }
+  /* Les arguments de chaque outil (schemas de studio_agent.js). */
+  function args(){
+    var o = outil();
+    if (o === "ask_agent") return { task: String($("tache").value || "").trim() };
+    if (o === "scan_token" || o === "can_i_sell") return { address: JETON };
+    if (o === "new_launches") return { limit: 5 };
+    return {};
+  }
   function choixChange(){
     $("tache_bloc").hidden = outil() !== "ask_agent";
     var m = etat.montant[outil()];
@@ -233,7 +245,7 @@ a{ color:var(--bleu); }
       statut("Sign the authorization in your wallet: " + (Number(acc.amount) / 1e6) + " USDC to " + acc.payTo.slice(0, 6) + "…" + acc.payTo.slice(-4) + ".");
       return eth.request({ method: "eth_signTypedData_v4", params: [etat.compte, JSON.stringify(typed)] }).then(function(signature){
         fait(2);
-        statut(nom === "ask_agent" ? "Signed. The agent is working (2–3 minutes), then Coinbase settles — keep this page open…" : "Signed. Settling through Coinbase…");
+        statut(nom === "ask_agent" ? "Signed. The agent is working (2–3 minutes), then the payment settles — keep this page open…" : "Signed. Settling the payment…");
         var paiement = { x402Version: 2, resource: req.resource, accepted: acc, payload: { signature: signature, authorization: auth }, extensions: req.extensions };
         return appel(nom, a, { "payment-signature": b64(paiement) });
       });
@@ -256,6 +268,7 @@ a{ color:var(--bleu); }
         } else $("tx").textContent = "transaction pending";
         $("sortie").textContent = corps.texte || JSON.stringify(corps.resultat || corps, null, 2);
         statut("Done: paid in USDC on Base and served.", "ok");
+        $("payer").disabled = false;           /* un autre outil peut se payer sans recharger la page */
         lisSolde();
       });
     })["catch"](function(e){

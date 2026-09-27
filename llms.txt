@@ -20,6 +20,7 @@ Tools:
 - `wallet_intel(address)` — $0.02. Use this when you need to know who is behind an EVM address, typically a token deployer, before trusting what it launches.
 - `osint_lookup(target)` — $0.02. Use this when you need passive reconnaissance on internet infrastructure: a domain, an IP address, a website URL, an autonomous system (AS15169) or a CVE id.
 - `web_search(query)` — $0.0075. Use this when the answer is outside SWOGE data: news, projects, teams, people, anything on the open web.
+- `chat_completion(model?, messages, max_tokens?)` — real cost, up to $undefined. Use this when you need an answer from a frontier AI model without an account or an API key: Claude (Opus, Fable, Sonnet, Haiku), GPT-6 or Grok, one call.
 - `robinhood_token(address)` — $0.004. Use this when you need to know what a Robinhood Chain contract is before touching it: one call, decoded.
 - `robinhood_wallet(address, tokens?)` — $0.004. Use this when you need the holdings of a Robinhood Chain address: ETH plus up to 20 tokens, read on-chain in one Multicall3 call.
 - `robinhood_tx(hash)` — $0.004. Use this when you need to understand what a Robinhood Chain transaction did.

@@ -220,7 +220,7 @@ const de64 = (s) => JSON.parse(Buffer.from(s, 'base64').toString());
     const brut = publicKey.export({ format: 'der', type: 'spki' }).slice(-32);
     const ADR = ethers.utils.base58.encode(brut);
     const SOLS = require('./x402_solana.js');
-    const ouvreSol = async ({ sansSolana, tardif } = {}) => {
+    const ouvreSol = async ({ sansSolana, tardif, autre } = {}) => {
       const ctx = await nav.newContext({ viewport: { width: 1100, height: 900 } });
       const page = await ctx.newPage();
       const vu = { appels: [], signatures: 0, rpc: [] };
@@ -239,7 +239,7 @@ const de64 = (s) => JSON.parse(Buffer.from(s, 'base64').toString());
       });
       const faux = () => {
         const acct = { address: null, publicKey: new Uint8Array(32), chains: ['solana:mainnet'], features: ['solana:signTransaction'] };
-        const wallet = { version: '1.0.0', name: 'Test Wallet', icon: 'data:image/svg+xml;base64,PHN2Zy8+', chains: ['solana:mainnet'], accounts: [],
+        const wallet = { version: '1.0.0', name: 'Phantom', icon: 'data:image/svg+xml;base64,PHN2Zy8+', chains: ['solana:mainnet'], accounts: [],
           features: {
             'standard:connect': { version: '1.0.0', connect: async () => { acct.address = await window.__solAdresse(); wallet.accounts = [acct]; return { accounts: [acct] }; } },
             'solana:signTransaction': { version: '1.0.0', supportedTransactionVersions: [0], signTransaction: async (...l) => Promise.all(l.map(async (i) => {
@@ -268,6 +268,10 @@ const de64 = (s) => JSON.parse(Buffer.from(s, 'base64').toString());
       });
       await page.goto('http://127.0.0.1:' + port + '/x402_essai.html?solrpc=https://rpc.test/', { waitUntil: 'domcontentloaded' });
       if (tardif) await page.evaluate(`window.dispatchEvent(new CustomEvent('wallet-standard:register-wallet', { detail: (api) => api.register((${faux})()) }))`);
+      if (autre) await page.evaluate(`window.dispatchEvent(new CustomEvent('wallet-standard:register-wallet', { detail: (api) => api.register({ version: '1.0.0', name: 'Other Wallet', icon: '', chains: ['solana:mainnet'], accounts: [],
+        features: { 'standard:connect': { version: '1.0.0', connect: async () => { window.__autre = true; return { accounts: [{ address: '11111111111111111111111111111111', chains: ['solana:mainnet'], features: [] }] }; } },
+          'solana:signTransaction': { version: '1.0.0', supportedTransactionVersions: [0], signTransaction: async () => [] } } }) }))`);
+      await page.check('input[name="reseau"][value="solana"]');
       return { page, vu, ctx };
     };
     {
@@ -312,10 +316,31 @@ const de64 = (s) => JSON.parse(Buffer.from(s, 'base64').toString());
       await ctx.close();
     }
     {
+      const { page, vu, ctx } = await ouvreSol({ autre: true });
+      await page.click('#sol_connecter');
+      const noms = await page.$$eval('#sol_choix button', (l) => l.map((b) => b.textContent));
+      ok(noms.length === 2 && noms[0] === 'Connect Phantom' && noms[1] === 'Connect Other Wallet' && vu.signatures === 0, 'deux portefeuilles Solana : on choisit, Phantom en premier [' + noms.join(' | ') + ']');
+      await page.click('#sol_choix button:first-child');
+      await page.waitForFunction(() => !document.getElementById('sol_payer').disabled);
+      ok((await page.textContent('#sol_adresse')) === ADR && !(await page.evaluate(() => window.__autre)) && await page.isHidden('#sol_choix'), 'Phantom choisi : c est lui qui est connecte, pas l autre');
+      await ctx.close();
+    }
+    {
+      const ctx = await nav.newContext();
+      const page = await ctx.newPage();
+      await page.route((u) => !u.href.startsWith('http://127.0.0.1:' + port), (r) => r.abort());
+      await page.goto('http://127.0.0.1:' + port + '/x402_essai.html?reseau=solana', { waitUntil: 'domcontentloaded' });
+      ok(await page.isChecked('input[name="reseau"][value="solana"]') && await page.isVisible('#sol_carte') && await page.isHidden('#bloc_base'), '?reseau=solana preselectionne Solana');
+      await ctx.close();
+    }
+    {
       const ctx = await nav.newContext();
       const page = await ctx.newPage();
       await page.route((u) => !u.href.startsWith('http://127.0.0.1:' + port), (r) => r.abort());
       await page.goto('http://127.0.0.1:' + port + '/x402_essai.html', { waitUntil: 'domcontentloaded' });
+      ok(await page.isVisible('#connecter') && await page.isHidden('#sol_carte'), 'par defaut : Base, et seul le bouton Base est montre');
+      await page.check('input[name="reseau"][value="solana"]');
+      ok(await page.isHidden('#connecter') && await page.isVisible('#sol_connecter'), 'Solana choisi : seul le bouton Solana est montre (le bouton Base appelle Rabby)');
       await page.click('#sol_connecter');
       ok(/No Solana wallet found/.test(await page.textContent('#sol_statut')) && await page.isDisabled('#sol_payer'), 'aucun portefeuille Solana : le dire, rien d autre');
       await ctx.close();

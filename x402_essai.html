@@ -62,7 +62,7 @@ a{ color:var(--bleu); }
 <body>
 <main>
   <h1>Pay one call in USDC on Base or Solana</h1>
-  <p class="pale">Pays <b id="prix">$0.02</b> in USDC on Base for one call of SwogeAgentic, exactly like an AI agent would with x402. Coinbase or PayAI settles the payment and pays the gas: you need USDC on Base, no ETH.</p>
+  <p class="pale">Pays <b id="prix">$0.02</b> in USDC on Base or Solana for one call of SwogeAgentic, exactly like an AI agent would with x402. The facilitator settles the payment and pays the network fee: you only need USDC.</p>
   <p class="pale">From the SWOGE owner wallet, the payment always goes through PayAI: its first payment for a tool lists that tool in PayAI's public catalog of agent services.</p>
 
   <div class="carte">
@@ -78,6 +78,13 @@ a{ color:var(--bleu); }
     </div>
   </div>
 
+  <div class="carte" id="choix_reseau">
+    <p><b>Pay in USDC on</b></p>
+    <label class="choix"><input type="radio" name="reseau" value="base" checked><span><b>Base</b> — Rabby, MetaMask, Coinbase Wallet</span></label>
+    <label class="choix"><input type="radio" name="reseau" value="solana"><span><b>Solana</b> — Phantom, Solflare, Backpack</span></label>
+  </div>
+
+  <div id="bloc_base">
   <div class="carte">
     <div class="etape" id="e1"><b>1</b><span>Connect your wallet and switch to Base.</span></div>
     <div class="etape" id="e2"><b>2</b><span>Sign the transfer authorization (the amount and the recipient come from the server's payment request).</span></div>
@@ -87,16 +94,18 @@ a{ color:var(--bleu); }
   <div class="carte">
     <p>Wallet: <span class="mono" id="adresse">not connected</span></p>
     <p>USDC on Base: <span id="solde">—</span></p>
-    <p style="margin-top:12px"><button id="connecter" type="button">Connect wallet</button></p>
-    <p style="margin-top:8px"><button id="payer" type="button" disabled>Pay in USDC and run</button></p>
+    <p style="margin-top:12px"><button id="connecter" type="button">Connect Base wallet</button></p>
+    <p style="margin-top:8px"><button id="payer" type="button" disabled>Pay in USDC on Base and run</button></p>
     <p id="statut" role="status"></p>
   </div>
+  </div>
 
-  <div class="carte" id="sol_carte">
-    <p><b>Or pay in USDC on Solana</b> — Phantom, Solflare or Backpack. PayAI settles and pays the network fee: you need USDC on Solana, no SOL.</p>
+  <div class="carte" id="sol_carte" hidden>
+    <p><b>USDC on Solana</b> — Phantom, Solflare or Backpack. PayAI settles and pays the network fee: you need USDC on Solana, no SOL.</p>
     <p>Solana wallet: <span class="mono" id="sol_adresse">not connected</span></p>
     <p>USDC on Solana: <span id="sol_solde">—</span></p>
-    <p style="margin-top:12px"><button id="sol_connecter" type="button">Connect Solana wallet</button></p>
+    <p style="margin-top:12px"><button id="sol_connecter" type="button">Connect Phantom or another Solana wallet</button></p>
+    <div id="sol_choix" hidden></div>
     <p style="margin-top:8px"><button id="sol_payer" type="button" disabled>Pay in USDC on Solana and run</button></p>
     <p id="sol_statut" role="status"></p>
   </div>
@@ -321,9 +330,29 @@ a{ color:var(--bleu); }
       .then(function(r){ var n = Number(r && r.value && r.value.amount) || 0; solEtat.solde = n; $("sol_solde").textContent = (n / 1e6).toLocaleString("en-US", { maximumFractionDigits: 6 }) + " USDC"; return n; })
       ["catch"](function(e){ solEtat.solde = /could not find account|Invalid param/i.test(String(e && e.message)) ? 0 : null; $("sol_solde").textContent = solEtat.solde === 0 ? "0 USDC (no USDC account yet)" : "unreadable"; return solEtat.solde; });
   }
+  /* Le reseau choisi montre SES boutons : le bouton Base appelle
+     window.ethereum, que Rabby prend toujours (demande du 27/09 : « ca connecte
+     Rabby et pas Phantom »). ?reseau=solana le preselectionne. */
+  function reseau(){ var r = document.querySelector('input[name="reseau"]:checked'); return r ? r.value : "base"; }
+  function montreReseau(){ var sol = reseau() === "solana"; $("bloc_base").hidden = sol; $("sol_carte").hidden = !sol; }
+  try { if (new URLSearchParams(location.search).get("reseau") === "solana") document.querySelector('input[name="reseau"][value="solana"]').checked = true; } catch (e) {}
+  Array.prototype.forEach.call(document.querySelectorAll('input[name="reseau"]'), function(r){ r.addEventListener("change", montreReseau); });
+  montreReseau();
+  /* Plusieurs portefeuilles Solana : on les montre, le joueur choisit (Phantom d'abord). */
   $("sol_connecter").addEventListener("click", function(){
-    var w = solEtat.portefeuilles.filter(solPeutSigner)[0];
-    if (!w) { solStatut("No Solana wallet found in this browser — install Phantom, Solflare or Backpack, or open this page in its app.", "err"); return; }
+    var l = solEtat.portefeuilles.filter(solPeutSigner);
+    l.sort(function(a, b){ return (/phantom/i.test(b.name) ? 1 : 0) - (/phantom/i.test(a.name) ? 1 : 0); });
+    if (!l.length) { solStatut("No Solana wallet found in this browser — install Phantom, Solflare or Backpack, or open this page in its app.", "err"); return; }
+    if (l.length === 1) return solConnecte(l[0]);
+    var c = $("sol_choix"); c.textContent = ""; c.hidden = false;
+    l.forEach(function(w){
+      var b = document.createElement("button"); b.type = "button"; b.style.marginTop = "8px"; b.textContent = "Connect " + String(w.name || "wallet").slice(0, 40);
+      b.addEventListener("click", function(){ c.hidden = true; solConnecte(w); });
+      c.appendChild(b);
+    });
+    solStatut("Choose your Solana wallet.");
+  });
+  function solConnecte(w){
     solStatut("Connecting to " + (w.name || "your wallet") + "…");
     Promise.resolve(w.features["standard:connect"].connect()).then(function(r){
       var c = (r && r.accounts && r.accounts[0]) || (w.accounts && w.accounts[0]);
@@ -335,7 +364,7 @@ a{ color:var(--bleu); }
       $("sol_payer").disabled = false;
       solStatut("Connected to " + (w.name || "your wallet") + ". Ready to pay.");
     })["catch"](function(e){ solStatut("Connection failed: " + String(e && (e.message || e.code) || e).slice(0, 160), "err"); });
-  });
+  }
   function solRaisonServeur(){
     return fetch(serveur() + "/agentic/x402", { cache: "no-store" }).then(function(r){ return r.json(); })
       .then(function(d){ return d && d.solana && d.solana.raison ? " (" + String(d.solana.raison).slice(0, 200) + ")" : ""; })["catch"](function(){ return ""; });

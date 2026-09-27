@@ -20,6 +20,7 @@ Tools:
 - `wallet_intel(address)` — $0.02. Use this when you need to know who is behind an EVM address, typically a token deployer, before trusting what it launches.
 - `osint_lookup(target)` — $0.02. Use this when you need passive reconnaissance on internet infrastructure: a domain, an IP address, a website URL, an autonomous system (AS15169) or a CVE id.
 - `web_search(query)` — $0.0075. Use this when the answer is outside SWOGE data: news, projects, teams, people, anything on the open web.
+- `token_verdict(address)` — $0.008. Use this when you must decide fast whether an EVM token is worth a closer look: one verdict you can branch on (red_flags, caution, unknown or no_red_flag_found) with its reasons.
 - `ask_agent(task, model?)` — real cost, up to $1.296. Use this when a question needs several of these tools chained together and a written answer, for example comparing tokens or researching a launcher.
 - `generate_image(prompt, provider?, quality?, aspect_ratio?, count?)` — real cost, up to $0.7037. Use this when you need an image: an illustration, a meme, a post visual, or the SWOGE character (a prompt that names SWOGE is drawn from the official character).
 - `generate_video(prompt, quality?, duration?, resolution?, aspect_ratio?)` — real cost, up to $3.6. Use this when you need a short video clip, 6 or 10 seconds, made with Grok Imagine.

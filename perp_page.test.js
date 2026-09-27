@@ -29,6 +29,7 @@ try { chromium = require('playwright').chromium; } catch (e) {}
 
 let n = 0, rates = 0;
 const ok = (c, m) => { n++; if (c) console.log('  ok   ' + m); else { rates++; console.log('  RATE ' + m); } };
+const eq = (a, b, m) => ok(a === b, m + ' (' + JSON.stringify(a) + ')');
 const T = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json' };
 
 /* ---------------------------------------------------------------------------
@@ -55,11 +56,17 @@ function vueFausse(o) {
         score: 1.84, depuis: now - 95 * 60000 },
     ],
     carnet: o.carnet || [
-      { sym: 'BTCUSDT', sens: 1, prix0: 63100, prix: 64400, r: 1.83, brut: 2.06, financement: -0.23,
+      { sym: 'BTCUSDT', sens: 1, prix0: 63100, prix: 64400, r: 1.83, rReel: 1.75, brut: 2.06, financement: -0.23,
         gain: 19.4, minutes: 310, pourquoi: 'target', t: now - 3600000 },
-      { sym: 'SOLUSDT', sens: -1, prix0: 152.2, prix: 154.1, r: -1.21, brut: -1.07, financement: -0.14,
+      { sym: 'SOLUSDT', sens: -1, prix0: 152.2, prix: 154.1, r: -1.21, rReel: -1.29, brut: -1.07, financement: -0.14,
         gain: -12.1, minutes: 88, pourquoi: 'stop', t: now - 7200000 },
     ],
+    /* Le bilan de TOUS les trades fermes (27/09/2026) : n, Wilson, net aux
+       frais reels ± erreur-type groupee par jour, jugeable a 143. */
+    bilan: o.bilan === undefined ? { n: 34, gagnants: 19, part: 55.9, wilson: [39.4, 71.1],
+      net: -0.377, se: 0.227, netReel: -0.449, seReel: 0.231, jours: 3, seuil: 143, jugeable: false, manquants: 0,
+      parSortie: { stop: { n: 19, moyenne: -1.44, moyenneReel: -1.52 }, target: { n: 8, moyenne: 1.92, moyenneReel: 1.88 },
+                   time: { n: 7, moyenne: 0.13, moyenneReel: 0.05 } } } : o.bilan,
     /* Ce que chaque marche a rendu : la repartition que les cinq colonies
        separees donnaient gratuitement. */
     soupape: o.soupape === undefined ? { soupape: { n: 4, moyenne: -0.82, partGagnantes: 25 },
@@ -82,7 +89,8 @@ function vueFausse(o) {
       { key: 'banquier', nom: 'Banker', emoji: '🏦', role: 'garde', quoi: 'how much goes in', traits: ['marche'] },
     ],
     audit: o.audit || [
-      { cle: 'Funding · too expensive', n: 140, moyenne: -0.21, gagnantes: 28, perdantes: 112, partGagnantes: 20 },
+      { cle: 'Funding · too expensive', n: 140, moyenne: -0.21, gagnantes: 28, perdantes: 112, partGagnantes: 20,
+        sigma: { n: 131, moyenne: -0.18, se: 0.07, part: 9.2, wilson: [5.3, 15.3] } },
       { cle: 'Regime · chop', n: 95, moyenne: 0.02, gagnantes: 47, perdantes: 48, partGagnantes: 49 },
       { cle: 'Range · too far from the band', n: 12, moyenne: 0.4, gagnantes: 8, perdantes: 4, partGagnantes: 66 },
       { cle: 'pris', n: 120, moyenne: 0.3, gagnantes: 52, perdantes: 68, partGagnantes: 43 },
@@ -274,8 +282,11 @@ const txt = (page, sel) => page.$eval(sel, (e) => (e.textContent || '').trim()).
     /* Quinze trades a 60 %, c'est neuf trades. Un ecart sur une poignee de
        trades est de la chance, pas un resultat : la case reste vide et dit
        combien il en manque. */
+    /* Le taux porte sur le bilan : la fixture donne donc 12 trades AU BILAN
+       aussi (elle en gardait 34 : incoherente depuis que le taux s y lit). */
     const { page } = await ouvre(nav, port, 'swoge_perp.html',
-                                { vue: { trades: 12, partGagnantes: 66 } });
+                                { vue: { trades: 12, partGagnantes: 66, bilan: { n: 12, gagnants: 8, part: 66.7, wilson: [39.1, 86.2],
+                                  net: 0.1, se: 0.4, netReel: 0.05, seReel: 0.4, jours: 1, seuil: 143, jugeable: false, manquants: 0, parSortie: {} } } });
     ok(await txt(page, '#ppTaux') === '—', 'sous vingt trades, le taux de gain n est pas affiche');
     ok(/need 8 more/.test(await txt(page, '#ppTauxSur')), 'et la page dit combien il en manque');
     await page.close();
@@ -283,6 +294,25 @@ const txt = (page, sel) => page.$eval(sel, (e) => (e.textContent || '').trim()).
     ok(await txt(b.page, '#ppTaux') === '56%', 'a trente-quatre trades, il s affiche');
     ok(/on 34/.test(await txt(b.page, '#ppTauxSur')), 'avec son echantillon a cote');
     await b.page.close();
+    /* ---- LE n DU TAUX EST CELUI DU BILAN, PAS `trades` ----
+     * 27/09 : 300 trades, taux calcule sur les 200 du carnet, ecrit « on 300 »
+     * avec l intervalle des 300. Le taux vient maintenant du bilan ; quand le
+     * bilan a ete rebati depuis le carnet (manquants > 0), la case dit « the
+     * N most recent », jamais le total. */
+    const c = await ouvre(nav, port, 'swoge_perp.html', { vue: { trades: 300, partGagnantes: 40,
+      bilan: { n: 230, gagnants: 92, part: 40, wilson: [33.9, 46.4], net: -0.1, se: 0.1, netReel: -0.15, seReel: 0.1,
+               jours: 13, seuil: 143, jugeable: true, manquants: 70, parSortie: {} } } });
+    const sur = await txt(c.page, '#ppTauxSur');
+    ok(/on the 230 most recent/.test(sur) && !/300/.test(sur) && /95% CI 34–46%/.test(sur),
+       'bilan rebati (70 trades d avant non gardes) : « ' + sur + ' », jamais « on 300 »');
+    await c.page.close();
+    const d = await ouvre(nav, port, 'swoge_perp.html', { vue: { trades: 300, partGagnantes: 33,
+      bilan: { n: 300, gagnants: 100, part: 33.3, wilson: [28.2, 38.8], net: -0.1, se: 0.1, netReel: -0.15, seReel: 0.1,
+               jours: 17, seuil: 143, jugeable: true, manquants: 0, parSortie: {} } } });
+    const sur2 = await txt(d.page, '#ppTauxSur');
+    ok(await txt(d.page, '#ppTaux') === '33%' && /^on 300 · 95% CI 28–39%/.test(sur2),
+       'bilan complet : le taux et son intervalle portent sur les memes 300 trades (« ' + sur2 + ' »)');
+    await d.page.close();
   }
 
   console.log('\n-- l audit : une regle sans assez d observations n a pas de verdict --');
@@ -413,6 +443,91 @@ const txt = (page, sel) => page.$eval(sel, (e) => (e.textContent || '').trim()).
     const l = await page.$$eval('.pp-flux li', (e) => e.map((x) => x.textContent.trim()));
     ok(l.length === 2 && /LONG DOGE at 0.2134/.test(l[0]), 'le fil montre ce qui vient de se passer, marche compris');
     await page.close();
+  }
+
+  console.log('\n-- chaque chiffre avec son n : net aux frais reels, Wilson, jugeable a 143 --');
+  {
+    /* ---- LE NET PAR TRADE ----
+     * Le seul chiffre qui dit si la colonie gagne. Rapport du 26/09 : 47
+     * trades, −0,449 % par trade aux frais reels, et il faut 143 trades pour
+     * voir +0,30 % par trade. En dessous, la case le DIT. */
+    const { page } = await ouvre(nav, port, 'swoge_perp.html');
+    const net = await txt(page, '#ppNet');
+    ok(/-0\.45%/.test(net) && /± 0\.23/.test(net), 'le net par trade, aux frais reels, avec son erreur-type : ' + net);
+    ok(/not judgeable \(34\/143\)/.test(await txt(page, '#ppNetSur')), 'et « not judgeable (34/143) » sous le seuil');
+    ok(!(await page.$eval('#ppNet', (e) => e.className)).includes('pp-vert'), 'un net non jugeable ne se colore pas en gagnant');
+    ok(/95% CI 39–71%/.test(await txt(page, '#ppTauxSur')), 'le taux de gain porte son intervalle de Wilson : ' + await txt(page, '#ppTauxSur'));
+    await page.close();
+    const b = await ouvre(nav, port, 'swoge_perp.html', { vue: { trades: 150, bilan: { n: 150, gagnants: 70, part: 46.7,
+      wilson: [38.9, 54.6], net: 0.31, se: 0.1, netReel: 0.26, seReel: 0.1, jours: 9, seuil: 143, jugeable: true, parSortie: {} } } });
+    ok(/on 150 trades, 9 day/.test(await txt(b.page, '#ppNetSur')), 'passe le seuil, la case dit sur combien de trades et de jours');
+    ok((await b.page.$eval('#ppNet', (e) => e.className)).includes('pp-vert'), 'et un net dont la borne basse est > 0 se voit');
+    await b.page.close();
+    const c = await ouvre(nav, port, 'swoge_perp.html', { vue: { bilan: null } });
+    ok(await txt(c.page, '#ppNet') === '—', 'un serveur sans bilan : « — », rien d invente');
+    await c.page.close();
+    /* ---- SOUS LE SEUIL, MEME UN NET « EVIDENT » NE SE COLORE PAS ----
+     * La fixture de base (−0,449 ± 0,231) ne pouvait jamais etre verte : la
+     * garde `jugeable` n etait pas essayee (mutant `true ? …` vert le 27/09).
+     * Ici, 34 trades a +0,90 ± 0,10 : borne basse +0,70 > 0, et pourtant sous
+     * 143 trades la page ne conclut pas — ni vert, ni rouge. */
+    const bilanFort = (jug, n) => ({ n, gagnants: 20, part: 58.8, wilson: [42.2, 73.6], net: 0.95, se: 0.1, netReel: 0.9, seReel: 0.1,
+                                     jours: 3, seuil: 143, jugeable: jug, manquants: 0, parSortie: {} });
+    const f = await ouvre(nav, port, 'swoge_perp.html', { vue: { trades: 34, bilan: bilanFort(false, 34) } });
+    const clsF = await f.page.$eval('#ppNet', (e) => e.className);
+    ok(/\+0\.90%/.test(await txt(f.page, '#ppNet')) && !clsF.includes('pp-vert') && !clsF.includes('pp-rouge'),
+       'n 34, +0,90 ± 0,10 (borne basse > 0) mais non jugeable : ni vert ni rouge [« ' + clsF + ' »]');
+    ok(/not judgeable \(34\/143\)/.test(await txt(f.page, '#ppNetSur')), 'et la case dit pourquoi : « not judgeable (34/143) »');
+    await f.page.close();
+    const g = await ouvre(nav, port, 'swoge_perp.html', { vue: { trades: 150, bilan: bilanFort(true, 150) } });
+    ok((await g.page.$eval('#ppNet', (e) => e.className)).includes('pp-vert'), 'le meme net, jugeable : vert — c est bien la garde qui retenait la couleur');
+    await g.page.close();
+  }
+
+  console.log('\n-- le carnet ENTIER, et chaque ligne a ses frais reels --');
+  {
+    const now = Date.now();
+    const carnet = [];
+    for (let i = 0; i < 60; i++) carnet.push({ sym: i % 2 ? 'BTCUSDT' : 'ETHUSDT', sens: 1, prix0: 100, prix: 101, r: 0.96, rReel: 0.88,
+                                               brut: 1, financement: 0, gain: 1, minutes: 60, pourquoi: 'target', t: now - i * 60000 });
+    const { page } = await ouvre(nav, port, 'swoge_perp.html', { vue: { carnet, trades: 60 } });
+    const l = await page.$$eval('#ppCarnet tr', (tr) => tr.slice(1).map((r) => r.cells[6].textContent.trim()));
+    eq(l.length, 60, 'les soixante trades sont la, pas les vingt derniers');
+    ok(l.every((x) => x === '+0.88%'), 'chacun avec son net aux frais reels, a cote du net comptabilise');
+    ok(/60\)/.test(await txt(page, '#ppCarnetSous')) && /taker 0\.06%/.test(await txt(page, '#ppCarnetSous')),
+       'et la page dit ce que « real fees » veut dire : ' + (await txt(page, '#ppCarnetSous')).slice(0, 60) + '…');
+    const defile = await page.$eval('#ppCarnet', (e) => getComputedStyle(e).overflowY);
+    ok(defile === 'auto', 'la boite defile au lieu d allonger la page');
+    await page.close();
+  }
+
+  console.log('\n-- l audit en σ, et l issue reelle sur une ligne a part --');
+  {
+    const { page } = await ouvre(nav, port, 'swoge_perp.html');
+    const l = await page.$$eval('#ppAudit tr', (tr) => tr.slice(1).map((r) => ({ sig: r.cells[4].textContent.trim(), des: r.cells[5].textContent.trim() })));
+    ok(/-0\.18σ ± 0\.07/.test(l[0].sig) && /131/.test(l[0].sig), 'la moyenne en σ, son erreur-type et son effectif : ' + l[0].sig);
+    ok(/9\.2%/.test(l[0].des) && /5\.3–15\.3%/.test(l[0].des), 'la part a ≥ +1σ avec son intervalle de Wilson : ' + l[0].des);
+    ok(l[1].sig === '—', 'une ligne sans σ (ombres d avant) affiche un tiret, pas un zero');
+    ok(/power calculation/.test(await txt(page, '#ppAuditSous')), 'la page dit d ou vient le minimum');
+    const iss = await page.$$eval('#ppIssue tr', (tr) => tr.slice(1).map((r) => [...r.cells].map((c) => c.textContent.trim())));
+    ok(iss[0][0].includes('All') && iss[0][1] === '34' && /-0\.45% ± 0\.23/.test(iss[0][2]),
+       'l issue reelle de tous les trades : n, net aux frais reels ± erreur-type : ' + iss[0].join(' | '));
+    ok(/not judgeable \(34\/143\)/.test(iss[0][0]), 'avec « not judgeable » tant qu il le faut');
+    ok(iss.some((r) => r[0] === 'clock' && r[1] === '7') && iss.some((r) => r[0] === 'target'), 'et par sortie : stop, cible, echeance');
+    ok(/fixed 4 hours/.test(await txt(page, '#ppIssue')), 'la page dit pourquoi cette ligne est a part');
+    await page.close();
+  }
+
+  console.log('\n-- a 320 px, rien ne deborde --');
+  {
+    const pg = await nav.newPage({ viewport: { width: 320, height: 700 } });
+    await pg.route(/vitrine\.json/, (r) => r.fulfill({ status: 200, contentType: 'application/json', body: '{}' }));
+    await pg.route(/\/ai\/perp/, (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(vueFausse({})) }));
+    await pg.goto(`http://127.0.0.1:${port}/swoge_perp.html`, { waitUntil: 'domcontentloaded' });
+    await pg.waitForTimeout(450);
+    const large = await pg.evaluate(() => document.documentElement.scrollWidth);
+    ok(large <= 320, 'la page ne defile pas de cote a 320 px : ' + large + ' px');
+    await pg.close();
   }
 
   console.log('\n-- le menu de gauche : UNE entree, pas cinq --');

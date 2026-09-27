@@ -359,7 +359,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 /* ---- LA BANDE DE CHIFFRES ----
    Ce pour quoi on ouvre la page : elle est en haut, pleine largeur, et on ne
    defile pas pour l'atteindre. */
-.pp-bande{display:grid; grid-template-columns:repeat(7,1fr); gap:10px; margin:0 0 14px}
+.pp-bande{display:grid; grid-template-columns:repeat(8,1fr); gap:10px; margin:0 0 14px}
 .pp-b{background:#FFFFFF; border:1px solid #E1E9F6; border-radius:14px; padding:12px 13px}
 .pp-b b{display:block; font:800 21px/1.15 'Outfit',system-ui,sans-serif; color:#0A1F44;
   font-variant-numeric:tabular-nums}
@@ -451,3 +451,22 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   .pp-bande{grid-template-columns:repeat(2,1fr)}
   .pp-tete .pp-droite{width:100%; margin-left:0}
 }
+
+/* ---- LE CARNET ENTIER, ET L ISSUE REELLE (27 septembre 2026) ----
+ * Deux cents lignes ne tiennent pas dans la carte : elles defilent dans leur
+ * boite, l en-tete reste visible. L issue reelle des trades a son sous-titre,
+ * pour ne jamais se lire comme une ligne de l audit des ombres. */
+.pp-defile{max-height:420px; overflow:auto; -webkit-overflow-scrolling:touch}
+.pp-defile .pp-tab th{position:sticky; top:0; background:#FFFFFF}
+.pp-sous{margin:14px 0 6px; font:700 11px/1.2 'Inter',system-ui,sans-serif; letter-spacing:.06em;
+  text-transform:uppercase; color:#5A6B8C}
+.pp-ic{display:block; font:500 10px/1.3 'JetBrains Mono',ui-monospace,monospace; color:#8A99B5}
+@media (max-width:560px){ .pp-defile{max-height:360px} }
+/* ---- A 320 PX, LES TABLEAUX DEFILENT DANS LEUR CARTE ----
+ * Mesure du 27 septembre 2026 (Playwright, 320 px, vue reelle) : chaque
+ * carte faisait 610 px de large, parce qu une colonne de grille ne se
+ * retrecit pas sous la largeur de son contenu et que les tableaux ont huit
+ * colonnes. La colonne a le droit de retrecir (`min-width:0`) et la carte
+ * fait defiler son tableau, au lieu de pousser toute la page de cote. */
+.pp-grille>div{min-width:0}
+.pp-carte{min-width:0; overflow-x:auto; -webkit-overflow-scrolling:touch}

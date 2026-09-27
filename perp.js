@@ -70,7 +70,29 @@ var PP_PHRASES = {
   maintenant: ["Now", "Maintenant"],
   latent: ["Open P&L", "Gain latent"],
   depuis: ["Held", "Tenue"],
-  carnet: ["Last closed trades", "Derniers trades fermes"],
+  carnet: ["Closed trades", "Trades fermes"],
+  carnetSous: function(n, tot){ return "Every closed trade the server keeps (" + n + (tot > n ? " of " + tot : "") + "), newest first. \u201cReal fees\u201d is the same trade at Bitget's real fees: taker 0.06% to enter, at a stop and at the clock, maker 0.02% at a target."; },
+  carnetSousFr: function(n, tot){ return "Chaque trade ferme que le serveur garde (" + n + (tot > n ? " sur " + tot : "") + "), le plus recent d'abord. \u00ab Frais reels \u00bb est le meme trade aux vrais frais Bitget : taker 0,06 % a l'entree, au stop et a l'echeance, maker 0,02 % a la cible."; },
+  fraisReels: ["Real fees", "Frais reels"],
+  netTrade: ["Net per trade", "Net par trade"],
+  pasJugeable: function(n, s){ return "not judgeable (" + n + "/" + s + ")"; },
+  pasJugeableFr: function(n, s){ return "pas jugeable (" + n + "/" + s + ")"; },
+  jugeableSur: function(n, j){ return "real fees · on " + n + " trades, " + j + " day(s)"; },
+  jugeableSurFr: function(n, j){ return "frais reels \u00b7 sur " + n + " trades, " + j + " jour(s)"; },
+  tauxSur: function(n, lo, hi){ return "on " + n + (lo == null ? "" : " \u00b7 95% CI " + lo + "\u2013" + hi + "%"); },
+  tauxSurFr: function(n, lo, hi){ return "sur " + n + (lo == null ? "" : " \u00b7 IC 95 % " + lo + "\u2013" + hi + " %"); },
+  encore: [function(k){ return "need " + k + " more"; }, function(k){ return "encore " + k + " trades"; }],
+  tauxSurRecents: function(n, lo, hi){ return "on the " + n + " most recent" + (lo == null ? "" : " \u00b7 95% CI " + lo + "\u2013" + hi + "%"); },
+  tauxSurRecentsFr: function(n, lo, hi){ return "sur les " + n + " plus recents" + (lo == null ? "" : " \u00b7 IC 95 % " + lo + "\u2013" + hi + " %"); },
+  issue: ["What taking actually did", "Ce que prendre a vraiment rapporte"],
+  issueDit: function(n, s){ return "The shadows above are judged at a fixed 4 hours. Trades exit at their stop, their target or the 12-hour clock: this is what they actually returned, at real fees, on its own line. Not judgeable below " + s + " trades."; },
+  issueDitFr: function(n, s){ return "Les ombres ci-dessus sont jugees a 4 h fixes. Les trades sortent a leur stop, leur cible ou a l'echeance de 12 h : voici ce qu'ils ont vraiment rendu, aux frais reels, sur une ligne a part. Pas jugeable sous " + s + " trades."; },
+  sortie: ["Exit", "Sortie"], moyenne: ["Mean", "Moyenne"],
+  sortieNoms: function(k){ return ({ stop: "stop", target: "target", time: "clock" })[k] || k; },
+  sortieNomsFr: function(k){ return ({ stop: "stop", target: "cible", time: "echeance" })[k] || k; },
+  tous: ["All", "Tous"],
+  enSigma: ["In σ units", "En unites de σ"],
+  auDessus: ["≥ +1σ", "≥ +1σ"],
   carnetVide: ["Nothing closed yet — the colony has not finished a trade on this market.",
                "Rien de ferme — la colonie n'a pas encore termine un trade sur ce marche."],
   brut: ["Price", "Prix"], fin: ["Funding", "Financement"], net: ["Net", "Net"],
@@ -81,11 +103,11 @@ var PP_PHRASES = {
   audit: ["What each refusal is worth", "Ce que vaut chaque refus"],
   auditSous: function(n, ref){
     if(!ref) return "Every refusal is shadowed and judged later. Nothing is comparable yet: the colony has taken too few positions to have a reference.";
-    return "Every refusal is shadowed and judged later against what the colony actually takes (" + ref + "% winners over " + n + " observations). Below " + PP_MIN + " observations a rule gets no verdict at all.";
+    return "Every refusal is shadowed and judged later against what the colony actually takes (" + ref + "% winners over " + n + " observations). Returns are also read in units of each market's own 4-hour volatility (σ), so a rule that mostly turns away DOGE is not judged on DOGE's size. Below " + PP_MIN + " observations a rule gets no verdict at all: that minimum comes from a power calculation, not a round number.";
   },
   auditSousFr: function(n, ref){
     if(!ref) return "Chaque refus laisse une ombre, jugee plus tard. Rien n'est encore comparable : la colonie a pris trop peu de positions pour avoir une reference.";
-    return "Chaque refus laisse une ombre, jugee plus tard contre ce que la colonie prend vraiment (" + ref + " % de gagnantes sur " + n + " observations). En dessous de " + PP_MIN + " observations, une regle n'a aucun verdict.";
+    return "Chaque refus laisse une ombre, jugee plus tard contre ce que la colonie prend vraiment (" + ref + " % de gagnantes sur " + n + " observations). Les rendements se lisent aussi en unites de la volatilite a 4 h de chaque marche (σ), pour qu'une regle qui ecarte surtout du DOGE ne soit pas jugee sur la taille de DOGE. En dessous de " + PP_MIN + " observations, une regle n'a aucun verdict : ce minimum vient d'un calcul de puissance, pas d'un chiffre rond.";
   },
   regle: ["Rule", "Regle"], obs: ["Obs", "Obs"], part: ["Winners", "Gagnantes"],
   verdict: ["Verdict", "Verdict"],
@@ -218,9 +240,33 @@ function ppBande(v){
   /* Le taux de gain n'a de sens qu'au-dela d'une poignee de trades : en
      dessous, il n'est pas affiche du tout. Quinze trades a 60 %, c'est neuf
      trades — on ne conclut pas la-dessus. */
-  var assez = v.trades >= 20;
+  /* Le taux porte sur `bilan.n` trades, pas sur `trades` : 27/09, un taux
+     calcule sur les 200 derniers s'affichait « on 300 » avec l'intervalle
+     des 300. Un serveur sans bilan (d'avant) le calculait sur le carnet,
+     200 lignes au plus : on ne lui prete pas plus. */
+  var bi = v.bilan || null;
+  var nT = bi ? (bi.n || 0) : Math.min(v.trades || 0, 200);
+  var recents = bi ? (bi.manquants > 0) : ((v.trades || 0) > 200);
+  var assez = nT >= 20;
   $$("ppTaux").textContent = (assez && v.partGagnantes != null) ? v.partGagnantes + "%" : "—";
-  $$("ppTauxSur").textContent = v.trades ? (assez ? "on " + v.trades : "need " + (20 - v.trades) + " more") : "";
+  /* L'intervalle de Wilson a cote du taux : 32 % sur 47 trades, c'est
+     « quelque part entre 20 et 46 % » — et la page le dit. Meme source que
+     le taux (le bilan), donc toujours le sien. */
+  var w = bi && bi.wilson ? bi.wilson : null;
+  var lo = w ? Math.round(w[0]) : null, hi = w ? Math.round(w[1]) : null;
+  $$("ppTauxSur").textContent = nT ? (assez ? (recents ? pphF("tauxSurRecents", nT, lo, hi) : pphF("tauxSur", nT, lo, hi))
+                                            : pph("encore", 20 - nT)) : "";
+  /* ---- LE NET PAR TRADE, AUX FRAIS REELS, AVEC SON ERREUR-TYPE ----
+   * Sous `seuil` trades (143 : ce qu'il faut pour voir +0,30 % par trade a
+   * 80 %), le chiffre s'affiche mais la case dit qu'il n'est pas jugeable. */
+  var net = $$("ppNet"), netSur = $$("ppNetSur");
+  if(net){
+    if(bi && bi.n && bi.netReel != null){
+      net.textContent = ppPct(bi.netReel) + (bi.seReel != null ? " ± " + bi.seReel.toFixed(2) : "");
+      net.className = bi.jugeable ? (bi.netReel - 1.96 * (bi.seReel || 0) > 0 ? "pp-vert" : bi.netReel + 1.96 * (bi.seReel || 0) < 0 ? "pp-rouge" : "") : "";
+      netSur.textContent = bi.jugeable ? pphF("jugeableSur", bi.n, bi.jours) : pphF("pasJugeable", bi.n, bi.seuil);
+    } else { net.textContent = "—"; net.className = ""; netSur.textContent = ""; }
+  }
   $$("ppTrades").textContent = v.trades || 0;
   $$("ppMeilleur").textContent = (typeof v.meilleur === "number" && v.meilleur) ? ppPct(v.meilleur) : "—";
   /* « 2 » ne dit pas si la colonie est pleine ou si elle a de la place. Le
@@ -266,12 +312,15 @@ function ppPositions(v){
 
 function ppCarnet(v){
   var c = $$("ppCarnet");
+  var cs = $$("ppCarnetSous");
+  if(cs) cs.textContent = v.carnet.length ? pphF("carnetSous", v.carnet.length, v.trades || v.carnet.length) : "";
   if(!v.carnet.length){ c.innerHTML = '<div class="pp-vide">' + ppEch(pph("carnetVide")) + "</div>"; return; }
   var h = '<table class="pp-tab"><tr><th>' + ppEch(pph("marche")) + "</th><th>" + ppEch(pph("sens"))
         + "</th><th>" + ppEch(pph("entree"))
         + "</th><th>" + ppEch(pph("brut")) + "</th><th>" + ppEch(pph("fin")) + "</th><th>"
-        + ppEch(pph("net")) + "</th><th>" + ppEch(pph("duree")) + "</th><th>" + ppEch(pph("pourquoi")) + "</th></tr>";
-  v.carnet.slice(0, 20).forEach(function(t){
+        + ppEch(pph("net")) + "</th><th>" + ppEch(pph("fraisReels")) + "</th><th>" + ppEch(pph("duree")) + "</th><th>" + ppEch(pph("pourquoi")) + "</th></tr>";
+  /* Le carnet ENTIER : le serveur le sert en entier depuis le 27/09/2026. */
+  v.carnet.forEach(function(t){
     h += "<tr><td><b>" + ppEch(ppNom(t.sym)) + "</b></td>"
        + "<td><span class='pp-sens " + (t.sens > 0 ? "long'>LONG" : "short'>SHORT") + "</span></td>"
        + "<td class='num'>" + ppPrix(t.prix0) + "</td>"
@@ -281,6 +330,7 @@ function ppCarnet(v){
           suit pas. */
        + "<td class='num " + (t.financement < 0 ? "pp-rouge" : "") + "'>" + ppPct(t.financement) + "</td>"
        + "<td class='num " + (t.r > 0 ? "pp-vert" : t.r < 0 ? "pp-rouge" : "") + "'>" + ppPct(t.r) + "</td>"
+       + "<td class='num " + (t.rReel > 0 ? "pp-vert" : t.rReel < 0 ? "pp-rouge" : "") + "'>" + (typeof t.rReel === "number" ? ppPct(t.rReel) : "—") + "</td>"
        + "<td class='num'>" + ppDuree(t.minutes) + "</td>"
        + "<td>" + ppEch(t.pourquoi) + "</td></tr>";
   });
@@ -320,7 +370,8 @@ function ppAudit(v){
   var parCle = {};
   (v.verdicts || []).forEach(function(x){ parCle[x.cle] = x; });
   var h = '<table class="pp-tab"><tr><th>' + ppEch(pph("regle")) + "</th><th>" + ppEch(pph("obs"))
-        + "</th><th>" + ppEch(pph("part")) + "</th><th>" + ppEch(pph("verdict")) + "</th></tr>";
+        + "</th><th>" + ppEch(pph("part")) + "</th><th>" + ppEch(pph("verdict")) + "</th><th>"
+        + ppEch(pph("enSigma")) + "</th><th>" + ppEch(pph("auDessus")) + "</th></tr>";
   lignes.forEach(function(l){
     var w = parCle[l.cle] || { verdict:"unknown" };
     /* « protege » veut dire : ce qu'on a refuse a MOINS bien marche que ce
@@ -331,8 +382,42 @@ function ppAudit(v){
             : w.verdict === "costs" ? pph("vCoute")
             : w.verdict === "same" ? pph("vPareil")
             : pph("vAttente") + (w.manque ? " · " + pphF("vManque", w.manque) : "");
+    /* ---- EN UNITES DE σ, AVEC LEUR EFFECTIF ----
+     * La moyenne ± erreur-type et la part a ≥ +1 σ (Wilson) portent leur
+     * propre n : les anciennes ombres n ont pas de σ, et « 0 » ne doit pas
+     * se lire comme « rien ne monte ». */
+    var sg = l.sigma || null;
+    var cSig = (sg && sg.n) ? (sg.moyenne >= 0 ? "+" : "") + sg.moyenne.toFixed(2) + "σ" + (sg.se != null ? " ± " + sg.se.toFixed(2) : "")
+                              + " <i class='pp-n'>" + sg.n + "</i>" : "—";
+    var cDes = (sg && sg.n) ? sg.part + "%" + (sg.wilson ? "<span class='pp-ic'>" + sg.wilson[0] + "–" + sg.wilson[1] + "%</span>" : "") : "—";
     h += "<tr><td>" + ppEch(l.cle) + "</td><td class='num'>" + l.n + "</td><td class='num'>"
-       + l.partGagnantes + "%</td><td><span class='pp-verdict " + cls + "'>" + ppEch(mot) + "</span></td></tr>";
+       + l.partGagnantes + "%</td><td><span class='pp-verdict " + cls + "'>" + ppEch(mot) + "</span></td>"
+       + "<td class='num'>" + cSig + "</td><td class='num'>" + cDes + "</td></tr>";
+  });
+  c.innerHTML = h + "</table>";
+}
+
+/* ---- CE QUE PRENDRE A VRAIMENT RAPPORTE ----
+ * L audit juge les ombres a 4 h fixes ; les trades, eux, sortent au stop, a
+ * la cible ou a 12 h. Leur issue reelle, aux frais reels, est une ligne A
+ * PART, avec son effectif, son erreur-type et le seuil ou elle devient
+ * jugeable. Rien ne s y melange a la reference des ombres. */
+function ppIssue(v){
+  var c = $$("ppIssue"); if(!c) return;
+  var b = v.bilan;
+  if(!b || !b.n){ c.innerHTML = '<div class="pp-vide">' + ppEch(pph("carnetVide")) + "</div>"; return; }
+  var cel = function(n, m, se){
+    return "<td class='num'>" + n + "</td><td class='num " + (m > 0 ? "pp-vert" : m < 0 ? "pp-rouge" : "") + "'>"
+      + ppPct(m) + (se != null ? " ± " + se.toFixed(2) : "") + "</td>";
+  };
+  var h = '<p class="sur">' + ppEch(pphF("issueDit", b.n, b.seuil)) + "</p>"
+        + '<table class="pp-tab"><tr><th>' + ppEch(pph("sortie")) + "</th><th>" + ppEch(pph("obs")) + "</th><th>"
+        + ppEch(pph("fraisReels")) + "</th></tr>";
+  h += "<tr><td><b>" + ppEch(pph("tous")) + "</b> <i class='pp-n'>"
+     + ppEch(b.jugeable ? "" : pphF("pasJugeable", b.n, b.seuil)) + "</i></td>" + cel(b.n, b.netReel, b.seReel) + "</tr>";
+  Object.keys(b.parSortie || {}).sort().forEach(function(k){
+    var o = b.parSortie[k];
+    h += "<tr><td>" + ppEch(pphF("sortieNoms", k)) + "</td>" + cel(o.n, o.moyenneReel, null) + "</tr>";
   });
   c.innerHTML = h + "</table>";
 }
@@ -408,7 +493,7 @@ function ppPeint(v){
   PP_MIN = v.minObs || PP_MIN;
   PP_PROFIL = v.profilMinObs || PP_PROFIL;
 
-  ppTete(v); ppBande(v); ppPositions(v); ppCarnet(v); ppAgents(v); ppAudit(v); ppParMarche(v); ppFlux(v);
+  ppTete(v); ppBande(v); ppPositions(v); ppCarnet(v); ppAgents(v); ppAudit(v); ppIssue(v); ppParMarche(v); ppFlux(v);
   $$("ppOmbres").textContent = pphF("ombres", v.ombres.enAttente, v.ombres.jugees);
   $$("ppHorizons").textContent = pphF("horizons", v.horizons, v.horizonRef);
 }
@@ -445,7 +530,7 @@ function ppStatique(){
   $$("ppAvis").innerHTML = pph("avis");
   $$("ppPapier").textContent = pph("papier");
   [["ppLProfit","profit"],["ppLTresor","tresor"],["ppLTaux","taux"],["ppLTrades","trades"],
-   ["ppLMeilleur","meilleur"],["ppLOuvertes","ouvertes"],["ppLFin","financement"],
+   ["ppLMeilleur","meilleur"],["ppLOuvertes","ouvertes"],["ppLFin","financement"],["ppLNet","netTrade"],["ppTIssue","issue"],
    ["ppTPos","positions"],["ppTCarnet","carnet"],["ppTAgents","agents"],
    ["ppTAudit","audit"],["ppTMarches","marches"],["ppTSoupape","soupape"],["ppTFlux","journal"]].forEach(function(p){
     var e = $$(p[0]); if(e) e.textContent = pph(p[1]);

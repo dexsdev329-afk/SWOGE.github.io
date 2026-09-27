@@ -40,7 +40,7 @@
  * une fois par session pour savoir si le serveur en a une plus recente.
  * Sans ca, un joueur garde des semaines une version corrigee depuis
  * longtemps — et ici, cela voudrait dire un agent qui a cesse d'apprendre. */
-var MARQUE_PAGE = '7a8bf141';
+var MARQUE_PAGE = 'bed45c1b';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -1686,6 +1686,29 @@ const PHRASES = {
   /* Les ombres que les flux ne cotaient plus et que le serveur est alle relire
      a l'adresse : sans elles, on n'apprenait que des survivants. */
   auditRelues:  [(r) => r + ' re-read at the deadline', (r) => r + ' relues a l\'echeance'],
+  /* La meme ligne sur 7 jours glissants (27/09) : le pourcentage n'est dit
+     qu'a partir de 40 cas, le minimum a partir duquel les decisions la lisent. */
+  audit7:       [(n, p) => 'last 7 days: ' + n + ' followed, ' + p + '% went up',
+                 (n, p) => '7 derniers jours : ' + n + ' suivis, ' + p + '% montes'],
+  audit7Peu:    [(n, m) => 'last 7 days: ' + n + ' followed — under ' + m + ', too few to read; decisions keep the cumulative',
+                 (n, m) => '7 derniers jours : ' + n + ' suivis — moins de ' + m + ', trop peu pour lire ; les decisions gardent le cumul'],
+  auditSansLecture: [(k) => k + ' left before their 30-min reading, not counted in the share above',
+                 (k) => k + ' partis avant leur lecture a 30 min, absents de la part ci-dessus'],
+  /* Ce que le miroir a fait des achats envoyes, sur 24 h (27/09). */
+  suiviMiroir:  [(n, m) => n + ' buys sent to the mirror in 24 h, ' + m + ' followed',
+                 (n, m) => n + ' achats envoyes au miroir en 24 h, ' + m + ' suivis'],
+  suiviPourquoi:[(t) => 'why not, per wallet: ' + t, (t) => 'pourquoi, par portefeuille : ' + t],
+  suiviSansDevis:[(k, n) => k + ' of the ' + n + ' had no round-trip quote from the colony',
+                 (k, n) => k + ' des ' + n + ' sans devis d aller-retour de la colonie'],
+  suiviR_sansPortefeuille: ['no mirror running', 'aucun miroir en marche'],
+  suiviR_dejaTenu: ['already held', 'deja tenu'],
+  suiviR_solde:    ['balance too low', 'solde trop bas'],
+  suiviR_gaz:      ['gas above its share', 'gaz au-dela de sa part'],
+  suiviR_retourMin:['selling back under the minimum', 'revente sous le minimum'],
+  suiviR_echecAchat:['buy failed', 'achat en echec'],
+  suiviR_autre:    ['other', 'autre'],
+  suiviE_aucunePlace:['no venue found', 'aucune place trouvee'],
+  suiviE_autre:    ['other failure', 'autre echec'],
   montes:       [(p) => p + '% went up', (p) => p + '% montes'],
   auditDetail:  [(n, m, e, moy) => n + ' token(s) followed · ' + m + ' up by +20% or more · '
                       + e + ' collapsed · average ' + moy + '%',
@@ -2799,11 +2822,37 @@ function peintTraits(){
    des deux est le seul chiffre honnete sur ce que coute un aller-retour ici.
    Sous cinq fermetures on le dit plutot que d'afficher une moyenne d'une. */
 const REEL_ASSEZ = 5;
+/* ---- CE QUE LE MIROIR A FAIT DES ACHATS ENVOYES, SUR 24 H ----
+   Rapport du 27/09 : 12 achats envoyes en trois jours, 1 suivi, et personne ne
+   le voyait. Le chiffre porte son propre denominateur (N envoyes) ; les
+   raisons sont celles que le serveur a comptees, par portefeuille. */
+function ligneSuiviMiroir(){
+  const S = VUE && VUE.suiviMiroir, j = S && S.jour;
+  if(!j || !j.envois) return "";
+  const raisons = Object.keys(j.raisons || {}).filter(k => k !== "suivi")
+    .sort((a, b) => j.raisons[b] - j.raisons[a]).map(k => ph("suiviR_" + k) + " \u00d7" + j.raisons[k]);
+  const echecs = Object.keys(j.echecs || {}).map(k => ph("suiviE_" + k) + " \u00d7" + j.echecs[k]);
+  const mal = j.suivis * 2 < j.envois;
+  return '<div class="evt" data-suivi="1"><span class="pill ' + (mal ? "retrait" : "naissance") + '">'
+    + echappe(j.suivis + "/" + j.envois) + '</span><span><b>' + echappe(ph("suiviMiroir", j.envois, j.suivis)) + '</b>'
+    + (raisons.length || echecs.length ? '<span class="mini">' + echappe(ph("suiviPourquoi", raisons.concat(echecs).join(" \u00b7 "))) + '</span>' : '')
+    + (j.sansDevis ? '<span class="mini">' + echappe(ph("suiviSansDevis", j.sansDevis, j.envois)) + '</span>' : '')
+    + '</span></div>';
+}
 function peintReel(){
   const R = (VUE && VUE.reel) || { n:0 };
   $("reelN").textContent = VUE ? ph("reelN", R.n || 0) : "—";
-  if(!R.n) return;
-  let h = "";
+  const suivi = ligneSuiviMiroir();
+  if(!R.n){
+    /* Sans fermeture reelle, le texte d'attente reste, et la ligne de suivi
+       passe devant lui. */
+    const box = $("reel");
+    const ancien = box.querySelector('[data-suivi]');
+    if(ancien) ancien.remove();
+    if(suivi) box.insertAdjacentHTML("afterbegin", suivi);
+    return;
+  }
+  let h = suivi;
   if(R.ecart !== null && R.nEcart >= REEL_ASSEZ)
     h += '<div class="evt"><span class="pill retrait">' + echappe(R.ecart) + ' pts</span>'
        + '<span><b>' + echappe(ph("reelEcart", R.ecart, R.nEcart)) + '</b>'
@@ -2870,6 +2919,9 @@ function peintBancs(){
       + echappe(assez ? ph("bancDecide") : ph("bancAssez")) + '</div>';
 }
 
+/* Sous 40 cas sur 7 jours, les decisions du serveur gardent le cumul
+   (`AUDIT7_MIN`, rapport du 27/09) : la page ne lit pas plus loin qu'elles. */
+const AUDIT7_ASSEZ = 40;
 function peintAudit(){
   const l = (VUE && VUE.audit) || [];
   const o = (VUE && VUE.ombres) || { enAttente:0, jugees:0 };
@@ -2895,6 +2947,8 @@ function peintAudit(){
         <span class="mini">${echappe(ph("auditDetail", x.n, x.montes, x.effondres,
           (x.moyenne>=0?"+":"")+x.moyenne))}</span>
         ${x.nStrat >= 3 && x.strat !== null ? '<span class="mini">' + echappe(ph("auditStrat", x.nStrat, (x.strat >= 0 ? "+" : "") + x.strat)) + '</span>' : ''}
+        ${typeof x.n7 === 'number' ? '<span class="mini">' + echappe(x.n7 >= AUDIT7_ASSEZ && x.partMontes7 !== null ? ph("audit7", x.n7, x.partMontes7) : ph("audit7Peu", x.n7, AUDIT7_ASSEZ)) + '</span>' : ''}
+        ${x.sansLecture > 0 ? '<span class="mini">' + echappe(ph("auditSansLecture", x.sansLecture)) + '</span>' : ''}
         ${estRef ? '<span class="faire">' + echappe(ph("auditRef")) + '</span>' : ''}
         ${cher ? '<span class="faire" style="color:var(--loss)">' + ph("auditCher", x.partMontes) + '</span>' : ''}
         ${protege ? '<span class="faire" style="color:var(--gain)">' + echappe(ph("auditProtege", x.partMontes, refP)) + '</span>' : ''}

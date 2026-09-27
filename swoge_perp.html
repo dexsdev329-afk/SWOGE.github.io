@@ -38,7 +38,7 @@
  * Meme garde que `swoge_ai.html` : sans elle, un joueur garde des semaines
  * une version corrigee depuis longtemps, et ici cela voudrait dire une
  * colonie qui a l'air arretee alors qu'elle tourne. */
-var MARQUE_PAGE = '50e89665';
+var MARQUE_PAGE = 'ffa77c97';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -64,7 +64,7 @@ var MARQUE_PAGE = '50e89665';
      l'habillage deux fois garantit qu'un jour l'une aura une correction que
      l'autre n'aura pas. Versionnee, comme tout fichier que le navigateur
      garde. -->
-<link rel="stylesheet" href="perp.css?v=f9d6f5b6">
+<link rel="stylesheet" href="perp.css?v=4edb0272">
 <style>
   body{margin:0; background:#F6F9FF; color:#0A1F44;
        font-family:'Outfit',system-ui,-apple-system,sans-serif}
@@ -204,6 +204,10 @@ var MARQUE_PAGE = '50e89665';
       <div class="pp-b gros"><b id="ppProfit">&mdash;</b><i id="ppLProfit">Profit</i></div>
       <div class="pp-b"><b id="ppTresor">&mdash;</b><i id="ppLTresor">Paper treasury</i></div>
       <div class="pp-b"><b id="ppTaux">&mdash;</b><i id="ppLTaux">Win rate</i><small id="ppTauxSur"></small></div>
+      <!-- Le net par trade AUX FRAIS REELS, avec son erreur-type et son
+           effectif : c'est le seul chiffre qui dit si la colonie gagne, et il
+           se tait tant qu'il n'a pas les 143 trades qui le rendent jugeable. -->
+      <div class="pp-b"><b id="ppNet">&mdash;</b><i id="ppLNet">Net per trade</i><small id="ppNetSur"></small></div>
       <div class="pp-b"><b id="ppTrades">&mdash;</b><i id="ppLTrades">Closed trades</i></div>
       <div class="pp-b"><b id="ppMeilleur">&mdash;</b><i id="ppLMeilleur">Best trade</i></div>
       <div class="pp-b"><b id="ppOuvertes">&mdash;</b><i id="ppLOuvertes">Open now</i></div>
@@ -221,8 +225,11 @@ var MARQUE_PAGE = '50e89665';
         </section>
 
         <section class="pp-carte">
-          <h2 id="ppTCarnet">Last closed trades</h2>
-          <div id="ppCarnet"></div>
+          <h2 id="ppTCarnet">Closed trades</h2>
+          <p class="sur" id="ppCarnetSous">&nbsp;</p>
+          <!-- Le carnet ENTIER (200 lignes au plus), dans une boite qui defile :
+               il n'en montrait que 20 sur les 40 que le serveur servait. -->
+          <div class="pp-defile" id="ppCarnet"></div>
         </section>
 
         <section class="pp-carte">
@@ -230,6 +237,11 @@ var MARQUE_PAGE = '50e89665';
           <p class="sur" id="ppAuditSous">&nbsp;</p>
           <div id="ppAudit"></div>
           <p class="sur" id="ppHorizons">&nbsp;</p>
+          <!-- L'issue REELLE des trades, sur une ligne a part : l'audit juge
+               les ombres a 4 h fixes, les trades sortent au stop, a la cible
+               ou a 12 h. Les deux ne se melangent pas. -->
+          <h3 class="pp-sous" id="ppTIssue">What taking actually did</h3>
+          <div id="ppIssue"></div>
         </section>
 
         <!-- L'audit commun aux marches. Il vient APRES celui de ce marche-ci :
@@ -317,5 +329,5 @@ var MARQUE_PAGE = '50e89665';
 <!-- La page ne lui dit que les marches suivis ; lequel est ouvert vient de
      `?m=`, et le serveur corrige la liste des la premiere reponse. -->
 <script>window.PERP_MARCHES = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "DOGEUSDT"];</script>
-<script src="perp.js?v=ef17f7d9"></script>
+<script src="perp.js?v=7479cb5a"></script>
 </html>

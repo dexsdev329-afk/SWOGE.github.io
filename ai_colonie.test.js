@@ -236,6 +236,8 @@ function vueFausse(o) {
         essais: 20, reussites: 20, dernier: now, dernierEchec: null },
     ],
     ponts: { liste: ['USDG', 'NVDA'], vus: [{ adr: '0x' + 'd0'.repeat(20), sym: 'NVDA', ok: true, liq: 1184565, ver: 'v3', raison: null, t: now }] },
+    /* Ce que le miroir a fait des achats envoyes (27/09) : absent par defaut. */
+    suiviMiroir: o.suiviMiroir || null,
     /* Ce que le miroir a vraiment touche, a cote de ce que le papier a compte. */
     reel: o.reel || { n: 9, moyenne: -6.4, ecart: 12.8, nEcart: 7, glissement: -1.6, lignes: [
       { sym: 'JACOB', adr: '0x1', r: -4.2, papier: 39.9, glissement: -1.8, pont: false, t: now },
@@ -2240,6 +2242,72 @@ async function auditDesVetos() {
        morts.length === 0
          ? 'les trois commandes qui ne commandaient que l animation ont disparu'
          : 'il en reste : ' + morts.join(', '));
+    ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
+    await page.context().close();
+  }
+
+  /* ======================================================================
+   * RAPPORT DU 27 SEPTEMBRE 2026 : LE MIROIR QUI NE SUIT PAS, ET L AUDIT
+   * SUR 7 JOURS
+   *
+   * « 12 achats envoyes, 1 suivi » n etait ecrit nulle part. La carte du reel
+   * le dit maintenant, avec les raisons comptees par le serveur. Et chaque
+   * ligne d audit dit ses 7 derniers jours — le pourcentage seulement a
+   * partir de 40 cas, le minimum ou les decisions du serveur les lisent —
+   * et combien de ses jetons sont partis sans lecture a 30 minutes.
+   * ==================================================================== */
+  console.log('\n-- le miroir : N achats envoyes en 24 h, M suivis, et pourquoi --');
+  {
+    const SM = { envois: 12, suivis: 1, jour: { envois: 5, suivis: 1, sansDevis: 4, sansDevisSuivis: 0,
+                 raisons: { echecAchat: 4, suivi: 1 }, echecs: { aucunePlace: 4 } } };
+    let { page, boum } = await ouvre(nav, port, { vueOpts: { suiviMiroir: SM } });
+    await page.waitForTimeout(1200);
+    let t = await page.evaluate(() => ((document.querySelector('.card[data-pan="reel"]') || {}).textContent || '').replace(/\s+/g, ' '));
+    console.log('   ' + t.trim().slice(0, 200));
+    ok(/5 buys sent to the mirror in 24 h, 1 followed/.test(t), 'la carte du reel dit « 5 envoyes, 1 suivi »');
+    ok(/why not, per wallet: buy failed ×4 · no venue found ×4/.test(t), 'avec les raisons comptees par le serveur, par portefeuille');
+    ok(/4 of the 5 had no round-trip quote from the colony/.test(t), 'et combien n avaient pas de devis de la colonie');
+    ok(/The paper counts 12\.8 points more/.test(t), 'le reste de la carte est intact');
+    ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
+    await page.context().close();
+    /* Sans fermeture reelle, la ligne passe devant le texte d attente. */
+    ({ page, boum } = await ouvre(nav, port, { vueOpts: { suiviMiroir: SM, reel: { n: 0, lignes: [] } } }));
+    await page.waitForTimeout(1200);
+    t = await page.evaluate(() => ((document.querySelector('.card[data-pan="reel"]') || {}).textContent || '').replace(/\s+/g, ' '));
+    ok(/5 buys sent to the mirror in 24 h, 1 followed/.test(t) && /Nothing yet/.test(t),
+       'sans fermeture reelle, la ligne est la, et le texte d attente aussi');
+    const lignes = await page.evaluate(() => document.querySelectorAll('#reel [data-suivi]').length);
+    await page.waitForTimeout(1500);
+    ok(lignes === 1 && await page.evaluate(() => document.querySelectorAll('#reel [data-suivi]').length) === 1,
+       'et elle n est jamais ecrite deux fois, d un rafraichissement a l autre');
+    await page.context().close();
+    /* Sans envoi en 24 h, rien. */
+    ({ page } = await ouvre(nav, port, {}));
+    await page.waitForTimeout(1200);
+    t = await page.evaluate(() => ((document.querySelector('.card[data-pan="reel"]') || {}).textContent || ''));
+    ok(!/buys sent to the mirror/.test(t), 'sans envoi mesure, la carte n invente pas de ligne');
+    await page.context().close();
+  }
+
+  console.log('\n-- l audit : 7 derniers jours a cote du cumul, et les jetons sans lecture --');
+  {
+    const AUD = [
+      { cle: 'scout · pool below the buy floor', n: 27603, moyenne: 0, montes: 828, effondres: 2484, partMontes: 3,
+        n7: 1890, montes7: 57, partMontes7: 3, sansLecture: 17581, sansLecture7: 4100 },
+      { cle: 'oracle · too volatile', n: 12, moyenne: 60, montes: 4, effondres: 1, partMontes: 33,
+        n7: 12, montes7: 4, partMontes7: 33, sansLecture: 0 },
+      { cle: 'achete ou retenu', n: 278, moyenne: 19.9, montes: 73, effondres: 56, partMontes: 26, n7: 15, montes7: 9, partMontes7: 60 },
+    ];
+    const { page, boum } = await ouvre(nav, port, { vueOpts: { audit: AUD } });
+    await page.waitForTimeout(1200);
+    const t = await page.evaluate(() => ((document.querySelector('.card[data-pan="audit"]') || {}).textContent || '').replace(/\s+/g, ' '));
+    ok(/last 7 days: 1890 followed, 3% went up/.test(t), 'une ligne a 1 890 cas sur 7 jours dit son pourcentage');
+    ok(/last 7 days: 12 followed — under 40, too few to read; decisions keep the cumulative/.test(t),
+       'une ligne a 12 cas ne le dit pas, et dit pourquoi');
+    ok(/last 7 days: 15 followed — under 40/.test(t) && !/60% went up/.test(t),
+       'la reference a 15 cas sur 7 jours non plus : ses 60 % ne sont pas affiches');
+    ok(/17581 left before their 30-min reading, not counted in the share above/.test(t),
+       'et les jetons partis sans lecture a 30 min sont dits, par ligne');
     ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
     await page.context().close();
   }

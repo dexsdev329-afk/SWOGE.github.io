@@ -10,6 +10,12 @@
  *   4. la martingale/risque sont cables ; rien ne mise plus que la bankroll ;
  *   5. le cadre est honnete : « not a predictive edge », pas de « guaranteed »,
  *      protocole live NOT CONNECTED, aucun ordre/cle dans la page.
+ *   9. le score du moteur n est plus montre comme une probabilite : a sa place,
+ *      le taux MESURE de son niveau d accord, avec n, IC et verdict (rien sous
+ *      1 700 rounds), et la reference datee du rejeu du 26/09 ;
+ *  10. PancakeSwap : la vraie raison du « 0 bet » (prob x cote attendue contre
+ *      1,10) et le tableau des ombres (n, Wilson, EV ± e.-t., t, moitiés,
+ *      verdict, nombre de candidats), lisible a 320 px.
  * ==========================================================================*/
 var fs=require('fs'), path=require('path'), http=require('http');
 var SITE=__dirname; var chromium=null; try{chromium=require('playwright').chromium;}catch(e){}
@@ -42,7 +48,13 @@ var T={'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'ap
       { n:42, t:Date.now(), sens:'UP', prob:54, mise:10, ouvre:790, ferme:791, gagne:true, pl:10, solde:1030 },
       { n:41, t:Date.now()-300000, sens:'DOWN', prob:52, mise:10, ouvre:792, ferme:791, gagne:false, pl:-10, solde:1020 }
     ],
-    courbe: [1000,1010,1000,1010,1020,1030], note:'Paper only, shared, server-side.'
+    courbe: [1000,1010,1000,1010,1020,1030], note:'Paper only, shared, server-side.',
+    /* Le taux MESURÉ par niveau d'accord (serveur, parConfiance) : la page le
+       montre avec son n et son verdict, jamais un chiffre nu. */
+    parConfiance: { min:1700, pointMort:51.5, niveaux: {
+      HIGH:   { n:312, justes:150, egal:4, taux:48.1, wilson:[42.6,53.6], verdict:'not enough rounds (312/1,700)', conclut:false },
+      MEDIUM: { n:2000, justes:920, egal:9, taux:46, wilson:[43.8,48.2], verdict:'worse than a coin flip', conclut:true },
+      LOW:    { n:40, justes:21, egal:1, taux:52.5, wilson:[37.5,67.1], verdict:'not enough rounds (40/1,700)', conclut:false } } }
   };
   await page.route(/\/predict\/etat/, function(r){ r.fulfill({status:200,contentType:'application/json',body:JSON.stringify(predictEtat)}); });
   /* Étage 1 PancakeSwap : les vrais rounds + côtes, la porte EV (papier). */
@@ -52,7 +64,18 @@ var T={'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'ap
             decision:{ side:'BULL', cote:5.4, ev:1.9, prob:55, mise:0.02, wouldBet:true, raison:'EV +190% at 5.40x' } },
     banque:{ depart:1, solde:1.05, pl:0.05, roi:5, unite:'BNB', wins:3, losses:2, skips:7, mises:5, winRate:60 },
     martingale:{ on:true, facteur:2, paliers:6, palier:1, palierMax:3, busts:1, miseCourante:0.02 },
-    dernier:[], note:'Paper only.'
+    dernier:[], note:'Paper only.',
+    /* La vraie raison du « 0 bet » et les ombres (A3). */
+    inverse:true,
+    porte:{ evaluees:202, passees:0, maxProduit:1.046, requis:1.1,
+            derniere:{ epoch:517724, side:'BEAR', prob:45.2, cote:1.95, produit:0.881, requis:1.1, gaz:0.05, marge:0.05, passe:false } },
+    ombres:{ nCandidats:4, min:500, tMin:2.7, annules:1, enAttente:1,
+             regle:'One paper bet per candidate on every round. These shadows never touch the paper bank, which stays at 0 bets on purpose.',
+             candidats:[
+               { id:'moteur', nom:'Engine side', texte:'the side the indicator engine picks', n:120, gagnes:58, taux:48.3, wilson:[39.6,57.2], ev:-4.1, se:8.8, t:-0.47, moitie1:-6.2, moitie2:-2.0, verdict:{conclut:false,texte:'not judgeable yet (120/500)'} },
+               { id:'inverse', nom:'Engine inverse', texte:'the opposite side', n:120, gagnes:62, taux:51.7, wilson:[42.8,60.4], ev:-1.9, se:8.8, t:-0.22, moitie1:-1.0, moitie2:-2.8, verdict:{conclut:false,texte:'not judgeable yet (120/500)'} },
+               { id:'outsider', nom:'Visible underdog', texte:'the smaller visible pool', n:118, gagnes:55, taux:46.6, wilson:[37.9,55.5], ev:0.8, se:9.1, t:0.09, moitie1:2.0, moitie2:-0.4, verdict:{conclut:false,texte:'not judgeable yet (118/500)'} },
+               { id:'bull', nom:'Always BULL', texte:'control: no signal at all', n:120, gagnes:60, taux:50, wilson:[41.2,58.8], ev:-3.0, se:8.9, t:-0.34, moitie1:-2.2, moitie2:-3.8, verdict:{conclut:false,texte:'not judgeable yet (120/500)'} } ] }
   };
   await page.route(/\/predict\/pancake/, function(r){ r.fulfill({status:200,contentType:'application/json',body:JSON.stringify(pancakeEtat)}); });
   /* Étage 2 (vrais BNB) : on STUB la pile partagée (stakebubble/ethers/swogebuy)
@@ -113,9 +136,13 @@ var T={'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'ap
     await page.waitForFunction(function(){return document.querySelectorAll('#prRaisons div').length>=3;},null,{timeout:6000});
     var sens=await page.textContent('#prSens');
     ok(/(UP|DOWN)/.test(sens),'une prediction sort ['+sens.trim()+']');
-    ok(/%/.test(sens),'avec une probabilite');
+    /* Le score du moteur reste montré, mais nommé pour ce qu il est : le
+       26/09, 57,3 % affichés en moyenne pour 47,7 % de réussite réelle. */
+    var score=await page.textContent('#prScore');
+    ok(/\d+\.\d%/.test(score) && /not a probability/i.test(score),'avec son score, dit « not a probability » ['+score.trim()+']');
+    ok(!/%/.test(sens),'le gros titre ne porte plus de pourcentage (plus de « UP · 58.8% »)');
     ok((await page.$$('#prRaisons div')).length>=3,'et ses raisons (WHY)');
-    ok(/confidence/i.test(await page.textContent('#prConf')),'et un niveau de confiance');
+    ok(/signal agreement: (HIGH|MEDIUM|LOW)/.test(await page.textContent('#prConf')),'et un niveau d accord des signaux (l ancienne « confidence »)');
     /* Multi-horizons. */
     ok((await page.$$('#prTf span')).length>=3,'les timeframes 1m/5m/15m/1h sont montres');
     /* La proba ne pretend jamais une certitude. */
@@ -222,6 +249,47 @@ var T={'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'ap
     ok(/pause|frozen|betting is OFF/i.test(martOff),'elle est montrée gelée / en pause');
     var metaOff=await page.textContent('#pkMeta');
     ok(!/bets the opposite side/i.test(metaOff),'et le méta ne dit plus « bets the opposite side » quand on ne parie pas');
+  }
+
+  console.log('-- 9. le prédicteur : le taux MESURÉ du niveau d accord, avec n --');
+  {
+    await page.route(/\/predict\/pancake/, function(r){ r.fulfill({status:200,contentType:'application/json',body:JSON.stringify(pancakeEtat)}); });
+    await page.reload({ waitUntil:'domcontentloaded' });
+    await page.waitForFunction(function(){ return /right|not measured/.test((document.getElementById('prMesure')||{}).textContent||''); },null,{timeout:8000});
+    var niv=(await page.textContent('#prConf')).replace(/.*: /,'').trim();
+    var mes=await page.textContent('#prMesure');
+    var attendu={ HIGH:/48\.1% of 312/, MEDIUM:/46\.0% of 2,000/, LOW:/52\.5% of 40/ }[niv];
+    ok(attendu && attendu.test(mes),'le taux mesuré du niveau '+niv+' est montré avec son n ['+mes.slice(0,90)+'…]');
+    ok(/95% CI/.test(mes),'avec son intervalle de confiance');
+    ok(/not enough rounds|coin flip/.test(mes),'et son verdict, qui refuse de conclure sous 1 700 rounds');
+    ok(/Sep 10–26, 2026 replay: \d+\.\d% of [\d,]+/.test(mes),'la référence datée du rejeu est donnée à part, avec son n');
+    ok(/Break-even on PancakeSwap: 51\.5%/.test(mes),'et le point mort PancakeSwap');
+  }
+
+  console.log('-- 10. PancakeSwap : la vraie raison du « 0 bet » et le tableau des ombres --');
+  {
+    await page.waitForFunction(function(){ return /Why/.test((document.getElementById('pkPorte')||{}).textContent||''); },null,{timeout:8000});
+    var porte=await page.textContent('#pkPorte');
+    ok(/Why 0 bets/.test(porte),'la carte dit pourquoi 0 pari');
+    ok(/45\.2%/.test(porte) && /1\.95x/.test(porte) && /0\.88/.test(porte),'prob × cote attendue = produit [45.2% × 1.95x = 0.88]');
+    ok(/requires 1\.10/.test(porte) && /5% gas/.test(porte) && /5% margin/.test(porte),'contre les 1.10 exigés (1 + 5 % gaz + 5 % marge)');
+    ok(/Rounds judged: 202/.test(porte) && /passed: 0/.test(porte),'sur combien de rounds jugés, combien passés');
+    ok(/29,472/.test(porte) && /not a fault/.test(porte),'et que c est la porte qui marche, pas une panne (rejeu 29 472 rounds)');
+    var om=await page.textContent('#pkOmbres');
+    var lignes=await page.$$eval('#pkOmbres tbody tr',function(t){return t.length;});
+    eq(lignes,4,'le tableau des ombres a une ligne par candidat');
+    ok(/Engine side/.test(om) && /Engine inverse/.test(om) && /Visible underdog/.test(om) && /Always BULL/.test(om),'moteur, inverse, outsider visible, témoin BULL');
+    ok(/48\.3% \(39\.6–57\.2\)/.test(om),'le taux avec son Wilson');
+    ok(/-4\.10% ± 8\.80/.test(om),'l EV ± erreur-type');
+    ok(/-0\.47/.test(om) && /-6\.20 \/ -2\.00/.test(om),'t et les deux moitiés');
+    ok(/not judgeable yet \(120\/500\)/.test(om),'le verdict refuse de conclure sous 500');
+    ok(/4 candidates watched at once/.test(om),'le nombre de candidats est dit');
+    ok(/0 bets on purpose/.test(om),'et la caisse papier reste à 0 exprès');
+    /* 320 px : le tableau défile dans sa boîte, pas la page. */
+    await page.setViewportSize({width:320,height:900});
+    var deborde=await page.evaluate(function(){ return document.documentElement.scrollWidth>document.documentElement.clientWidth+1; });
+    ok(!deborde,'à 320 px, la page ne défile pas de côté (le tableau défile dans sa boîte)');
+    await page.setViewportSize({width:1200,height:1200});
   }
 
   await nav.close(); await new Promise(function(s){srv.close(s);});

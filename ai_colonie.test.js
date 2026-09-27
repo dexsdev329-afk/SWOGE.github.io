@@ -689,6 +689,31 @@ async function panneaux() {
      'GMGN est NOMME avec la raison mesuree, plutot que passe sous silence');
   ok(/on ethereum too/.test(v.services),
      'et la raison distingue « protection anti-robot » de « ne connait pas la chaine 4663 »');
+
+  /* La licence de l'API GoPlus (relue le 26 septembre 2026) : les controles de
+     securite de la colonie en viennent, la page dit « Powered by Go+ Security »
+     avec un lien — a cote du service, et sous le pied, dans les deux langues. */
+  console.log('\n-- « Powered by Go+ Security », la ou la page montre ce que GoPlus a lu --');
+  const gpl = await page.evaluate(() => {
+    const l = (a) => (a ? { t: a.textContent, h: a.getAttribute('href'), rel: a.rel, c: a.target } : null);
+    return { ligne: [...document.querySelectorAll('#services .srv')].filter((e) => /GoPlus/.test(e.textContent)).map((e) => l(e.querySelector('a'))),
+             pied: l(document.querySelector('#goplusAttrib a')), piedTxt: (document.getElementById('goplusAttrib') || {}).textContent || '' };
+  });
+  const bon = (a) => !!a && a.t === 'Powered by Go+ Security' && a.h === 'https://gopluslabs.io' && /noopener/.test(a.rel) && a.c === '_blank';
+  ok(gpl.ligne.length === 1 && bon(gpl.ligne[0]), 'le service GoPlus porte le lien « Powered by Go+ Security » (noopener, nouvel onglet) ' + JSON.stringify(gpl.ligne));
+  ok(bon(gpl.pied) && /^Contract safety checks/.test(gpl.piedTxt), 'et la page le dit sous son pied : « ' + gpl.piedTxt + ' »');
+  await page.evaluate(() => poseLangue('fr'));
+  const fr = await page.evaluate(() => ({ t: document.getElementById('goplusAttrib').textContent, a: document.querySelector('#goplusAttrib a').getAttribute('href') }));
+  ok(/^Contrôles de sécurité des contrats/.test(fr.t) && /Powered by Go\+ Security$/.test(fr.t) && fr.a === 'https://gopluslabs.io',
+     'en francais aussi, la clause restant la leur (« Powered by Go+ Security ») : « ' + fr.t + ' »');
+  await page.evaluate(() => poseLangue('en'));
+  {
+    /* Les phrases vivent dans PHRASES, en deux langues, jamais en dur dans le peintre. */
+    const src = require('fs').readFileSync(require('path').join(__dirname, 'swoge_ai.html'), 'utf8');
+    const d0 = src.indexOf('const PHRASES = {'), d1 = src.indexOf('\n};', d0);
+    const compte = (t) => t.split('Powered by Go+ Security').length - 1;
+    ok(compte(src) >= 4 && compte(src) === compte(src.slice(d0, d1)), 'la mention n existe que dans la table ph() (' + compte(src) + ' fois, toutes dedans)');
+  }
   ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
   await page.context().close();
 }

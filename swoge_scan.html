@@ -118,6 +118,7 @@ video{ max-width:100%; }
       background:#FDECEC;border:1px solid #F6C9C6;color:#B3261E;
       font:700 12px/1 'Outfit',system-ui,sans-serif}
   .mf i{font-style:normal;font:600 9.5px/1 'JetBrains Mono',ui-monospace,monospace;opacity:.7}
+  .mf i a{color:inherit}
   .mc-rien{padding:14px 2px;color:#8A99B5;font:500 13px/1.5 'Outfit',system-ui,sans-serif}
   .mc-part{display:flex;align-items:center;gap:12px;margin-top:12px;flex-wrap:wrap}
   #mcCarte{border:0;border-radius:11px;padding:11px 16px;cursor:pointer;background:#1B5FE0;color:#fff;
@@ -1025,6 +1026,21 @@ function serveurColonie(){
  */
 let MESURE_DERNIERE = null;
 
+/* ---- CE QUE LA PAGE MONTRE DES CASES : L'ANGLAIS DU SERVEUR, JAMAIS LES CLES ----
+ * Le scan porte les cases sous leurs cles de memoire (« octEmit » /
+ * « code : sans emission ») ; le serveur y ajoute `lines` (carte_scan.avecLiens) :
+ * les memes lignes que sa carte PNG — en anglais, sans case intraduisible, une
+ * ligne par mesure. Sur LOBSTER (releve du 26 septembre 2026), la carte copiee
+ * ici portait « OCTEMIT / code : sans emission » et quatre lignes du bytecode a
+ * +16,9 % sur 2 395 a 2 398 observations : une seule mesure lue quatre fois.
+ * Un serveur sans `lines` : seulement les cases qui ont leur phrase (`label`),
+ * jamais la cle brute. */
+function lignesAnglaises(r){
+  if(r && Array.isArray(r.lines)) return r.lines.filter(x => x && x.label && x.traitLabel);
+  const vues = new Set();
+  return ((r && r.cases) || []).filter(c => c && c.label && c.traitLabel && !vues.has(c.label) && vues.add(c.label));
+}
+
 function carteDessine(){
   const d = MESURE_DERNIERE;
   if(!d) return null;
@@ -1050,19 +1066,26 @@ function carteDessine(){
   for(const f of (d.faits || []).slice(0, 2)){
     g.fillStyle = "#3A1418"; g.fillRect(56, y - 24, L - 112, 38);
     P("!  " + f.quoi, 74, y + 2, "700 18px Outfit, system-ui, sans-serif", "#FF9A94");
-    P(f.source, L - 74, y + 2, "600 13px 'JetBrains Mono', ui-monospace, monospace", "#B8746F", "right");
+    /* GoPlus : la mention de sa licence, en toutes lettres (une image ne porte pas de lien). */
+    P(f.source === "GoPlus" ? "Powered by Go+ Security" : f.source, L - 74, y + 2, "600 13px 'JetBrains Mono', ui-monospace, monospace", "#B8746F", "right");
     y += 48;
   }
 
-  const cases = (d.cases || []).slice(0, 5);
+  const cases = lignesAnglaises(d).slice(0, 5);
   if(!cases.length){
-    P("Not enough measured on tokens like this one yet.", 56, y + 28,
+    /* Des cases brutes sans phrase anglaise : on ne dit pas « rien de mesure ». */
+    P((d.cases || []).length ? "Measurements could not be shown right now." : "Not enough measured on tokens like this one yet.", 56, y + 28,
       "600 22px Outfit, system-ui, sans-serif", "#8FA6C9");
   }
   for(const x of cases){
     const pos = x.moyenne > 0;
-    P(String(x.case).slice(0, 44), 56, y + 8, "700 22px Outfit, system-ui, sans-serif", "#E8F0FF");
-    P(String(x.trait).toUpperCase(), 56, y - 14, "700 12px Inter, system-ui, sans-serif", "#6C86B2");
+    /* Coupee a la largeur (760 px, comme la carte du serveur), pas au nombre de lettres. */
+    const FL = "700 22px Outfit, system-ui, sans-serif";
+    g.font = FL;
+    let lb = String(x.label);
+    if(g.measureText(lb).width > 760){ while(lb.length > 1 && g.measureText(lb + "…").width > 760) lb = lb.slice(0, -1); lb += "…"; }
+    P(lb, 56, y + 8, FL, "#E8F0FF");
+    P(String(x.traitLabel).toUpperCase(), 56, y - 14, "700 12px Inter, system-ui, sans-serif", "#6C86B2");
     P((pos ? "+" : "") + x.moyenne + "%", L - 150, y + 8, "800 30px Outfit, system-ui, sans-serif",
       pos ? "#5BD99A" : "#FF7B72", "right");
     /* L'effectif, TOUJOURS. Sans lui le chiffre ment. */
@@ -1132,19 +1155,27 @@ async function mesure(token){
     + "Cells the colony has measured on this kind of token — not an opinion, and never a buy signal. "
     + "A cell with fewer than " + (m.minObs||8) + " observations is not shown at all.";
 
-  /* Les faits du contrat : ils n'ont pas besoin d'une moyenne. */
+  /* Les faits du contrat : ils n'ont pas besoin d'une moyenne. Un fait lu chez
+     GoPlus porte la mention que leur licence demande (relue le 26 septembre
+     2026) : « Powered by Go+ Security », avec un lien ecrit ici, jamais pris
+     dans la reponse. */
   $("#mesureFaits").innerHTML = (r.faits||[]).map(f =>
-    '<span class="mf">' + ech(f.quoi) + ' <i>' + ech(f.source) + '</i></span>').join("");
+    '<span class="mf">' + ech(f.quoi) + ' <i>' + (f.source === "GoPlus"
+      ? '<a href="https://gopluslabs.io" target="_blank" rel="noopener"><img src="img/site/goplus_powered_by.png" alt="" width="108" height="20" style="height:20px;width:auto;vertical-align:middle;margin-right:6px;border-radius:4px">Powered by Go+ Security</a>'
+      : ech(f.source)) + '</i></span>').join("");
 
-  const cases = r.cases || [];
+  /* Les memes lignes que la carte (lignesAnglaises) : jamais la cle brute. */
+  const cases = lignesAnglaises(r);
   if(!cases.length){
-    $("#mesureCases").innerHTML = '<div class="mc-rien">The colony has not measured enough on '
-      + 'tokens like this one yet. Nothing shown rather than something invented.</div>';
+    $("#mesureCases").innerHTML = (r.cases || []).length
+      ? '<div class="mc-rien">The measurements could not be shown right now. Try again in a minute.</div>'
+      : '<div class="mc-rien">The colony has not measured enough on '
+        + 'tokens like this one yet. Nothing shown rather than something invented.</div>';
   }else{
     $("#mesureCases").innerHTML = cases.slice(0, 12).map(c => {
       const cl = c.moyenne > 0 ? "mc-up" : c.moyenne < 0 ? "mc-dn" : "";
       const sg = c.moyenne > 0 ? "+" : "";
-      return '<div class="mc-l"><span class="mc-q"><b>' + ech(c.trait) + '</b>' + ech(c.case) + '</span>'
+      return '<div class="mc-l"><span class="mc-q"><b>' + ech(c.traitLabel) + '</b>' + ech(c.label) + '</span>'
         + '<span class="mc-v ' + cl + '">' + sg + c.moyenne + '%</span>'
         + '<span class="mc-n">n=' + c.n + '</span></div>';
     }).join("");

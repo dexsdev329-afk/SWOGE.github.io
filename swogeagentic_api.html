@@ -722,7 +722,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   <p>Pay-per-call tools for AI agents: token scans with what the <a href="swoge_ai.html">SWOGE AI colony</a> measured, the colony's newest launches and live activity, wallet and infrastructure OSINT, the $SWOGE economy, web search, image generation and a full research agent. Use them over REST or <b>MCP</b> (Claude Desktop, Claude Code, Cursor, any MCP client). For agents: <a href="llms.txt">llms.txt</a>.</p>
   <div class="cartes">
     <div class="carte-doc"><b>&#128274; Read-only</b><span class="dim">No tool buys, sells, signs or posts. A leaked key can only spend its daily cap on reads.</span></div>
-    <div class="carte-doc"><b>&#129534; Quote first</b><span class="dim">Every tool takes <code>quote: true</code>: the price, nothing charged. Paid calls return the exact amount and a receipt.</span></div>
+    <div class="carte-doc"><b>&#129534; Quote first</b><span class="dim">Every tool takes <code>quote: true</code>: the price, nothing charged — <b>no key needed</b>. Paid calls return the exact amount and a receipt.</span></div>
     <div class="carte-doc"><b>&#128184; Paid in $SWOGE</b><span class="dim">From your SWOGE balance, within a daily cap per key. Refused calls are never billed.</span></div>
   </div>
 
@@ -737,22 +737,35 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 
   <h2>3. REST</h2>
   <pre id="exRest"></pre>
+  <!-- 26 septembre 2026 : le devis se demande SANS cle (REST et MCP) ; sans cle, un
+       appel repond 401 avec la marche a suivre (howToPay). Voir agentic.js. -->
+  <p id="devisDoc"><b>A quote needs no key.</b> <code>"quote": true</code> in the body (or <code>?quote=1</code>) answers <code>{"ok": true, "quote": true, "tool", "priceUsd", "devis", "howToPay"}</code> — the price with an API key, nothing run, nothing charged — plus, for tools payable without an account, <code>x402</code>: the same payment requirements a <code>402</code> would carry, ready to sign. Up to 60 free quotes per minute per IP. Called without a key and without <code>quote</code>, a tool answers <code>401</code> with <code>howToPay</code>: how to get a key, or how to pay that call with x402.</p>
   <p>A paid call answers:</p>
   <pre>{
   "ok": true,
   "outil": "scan_token",
-  "resultat": { "token": { "sym": "PEPE", "liqUsd": 31995193, "alertes": ["Pausable"], … }, "sources": [ … ] },
-  "texte": "Token 0x6982…: Market (DexScreener, deepest of 30 pools) …",
+  "resultat": { "token": { "sym": "PEPE", "liqUsd": 31995193, "alertes": ["Pausable"], … }, "sources": [ … ],
+                "attribution": { "security": "Powered by Go+ Security", "url": "https://gopluslabs.io" } },
+  "texte": "Token 0x6982…: Market (DexScreener, deepest of 30 pools) … Contract security data: Powered by Go+ Security (https://gopluslabs.io) …",
   "facture": { "swoge": "357.01535", "usd": 0.01 },
   "solde": "199642.98465",
   "recu": "9f2c1a7e44b0d3a8"
 }</pre>
   <p><code>facture.swoge</code> is a string on purpose: it is exactly what was debited, to the wei.</p>
+  <!-- La licence de l'API GoPlus (relue le 26 septembre 2026) demande la mention
+       « Powered by Go+ Security » avec un lien : dite ici, et portee par chaque
+       resultat de scan_token et de new_launches (champ attribution ; les refus du
+       Warden de new_launches sont des phrases GoPlus). Pas de logo, par decision du
+       proprietaire, alors que la clause 5 de la licence (« Display of GoPlus Logo »)
+       EXIGE le logo GoPlus avec « Powered by GoPlus » : question ouverte, posee a
+       GoPlus (EXPLOITATION.md du serveur, 26 septembre 2026). -->
+  <p id="goplusDoc">The contract security part of <code>scan_token</code> (honeypot, taxes, owner powers, holders) comes from GoPlus: <a href="https://gopluslabs.io" target="_blank" rel="noopener"><img src="img/site/goplus_powered_by.png" alt="" width="108" height="20" style="height:20px;width:auto;vertical-align:middle;margin-right:6px;border-radius:4px">Powered by Go+ Security</a>. So do the contract safety verdicts in <code>new_launches</code> (why the colony did not buy a token: honeypot, cannot buy, sell tax…). Every result of both tools carries it in <code>resultat.attribution</code> and in <code>texte</code> — keep that mention with the data wherever you show it.</p>
 
   <h2>4. MCP</h2>
   <p>Streamable HTTP endpoint <code id="urlMcp"></code>. It speaks protocol <b>2026-07-28</b> (per-request <code>_meta</code>, <code>server/discover</code>) and <b>2025-11-25 / 2025-06-18 / 2025-03-26</b> through <code>initialize</code>.</p>
   <pre id="exMcp"></pre>
   <p class="dim">Clients that cannot send headers can use <code>/mcp/k/&lt;key&gt;</code> — prefer the header: a URL can end up in HTTP logs. The daily cap bounds what a leak can cost.</p>
+  <p>No key yet? <code>tools/list</code> works, and any <code>tools/call</code> with <code>"quote": true</code> in its arguments returns the price (<code>structuredContent</code>: the same quote as REST). A call without a key returns <code>isError: true</code> with how to pay: an API key, or — when x402 is on (section 5) — a per-call payment over REST at <code id="urlCallMcp"></code>.</p>
 
   <section id="x402Doc" hidden>
   <h2>5. No account? Pay per call with x402</h2>
@@ -768,6 +781,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     <li>Paying in $SWOGE without a Permit2 allowance yet: add the <code>eip2612GasSponsoring</code> extension, a <code>permit</code> to Permit2 whose value is <b>the exact amount</b>.</li>
     <li>If the tool fails, your signature is never submitted. If the settlement fails, the result is withheld and nothing is charged.</li>
     <li><code>generate_image</code> can be paid this way too: the <code>402</code> quotes a fixed price for <b>that exact request</b> (provider, quality, count) — retry with the same arguments. <code>ask_agent</code> and <code>generate_video</code> are billed at their real cost, so they need an API key.</li>
+    <li>A free quote (<code>"quote": true</code>, no key) returns the same <code>accepts</code> as the <code>402</code>: sign one of them and call with <code>PAYMENT-SIGNATURE</code> within two minutes.</li>
     <li>Live prices and status: <code id="x402Etat"></code></li>
   </ul>
   </section>
@@ -775,10 +789,10 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   <h2>6. Errors</h2>
   <table><thead><tr><th>Status</th><th>Meaning</th><th>Billed?</th></tr></thead><tbody>
     <tr><td><code>400</code></td><td>Bad input (address format, empty query, unsupported target)</td><td>No</td></tr>
-    <tr><td><code>401</code></td><td>Missing or revoked key</td><td>No</td></tr>
+    <tr><td><code>401</code></td><td>No key — the answer's <code>howToPay</code> says how to get one, or how to pay that call with x402 — or an invalid or revoked key</td><td>No</td></tr>
     <tr><td><code>402</code></td><td>Balance too low, or the key's daily cap would be exceeded — or, without a key, the x402 payment to sign</td><td>No</td></tr>
     <tr><td><code>404</code></td><td>Unknown tool</td><td>No</td></tr>
-    <tr><td><code>429</code></td><td>More than 60 calls per minute on one key</td><td>No</td></tr>
+    <tr><td><code>429</code></td><td>More than 60 calls per minute on one key, or more than 60 free quotes per minute from one IP</td><td>No</td></tr>
     <tr><td><code>502</code> / <code>503</code></td><td>The tool or a provider failed / the service is unavailable</td><td>No — everything reserved is refunded</td></tr>
   </tbody></table>
   <p class="dim">Over MCP, a tool failure comes back as a result with <code>isError: true</code> so the model can read it and correct itself; an unknown tool is JSON-RPC error <code>-32602</code>.</p>
@@ -802,7 +816,8 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   $("urlCat").textContent = api + "/agentic/tools";
   $("urlOpenapi").textContent = api + "/openapi.json";
   $("urlMcp").textContent = api + "/mcp";
-  $("exRest").textContent = "# 1. the catalogue (public)\ncurl -s " + api + "/agentic/tools\n\n# 2. the price of a call (free)\ncurl -s -X POST " + api + "/agentic/call/scan_token \\\n  -H \"Authorization: Bearer swg_YOUR_KEY\" -H \"content-type: application/json\" \\\n  -d '{\"arguments\":{\"address\":\"0x6982508145454ce325ddbe47a25d4ec3d2311933\"},\"quote\":true}'\n\n# 3. the call itself\ncurl -s -X POST " + api + "/agentic/call/scan_token \\\n  -H \"Authorization: Bearer swg_YOUR_KEY\" -H \"content-type: application/json\" \\\n  -d '{\"arguments\":{\"address\":\"0x6982508145454ce325ddbe47a25d4ec3d2311933\"}}'";
+  $("urlCallMcp").textContent = "POST " + api + "/agentic/call/<tool>";
+  $("exRest").textContent = "# 1. the catalogue (public)\ncurl -s " + api + "/agentic/tools\n\n# 2. the price of a call (free, no key needed)\ncurl -s -X POST " + api + "/agentic/call/scan_token \\\n  -H \"content-type: application/json\" \\\n  -d '{\"arguments\":{\"address\":\"0x6982508145454ce325ddbe47a25d4ec3d2311933\"},\"quote\":true}'\n\n# 3. the call itself\ncurl -s -X POST " + api + "/agentic/call/scan_token \\\n  -H \"Authorization: Bearer swg_YOUR_KEY\" -H \"content-type: application/json\" \\\n  -d '{\"arguments\":{\"address\":\"0x6982508145454ce325ddbe47a25d4ec3d2311933\"}}'";
   $("exMcp").textContent = "# Claude Code\nclaude mcp add --transport http swogeagentic " + api + "/mcp \\\n  --header \"Authorization: Bearer swg_YOUR_KEY\"\n\n// Cursor (~/.cursor/mcp.json) or .mcp.json\n" + JSON.stringify({ mcpServers: { swogeagentic: { url: api + "/mcp", headers: { Authorization: "Bearer swg_YOUR_KEY" } } } }, null, 2);
   function cellule(t){ var td = document.createElement("td"); td.textContent = t; return td; }
   fetch(api + "/agentic/tools", { cache: "no-store" }).then(function(r){ return r.json(); }).then(function(c){

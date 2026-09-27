@@ -40,7 +40,7 @@
  * une fois par session pour savoir si le serveur en a une plus recente.
  * Sans ca, un joueur garde des semaines une version corrigee depuis
  * longtemps — et ici, cela voudrait dire un agent qui a cesse d'apprendre. */
-var MARQUE_PAGE = '0d24239b';
+var MARQUE_PAGE = '7a8bf141';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -452,6 +452,9 @@ var MARQUE_PAGE = '0d24239b';
   .srv .nm em{display:block;font-style:normal;font-size:10px;color:var(--ink-faint)}
   .srv .n{font-family:"JetBrains Mono",monospace;font-size:10.5px;white-space:nowrap}
   .srv .n.ko{color:var(--loss)}
+  /* La mention que demande la licence GoPlus (texte dans la table ph). */
+  .srv .nm em a,#goplusAttrib a{color:inherit;text-decoration:underline}
+  #goplusAttrib{padding-top:0}
   .horsservice{margin-top:8px;padding-top:8px;border-top:1px dashed rgba(11,27,54,.08);
                font-size:11px;color:var(--ink-faint);line-height:1.5}
   .horsservice b{color:var(--ink)}
@@ -1107,6 +1110,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       </div>
 
       <div class="foot" id="foot" data-t="pied"><b>What is real:</b> the tokens, the pools, the prices, the contract safety checks, the holder concentration and the age all come from GeckoTerminal, GoPlus, DexScreener and the blocks of chain 4663 themselves. <b>What is not:</b> no transaction is signed. A position opens at the real price of the moment and closes at the real price of a later reading — that is paper, not execution, and a real buy would also pay gas and slippage. <b>Only pairs quoted in ETH:</b> the colony refuses tokens quoted in tokenised stocks, gold or stablecoins — a real order could not follow those without a second hop, and paper gains on them would not be a record. <b>It runs on the server, continuously:</b> the colony does not stop when you close the tab, and everyone sees the same state. This page computes nothing: it asks, and it shows. <b>The agents change their own structure:</b> they reorder their checks on the rejection rates they measured, and an agent whose bucket predicts nothing spawns a specialist that cross-checks it — removed if it does no better. What they cannot change: the safety checks and the stake limits, which live in the code. A system that can learn to lower its own guard always learns it, exactly once. <b>When a reading fails, it is written</b> — and nothing is invented to fill the gap. NFA.</div>
+      <div class="foot" id="goplusAttrib"></div>
     </aside>
   </div>
       </div>
@@ -1652,6 +1656,23 @@ const PHRASES = {
                  (n, l) => n + ' sortie(s) en attente de jugement : ' + l
                       + ' — on revient voir a l\'echeance ce que garder aurait donne'],
   examens:      [(n) => n + ' look' + (n > 1 ? 's' : ''), (n) => n + ' examen' + (n > 1 ? 's' : '')],
+
+  /* --- la mention que demande la licence de l'API GoPlus (relue le 26 septembre 2026) ---
+     « Except for personal usage, Your Application should source attribution
+     via a backlink or a mention that Your Application is “Powered by Go+
+     Security”. » Les contrôles de
+     sécurité (honeypot, taxes, pouvoirs, porteurs) de la colonie en viennent.
+     Les mots de la clause restent les leurs dans les deux langues ; le lien est
+     écrit ici, jamais pris dans une réponse. Pas de logo, par décision du
+     propriétaire, alors que la clause 5 de la licence (« Display of GoPlus
+     Logo ») EXIGE le logo GoPlus avec « Powered by GoPlus » : question ouverte,
+     posée à GoPlus (EXPLOITATION.md du serveur, 26 septembre 2026). */
+  goplusLien:   ['<a href="https://gopluslabs.io" target="_blank" rel="noopener"><img src="img/site/goplus_powered_by.png" alt="" width="108" height="20" style="height:20px;width:auto;vertical-align:middle;margin-right:6px;border-radius:4px">Powered by Go+ Security</a>',
+                 '<a href="https://gopluslabs.io" target="_blank" rel="noopener"><img src="img/site/goplus_powered_by.png" alt="" width="108" height="20" style="height:20px;width:auto;vertical-align:middle;margin-right:6px;border-radius:4px">Powered by Go+ Security</a>'],
+  goplusAttrib: ['Contract safety checks (honeypot, taxes, owner powers, holders): '
+                      + '<a href="https://gopluslabs.io" target="_blank" rel="noopener"><img src="img/site/goplus_powered_by.png" alt="" width="108" height="20" style="height:20px;width:auto;vertical-align:middle;margin-right:6px;border-radius:4px">Powered by Go+ Security</a>',
+                 'Contrôles de sécurité des contrats (honeypot, taxes, pouvoirs du propriétaire, porteurs) : '
+                      + '<a href="https://gopluslabs.io" target="_blank" rel="noopener"><img src="img/site/goplus_powered_by.png" alt="" width="108" height="20" style="height:20px;width:auto;vertical-align:middle;margin-right:6px;border-radius:4px">Powered by Go+ Security</a>'],
 
   /* --- les traits, l'audit, les services --- */
   traitsN:      [(n, j) => n + ' traits · ' + j + ' readings', (n, j) => n + ' traits · ' + j + ' relevés'],
@@ -2927,7 +2948,7 @@ function peintServices(){
     const jamais = !s.essais;
     const ko = s.essais && s.reussites < s.essais;
     return `<div class="srv">
-      <span class="nm">${echappe(s.nom)}<em>${echappe(s.quoi)}</em></span>
+      <span class="nm">${echappe(s.nom)}<em>${echappe(s.quoi)}${s.cle === "goplus" ? " · " + ph("goplusLien") : ""}</em></span>
       <span class="n ${ko?"ko":""}">${jamais ? echappe(ph("pasEncore")) : s.reussites+"/"+s.essais}</span>
     </div>` + (s.dernierEchec ? `<div class="mini" style="color:var(--loss);margin:-2px 0 4px 0">${echappe(ph("dernierEchec", s.dernierEchec))}</div>` : "");
   }).join("");
@@ -3294,6 +3315,12 @@ function releveAnglais(){
     if(!(e.dataset.t in EN)) EN[e.dataset.t] = e.innerHTML;
   });
 }
+/* La mention GoPlus sous le pied : une phrase de `ph()`, repeinte a chaque
+   changement de langue (poseLangue est aussi appele au depart). */
+function peintAttribution(){
+  const e = document.getElementById("goplusAttrib");
+  if(e) e.innerHTML = ph("goplusAttrib");
+}
 function poseLangue(l){
   LANGUE = (l === "fr") ? "fr" : "en";
   try{ localStorage.setItem(CLE_LANGUE, LANGUE); }catch(e){}
@@ -3307,6 +3334,7 @@ function poseLangue(l){
      un bouton qui affiche sa destination se lit a l'envers une fois sur deux. */
   if(b){ b.textContent = LANGUE === "fr" ? "🇫🇷" : "🇬🇧"; b.title = LANGUE === "fr" ? "English" : "Français"; }
   document.documentElement.lang = LANGUE;
+  peintAttribution();
 }
 (function(){
   releveAnglais();

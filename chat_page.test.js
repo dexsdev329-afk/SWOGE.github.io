@@ -439,8 +439,22 @@ const sse = (evs) => evs.map(([t, d]) => 'event: ' + t + '\ndata: ' + JSON.strin
     ok(/48,213 observations/.test(cartes[1]) && /deployeur = 4\+ → -43\.7% avg over 642 obs/.test(cartes[1]) && /liq = <5k → \+18\.2% avg over 12 obs \(too few to conclude\)/.test(cartes[1]),
        'la colonie : chaque case avec son effectif, « too few to conclude » sous le seuil');
     ok(cartes.every((c) => /never a buy signal/.test(c)), 'chaque carte dit que ce n est jamais un signal d achat');
-    ok(!(await page.evaluate(() => window.pirate)) && (await page.$('.jeton img')) === null, 'un symbole de jeton ne peut pas injecter de HTML');
-    eq(await page.$$eval('.jeton a', (l) => l.map((a) => a.getAttribute('href')).join(' ')), PEPE.url + ' ' + RH.colonie.scan, 'liens https seulement : le javascript: d un service ne devient jamais un lien');
+    /* Seule image permise dans une carte : NOTRE copie du badge GoPlus, dans le lien gopluslabs.io
+       (clause 5 de leur licence). Toute autre image viendrait d'un symbole injecte. */
+    const imgs = await page.$$eval('.jeton img', (l) => l.map((i) => ({ src: i.getAttribute('src'), lien: i.parentElement && i.parentElement.getAttribute('href') })));
+    ok(!(await page.evaluate(() => window.pirate)) && imgs.every((i) => i.src === 'img/site/goplus_powered_by.png' && i.lien === 'https://gopluslabs.io'),
+       'un symbole de jeton ne peut pas injecter de HTML (seule image : notre badge GoPlus) ' + JSON.stringify(imgs));
+    /* Les liens venus du serveur : https seulement. Le lien GoPlus, lui, est ecrit par la page (licence, ci-dessous). */
+    const hrefs = await page.$$eval('.jeton a', (l) => l.map((a) => a.getAttribute('href')));
+    eq(hrefs.filter((h) => h !== 'https://gopluslabs.io').join(' '), PEPE.url + ' ' + RH.colonie.scan, 'liens https seulement : le javascript: d un service ne devient jamais un lien');
+    ok(hrefs.every((h) => /^https:\/\//.test(h)), 'aucun lien qui ne soit pas https');
+    /* La licence de l'API GoPlus (relue le 26 septembre 2026) : « Powered by Go+ Security »
+       avec un lien, sur chaque carte ou GoPlus a repondu (fiche lue, ou « pas encore de fiche »). */
+    const gp = await page.$$eval('.msg.ia .jeton', (l) => l.map((c) => [...c.querySelectorAll('a')].filter((a) => a.getAttribute('href') === 'https://gopluslabs.io')
+      .map((a) => ({ t: a.textContent, rel: a.rel, c: a.target, b: !!a.querySelector('img[src="img/site/goplus_powered_by.png"]') }))));
+    ok(gp.length === 2 && gp.every((x) => x.length === 1 && x[0].t === 'Powered by Go+ Security' && /noopener/.test(x[0].rel) && x[0].c === '_blank' && x[0].b),
+       'chaque carte ou GoPlus a repondu porte « Powered by Go+ Security » et leur badge officiel (clause 5 : le logo), lien vers gopluslabs.io (noopener, nouvel onglet) ' + JSON.stringify(gp));
+    ok(await page.$$eval('.msg.ia .jeton a[href="https://gopluslabs.io"] img', (l) => l.length > 0 && l.every((i) => i.complete && i.naturalWidth > 0)), 'le badge GoPlus se charge (copie servie par le site, jamais leur serveur)');
     const larg = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     ok(larg <= 1, 'a 360 px la carte ne deborde pas [' + larg + ']');
     await page.reload({ waitUntil:'domcontentloaded' });

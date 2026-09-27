@@ -14,6 +14,9 @@
  *   - l ancienne adresse marche toujours, ET emporte le parametre ;
  *   - la carte partageable existe, au format que X attend, et chaque chiffre
  *     y part AVEC son effectif ;
+ *   - la carte et la liste parlent ANGLAIS, une ligne par mesure : jamais la
+ *     cle brute (« OCTEMIT ») ni la phrase francaise (« code : sans emission »),
+ *     jamais quatre fois la meme mesure du bytecode (LOBSTER, 26 septembre 2026) ;
  *   - et nulle part la page ne rend un verdict.
  * ==========================================================================*/
 const fs = require('fs');
@@ -30,15 +33,38 @@ const eq = (a, b, m) => ok(a === b, m + ' [' + JSON.stringify(a) + ']');
 const T = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json',
             '.jpg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp', '.ico': 'image/x-icon' };
 
+/* Le scan de LOBSTER tel que le SERVEUR le rend (route /scan, carte_scan.avecLiens) :
+   les 9 premieres cases du releve du 26 septembre 2026, sous leurs cles de memoire
+   (quatre du bytecode, en francais, a +16,9 %), chacune avec sa phrase anglaise, et
+   `lines` — ce que la page doit montrer. Le serveur a cote : l essai verifie que
+   cette copie est bien sa sortie. */
+const BRUTES = [['octEmit', 'code : sans emission', 2395, 16.9, 'bytecode: no mint', 'Contract bytecode'],
+  ['octListe', 'code : sans liste noire', 2398, 16.9, 'bytecode: no blacklist', 'Contract bytecode'],
+  ['octPause', 'code : sans pause', 2396, 16.9, 'bytecode: no pause', 'Contract bytecode'],
+  ['octFrais', 'code : frais fixes', 2398, 16.9, 'bytecode: no fee setter', 'Contract bytecode'],
+  ['social', '3+ reseaux', 1087, 16.5, '3+ socials', 'Social links'], ['pad', 'not from a launchpad', 52584, 5.5, 'not from a launchpad', 'Launchpad'],
+  ['padDep', 'no launchpad record', 57003, 4.5, 'no launchpad record', 'Launcher history'], ['mc', 'mc <10k', 32821, -4.3, 'cap <$10k', 'Market cap'],
+  ['origine', 'trouve par pools', 51335, 3.7, 'found via pools', 'How the colony found it']];
+const LIGNES = [['Contract bytecode', 'bytecode: no mint, no blacklist, no pause, no fee setter', 2395, 16.9], ['Social links', '3+ socials', 1087, 16.5],
+  ['Launchpad', 'not from a launchpad', 52584, 5.5], ['Launcher history', 'no launchpad record', 57003, 4.5], ['Market cap', 'cap <$10k', 32821, -4.3],
+  ['How the colony found it', 'found via pools', 51335, 3.7]].map(([traitLabel, label, n, moyenne]) => ({ traitLabel, label, n, moyenne }));
 const SCAN = {
   jeton: { adr: '0x254afb9fd36789bea39fb5656ba6fdb827be8dc5', sym: 'LOBSTER', nom: 'Lobster' },
   lanceur: { source: 'pons', lancements: 4 },
   faits: [{ quoi: 'the contract can mint more tokens', source: 'GoPlus' }],
-  cases: [{ trait: 'padDep', case: 'launcher: 4+ launches', n: 642, moyenne: -43.7 },
-          { trait: 'liq', case: 'liq 5-25k', n: 3120, moyenne: -6.2 },
-          { trait: 'social', case: '2 links', n: 880, moyenne: 4.1 }],
-  mesureSur: { observations: 42368, tours: 11354, minObs: 8, echeance: 30 },
+  cases: BRUTES.map(([trait, c, n, moyenne, label, traitLabel]) => ({ trait, case: c, n, moyenne, label, traitLabel })),
+  lines: LIGNES,
+  mesureSur: { observations: 147292, tours: 14949, minObs: 6, echeance: 30 },
 };
+/* Un serveur plus ancien : les cases brutes, ni phrase ni `lines`. */
+const SCAN_ANCIEN = Object.assign({}, SCAN, { cases: BRUTES.map(([trait, c, n, moyenne]) => ({ trait, case: c, n, moyenne })), lines: undefined });
+/* Ce que la page ne doit JAMAIS ecrire : une cle brute, une phrase francaise. */
+const CLES = BRUTES.map((b) => b[0]);
+const FRANCAIS = /code : |reseaux|emission|liste noire|frais fixes|trouve par|sans pause/i;
+/* Une cle brute : la ligne entiere est une cle (« OCTEMIT », « SOCIAL »), ou une cle qui
+   n est pas un mot anglais apparait ou que ce soit (octEmit, padDep, origine). */
+const ANGLAIS = ['social', 'pad', 'mc'];
+const brute = (t) => CLES.some((k) => String(t).trim().toLowerCase() === k.toLowerCase() || (!ANGLAIS.includes(k) && new RegExp('\\b' + k + '\\b', 'i').test(t)));
 
 (async () => {
   if (!chromium) { console.log('playwright absent : essai ignore'); return; }
@@ -137,6 +163,12 @@ const SCAN = {
     ok(/"n=" \+ x\.n/.test(carte), 'chaque chiffre de la carte part avec son effectif');
     ok(/never a buy signal/.test(carte), 'et la carte porte « never a buy signal »');
     ok(/swoleeswoge\.dog\/swoge_scan/.test(carte), 'et l adresse ou la refaire');
+    /* La licence GoPlus (relue le 26 septembre 2026) : un fait lu chez GoPlus
+       porte « Powered by Go+ Security » — lien sur la page, en toutes lettres sur la carte. */
+    const gp = await page.$$eval('#mesureFaits a', (l) => l.map((a) => ({ t: a.textContent, h: a.getAttribute('href'), rel: a.rel, cible: a.target })));
+    ok(gp.length === 1 && gp[0].t === 'Powered by Go+ Security' && gp[0].h === 'https://gopluslabs.io' && /noopener/.test(gp[0].rel) && gp[0].cible === '_blank',
+       'le fait lu chez GoPlus porte le lien « Powered by Go+ Security » (noopener, nouvel onglet) ' + JSON.stringify(gp));
+    ok(/"Powered by Go\+ Security"/.test(carte), 'et la carte partagee le dit en toutes lettres');
     ok(!/(rug|scam|safe|danger)\b/i.test(carte.replace(/\*[^\n]*/g, '')),
        'aucun mot de verdict dans ce que la carte ecrit');
     /* Le presse-papier n existe pas partout : il doit y avoir une deuxieme
@@ -145,6 +177,46 @@ const SCAN = {
     ok(/clipboard/.test(part) && /download/.test(part),
        'presse-papier quand il existe, telechargement sinon : jamais un bouton qui ne fait rien');
     await page.close();
+  }
+
+  console.log('\n-- la carte et la liste parlent anglais, une ligne par mesure --');
+  {
+    /* Le serveur a cote : la copie du scan dans cet essai est bien sa sortie. */
+    const cs = path.join(SITE, '..', 'swoge-pusher-server.github.io', 'carte_scan.js');
+    if (fs.existsSync(cs)) {
+      const K = require(cs);
+      const r = K.avecLiens({ jeton: SCAN.jeton, cases: SCAN_ANCIEN.cases }, { api: 'https://a', site: 'https://s' });
+      eq(JSON.stringify([r.cases, r.lines]), JSON.stringify([SCAN.cases, SCAN.lines]), 'le scan de l essai = la sortie de carte_scan.avecLiens (cases et lines)');
+    } else console.log('  (serveur absent a cote : la copie du scan n est pas recomparee)');
+    /* Ce que la carte ECRIT : chaque fillText, enregistre. */
+    const ecrit = async (page) => page.evaluate(() => {
+      const t = [], f0 = CanvasRenderingContext2D.prototype.fillText;
+      CanvasRenderingContext2D.prototype.fillText = function (s, ...a) { t.push(String(s)); return f0.call(this, s, ...a); };
+      try { carteDessine(); } finally { CanvasRenderingContext2D.prototype.fillText = f0; }
+      return t;
+    });
+    const page = await ouvre('/swoge_scan.html?t=0x254afb9fd36789bea39fb5656ba6fdb827be8dc5');
+    const t = await ecrit(page);
+    const cinq = LIGNES.slice(0, 5);
+    ok(cinq.every((l) => t.includes(l.label) && t.includes(l.traitLabel.toUpperCase())),
+       'la carte partagee : les 5 premieres lignes du serveur, en anglais (« ' + cinq[0].label + ' » sous « ' + cinq[0].traitLabel.toUpperCase() + ' »)');
+    ok(!t.some(brute) && !t.some((x) => FRANCAIS.test(x)), 'aucune cle brute (OCTEMIT, SOCIAL…) ni phrase francaise (« code : sans emission »)'
+       + (t.filter((x) => brute(x) || FRANCAIS.test(x)).length ? ' — ' + JSON.stringify(t.filter((x) => brute(x) || FRANCAIS.test(x))) : ''));
+    ok(t.filter((x) => /^bytecode:/.test(x)).length === 1 && t.filter((x) => /^n=\d+$/.test(x)).length === 5,
+       'le bytecode en UNE ligne, et cinq lignes, chacune avec son effectif (plus quatre fois +16,9 %)');
+    const liste = await page.$$eval('#mesureCases .mc-l', (l) => l.map((e) => e.textContent));
+    ok(liste.length === LIGNES.length && LIGNES.every((l, i) => liste[i].includes(l.label) && liste[i].includes(l.traitLabel)),
+       'la liste de la page : les ' + LIGNES.length + ' lignes du serveur, dans son ordre');
+    ok(!liste.some((x) => FRANCAIS.test(x) || /octEmit|octListe|padDep|origine/.test(x)), 'et aucune cle brute ni phrase francaise dans la liste');
+    await page.close();
+
+    /* Un serveur plus ancien (cases brutes seulement) : rien de brut, et on ne pretend pas « rien de mesure ». */
+    const vieux = await ouvre('/swoge_scan.html?t=0x254afb9fd36789bea39fb5656ba6fdb827be8dc5', { scan: SCAN_ANCIEN });
+    const tv = await ecrit(vieux);
+    const lv = await vieux.$eval('#mesureCases', (e) => e.textContent);
+    ok(!tv.some(brute) && !tv.some((x) => FRANCAIS.test(x)) && !FRANCAIS.test(lv) && !/octEmit/.test(lv) && /could not be shown/.test(lv) && !/not measured enough/i.test(lv),
+       'sans lines ni phrases : ni la carte ni la liste n ecrivent la cle brute, et elles ne disent pas « rien de mesure »');
+    await vieux.close();
   }
 
   console.log('\n-- et quand la colonie ne sait rien, elle le DIT --');

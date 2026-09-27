@@ -824,6 +824,8 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 .jeton-alerte{display:inline-block;background:rgba(214,69,65,.12);color:var(--serpent);border-radius:999px;padding:2px 8px;margin:2px 4px 2px 0;font-size:12px;font-weight:700}
 .jeton-case{font-family:'Space Mono',monospace;font-size:11.5px;margin-top:3px;overflow-wrap:anywhere}
 .jeton-avis{font-size:11px;color:var(--dim);margin-top:8px}
+.jeton-attrib{font-size:11px}
+.jeton-attrib a{color:var(--pool);text-decoration:none}
 .msg.err .corps{color:var(--serpent)}
 
 /* ---- le composeur, en bas, facon ChatGPT ---- */
@@ -1118,6 +1120,15 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
         + (j.premierPorteur === null ? "" : ' \u00b7 top wallet ' + nombre(j.premierPorteur) + '%')
         + (j.dixPremiers === null ? "" : ' \u00b7 top 10 ' + nombre(j.dixPremiers) + '%') + '</div>';
     }
+    /* La licence de l'API GoPlus (relue le 26 septembre 2026) demande la mention
+       « Powered by Go+ Security » avec un lien, la ou sa donnee arrive : fiche lue
+       OU « pas encore de fiche » (c'est encore sa reponse). Lien ecrit ici, jamais
+       pris dans la reponse du serveur. Pas de logo, par decision du proprietaire,
+       alors que la clause 5 de la licence (« Display of GoPlus Logo ») EXIGE le logo
+       GoPlus avec « Powered by GoPlus » : question ouverte, posee a GoPlus
+       (EXPLOITATION.md du serveur, 26 septembre 2026). */
+    if (j.securite === "read" || j.securite === "unknown")
+      h += '<div class="jeton-ligne jeton-attrib"><a href="https://gopluslabs.io" target="_blank" rel="noopener"><img src="img/site/goplus_powered_by.png" alt="" width="108" height="20" style="height:20px;width:auto;vertical-align:middle;margin-right:6px;border-radius:4px">Powered by Go+ Security</a></div>';
     if (j.colonie) {
       var cs = j.colonie.cases || [], sc = lienSur(j.colonie.scan);
       h += '<div class="jeton-ligne"><b>SWOGE AI colony</b> <span class="dim">' + nombre(j.colonie.observations) + ' observations in memory</span>'

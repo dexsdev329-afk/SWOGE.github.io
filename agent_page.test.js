@@ -119,6 +119,10 @@ const PEPE = { adresse:'0x6982508145454ce325ddbe47a25d4ec3d2311933', trouve:true
     ok(/Reading token 0x698250…1933/.test(await page.textContent('.etapes li >> nth=0')) && /the tool failed: 500/.test(await page.textContent('.etapes li >> nth=1')), 'dit en clair, avec la raison d un echec');
     ok(!(await page.evaluate(() => window.pirate)) && (await page.$('.etapes img, .corps script')) === null, 'ni la requete d un outil ni la reponse ne peuvent injecter de HTML');
     ok(/\$PEPE/.test(await page.textContent('.msg.ia .jeton')) && (await page.$$('.msg.ia .source')).length === 1, 'la carte du jeton et les sources suivent');
+    /* La licence de l'API GoPlus (relue le 26 septembre 2026) : la carte ou GoPlus a repondu dit « Powered by Go+ Security », avec un lien. */
+    const gp = await page.$$eval('.msg.ia .jeton a[href="https://gopluslabs.io"]', (l) => l.map((a) => ({ t: a.textContent, rel: a.rel, c: a.target, b: !!a.querySelector('img[src="img/site/goplus_powered_by.png"]') })));
+    ok(gp.length === 1 && gp[0].t === 'Powered by Go+ Security' && /noopener/.test(gp[0].rel) && gp[0].c === '_blank' && gp[0].b,
+       'la carte porte « Powered by Go+ Security », lien vers gopluslabs.io (noopener, nouvel onglet) ' + JSON.stringify(gp));
     eq(await page.textContent('.msg.ia .meta'), 'Haiku 4.5 · 812 $SWOGE · 3 steps', 'le cout dit le modele et le nombre d etapes');
     ok(/199,188/.test(await page.textContent('#solde')), 'et le solde est mis a jour');
     const larg = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
@@ -222,6 +226,11 @@ const PEPE = { adresse:'0x6982508145454ce325ddbe47a25d4ec3d2311933', trouve:true
        && /"quote":true/.test(await page.textContent('#exRest')), 'les exemples MCP et curl portent la vraie adresse, et le devis gratuit');
     const larg = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     ok(larg <= 1, 'a 360 px, la doc ne deborde pas [' + larg + ']');
+    const gd = await page.$eval('#goplusDoc a', (a) => ({ t: a.textContent, h: a.getAttribute('href'), rel: a.rel, c: a.target }));
+    ok(gd.t === 'Powered by Go+ Security' && gd.h === 'https://gopluslabs.io' && /noopener/.test(gd.rel) && gd.c === '_blank'
+       && /resultat\.attribution/.test(await page.textContent('#goplusDoc')), 'la doc dit d ou vient la securite de scan_token : « Powered by Go+ Security », lien, et le champ attribution');
+    /* Les refus du Warden de new_launches sont des phrases GoPlus : la doc le dit, champ attribution compris (26 septembre 2026). */
+    ok(/new_launches[^.]*honeypot/.test(await page.textContent('#goplusDoc')), 'et les verdicts de securite de new_launches aussi : meme mention, meme champ');
     const html = fs.readFileSync(path.join(SITE, 'swogeagentic_api.html'), 'utf8');
     ok(/rel="canonical" href="https:\/\/swoleeswoge\.dog\/swogeagentic_api\.html"/.test(html) && /<title>SwogeAgentic API/.test(html) && !/sk-ant-|swg_[A-Za-z0-9_-]{40}/.test(html), 'son adresse canonique, son titre, aucune cle dans la page');
     await ctx.close();
@@ -251,6 +260,10 @@ const PEPE = { adresse:'0x6982508145454ce325ddbe47a25d4ec3d2311933', trouve:true
     ok(/^# SwogeAgentic\n\n> /.test(llms) && !/^#{3,} /m.test(llms), 'llms.txt : un H1, puis le resume en citation, aucun titre plus profond (format llmstxt.org)');
     ok(h2.join(',') === '## Docs,## Optional', 'des listes de liens sous des H2, « Optional » en dernier');
     ok(llms.includes('(https://swoleeswoge.dog/swogeagentic_api.html)') && llms.includes('/agentic/tools)'), 'il mene a la doc et au catalogue en direct');
+    /* Decisions du proprietaire, 26 septembre 2026 : telegram_calls n'est pas vendu (conditions de Telegram) ;
+       scan_token porte la mention GoPlus. La copie se regenere avec outils/llms_site.js (depot du serveur). */
+    ok(!/telegram_calls/.test(llms), 'llms.txt ne liste plus telegram_calls (pas vendu sans TG_APPELS_VENTE=1)');
+    ok(/^- `scan_token\(address\)`.*Powered by Go\+ Security, https:\/\/gopluslabs\.io/m.test(llms), 'et sa ligne scan_token dit « Powered by Go+ Security » avec le lien');
   }
 
   console.log('\n-- 8. arreter une tache (demande du proprietaire, 26 septembre 2026) --');

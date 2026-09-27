@@ -220,7 +220,7 @@ const de64 = (s) => JSON.parse(Buffer.from(s, 'base64').toString());
     const brut = publicKey.export({ format: 'der', type: 'spki' }).slice(-32);
     const ADR = ethers.utils.base58.encode(brut);
     const SOLS = require('./x402_solana.js');
-    const ouvreSol = async ({ sansSolana, tardif, autre, rpcInterdit } = {}) => {
+    const ouvreSol = async ({ sansSolana, tardif, autre, rpcInterdit, lighthouse } = {}) => {
       const ctx = await nav.newContext({ viewport: { width: 1100, height: 900 } });
       const page = await ctx.newPage();
       const vu = { appels: [], signatures: 0, rpc: [] };
@@ -232,7 +232,17 @@ const de64 = (s) => JSON.parse(Buffer.from(s, 'base64').toString());
       await page.exposeFunction('__solAdresse', async () => ADR);
       await page.exposeFunction('__solSigne', async (octets) => {
         vu.signatures++;
-        const b = Buffer.from(octets);
+        let b = Buffer.from(octets);
+        if (lighthouse) {
+          /* Comme Phantom : 3 instructions Lighthouse ajoutees a la fin (cle en
+             lecture seule ajoutee en dernier, les indices existants ne bougent pas). */
+          const m = b.slice(129), nK = m[4], fin = 5 + 32 * nK;
+          const LH = Buffer.from(ethers.utils.base58.decode('L2TExMFKdjpN9kozasaurPirfHy9P8sbXoAN1qA3S95'));
+          const nIx = m[fin + 32], ixs = m.slice(fin + 33, m.length - 1);
+          const ajout = Buffer.concat([0, 1, 2].map((i) => Buffer.from([nK, 0, 1, i])));
+          const nm = Buffer.concat([Buffer.from([m[0], m[1], m[2], m[3] + 1, nK + 1]), m.slice(5, fin), LH, m.slice(fin, fin + 32), Buffer.from([nIx + 3]), ixs, ajout, Buffer.from([0])]);
+          b = Buffer.concat([b.slice(0, 129), nm]);
+        }
         const sig = crypto.sign(null, b.slice(1 + 128), privateKey);
         sig.copy(b, 1 + 64);                                   /* le payeur est le 2e signataire */
         return Array.from(b);
@@ -266,6 +276,10 @@ const de64 = (s) => JSON.parse(Buffer.from(s, 'base64').toString());
         vu.appels.push({ outil: m[1], corps: JSON.parse(q.postData() || '{}'), sig: sig || null });
         if (!sig) return r.fulfill({ status: 402, headers: { 'payment-required': b64(REQ(m[1])), 'access-control-expose-headers': 'payment-required, payment-response' }, contentType: 'application/json', body: '{}' });
         vu.paiement = de64(sig);
+        const lu = SOLS.lit(Buffer.from(vu.paiement.payload.transaction, 'base64'));
+        (vu.lus = vu.lus || []).push(lu.programmes);
+        if (lu.programmes.length > 6) return r.fulfill({ status: 402, contentType: 'application/json',
+          body: JSON.stringify({ ok: false, raison: 'invalid_exact_svm_smart_wallet_program_not_allowed', detail: 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA' }) });
         return r.fulfill({ status: 200, headers: { 'payment-response': b64({ success: true, transaction: '5' + 'A'.repeat(87), network: SOL_NET, payer: ADR }), 'access-control-expose-headers': 'payment-required, payment-response' },
           contentType: 'application/json', body: JSON.stringify({ ok: true, outil: m[1], texte: 'Token <b>Swole Doge</b> on Solana' }) });
       });
@@ -330,6 +344,36 @@ const de64 = (s) => JSON.parse(Buffer.from(s, 'base64').toString());
       ok(/Done: paid in USDC on Solana/.test(await page.textContent('#sol_statut')) && vu.bhServeur === 1 && !vu.rpc.some((c) => c.method === 'getLatestBlockhash')
          && ethers.utils.base58.encode(msg.slice(4 + 1 + 8 * 32, 4 + 1 + 9 * 32)) === BH,
          'le blockhash vient de NOTRE serveur (/agentic/solana/blockhash) : paye malgre le 403 du RPC public');
+      await ctx.close();
+    }
+    {
+      /* Le cas du 27/09 : Phantom ajoute 3 Lighthouse, 4 + 3 = 7, PayAI plafonne a 6. */
+      const { page, vu, ctx } = await ouvreSol({ lighthouse: true });
+      await page.click('#sol_connecter');
+      await page.waitForFunction(() => !document.getElementById('sol_payer').disabled);
+      await page.click('#sol_payer');
+      await page.waitForFunction(() => /Done|Not paid/.test(document.getElementById('sol_statut').textContent), null, { timeout: 15000 });
+      ok(/Done: paid in USDC on Solana/.test(await page.textContent('#sol_statut')) && vu.signatures === 2 && vu.lus.length === 2
+         && vu.lus[0].length === 7 && vu.lus[1].length === 6 && !vu.lus[1].includes('Memo') && vu.lus[1].slice(3).every((x) => x === 'Lighthouse'),
+         'portefeuille qui ajoute 3 Lighthouse : refuse a 7, re-signe une fois sans memo (6), paye [' + (vu.lus || []).map((l) => l.length).join(' puis ') + ']');
+      await ctx.close();
+    }
+    {
+      /* Un refus qui n est PAS celui-la : pas de seconde signature, et le detail est montre. */
+      const { page, vu, ctx } = await ouvreSol({ lighthouse: true, sansSolana: false });
+      await page.route(/agentic\/call\/scan_token$/, async (r) => {
+        const sig = r.request().headers()['payment-signature'];
+        if (!sig) return r.fallback();
+        vu.lus = (vu.lus || []).concat([[]]);
+        return r.fulfill({ status: 402, contentType: 'application/json', body: JSON.stringify({ ok: false, raison: 'invalid_exact_svm_payload_transaction_amount_mismatch' }) });
+      });
+      await page.click('#sol_connecter');
+      await page.waitForFunction(() => !document.getElementById('sol_payer').disabled);
+      await page.click('#sol_payer');
+      await page.waitForFunction(() => /Not paid/.test(document.getElementById('sol_statut').textContent), null, { timeout: 15000 });
+      const t = await page.textContent('#sol_statut');
+      ok(vu.signatures === 1 && /amount_mismatch/.test(t) && /your wallet sent 7 instructions: ComputeBudget, ComputeBudget, Token, Memo, Lighthouse, Lighthouse, Lighthouse/.test(t),
+         'un autre refus : une seule signature, la raison ET ce que le portefeuille a rendu sont montres');
       await ctx.close();
     }
     {

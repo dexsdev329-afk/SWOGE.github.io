@@ -28,6 +28,24 @@ const ok = (c, m) => { n++; if (!c) rates++; console.log((c ? '  ok   ' : '  RAT
     const t = await S.construit({ amount: '22000', asset: USDC, payTo: w.moi, extra: { feePayer: w.fee } }, { payeur: w.moi, blockhash: w.bh, memo: w.memo });
     ok(t.source === t.dest && Buffer.from(t.message).toString('hex') === w.message, 'payeur = payTo : 7 comptes, le compte USDC une seule fois, octets identiques a web3.js');
   }
+  /* Sans memo (27/09 : Phantom ajoute jusqu'a 3 instructions Lighthouse, et
+     PayAI refusait 4 + 3 = 7) : 3 instructions, octets de web3.js — payeur
+     tiers et payeur = payTo. */
+  for (const w of [{"soi":true,"payeur":"CFg86EW2ZSAgGpf4o2XAt3gU59fgMfsuZyM6QDuDTmoM","payTo":"CFg86EW2ZSAgGpf4o2XAt3gU59fgMfsuZyM6QDuDTmoM","fee":"CjNFTjvBhbJJd2B5ePPMHRLx1ELZpa8dwQgGL727eKww","bh":"TMVYXuTc3sw41tJ4NGuxxNQCqwe5LU7gAqcFzdcadeZ","message":"8002010306ae4afa13b1430cd952d4a158fb5ae8a4320a0d28904f45448fd29271cdf382c2a732ec558fd8acdebc40f8d29c0ede663654ee1abb4dd1c9ece36b2ce7d25f80dd16226658334d04a251f67d08c1fd8984c19e72d27ccd965b9480d31b3f0e710306466fe5211732ffecadba72c39be7bc8ce5bbc5f7126b2c439b3a4000000006ddf6e1d765a193d9cbe146ceeb79ac1cb485ed5f5b37913a8cf5857eff00a9c6fa7af3bedbad3a3d65f36aabc97431b1bbe4c2d2f6e0e47ca60203452f5d6106c04585337943ff984bdf29a992cee537039761176e16c355aa048b1f39eaaa0303000502204e00000300090301000000000000000404020502010a0cf0550000000000000600"},{"soi":false,"payeur":"GTk6jtDMvgzRTRfjzrGCnT4LBZU3jsAnap15xE8uMuKr","payTo":"CFg86EW2ZSAgGpf4o2XAt3gU59fgMfsuZyM6QDuDTmoM","fee":"CjNFTjvBhbJJd2B5ePPMHRLx1ELZpa8dwQgGL727eKww","bh":"ArX6UY9boCx2d8qefr8gtMuvm2ir7wjfU4Jm54kG1Ajd","message":"8002010307ae4afa13b1430cd952d4a158fb5ae8a4320a0d28904f45448fd29271cdf382c2e5b923174fed68ea2b54ed12520d1d2e509163e0a159977893853524f3ec2415d62284a3e82c87a58f19424b111e98812daabbfc0d25e50ab3fb3d1ead0927dadd16226658334d04a251f67d08c1fd8984c19e72d27ccd965b9480d31b3f0e710306466fe5211732ffecadba72c39be7bc8ce5bbc5f7126b2c439b3a4000000006ddf6e1d765a193d9cbe146ceeb79ac1cb485ed5f5b37913a8cf5857eff00a9c6fa7af3bedbad3a3d65f36aabc97431b1bbe4c2d2f6e0e47ca60203452f5d619268ab79556e830756498693c49caf9d9ef9327aaa7d108591be632d77d9cc7c0304000502204e00000400090301000000000000000504020603010a0cf0550000000000000600"}]) {
+    const t = await S.construit({ amount: '22000', asset: USDC, payTo: w.payTo, extra: { feePayer: w.fee } }, { payeur: w.payeur, blockhash: w.bh, sansMemo: true });
+    ok(Buffer.from(t.message).toString('hex') === w.message && JSON.stringify(S.lit(t.octets).programmes) === '["ComputeBudget","ComputeBudget","Token"]',
+       'sans memo' + (w.soi ? ' (payeur = payTo)' : '') + ' : 3 instructions, octets identiques a web3.js');
+  }
+  {
+    const t = await S.construit({ amount: '22000', asset: USDC, payTo: V[0].payTo, extra: { feePayer: V[0].fee, memo: 'facture-42' } }, { payeur: V[0].payeur, blockhash: V[0].bh, sansMemo: true });
+    ok(JSON.stringify(S.lit(t.octets).programmes) === '["ComputeBudget","ComputeBudget","Token","Memo"]' && Buffer.from(t.message).includes(Buffer.from('facture-42')),
+       'un memo IMPOSE par le 402 (extra.memo) reste, meme en mode sans memo, avec sa valeur');
+  }
+  {
+    const lu = S.lit(Buffer.from('02000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000080020105097e5588a7a7403c7d605e5562263da3227ec327ea41e29ba7206a57c26c338f4144749b13754ace53862d84221fe35211284f69253aa41dc0eca0eca6a7bbdfb0c08cc1fdea9e6fbdf1948b556c742e1dfb19be67ea5c3663c698a6569f6f6aba2dd2ce6c31e81b1ba74bfbbf2f36caf9e735af6fb5bbf6587fe8083cdf36cb240306466fe5211732ffecadba72c39be7bc8ce5bbc5f7126b2c439b3a4000000006ddf6e1d765a193d9cbe146ceeb79ac1cb485ed5f5b37913a8cf5857eff00a9c6fa7af3bedbad3a3d65f36aabc97431b1bbe4c2d2f6e0e47ca60203452f5d61054a535a992921064d24e87160da387c7c35b5ddbc92bb81e41fa8404105448d04dfad7962ffb1dd925d0a9fb5e6d00ce6195ba8bb3a91fd07ef9860c5e97bb8e49d07168cfc14033ad9072d32da0616851311cd9f5178ff9b77ccfa26b42a170704000502204e00000400090301000000000000000504020603010a0cf05500000000000006070002616208010201000801020101080102010200', 'hex'));
+    ok(lu.signatures === 2 && lu.version === 0 && lu.programmes.length === 7 && lu.programmes.slice(4).every((x) => x === 'Lighthouse') && lu.tables === 0,
+       'lire ce que le portefeuille rend : 7 instructions, dont 3 Lighthouse ajoutees (' + lu.programmes.join(', ') + ')');
+  }
   const acc0 = { amount: '20000', asset: USDC, payTo: V[0].payTo, extra: { feePayer: V[0].fee } };
   const a = await S.construit(acc0, { payeur: V[0].payeur, blockhash: V[0].bh });
   const b = await S.construit(acc0, { payeur: V[0].payeur, blockhash: V[0].bh });

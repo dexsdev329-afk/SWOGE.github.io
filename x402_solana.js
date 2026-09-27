@@ -95,16 +95,23 @@
          USDC, liste UNE fois — un compte en double rend la transaction
          invalide (« invalid_exact_svm_transaction_simulation_failed »). */
       var modifiables = source === dest ? [source] : [source, dest];
-      var comptes = [fee, o.payeur].concat(modifiables, [PROG.budget, PROG.jeton, acc.asset, PROG.memo]);
+      /* sansMemo : 3 instructions. Phantom ajoute jusqu'a 3 instructions
+         Lighthouse ; un facilitateur plafonne a 6 (avant x402 #2097) refuse
+         alors 4 + 3 = 7 (« smart_wallet_program_not_allowed », 27/09). Le mémo
+         n'est verifie que si le 402 porte extra.memo. */
+      var sansMemo = !!o.sansMemo && !(acc.extra && acc.extra.memo);
+      var lecture = sansMemo ? [PROG.budget, PROG.jeton, acc.asset] : [PROG.budget, PROG.jeton, acc.asset, PROG.memo];
+      var comptes = [fee, o.payeur].concat(modifiables, lecture);
       var ix = function (a) { return comptes.indexOf(a); };
-      var memo = new TextEncoder().encode(o.memo || hexAleatoire(16));
+      var memo = new TextEncoder().encode(o.memo || (acc.extra && acc.extra.memo) || hexAleatoire(16));
       var instr = [
         { p: ix(PROG.budget), a: [], d: concat([new Uint8Array([2]), le(LIMITE_CU, 4)]) },
         { p: ix(PROG.budget), a: [], d: concat([new Uint8Array([3]), le(PRIX_CU, 8)]) },
         { p: ix(PROG.jeton), a: [ix(source), ix(acc.asset), ix(dest), ix(o.payeur)], d: concat([new Uint8Array([12]), le(acc.amount, 8), new Uint8Array([DECIMALES_USDC])]) },
         { p: ix(PROG.memo), a: [], d: memo }
       ];
-      var parties = [new Uint8Array([0x80, 2, 1, 4]), new Uint8Array(cu16(comptes.length))];
+      if (sansMemo) instr.pop();
+      var parties = [new Uint8Array([0x80, 2, 1, lecture.length]), new Uint8Array(cu16(comptes.length))];
       comptes.forEach(function (c) { parties.push(cle(c)); });
       parties.push(cle(o.blockhash));
       parties.push(new Uint8Array(cu16(instr.length)));
@@ -118,8 +125,30 @@
     });
   }
 
+  /* Ce que le portefeuille a RENDU (il peut ajouter des instructions) : le
+     nombre et le programme de chaque instruction, pour le dire au joueur. */
+  var NOMS = { ComputeBudget111111111111111111111111111111: "ComputeBudget", TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA: "Token",
+    TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb: "Token-2022", MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr: "Memo", L2TExMFKdjpN9kozasaurPirfHy9P8sbXoAN1qA3S95: "Lighthouse" };
+  function lit(o) {
+    var k = 0;
+    function u16() { var n = 0, d = 0, b; do { b = o[k++]; n |= (b & 0x7f) << d; d += 7; } while (b & 0x80); return n; }
+    var nSig = u16(); k += 64 * nSig;
+    var v0 = (o[k] & 0x80) !== 0; if (v0) k++;
+    k += 3;
+    var nCles = u16(), cles = [];
+    for (var i = 0; i < nCles; i++) { cles.push(b58enc(o.slice(k, k + 32))); k += 32; }
+    k += 32;
+    var nIx = u16(), progs = [];
+    for (var j = 0; j < nIx; j++) {
+      var p = o[k++]; var na = u16(); k += na; var nd = u16(); k += nd;
+      progs.push(p < cles.length ? (NOMS[cles[p]] || cles[p].slice(0, 6) + "…") : "table");
+    }
+    var tables = v0 ? u16() : 0;
+    return { signatures: nSig, version: v0 ? 0 : "legacy", programmes: progs, tables: tables };
+  }
+
   function b64(o) { var s = ""; for (var i = 0; i < o.length; i++) s += String.fromCharCode(o[i]); return racine.btoa(s); }
 
-  var api = { b58enc: b58enc, b58dec: b58dec, surLaCourbe: surLaCourbe, ata: ata, construit: construit, b64: b64, PROG: PROG, LIMITE_CU: LIMITE_CU, PRIX_CU: PRIX_CU };
+  var api = { b58enc: b58enc, b58dec: b58dec, surLaCourbe: surLaCourbe, ata: ata, construit: construit, lit: lit, b64: b64, PROG: PROG, LIMITE_CU: LIMITE_CU, PRIX_CU: PRIX_CU };
   if (typeof module !== "undefined" && module.exports) module.exports = api; else racine.SwogeSolana = api;
 })(typeof window !== "undefined" ? window : globalThis);

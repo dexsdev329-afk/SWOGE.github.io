@@ -117,7 +117,7 @@ a{ color:var(--bleu); }
 
   <p class="pale">No wallet in this browser? Open this page inside your wallet app's browser (Coinbase Wallet, MetaMask, Rabby). The page never sees a key: your wallet signs, the server verifies, Coinbase or PayAI settles.</p>
 </main>
-<script src="x402_solana.js?v=9dc79f39"></script>
+<script src="x402_solana.js?v=1d86ed41"></script>
 <script>
 (function(){
   "use strict";
@@ -382,13 +382,12 @@ a{ color:var(--bleu); }
     return fetch(serveur() + "/agentic/x402", { cache: "no-store" }).then(function(r){ return r.json(); })
       .then(function(d){ return d && d.solana && d.solana.raison ? " (" + String(d.solana.raison).slice(0, 200) + ")" : ""; })["catch"](function(){ return ""; });
   }
-  $("sol_payer").addEventListener("click", function(){
-    var nom = outil(), a = args();
-    if (nom === "ask_agent") { solStatut("Hiring the agent is paid on Base only: a Solana transaction expires before the agent finishes.", "err"); return; }
-    $("sol_payer").disabled = true;
+  /* Un paiement Solana ; sansMemo : 3 instructions au lieu de 4. Un refus
+     porte la raison du facilitateur ET ce que le portefeuille a rendu. */
+  function solPaie(nom, a, sansMemo){
+    var req, acc, lu = null;
     solStatut("Asking the server for its payment request…");
-    var req, acc;
-    appel(nom, a).then(function(r){
+    return appel(nom, a).then(function(r){
       if (r.status !== 402) throw new Error("the server did not ask for a payment (HTTP " + r.status + ")");
       var h = r.headers.get("payment-required");
       if (!h) throw new Error("no PAYMENT-REQUIRED header");
@@ -399,7 +398,7 @@ a{ color:var(--bleu); }
       if (solEtat.solde !== null && solEtat.solde !== undefined && solEtat.solde < Number(acc.amount)) throw new Error("this wallet has less than " + (Number(acc.amount) / 1e6) + " USDC on Solana");
       return solBlockhash(acc);
     }).then(function(bh){
-      return SwogeSolana.construit(acc, { payeur: solEtat.compte.address, blockhash: bh });
+      return SwogeSolana.construit(acc, { payeur: solEtat.compte.address, blockhash: bh, sansMemo: sansMemo });
     }).then(function(t){
       solStatut("Approve in your wallet: " + (Number(acc.amount) / 1e6) + " USDC to " + acc.payTo.slice(0, 4) + "…" + acc.payTo.slice(-4) + "."
         + (acc.payTo === solEtat.compte.address ? " This wallet is the receiving address: the USDC comes back to it." : ""));
@@ -407,6 +406,7 @@ a{ color:var(--bleu); }
     }).then(function(sorties){
       var signe = sorties && sorties[0] && sorties[0].signedTransaction;
       if (!signe || !signe.length) throw new Error("the wallet returned no signed transaction");
+      try { lu = SwogeSolana.lit(new Uint8Array(signe)); } catch (e) { lu = null; }
       solStatut("Signed. PayAI settles on Solana…");
       var paiement = { x402Version: 2, resource: req.resource, accepted: acc, payload: { transaction: SwogeSolana.b64(new Uint8Array(signe)) }, extensions: req.extensions };
       return appel(nom, a, { "payment-signature": b64(paiement) });
@@ -414,8 +414,12 @@ a{ color:var(--bleu); }
       var rep = r.headers.get("payment-response");
       return r.text().then(function(t){
         var corps = null; try { corps = JSON.parse(t); } catch (e) {}
-        if (r.status !== 200 || !corps || !corps.ok) throw new Error(String(corps && (corps.raison || corps.error || corps.detail) || ("HTTP " + r.status)).slice(0, 200)
-          + (corps && corps.detail && corps.raison ? " — " + String(corps.detail).slice(0, 200) : ""));
+        if (r.status !== 200 || !corps || !corps.ok) {
+          var err = new Error(String(corps && (corps.raison || corps.error || corps.detail) || ("HTTP " + r.status)).slice(0, 200)
+            + (corps && corps.detail && corps.raison ? " — " + String(corps.detail).slice(0, 200) : ""));
+          err.raison = String(corps && corps.raison || ""); err.lu = lu;
+          throw err;
+        }
         var tx = null; try { tx = rep ? de64(rep) : null; } catch (e) {}
         $("resultat").hidden = false;
         $("tx").textContent = "";
@@ -426,12 +430,26 @@ a{ color:var(--bleu); }
         } else $("tx").textContent = "transaction pending";
         $("sortie").textContent = corps.texte || JSON.stringify(corps.resultat || corps, null, 2);
         solStatut("Done: paid in USDC on Solana and served.", "ok");
-        $("sol_payer").disabled = false;
         solLisSolde();
       });
-    })["catch"](function(e){
+    });
+  }
+  $("sol_payer").addEventListener("click", function(){
+    var nom = outil(), a = args();
+    if (nom === "ask_agent") { solStatut("Hiring the agent is paid on Base only: a Solana transaction expires before the agent finishes.", "err"); return; }
+    $("sol_payer").disabled = true;
+    solPaie(nom, a, false)["catch"](function(e){
+      /* Le portefeuille a ajoute des instructions (Phantom : jusqu'a 3 Lighthouse)
+         et le facilitateur plafonne a 6 : une seconde fois, sans le memo. */
+      if (e && e.lu && e.lu.programmes.length > 6 && /smart_wallet|instructions_length/.test(e.raison)) {
+        solStatut("Your wallet added " + (e.lu.programmes.length - 4) + " instructions and the facilitator takes at most 6 — sign once more (a shorter transaction)…");
+        return solPaie(nom, a, true);
+      }
+      throw e;
+    }).then(function(){ $("sol_payer").disabled = false; })["catch"](function(e){
       $("sol_payer").disabled = false;
-      solStatut("Not paid: " + String(e && (e.message || e.code) || e).slice(0, 240), "err");
+      var vu = e && e.lu ? " [your wallet sent " + e.lu.programmes.length + " instructions: " + e.lu.programmes.join(", ") + (e.lu.tables ? ", lookup tables" : "") + "]" : "";
+      solStatut("Not paid: " + String(e && (e.message || e.code) || e).slice(0, 240) + vu, "err");
     });
   });
 })();

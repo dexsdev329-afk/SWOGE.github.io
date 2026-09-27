@@ -401,7 +401,8 @@ a{ color:var(--bleu); }
     }).then(function(bh){
       return SwogeSolana.construit(acc, { payeur: solEtat.compte.address, blockhash: bh });
     }).then(function(t){
-      solStatut("Approve in your wallet: " + (Number(acc.amount) / 1e6) + " USDC to " + acc.payTo.slice(0, 4) + "…" + acc.payTo.slice(-4) + ".");
+      solStatut("Approve in your wallet: " + (Number(acc.amount) / 1e6) + " USDC to " + acc.payTo.slice(0, 4) + "…" + acc.payTo.slice(-4) + "."
+        + (acc.payTo === solEtat.compte.address ? " This wallet is the receiving address: the USDC comes back to it." : ""));
       return solEtat.wallet.features["solana:signTransaction"].signTransaction({ account: solEtat.compte, transaction: t.octets, chain: SOL.chaine });
     }).then(function(sorties){
       var signe = sorties && sorties[0] && sorties[0].signedTransaction;
@@ -413,7 +414,8 @@ a{ color:var(--bleu); }
       var rep = r.headers.get("payment-response");
       return r.text().then(function(t){
         var corps = null; try { corps = JSON.parse(t); } catch (e) {}
-        if (r.status !== 200 || !corps || !corps.ok) throw new Error(String(corps && (corps.raison || corps.error || corps.detail) || ("HTTP " + r.status)).slice(0, 200));
+        if (r.status !== 200 || !corps || !corps.ok) throw new Error(String(corps && (corps.raison || corps.error || corps.detail) || ("HTTP " + r.status)).slice(0, 200)
+          + (corps && corps.detail && corps.raison ? " — " + String(corps.detail).slice(0, 200) : ""));
         var tx = null; try { tx = rep ? de64(rep) : null; } catch (e) {}
         $("resultat").hidden = false;
         $("tx").textContent = "";

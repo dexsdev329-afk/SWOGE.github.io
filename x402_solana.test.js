@@ -20,6 +20,14 @@ const ok = (c, m) => { n++; if (!c) rates++; console.log((c ? '  ok   ' : '  RAT
     ok(t.octets[0] === 2 && t.octets.slice(1, 129).every((b) => b === 0) && Buffer.from(t.octets.slice(129)).equals(Buffer.from(t.message)),
        v.amount + ' : format de fil = 2 signatures vides (feePayer, payeur) + message');
   }
+  /* Payeur = payTo (le proprietaire paie depuis son adresse de reception, 27/09 :
+     « invalid_exact_svm_transaction_simulation_failed ») : un seul compte USDC,
+     liste une fois — octets de web3.js pour ce cas. */
+  {
+    const w = {"moi":"CFg86EW2ZSAgGpf4o2XAt3gU59fgMfsuZyM6QDuDTmoM","fee":"CjNFTjvBhbJJd2B5ePPMHRLx1ELZpa8dwQgGL727eKww","bh":"5tGL2txv4J26N5kRC43ShF3bEphW7FPiANXf6UCUZPMg","memo":"cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd","message":"8002010407ae4afa13b1430cd952d4a158fb5ae8a4320a0d28904f45448fd29271cdf382c2a732ec558fd8acdebc40f8d29c0ede663654ee1abb4dd1c9ece36b2ce7d25f80dd16226658334d04a251f67d08c1fd8984c19e72d27ccd965b9480d31b3f0e710306466fe5211732ffecadba72c39be7bc8ce5bbc5f7126b2c439b3a4000000006ddf6e1d765a193d9cbe146ceeb79ac1cb485ed5f5b37913a8cf5857eff00a9c6fa7af3bedbad3a3d65f36aabc97431b1bbe4c2d2f6e0e47ca60203452f5d61054a535a992921064d24e87160da387c7c35b5ddbc92bb81e41fa8404105448d4890b3580fe5f1f06dfd031a0de869a3c99a6b79b2821acc4b19f664b17f34970403000502204e00000300090301000000000000000404020502010a0cf05500000000000006060020636463646364636463646364636463646364636463646364636463646364636400"};
+    const t = await S.construit({ amount: '22000', asset: USDC, payTo: w.moi, extra: { feePayer: w.fee } }, { payeur: w.moi, blockhash: w.bh, memo: w.memo });
+    ok(t.source === t.dest && Buffer.from(t.message).toString('hex') === w.message, 'payeur = payTo : 7 comptes, le compte USDC une seule fois, octets identiques a web3.js');
+  }
   const acc0 = { amount: '20000', asset: USDC, payTo: V[0].payTo, extra: { feePayer: V[0].fee } };
   const a = await S.construit(acc0, { payeur: V[0].payeur, blockhash: V[0].bh });
   const b = await S.construit(acc0, { payeur: V[0].payeur, blockhash: V[0].bh });

@@ -91,7 +91,11 @@
          feePayer d'abord), signataires en lecture, modifiables, lecture seule ;
          a l'interieur, l'ordre d'apparition — celui de compileToV0Message,
          pour des octets identiques a ceux de web3.js. */
-      var comptes = [fee, o.payeur, source, dest, PROG.budget, PROG.jeton, acc.asset, PROG.memo];
+      /* Payeur = payTo (le proprietaire qui se paie, 27/09) : un seul compte
+         USDC, liste UNE fois — un compte en double rend la transaction
+         invalide (« invalid_exact_svm_transaction_simulation_failed »). */
+      var modifiables = source === dest ? [source] : [source, dest];
+      var comptes = [fee, o.payeur].concat(modifiables, [PROG.budget, PROG.jeton, acc.asset, PROG.memo]);
       var ix = function (a) { return comptes.indexOf(a); };
       var memo = new TextEncoder().encode(o.memo || hexAleatoire(16));
       var instr = [

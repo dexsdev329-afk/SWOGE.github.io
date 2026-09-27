@@ -883,6 +883,18 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 .prod-boutons button,.essai-boutons button{text-transform:none;letter-spacing:0}
 .prod-scene video{width:100%;max-height:360px;border-radius:10px;background:#000;margin-top:6px}
 .prod-scene .texte{white-space:pre-wrap;font-size:13.5px}
+.prod-choix{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}
+.prod-choix button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;text-align:center;min-height:120px;padding:14px 10px;border:1px solid var(--line);border-radius:16px;background:var(--panel);color:var(--paper);cursor:pointer;font:inherit;text-transform:none;letter-spacing:0}
+.prod-choix button:hover{border-color:var(--pool)}
+.prod-choix .ic{font-size:28px;line-height:1}
+.prod-choix b{font-size:15px}
+.prod-choix span.sous{font-size:12px;color:var(--muted,#5a6b85);line-height:1.35}
+@media (max-width:360px){.prod-choix{grid-template-columns:1fr}}
+.prod-plus{margin:10px 0;border:1px dashed var(--line);border-radius:12px;padding:6px 10px}
+.prod-plus summary{cursor:pointer;font-size:13px;font-weight:700;color:var(--pool);padding:4px 0}
+.prod-boutons .principal{flex:1 1 auto;background:var(--pool);color:#fff;border-color:var(--pool);font-weight:800;min-height:44px}
+.prod-idees{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 2px}
+.prod-idees button{font-size:12px;text-transform:none;letter-spacing:0}
 .prod-mode{display:inline-block;font-size:11px;font-weight:800;border-radius:999px;padding:2px 8px;background:var(--panel2);margin-left:6px;vertical-align:middle}
 /* ---- essai de restylage (proprietaire) : l'original et le resultat cote a cote, empiles sous 600 px.
    Ses propres classes (essai-*) : les selecteurs de la feuille des series (prod-*) ne doivent pas l'attraper. ---- */
@@ -2251,13 +2263,21 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     if (PROD.vue === "edit") return peintEdition(box);
     if (PROD.vue === "prod" && PROD.courante) return peintProduction(box, PROD.courante);
     $("prodTitre").textContent = "Series & Ads";
-    box.appendChild(el("p", "aide", "Same characters, same voices, every scene. A series keeps up to 3 characters; an ad keeps your product, its presenter and the setting."));
-    var bs = el("div", "prod-boutons");
-    bs.appendChild(bouton("+ New series", "outil", function(){ PROD.brouillon = { mode: "serie", titre: "", style: "", format: "16:9", personnages: [{ nom: "SWOGE", image: "swoge", voix: "rex", description: "" }] }; PROD.vue = "edit"; peintProd(); }));
-    bs.appendChild(bouton("+ New ad", "outil", function(){ PROD.brouillon = { mode: "pub", titre: "", style: "", format: "9:16", produit: { nom: "", image: null, presentateur: "swoge", presentateurNom: "SWOGE", decor: null, voix: "rex", slogan: "", appel: "" } }; PROD.vue = "edit"; peintProd(); }));
+    box.appendChild(el("p", "aide", "Same characters, same voices, every scene. Pick one to start:"));
+    /* Deux grandes cartes au lieu de deux petits boutons (demande du proprietaire,
+       27/09/2026 : « ameliorer la simplicite d'utilisation »). */
+    var bs = el("div", "prod-choix");
+    var carteChoix = function(ic, titre, sous, fn){
+      var b = el("button"); b.type = "button";
+      b.appendChild(el("span", "ic", ic)); b.appendChild(el("b", null, titre)); b.appendChild(el("span", "sous", sous));
+      b.addEventListener("click", fn); return b;
+    };
+    bs.appendChild(carteChoix("\ud83c\udfac", "+ New series", "Up to 3 characters who keep their face and voice in every episode", function(){ PROD.brouillon = { mode: "serie", titre: "", style: "", format: "16:9", personnages: [{ nom: "SWOGE", image: "swoge", voix: "rex", description: "" }] }; PROD.vue = "edit"; peintProd(); }));
+    bs.appendChild(carteChoix("\ud83d\udce3", "+ New ad", "Your product, a presenter and a slogan, in every clip", function(){ PROD.brouillon = { mode: "pub", titre: "", style: "", format: "9:16", produit: { nom: "", image: null, presentateur: "swoge", presentateurNom: "SWOGE", decor: null, voix: "rex", slogan: "", appel: "" } }; PROD.vue = "edit"; peintProd(); }));
     box.appendChild(bs);
     var ps = (PROD.cat && PROD.cat.productions) || [];
     if (!ps.length) box.appendChild(el("p", "aide", "No production yet."));
+    else box.appendChild(el("label", null, "Your productions"));
     ps.forEach(function(p){
       var c = el("div", "prod-carte clic prod-item");
       var t = el("div", "titre", p.titre); t.appendChild(el("span", "prod-mode", p.mode === "pub" ? "AD" : "SERIES")); c.appendChild(t);
@@ -2299,10 +2319,9 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     var b = PROD.brouillon;
     $("prodTitre").textContent = b.id ? "Edit " + (b.mode === "pub" ? "ad" : "series") : (b.mode === "pub" ? "New ad" : "New series");
     champ(box, "Title", b.titre, function(v){ b.titre = v; }, { max: 80, place: b.mode === "pub" ? "Swole Shaker launch" : "Gym Wars" });
-    var r = el("div", "rang"); box.appendChild(r);
-    var c1 = el("div"), c2 = el("div"); r.appendChild(c1); r.appendChild(c2);
-    choix(c1, "Format", [["16:9", "16:9 landscape"], ["9:16", "9:16 vertical"], ["1:1", "1:1 square"]], b.format, function(v){ b.format = v; });
-    champ(c2, "Visual style (optional)", b.style, function(v){ b.style = v; }, { max: 200, place: "anime, 90s VHS, cinematic…" });
+    choix(box, "Format", [["16:9", "16:9 landscape"], ["9:16", "9:16 vertical"], ["1:1", "1:1 square"]], b.format, function(v){ b.format = v; });
+    /* Le facultatif, replie : ouvert d'office quand quelque chose y est deja rempli. */
+    var plus = function(rempli){ var d = el("details", "prod-plus"); d.appendChild(el("summary", null, "More options (optional)")); if (rempli) d.open = true; box.appendChild(d); return d; };
     if (b.mode === "serie") {
       box.appendChild(el("p", "aide", "Each character keeps their face, fur or skin and build from their picture, and their voice, in every scene. Outfits and poses follow the scene."));
       b.personnages.forEach(function(c, i){
@@ -2316,20 +2335,25 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       });
       var max = (PROD.cat && PROD.cat.personnagesMax) || 3;
       if (b.personnages.length < max) box.appendChild(bouton("+ Add a character", "outil", function(){ b.personnages.push({ nom: "", image: null, voix: null, description: "" }); peintProd(); }));
+      champ(plus(!!b.style), "Visual style", b.style, function(v){ b.style = v; }, { max: 200, place: "anime, 90s VHS, cinematic…" });
     } else {
       var p = b.produit;
       champ(box, "Product name", p.nom, function(v){ p.nom = v; }, { max: 60 });
       blocImage(box, "Product photo", p.image, function(v){ p.image = v; }, false, false);
-      blocImage(box, "Presenter (optional)", p.presentateur, function(v){ p.presentateur = v; }, true, true);
-      champ(box, "Presenter name (optional)", p.presentateurNom, function(v){ p.presentateurNom = v; }, { max: 40 });
-      blocImage(box, "Setting photo (optional)", p.decor, function(v){ p.decor = v; }, false, true);
       choix(box, "Voice", voixListe(), p.voix || "", function(v){ p.voix = v || null; });
-      champ(box, "Slogan (optional)", p.slogan, function(v){ p.slogan = v; }, { max: 160 });
-      champ(box, "Call to action (optional)", p.appel, function(v){ p.appel = v; }, { max: 120, place: "Order at swoleeswoge.dog" });
+      champ(box, "Slogan (optional)", p.slogan, function(v){ p.slogan = v; }, { max: 160, place: "Get swole. Stay swole." });
+      var dp = plus(!!(p.decor || p.appel || (p.presentateur && p.presentateur !== "swoge") || (p.presentateurNom && p.presentateurNom !== "SWOGE")));
+      dp.appendChild(el("p", "aide", "By default SWOGE presents your product."));
+      blocImage(dp, "Presenter", p.presentateur, function(v){ p.presentateur = v; }, true, true);
+      champ(dp, "Presenter name", p.presentateurNom, function(v){ p.presentateurNom = v; }, { max: 40 });
+      blocImage(dp, "Setting photo", p.decor, function(v){ p.decor = v; }, false, true);
+      champ(dp, "Call to action", p.appel, function(v){ p.appel = v; }, { max: 120, place: "Order at swoleeswoge.dog" });
     }
     var bs = el("div", "prod-boutons");
-    bs.appendChild(bouton(b.id ? "Save" : "Create", "outil prod-sauve", function(){
+    bs.appendChild(bouton(b.id ? "Save" : "Create", "outil principal prod-sauve", function(){
       if (PROD.occupe) return; PROD.occupe = true; prodErreur("");
+      /* Un titre vide ne bloque plus : on en met un. */
+      if (!String(b.titre || "").trim()) b.titre = b.mode === "pub" ? "My ad" : "My series";
       /* Les photos deja rangees repartent par leur adresse, les nouvelles en data URL. */
       prodApi("/studio/production" + (b.id ? "/" + b.id : ""), "POST", { production: b })
         .then(function(o){ PROD.courante = o.production; PROD.vue = "prod"; return chargeProd(); })
@@ -2363,6 +2387,36 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       prodApi("/studio/production/" + p.id, "DELETE").then(function(){ PROD.courante = null; PROD.vue = "liste"; return chargeProd(); })["catch"](function(e){ prodErreur(e.message); });
     }));
     box.appendChild(bs);
+    var nouveau = el("div", "prod-carte");
+    var ta = champ(nouveau, "Scene " + ((p.scenes || []).length + 1), "", function(){}, { long: true, max: 1200,
+      place: p.mode === "pub" ? "Optional: what the ad shows (the product, slogan and call to action are added)" : "What happens? Spoken lines in quotes — SWOGE says \"Let's go!\"" });
+    ta.className = "prod-texte";
+    /* Des idees en un clic : un point de depart, que le joueur modifie. */
+    var idees = p.mode === "pub"
+      ? ["Close-up of the product, the presenter holds it up and smiles", "The presenter uses the product in the gym, then looks at the camera", "Slow motion reveal of the product on a podium, confetti falls"]
+      : ["SWOGE walks into the gym and says \"Let's go!\"", "Training montage at sunrise, SWOGE lifts a giant barbell", "Two rivals face off in the ring, the crowd cheers"];
+    var ib = el("div", "prod-idees");
+    idees.forEach(function(x){ ib.appendChild(bouton(x.length > 38 ? x.slice(0, 36) + "…" : x, "puce", function(){ ta.value = x; ta.focus(); })); });
+    nouveau.insertBefore(ib, ta.nextSibling);
+    var durees = (PROD.cat && PROD.cat.durees) || [6, 10];
+    var d = choix(nouveau, "Length", durees.map(function(x){ return [String(x), x + " s"]; }), String(durees[durees.length - 1]), function(){});
+    nouveau.appendChild(el("p", "aide", "Charged like a Quality (1.5) video: the real cost, and nothing if it fails."));
+    var filme = bouton("🎬 Film this scene", "outil principal prod-filme", function(){
+      if (PROD.occupe) return; PROD.occupe = true; prodErreur("");
+      prodApi("/studio/production/" + p.id + "/scene", "POST", { texte: ta.value, duree: Number(d.value) })
+        .then(function(o){ if (o.solde) $("solde").innerHTML = "Balance <b>" + nombre(o.solde) + " $SWOGE</b>"; return chargeProd(); })
+        ["catch"](function(e){ prodErreur(e.message); })
+        .then(function(){ PROD.occupe = false; });
+    });
+    /* Le prix sur le bouton : la video Qualite (1.5) du catalogue, a la duree choisie. */
+    var prixFilme = function(){
+      var q = ((etat.media && etat.media.video && etat.media.video.modeles) || []).filter(function(x){ return x.id === "qualite"; })[0];
+      filme.textContent = "🎬 Film this scene" + (q && q.parSecondeSwoge ? " · ~" + nombre(q.parSecondeSwoge * Number(d.value)) + " $SWOGE" : "");
+    };
+    d.addEventListener("change", prixFilme); prixFilme();
+    var bf = el("div", "prod-boutons"); bf.appendChild(filme); nouveau.appendChild(bf);
+    box.appendChild(nouveau);
+    if ((p.scenes || []).length) box.appendChild(el("label", null, "Your scenes"));
     var enCours = false;
     (p.scenes || []).forEach(function(sc, i){
       var c = el("div", "prod-carte prod-scene");
@@ -2376,21 +2430,6 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       else c.appendChild(el("div", "sous", sc.raison || "This scene did not finish — you were not charged."));
       box.appendChild(c);
     });
-    var nouveau = el("div", "prod-carte");
-    var ta = champ(nouveau, "Scene " + ((p.scenes || []).length + 1), "", function(){}, { long: true, max: 1200,
-      place: p.mode === "pub" ? "Optional: what the ad shows (the product, slogan and call to action are added)" : "What happens? Spoken lines in quotes — SWOGE says \"Let's go!\"" });
-    ta.className = "prod-texte";
-    var durees = (PROD.cat && PROD.cat.durees) || [6, 10];
-    var d = choix(nouveau, "Length", durees.map(function(x){ return [String(x), x + " s"]; }), String(durees[durees.length - 1]), function(){});
-    nouveau.appendChild(el("p", "aide", "Charged like a Quality (1.5) video: the real cost, and nothing if it fails."));
-    nouveau.appendChild(bouton("🎬 Film this scene", "outil prod-filme", function(){
-      if (PROD.occupe) return; PROD.occupe = true; prodErreur("");
-      prodApi("/studio/production/" + p.id + "/scene", "POST", { texte: ta.value, duree: Number(d.value) })
-        .then(function(o){ if (o.solde) $("solde").innerHTML = "Balance <b>" + nombre(o.solde) + " $SWOGE</b>"; return chargeProd(); })
-        ["catch"](function(e){ prodErreur(e.message); })
-        .then(function(){ PROD.occupe = false; });
-    }));
-    box.appendChild(nouveau);
     /* Une scene en cours : on repasse tant que la fenetre est ouverte. */
     if (enCours && !$("prod").hidden) PROD.suivi = setTimeout(chargeProd, 4000);
   }

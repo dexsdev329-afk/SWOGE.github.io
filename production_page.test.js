@@ -242,6 +242,31 @@ const ADRESSES = { jA: '0x' + 'a1'.repeat(20), jB: '0x' + 'b2'.repeat(20) };
     await p.close();
   }
 
+  console.log('\n-- 8. plus simple (27/09/2026) : deux cartes, le facultatif replie, un titre par defaut, une idee, le prix --');
+  {
+    p = await ouvre({ session: 'jA', largeur: 390 });
+    await video(p); await p.click('#prodBtn');
+    await p.waitForSelector('.prod-choix');
+    eq(await p.$$eval('.prod-choix button', (l) => l.length), 2, 'deux grandes cartes pour commencer : une serie, une pub');
+    await p.click('#prod >> text=+ New ad');
+    ok(!(await p.isVisible('text=Call to action')) && (await p.$$('details.prod-plus')).length === 1, 'pour une pub, le facultatif (presentateur, decor, appel a l action) est replie');
+    await p.fill('#prodCorps > input[type=text] >> nth=1', 'Swole Shaker');
+    const [ch] = await Promise.all([p.waitForEvent('filechooser'), p.click('#prod >> text=Upload photo >> nth=0')]);
+    await ch.setFiles(path.join(SITE, 'img/site/icone-192.png'));
+    await p.waitForFunction(() => /^data:image\/jpeg/.test(document.querySelector('#prodCorps img.vign').src));
+    await p.click('.prod-sauve');
+    await p.waitForSelector('.prod-filme');
+    ok(S.liste(ADRESSES.jA).some((x) => x.titre === 'My ad'), 'un titre laisse vide ne bloque plus : « My ad »');
+    await p.click('.prod-idees button >> nth=0');
+    ok(/^Close-up of the product/.test(await p.inputValue('.prod-texte')), 'une idee remplit la scene en un clic');
+    ok(/Film this scene · ~42,840 \$SWOGE/.test(await p.innerText('.prod-filme')), 'le bouton dit le prix : ' + await p.innerText('.prod-filme'));
+    await p.selectOption('.prod-feuille select >> nth=-1', '6');
+    ok(/~25,704 \$SWOGE/.test(await p.innerText('.prod-filme')), 'et le suit quand la duree change');
+    const g = await p.evaluate(() => { const f = document.querySelector('.prod-feuille').getBoundingClientRect(); return Math.abs(f.left - (innerWidth - f.right)) <= 1 && Math.abs(f.top - (innerHeight - f.bottom)) <= 1; });
+    ok(g, 'la fenetre est centree (marges egales)');
+    await p.close();
+  }
+
   await nav.close(); srv.close();
   fs.rmSync(dossier, { recursive: true, force: true });
   console.log('\nVERIFICATIONS : ' + n + (rates ? '  —  RATES : ' + rates + '/' + n : '  —  tout passe'));

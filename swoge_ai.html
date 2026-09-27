@@ -17,7 +17,7 @@
 <link rel="icon" type="image/png" sizes="32x32" href="/img/site/icone-32.png">
 <link rel="apple-touch-icon" href="/img/site/icone-180.png">
 <link rel="manifest" href="/site.webmanifest">
-<meta name="theme-color" content="#1B5FE0">
+<meta name="theme-color" content="#05070D">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="SWOGE WORLD">
 <meta property="og:locale" content="en_US">
@@ -40,7 +40,7 @@
  * une fois par session pour savoir si le serveur en a une plus recente.
  * Sans ca, un joueur garde des semaines une version corrigee depuis
  * longtemps — et ici, cela voudrait dire un agent qui a cesse d'apprendre. */
-var MARQUE_PAGE = 'bed45c1b';
+var MARQUE_PAGE = 'cd5d034f';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -796,6 +796,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   .tab-ecran .panel{ max-height:none; }
 }
 </style>
+<link rel="stylesheet" href="swoge_terminal.css?v=f8ba3b34">
 
 
 <!-- ==================== LA BARRE DU SITE ====================
@@ -916,6 +917,73 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   </aside>
 
   <main>
+    <!-- ==================== LE TERMINAL DE LA COLONIE ====================
+         « Transformer SWOGE AI en un veritable AI Trading Colony Terminal…
+           en conservant le backend, les APIs, les donnees existantes et les
+           fonctionnalites qui fonctionnent deja. » (27 septembre 2026)
+
+         Tout ce qui suit est PEINT par `swoge_terminal.js` a partir de la meme
+         et unique lecture de /ai/colonie que la console d'origine : aucun
+         appel de plus, aucun chiffre calcule ici qui ne soit pas lu. Un champ
+         que le serveur ne sert pas s'ecrit « N/A » ou « Collecting… », jamais
+         une valeur de remplissage. La console d'origine (village, miroir,
+         positions, les treize panneaux) reste entiere, dans la section
+         COLONY : rien n'a ete retire. -->
+    <div class="tm" id="tm">
+      <section class="tm-sec tm-hero" id="tm-live" aria-labelledby="tmH1" style="margin-top:0">
+        <div>
+          <div class="tm-badges">
+            <span class="tm-pastille" id="tmEtat"><i></i> <span id="tmEtatTx">CONNECTING…</span></span>
+            <span class="tm-pastille tm-p-vert">● Robinhood Chain · 4663</span>
+            <span class="tm-pastille tm-p-ambre" data-tt="badgePapier">PAPER</span>
+          </div>
+          <h1 id="tmH1">SWOGE AI</h1>
+          <p class="tm-kicker" data-tt="kicker">THE AUTONOMOUS TRADING COLONY</p>
+          <p class="tm-devise" data-tt="devise">AI agents discover. Agents challenge each other. The colony learns.</p>
+          <div class="tm-boutons">
+            <a class="tm-bouton tm-b-plein" href="#tm-colony" data-tt="entrer">ENTER THE COLONY</a>
+            <a class="tm-bouton tm-b-vide" href="#tm-proof" data-tt="voirPreuve">VIEW PROOF</a>
+          </div>
+          <div class="tm-papier" role="note"><span aria-hidden="true">⚠️</span><span data-tt="papier"><b>PAPER TRADING — No real transactions are signed by this interface.</b> The colony's trades below are paper, at real prices. Real money only moves on a mirror wallet that you create and fund yourself (marked LIVE).</span></div>
+          <div class="tm-stats" id="tmStats">
+            <div class="tm-stat"><small data-tt="sScan">Tokens scanned</small><b id="tmScan">—</b><span id="tmScanS">Loading…</span></div>
+            <div class="tm-stat"><small data-tt="sSignaux">Signals generated</small><b id="tmSig">—</b><span id="tmSigS"></span></div>
+            <div class="tm-stat"><small data-tt="sTrades">Paper trades</small><b id="tmTr">—</b><span id="tmTrS"></span></div>
+            <div class="tm-stat"><small data-tt="sAgents">Active agents</small><b id="tmAg">—</b><span id="tmAgS"></span></div>
+            <div class="tm-stat"><small data-tt="sWin">Win rate</small><b id="tmWin">—</b><span id="tmWinS"></span></div>
+            <div class="tm-stat"><small data-tt="sPnl">Paper P&amp;L</small><b id="tmPnl">—</b><span id="tmPnlS"></span></div>
+          </div>
+        </div>
+        <div class="tm-graphe" aria-hidden="true"><svg id="tmConstellation" viewBox="0 0 400 400" role="presentation"></svg></div>
+      </section>
+
+      <nav class="tm-nav" id="tmNav" aria-label="Sections">
+        <a href="#tm-live" data-s="tm-live">LIVE</a><a href="#tm-colony" data-s="tm-colony">COLONY</a><a href="#tm-market" data-s="tm-market">MARKET</a><a href="#tm-trades" data-s="tm-trades">TRADES</a><a href="#tm-learning" data-s="tm-learning">LEARNING</a><a href="#tm-proof" data-s="tm-proof">PROOF</a>
+      </nav>
+
+      <section class="tm-sec" aria-labelledby="tmFilH">
+        <div class="tm-grille2">
+          <div class="tm-carte">
+            <div class="tm-titre"><h2 id="tmFilH" data-tt="tFil">Live colony activity</h2><span class="tm-n" id="tmFilN">—</span></div>
+            <ul class="tm-fil" id="tmFil" aria-live="polite"><li class="tm-vide" data-tt="chargement">Loading…</li></ul>
+          </div>
+          <div class="tm-carte">
+            <div class="tm-titre"><h2 data-tt="tSante">Colony health</h2><span class="tm-n" id="tmSanteN">—</span></div>
+            <div id="tmSante"><div class="tm-vide" data-tt="chargement">Loading…</div></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="tm-sec" id="tm-colony" aria-labelledby="tmColH">
+        <div class="tm-titre"><h2 id="tmColH" data-tt="tColonie">The colony</h2><span class="tm-sous" data-tt="sColonie">Every agent, what it is doing now and what it has decided. Packets move only when the server reports a real event.</span></div>
+        <div class="tm-carte">
+          <svg class="tm-reseau" id="tmReseau" viewBox="0 0 1000 360" role="img" aria-label="Colony network"></svg>
+          <div class="tm-legende" id="tmLegende"></div>
+        </div>
+        <div class="tm-fiches" id="tmFiches"><div class="tm-vide" data-tt="chargement">Loading…</div></div>
+        <div class="tm-titre tm-console-titre" id="tm-console"><h2 data-tt="tConsole">Colony console</h2><span class="tm-sous" data-tt="sConsole">The original view, unchanged: the village, trading with the colony on your own mirror wallet, open positions and every measurement panel.</span></div>
+      </section>
+    </div>
     <div class="tablette">
       <div class="tab-ecran">
   <header class="bar">
@@ -1115,6 +1183,101 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   </div>
       </div>
     </div>
+    <div class="tm" id="tmSuite">
+      <section class="tm-sec" id="tm-market" aria-labelledby="tmMarH">
+        <div class="tm-titre"><h2 id="tmMarH" data-tt="tMarche">Market scanner</h2><span class="tm-sous" id="tmMarS"></span><span class="tm-n" id="tmMarN">—</span></div>
+        <div class="tm-outils">
+          <input class="tm-champ" id="tmCherche" type="search" placeholder="Search a token or an address" data-tt-ph="cherche" aria-label="Search">
+          <div class="tm-onglets" id="tmFiltres" role="group" aria-label="Filters" style="margin:0">
+            <button type="button" class="tm-puce" data-f="tout" aria-pressed="true" data-tt="fTout">All</button>
+            <button type="button" class="tm-puce" data-f="achat" aria-pressed="false" data-tt="fAchat">Buy</button>
+            <button type="button" class="tm-puce" data-f="veille" aria-pressed="false" data-tt="fVeille">Watch</button>
+            <button type="button" class="tm-puce" data-f="refus" aria-pressed="false" data-tt="fRefus">Reject</button>
+            <button type="button" class="tm-puce" data-f="risque" aria-pressed="false" data-tt="fRisque">High Risk</button>
+            <button type="button" class="tm-puce" data-f="neuf" aria-pressed="false" data-tt="fNeuf">New Tokens</button>
+          </div>
+        </div>
+        <div class="tm-marche">
+          <div class="tm-tab-box">
+            <table class="tm-table" id="tmTable">
+              <thead><tr><th>Token</th><th>Price</th><th>Liquidity</th><th>Volume</th><th>Age</th><th>Holders</th><th>AI score</th><th>Risk</th><th>Decision</th></tr></thead>
+              <tbody id="tmLignes"><tr><td colspan="9" class="tm-vide" data-tt="chargement">Loading…</td></tr></tbody>
+            </table>
+          </div>
+          <aside class="tm-carte tm-analyse" id="tmAnalyse" aria-live="polite"><div class="tm-vide" data-tt="choisis">Pick a token in the table to see how the colony judged it.</div></aside>
+        </div>
+      </section>
+
+      <section class="tm-sec" id="tm-trades" aria-labelledby="tmTrH">
+        <div class="tm-titre"><h2 id="tmTrH" data-tt="tTrades">Trades terminal</h2><span class="tm-pastille tm-p-ambre" data-tt="badgePapier">PAPER</span><span class="tm-n" id="tmTrN">—</span></div>
+        <div class="tm-tuiles" id="tmTuiles"></div>
+        <div class="tm-carte" style="margin-top:12px">
+          <div class="tm-titre"><h2 data-tt="tEquite">Equity curve</h2><span class="tm-sous" id="tmEqS"></span></div>
+          <canvas class="tm-courbe" id="tmCourbe" aria-label="Paper treasury over time"></canvas>
+        </div>
+        <div class="tm-grille2" style="margin-top:12px">
+          <div class="tm-carte"><div class="tm-titre"><h2 data-tt="tOuvertes">Open positions</h2><span class="tm-n" id="tmOuvN">—</span></div><div id="tmOuvertes"></div></div>
+          <div class="tm-carte tm-reel"><div class="tm-titre"><h2 data-tt="tLive">Live · mirror wallets</h2><span class="tm-pastille tm-p-vert">LIVE</span></div><div id="tmLive"></div></div>
+        </div>
+        <div class="tm-carte" style="margin-top:12px">
+          <div class="tm-titre"><h2 data-tt="tFermees">Closed trades</h2><span class="tm-n" id="tmFermN">—</span></div>
+          <div class="tm-tab-box"><table class="tm-table"><thead><tr><th>Token</th><th>Closed</th><th>Held</th><th>Stake</th><th>Return</th><th>P&amp;L</th><th>Exit</th></tr></thead><tbody id="tmFermees"></tbody></table></div>
+          <div class="tm-pages" id="tmFermP"></div>
+        </div>
+        <div class="tm-carte" style="margin-top:12px" id="tmBacktest">
+          <div class="tm-titre"><h2 data-tt="tBacktest">Backtest</h2><span class="tm-sous" data-tt="sBacktest">The colony's own closed paper trades over a window — nothing here is a simulation.</span></div>
+          <div class="tm-onglets" role="group" aria-label="Window">
+            <button type="button" class="tm-puce" data-w="7" aria-pressed="true">7D</button>
+            <button type="button" class="tm-puce" data-w="30" aria-pressed="false">30D</button>
+            <button type="button" class="tm-puce" data-w="90" aria-pressed="false">90D</button>
+          </div>
+          <div id="tmBtCorps"></div>
+        </div>
+      </section>
+
+      <section class="tm-sec" id="tm-learning" aria-labelledby="tmSlH">
+        <div class="tm-titre"><h2 id="tmSlH" data-tt="tSecond">Every token gets a second look</h2><span class="tm-sous" data-tt="sSecond">Bought or rejected, every token is followed to its deadline and priced again.</span><span class="tm-n" id="tmSlN">—</span></div>
+        <div class="tm-quatre" id="tmQuatre"></div>
+        <div class="tm-carte"><div id="tmRegles"><div class="tm-vide" data-tt="chargement">Loading…</div></div></div>
+        <div class="tm-titre" style="margin-top:26px"><h2 data-tt="tApprend">What the colony is learning</h2><span class="tm-n" id="tmAppN">—</span></div>
+        <div class="tm-lecons" id="tmLecons"><div class="tm-vide" data-tt="chargement">Loading…</div></div>
+        <div class="tm-carte" style="margin-top:12px">
+          <div class="tm-titre"><h2 data-tt="tEvts">Learning events</h2><span class="tm-n" id="tmEvtN">—</span></div>
+          <div id="tmEvts"><div class="tm-vide" data-tt="chargement">Loading…</div></div>
+        </div>
+      </section>
+
+      <section class="tm-sec" id="tm-proof" aria-labelledby="tmPrH">
+        <div class="tm-titre"><h2 id="tmPrH" data-tt="tPreuve">Proof</h2><span class="tm-sous" data-tt="sPreuve">Everything the server kept, newest first. Each token links to its pair on DexScreener.</span><span class="tm-n" id="tmPrN">—</span></div>
+        <div class="tm-onglets" id="tmPrF" role="group" aria-label="Filters">
+          <button type="button" class="tm-puce" data-p="tout" aria-pressed="true">ALL</button>
+          <button type="button" class="tm-puce" data-p="trade" aria-pressed="false">TRADES</button>
+          <button type="button" class="tm-puce" data-p="refus" aria-pressed="false">REJECTIONS</button>
+          <button type="button" class="tm-puce" data-p="signal" aria-pressed="false">SIGNALS</button>
+          <button type="button" class="tm-puce" data-p="appris" aria-pressed="false">LEARNING</button>
+        </div>
+        <div class="tm-tab-box tm-preuve"><table class="tm-table"><thead><tr><th>Time</th><th>Type</th><th>Token / agent</th><th>What happened</th></tr></thead><tbody id="tmPreuve"></tbody></table></div>
+        <div class="tm-pages" id="tmPrP"></div>
+
+        <div class="tm-titre" style="margin-top:26px"><h2 data-tt="tInfra">Data infrastructure</h2><span class="tm-sous" data-tt="sInfra">Every source the colony reads, with its real success rate since the last restart.</span><span class="tm-n" id="tmInfN">—</span></div>
+        <div class="tm-services" id="tmInfra"><div class="tm-vide" data-tt="chargement">Loading…</div></div>
+        <div class="tm-petit" id="tmHors"></div>
+
+        <div class="tm-titre" style="margin-top:26px"><h2 data-tt="tComment">How it works</h2></div>
+        <ol class="tm-etapes">
+          <li data-tt="e1"><b>Discover</b>The Scout sweeps new pools, fresh profiles, boosts and launchpads on Robinhood Chain.</li>
+          <li data-tt="e2"><b>Filter</b>Floors on liquidity, cap, age and price moves drop what cannot be traded.</li>
+          <li data-tt="e3"><b>Challenge</b>Warden reads the contract, Whale-Watch the holders, Whisper the trades one by one. Any of them can veto.</li>
+          <li data-tt="e4"><b>Score</b>The Oracle scores what survived with what it has measured, and decides.</li>
+          <li data-tt="e5"><b>Test the exit</b>The Test Subject simulates the sale on chain before any buy, signing nothing.</li>
+          <li data-tt="e6"><b>Trade on paper</b>The Banker sizes the stake, the Closer opens and closes at real prices. Mirror wallets can follow for real.</li>
+          <li data-tt="e7"><b>Learn</b>Every token, bought or rejected, is priced again at its deadline. The agents update what they believe.</li>
+        </ol>
+      </section>
+    </div>
+    <nav class="tm-bnav" id="tmBnav" aria-label="Sections">
+      <a href="#tm-live" data-s="tm-live"><span>⚡</span>LIVE</a><a href="#tm-colony" data-s="tm-colony"><span>🧬</span>COLONY</a><a href="#tm-market" data-s="tm-market"><span>📊</span>MARKET</a><a href="#tm-trades" data-s="tm-trades"><span>💹</span>TRADES</a><a href="#tm-learning" data-s="tm-learning"><span>🧠</span>LEARN</a><a href="#tm-proof" data-s="tm-proof"><span>🧾</span>PROOF</a>
+    </nav>
   </main>
 
   <!-- ---- LES AFFICHES, A DROITE DE LA TABLETTE ----
@@ -3211,7 +3374,12 @@ async function demande(manuel){
     ERREUR_RESEAU = String((e && e.message) || e).slice(0, 120);
     pastille(); majPouls();
     dis(ph("pasRepondu", ERREUR_RESEAU, !!VUE), true);
-  }finally{ demande._enCours = false; }
+  }finally{
+    demande._enCours = false;
+    /* Le terminal (swoge_terminal.js) repeint sur ce signal, reussite ou echec :
+       il lit la MEME vue, il ne redemande rien. */
+    try{ window.dispatchEvent(new Event("swoge:vue")); }catch(e){}
+  }
 }
 
 /* ---- LA PASTILLE DIT CE QU'ELLE SAIT, ET SON AGE ----
@@ -3389,6 +3557,7 @@ function poseLangue(l){
   if(b){ b.textContent = LANGUE === "fr" ? "🇫🇷" : "🇬🇧"; b.title = LANGUE === "fr" ? "English" : "Français"; }
   document.documentElement.lang = LANGUE;
   peintAttribution();
+  try{ window.dispatchEvent(new Event("swoge:langue")); }catch(e){}
 }
 (function(){
   releveAnglais();
@@ -3574,4 +3743,6 @@ $("stagetag").textContent = phraseFond();
 requestAnimationFrame(loop);
 demande(false);
 </script>
+<!-- Le terminal : il lit `VUE` et `LANGUE` de la page, et repeint sur « swoge:vue ». -->
+<script src="swoge_terminal.js?v=ef9383df"></script>
 </html>

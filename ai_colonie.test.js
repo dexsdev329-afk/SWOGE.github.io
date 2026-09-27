@@ -1594,14 +1594,25 @@ async function auditDesVetos() {
                x: Math.round(s.left + s.width / 2), y: Math.round(s.top + s.height / 2),
                pageDefile: document.body.scrollHeight > window.innerHeight + 2 };
     });
-    ok(av.max > 50 && !av.pageDefile,
-       'sur cet ecran, seul le panneau defile (' + av.max + ' px a parcourir) et la page tient dans la fenetre');
-    await page.mouse.move(av.x, av.y);
+    /* ---- DEPUIS LE TERMINAL (27/09/2026), LA PAGE DEFILE ----
+     * Elle tenait dans la fenetre ; elle porte maintenant le terminal au-dessus
+     * et au-dessous de la console, et c est la PAGE qui defile. L intention de
+     * cet essai n a jamais ete « la page ne defile pas » : c est « la molette
+     * posee sur le village n est pas morte ». Elle doit donc faire bouger
+     * quelque chose — la page quand elle defile, le panneau sinon. */
+    ok(av.max > 50, 'le panneau garde son propre ascenseur (' + av.max + ' px a parcourir)');
+    await page.evaluate(() => { const s = document.querySelector('.stage'); s.scrollIntoView({ block: 'center' }); });
+    await page.waitForTimeout(300);
+    const pos = await page.evaluate(() => { const s = document.querySelector('.stage').getBoundingClientRect();
+      return { x: Math.round(s.left + s.width / 2), y: Math.round(s.top + s.height / 2), y0: scrollY,
+               pageDefile: document.body.scrollHeight > window.innerHeight + 2 }; });
+    await page.mouse.move(pos.x, pos.y);
     for (let i = 0; i < 30; i++) await page.mouse.wheel(0, 200);
-    await page.waitForTimeout(400);
-    const ap = await page.evaluate(() => Math.round(document.querySelector('.panel').scrollTop));
-    console.log('   souris sur le village · panneau descendu de ' + ap + ' px sur ' + av.max);
-    ok(ap >= av.max - 2, 'trente crans au-dessus du village descendent le panneau jusqu au bout (' + ap + '/' + av.max + ')');
+    await page.waitForTimeout(600);
+    const ap = await page.evaluate(() => ({ panneau: Math.round(document.querySelector('.panel').scrollTop), page: Math.round(scrollY) }));
+    console.log('   souris sur le village · page descendue de ' + (ap.page - pos.y0) + ' px · panneau de ' + ap.panneau + ' px');
+    ok(pos.pageDefile ? ap.page - pos.y0 > 1000 : ap.panneau >= av.max - 2,
+       'trente crans au-dessus du village font bouger quelque chose : ' + (pos.pageDefile ? 'la page descend (' + (ap.page - pos.y0) + ' px)' : 'le panneau (' + ap.panneau + '/' + av.max + ')'));
     /* Et on ne vole pas le geste a ce qui peut encore defiler tout seul. */
     const menuOk = await page.evaluate(() => {
       const p = document.querySelector('.panel');
@@ -2342,6 +2353,101 @@ async function auditDesVetos() {
        'la tresorerie deja lue reste affichee : elle est vraie, elle est juste datee (' + v.bal + ')');
     ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
     await page.context().close();
+  }
+
+  /* ======================================================================
+   * 9. LE TERMINAL (27/09/2026)
+   *
+   * « Transformer SWOGE AI en un AI Trading Colony Terminal… NE PAS FAKE les
+   * trades, profits, win rate, agents, tokens, statuts d API. » Il lit la
+   * MEME vue que la console : on verifie qu il n invente rien, que ses
+   * filtres filtrent, qu il dit ce qui manque, et qu il tient sur telephone.
+   * ==================================================================== */
+  console.log('\n-- le terminal : ce qu il montre vient de la vue, rien d autre --');
+  {
+    const { page, boum, appels } = await ouvre(nav, port, {});
+    await page.waitForTimeout(900);
+    const h = await page.evaluate(() => ({
+      etat: document.getElementById('tmEtatTx').textContent,
+      trades: document.getElementById('tmTr').textContent, win: document.getElementById('tmWin').textContent,
+      winS: document.getElementById('tmWinS').textContent, pnl: document.getElementById('tmPnl').textContent,
+      scan: document.getElementById('tmScan').textContent, agents: document.getElementById('tmAg').textContent,
+      papier: document.querySelector('.tm-papier').textContent }));
+    console.log('   ' + JSON.stringify(h));
+    ok(h.etat === 'COLONY ONLINE', 'la colonie est dite en ligne parce que son dernier tour est recent (' + h.etat + ')');
+    ok(h.trades === '9' && h.agents === '9', 'trades et agents sont ceux de la vue (9 trades, 9 agents au roster)');
+    ok(h.pnl === '+$188', 'le P&L papier est tresor − depart de la vue (' + h.pnl + ')');
+    ok(h.win === '—' && /needs 20 closed trades \(9 so far\)/.test(h.winS), 'sous 20 trades, pas de taux de gain : il dit combien il en faut (' + h.winS + ')');
+    ok(h.scan === 'N/A', 'un compteur que la vue ne porte pas s ecrit N/A, jamais 0 (' + h.scan + ')');
+    ok(/PAPER TRADING — No real transactions are signed by this interface/.test(h.papier), 'l avertissement papier est ecrit en toutes lettres');
+    ok(appels.serveur === 1, 'le terminal ne fait aucun appel de plus : une seule lecture de /ai/colonie (' + appels.serveur + ')');
+
+    const lignes = async () => page.evaluate(() => [...document.querySelectorAll('#tmLignes tr[data-adr]')].map((r) => r.querySelector('.sym').textContent));
+    const tout = await lignes();
+    ok(tout.length === 9, 'le scanner porte les 7 candidats du tour et les 2 surveilles (' + tout.length + ')');
+    const filtre = async (f) => { await page.click('#tmFiltres [data-f="' + f + '"]'); await page.waitForTimeout(150); return lignes(); };
+    const refus = await filtre('refus'), risque = await filtre('risque'), veille = await filtre('veille');
+    ok(refus.length === 6 && refus.indexOf('$NOVA') < 0, 'Reject : les 6 refuses, pas NOVA (' + refus.join(' ') + ')');
+    ok(risque.sort().join() === '$BALEINE,$MIEL,$PIEGE,$VIDE', 'High Risk : ceux qu une garde de securite a refuses — contrat, detenteurs, sortie (' + risque.join(' ') + ')');
+    ok(veille.sort().join() === '$PATIENT,$PRESQUE', 'Watch : la liste de surveillance (' + veille.join(' ') + ')');
+    await filtre('tout');
+    await page.fill('#tmCherche', 'miel'); await page.waitForTimeout(150);
+    ok((await lignes()).join() === '$MIEL', 'la recherche trouve par symbole');
+    await page.fill('#tmCherche', ''); await page.waitForTimeout(150);
+    await page.click('#tmLignes tr[data-adr="0xa7"]'); await page.waitForTimeout(250);
+    const an = await page.evaluate(() => document.getElementById('tmAnalyse').innerText.replace(/\s+/g, ' '));
+    console.log('   ' + an.slice(0, 200));
+    ok(/REJECT/.test(an) && /Vetoed by Test Subject: the exit is blocked/.test(an), 'l analyse de MIEL dit QUI l a refuse et pourquoi, mot pour mot');
+    ok(/74\/100/.test(an) && /≥ 55/.test(an), 'la confiance est le score de la vue, avec le seuil de la vue');
+    ok(/Exit test: the transfer returns false/.test(an), 'et le resultat de l epreuve de sortie');
+
+    const bt = await page.evaluate(() => document.getElementById('tmBtCorps').textContent);
+    ok(/Collecting historical data/.test(bt), 'sans carnet servi, le backtest dit qu il collecte — il ne simule rien');
+    await page.click('#tmPrF [data-p="appris"]'); await page.waitForTimeout(150);
+    const pr = await page.evaluate(() => [...document.querySelectorAll('#tmPreuve tr')].map((r) => r.textContent));
+    ok(pr.length === 2 && pr.every((x) => /LEARNING/.test(x)), 'la preuve filtree sur LEARNING ne montre que les 2 evenements du journal');
+    const fiches = await page.evaluate(() => document.querySelectorAll('#tmFiches .tm-fiche').length);
+    ok(fiches === 9, 'une fiche par agent du roster, ni plus ni moins (' + fiches + ')');
+    await page.click('#langue'); await page.waitForTimeout(250);
+    const fr = await page.evaluate(() => [document.querySelector('.tm-kicker').textContent, document.getElementById('tmEtatTx').textContent]);
+    ok(fr[0] === 'LA COLONIE DE TRADING AUTONOME' && fr[1] === 'COLONIE EN LIGNE', 'le drapeau bascule aussi le terminal (' + fr.join(' · ') + ')');
+    await page.click('#langue');
+    ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
+    await page.context().close();
+  }
+  console.log('\n-- le terminal hors ligne : il le dit, il n affiche rien a la place --');
+  {
+    const { page, boum } = await ouvre(nav, port, { casse: true });
+    await page.waitForTimeout(500);
+    const h = await page.evaluate(() => ({ etat: document.getElementById('tmEtatTx').textContent,
+      val: ['tmScan','tmSig','tmTr','tmAg','tmWin','tmPnl'].map((id) => document.getElementById(id).textContent),
+      dit: document.getElementById('tmScanS').textContent, marche: document.getElementById('tmLignes').textContent }));
+    ok(h.etat === 'OFFLINE', 'la pastille dit OFFLINE (' + h.etat + ')');
+    ok(h.val.every((x) => x === '—'), 'aucun des six chiffres n est invente (' + h.val.join(' ') + ')');
+    ok(/502/.test(h.dit) && /Nothing is shown in its place/.test(h.dit), 'et la raison est ecrite (« ' + h.dit.slice(0, 60) + ' »)');
+    ok(/502/.test(h.marche), 'le scanner aussi le dit, au lieu d un tableau vide');
+    ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
+    await page.context().close();
+  }
+  console.log('\n-- le terminal sur telephone --');
+  {
+    const ctx = await nav.newContext({ viewport: { width: 390, height: 844 } });
+    const { page, boum } = await ouvre(nav, port, { ctx });
+    await page.waitForTimeout(800);
+    const m = await page.evaluate(() => {
+      const b = document.getElementById('tmBnav').getBoundingClientRect();
+      return { bas: getComputedStyle(document.getElementById('tmBnav')).display !== 'none' && Math.round(b.bottom) === innerHeight,
+               deborde: document.documentElement.scrollWidth > innerWidth + 1,
+               swbb: parseInt(getComputedStyle(document.documentElement).getPropertyValue('--swbb-h')) || 0, h: Math.round(b.height) };
+    });
+    ok(m.bas, 'la navigation des sections est au pouce, en bas de l ecran');
+    ok(!m.deborde, 'rien ne deborde sur le cote (le scanner defile dans sa boite)');
+    ok(m.swbb === m.h && m.h > 0, 'les bulles du site se posent au-dessus d elle (--swbb-h = ' + m.swbb + ' px)');
+    await page.click('.tm-bnav a[data-s="tm-trades"]'); await page.waitForTimeout(1200);
+    const vu = await page.evaluate(() => { const r = document.getElementById('tm-trades').getBoundingClientRect(); return r.top < innerHeight && r.bottom > 0; });
+    ok(vu, 'TRADES emmene vraiment a la section');
+    ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
+    await ctx.close();
   }
 
   await nav.close();

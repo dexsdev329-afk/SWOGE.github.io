@@ -6,7 +6,7 @@
   "predict_moteur.js": "02c7f1ce",
   "privy-swoge.js": "c662549f",
   "stakebubble.min.js": "c324151c",
-  "swoge_ai.html": "bed45c1b",
+  "swoge_ai.html": "cd5d034f",
   "swoge_perp.html": "ffa77c97",
   "swoge_wallet.html": "cce08451",
   "swogebuy.js": "9d7c39e5",
@@ -15,5 +15,7 @@
   "swogemiroir.js": "ea0eaf0e",
   "swogeprofil.js": "aa21d613",
   "swogesports.js": "64716f27",
-  "swogepancake.js": "dd30f4e8"
+  "swogepancake.js": "dd30f4e8",
+  "swoge_terminal.css": "f8ba3b34",
+  "swoge_terminal.js": "ef9383df"
 }

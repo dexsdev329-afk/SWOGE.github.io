@@ -13,13 +13,14 @@ MCP: Streamable HTTP at `https://web-production-220a3.up.railway.app/mcp` with t
 Tools:
 
 - `scan_token(address)` — $0.01. Use this before buying, listing or writing about an EVM token, to check its market and its contract in one call (contract security Powered by Go+ Security, https://gopluslabs.io).
+- `can_i_sell(address)` — $0.02. Use this right before buying a Robinhood Chain token, to know whether you could sell it back and at what cost.
 - `colony_activity(token?)` — $0.005. Use this when you want to know what the SWOGE AI colony, an autonomous paper-trading colony on Robinhood Chain, holds or did recently, overall or on one token.
 - `swoge_economy()` — $0.001. Use this when you need the current state of the $SWOGE token economy.
 - `new_launches(limit?)` — $0.005. Use this when you want the newest tokens on Robinhood Chain, minutes after their pool opens, with what an autonomous trading colony decided about each.
 - `wallet_intel(address)` — $0.02. Use this when you need to know who is behind an EVM address, typically a token deployer, before trusting what it launches.
 - `osint_lookup(target)` — $0.02. Use this when you need passive reconnaissance on internet infrastructure: a domain, an IP address, a website URL, an autonomous system (AS15169) or a CVE id.
 - `web_search(query)` — $0.0075. Use this when the answer is outside SWOGE data: news, projects, teams, people, anything on the open web.
-- `ask_agent(task, model?)` — real cost, up to $1.2888. Use this when a question needs several of these tools chained together and a written answer, for example comparing tokens or researching a launcher.
+- `ask_agent(task, model?)` — real cost, up to $1.296. Use this when a question needs several of these tools chained together and a written answer, for example comparing tokens or researching a launcher.
 - `generate_image(prompt, provider?, quality?, aspect_ratio?, count?)` — real cost, up to $0.7037. Use this when you need an image: an illustration, a meme, a post visual, or the SWOGE character (a prompt that names SWOGE is drawn from the official character).
 - `generate_video(prompt, quality?, duration?, resolution?, aspect_ratio?)` — real cost, up to $3.6. Use this when you need a short video clip, 6 or 10 seconds, made with Grok Imagine.
 - `video_status(id)` — free. Use this when you started a video with generate_video and want to know whether it is ready.

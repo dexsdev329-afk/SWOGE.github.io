@@ -1020,6 +1020,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   /* Ce qu'un outil fait, dit au joueur (le nom technique reste a cote). */
   var OUTIL = {
     scan_token: { ic: "🔍", dit: function(e){ return "Reading token " + String(e.address || "").slice(0, 8) + "…" + String(e.address || "").slice(-4); } },
+    can_i_sell: { ic: "\ud83e\uddea", dit: function(e){ return "Testing whether token " + String(e.address || "").slice(0, 8) + "\u2026" + String(e.address || "").slice(-4) + " can be sold back"; } },
     colony_activity: { ic: "🤖", dit: function(e){ return "Reading the SWOGE AI colony" + (e.token ? " on " + e.token : ""); } },
     swoge_economy: { ic: "🔥", dit: function(){ return "Reading the $SWOGE economy on-chain"; } },
     web_search: { ic: "🌐", dit: function(e){ return "Searching the web: “" + String(e.query || "").slice(0, 80) + "”"; } },

@@ -14,7 +14,10 @@
  * Demande du proprietaire, 27 septembre 2026 : Coinbase ne liste un service
  * dans son catalogue (Bazaar) qu'apres un premier paiement reel regle par son
  * facilitateur. Cette page fait ce paiement a la main, comme un agent :
- *   1. elle demande scan_token au serveur et recoit le 402 (PAYMENT-REQUIRED) ;
+ *   1. elle demande l'outil choisi au serveur et recoit le 402 (PAYMENT-REQUIRED) ;
+ *      scan_token, ou ask_agent — l'agent entier, engage a prix fixe
+ *      (X402_AGENT=1, 27 septembre 2026 : le lister demande aussi un premier
+ *      paiement) ;
  *   2. elle prend l'offre Base (eip155:8453, USDC) et fait SIGNER au
  *      portefeuille l'autorisation EIP-3009 (TransferWithAuthorization) :
  *      montant, destinataire (la tresorerie) et echeance viennent du 402 ;
@@ -24,6 +27,10 @@
  * signature, Coinbase regle (et paie le gaz). Hors moteurs (noindex).
  * Le domaine EIP-712 de l'USDC sur Base (« USD Coin », version 2, chaine 8453)
  * a ete lu sur la chaine le 27 septembre 2026 (contrat du lot Base, §A.1).
+ * L'ECHEANCE vient du 402 (maxTimeoutSeconds, moins 20 s) : ask_agent annonce
+ * 300 s et le serveur exige au moins 180 s de validite a la verification (le
+ * travail dure jusqu'a 150 s, il faut encore regler apres) — un plafond fixe
+ * de 100 s faisait refuser tout paiement de l'agent.
  * ================================================================== -->
 <style>
 :root{ --fond:#EEF3FB; --carte:#fff; --encre:#0B1B36; --pale:#5a6b85; --bleu:#1652f0; --ligne:#E1E9F6; --ok:#0a7d3e; --err:#b3261e; }
@@ -40,6 +47,10 @@ button[disabled]{ opacity:.45; cursor:default; }
 .etape{ display:flex; gap:10px; align-items:flex-start; margin:8px 0; }
 .etape b{ flex:0 0 26px; height:26px; border-radius:50%; background:var(--ligne); display:flex; align-items:center; justify-content:center; font-size:13px; }
 .etape.fait b{ background:var(--ok); color:#fff; }
+.choix{ display:flex; gap:10px; align-items:flex-start; padding:10px 12px; border:1px solid var(--ligne); border-radius:12px; margin:8px 0; cursor:pointer; }
+.choix input{ margin-top:3px; flex:0 0 auto; }
+.choix span{ min-width:0; }
+textarea{ width:100%; font:inherit; font-size:14px; border:1px solid var(--ligne); border-radius:10px; padding:10px; min-height:90px; resize:vertical; margin-top:6px; }
 #statut{ min-height:22px; font-weight:600; }
 #statut.err{ color:var(--err); }
 #statut.ok{ color:var(--ok); }
@@ -51,7 +62,16 @@ a{ color:var(--bleu); }
 <body>
 <main>
   <h1>Pay one call in USDC on Base</h1>
-  <p class="pale">Pays <b id="prix">$0.02</b> in USDC on Base for one <code>scan_token</code> call of SwogeAgentic, exactly like an AI agent would with x402. Coinbase settles the payment and pays the gas: you need USDC on Base, no ETH.</p>
+  <p class="pale">Pays <b id="prix">$0.02</b> in USDC on Base for one call of SwogeAgentic, exactly like an AI agent would with x402. Coinbase settles the payment and pays the gas: you need USDC on Base, no ETH.</p>
+
+  <div class="carte">
+    <label class="choix"><input type="radio" name="outil" value="scan_token" checked><span><b>Scan a token</b> — <code>scan_token</code>, <span id="prix_scan_token">about $0.02</span><br><span class="pale">Token scanned: <code id="jeton"></code></span></span></label>
+    <label class="choix"><input type="radio" name="outil" value="ask_agent"><span><b>Hire the agent</b> — <code>ask_agent</code>, <span id="prix_ask_agent">about $0.54</span><br><span class="pale">The whole agent works on your task (Sonnet 5, up to 2 000 characters, answer in 2–3 minutes).</span></span></label>
+    <div id="tache_bloc" hidden>
+      <label class="pale" for="tache">Task for the agent</label>
+      <textarea id="tache" maxlength="2000">Is $SWOGE (0x8a166fb41cd659a0a43396272ff73973ce29f817) on Robinhood Chain safe to hold? Check its security, liquidity and holders, and answer in five lines.</textarea>
+    </div>
+  </div>
 
   <div class="carte">
     <div class="etape" id="e1"><b>1</b><span>Connect your wallet and switch to Base.</span></div>
@@ -62,9 +82,8 @@ a{ color:var(--bleu); }
   <div class="carte">
     <p>Wallet: <span class="mono" id="adresse">not connected</span></p>
     <p>USDC on Base: <span id="solde">—</span></p>
-    <p class="pale">Token scanned: <code id="jeton"></code></p>
     <p style="margin-top:12px"><button id="connecter" type="button">Connect wallet</button></p>
-    <p style="margin-top:8px"><button id="payer" type="button" disabled>Pay $0.02 USDC and run the scan</button></p>
+    <p style="margin-top:8px"><button id="payer" type="button" disabled>Pay in USDC and run</button></p>
     <p id="statut" role="status"></p>
   </div>
 
@@ -87,8 +106,20 @@ a{ color:var(--bleu); }
   var JETON = "0x8a166fb41cd659a0a43396272ff73973ce29f817";
   var BASE_ID = "0x2105";                        /* 8453 */
   var USDC = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
-  var etat = { compte: null, requete: null };
+  var etat = { compte: null, requete: null, montant: {} };
   $("jeton").textContent = JETON;
+  /* L'outil choisi (?outil=ask_agent le preselectionne). */
+  function outil(){ var r = document.querySelector('input[name="outil"]:checked'); return r ? r.value : "scan_token"; }
+  function args(){ return outil() === "ask_agent" ? { task: String($("tache").value || "").trim() } : { address: JETON }; }
+  function choixChange(){
+    $("tache_bloc").hidden = outil() !== "ask_agent";
+    var m = etat.montant[outil()];
+    if (m) $("prix").textContent = "$" + (m / 1e6);
+    if (etat.compte) devis();
+  }
+  try { if (new URLSearchParams(location.search).get("outil") === "ask_agent") document.querySelector('input[value="ask_agent"]').checked = true; } catch (e) {}
+  Array.prototype.forEach.call(document.querySelectorAll('input[name="outil"]'), function(r){ r.addEventListener("change", choixChange); });
+  $("tache_bloc").hidden = outil() !== "ask_agent";
 
   function statut(t, genre){ var s = $("statut"); s.textContent = t || ""; s.className = genre || ""; }
   function fait(n){ $("e" + n).className = "etape fait"; }
@@ -97,10 +128,33 @@ a{ color:var(--bleu); }
   function hex32(){ var a = new Uint8Array(32); crypto.getRandomValues(a); return "0x" + Array.prototype.map.call(a, function(x){ return ("0" + x.toString(16)).slice(-2); }).join(""); }
   function adresseOk(a){ return /^0x[0-9a-fA-F]{40}$/.test(String(a || "")); }
 
-  function appel(entetes){
-    return fetch(serveur() + "/agentic/call/scan_token", { method: "POST", cache: "no-store",
+  /* Le devis et le paiement portent EXACTEMENT les memes arguments : le serveur lie le devis a eux. */
+  function appel(nom, a, entetes){
+    return fetch(serveur() + "/agentic/call/" + nom, { method: "POST", cache: "no-store",
       headers: Object.assign({ "content-type": "application/json" }, entetes || {}),
-      body: JSON.stringify({ arguments: { address: JETON } }) });
+      body: JSON.stringify({ arguments: a }) });
+  }
+  function offreBase(r){
+    var h = r.headers.get("payment-required");
+    if (!h) return null;
+    var req = de64(h);
+    return { req: req, acc: (req.accepts || []).filter(function(a){ return a.network === "eip155:8453"; })[0] || null };
+  }
+  /* Le prix du moment, lu dans le 402 avant de signer quoi que ce soit. */
+  function devis(){
+    var nom = outil();
+    return appel(nom, args()).then(function(r){
+      var o = r.status === 402 ? offreBase(r) : null;
+      if (!o || !o.acc || !/^[0-9]+$/.test(String(o.acc.amount))) return;
+      etat.montant[nom] = Number(o.acc.amount);
+      $("prix_" + nom).textContent = "$" + (etat.montant[nom] / 1e6);
+      if (outil() === nom) $("prix").textContent = "$" + (etat.montant[nom] / 1e6);
+      avertitSolde();
+    })["catch"](function(){});
+  }
+  function avertitSolde(){
+    var m = etat.montant[outil()] || 20000;
+    if (etat.solde !== null && etat.solde !== undefined && etat.solde < m) statut("This wallet has less than " + (m / 1e6) + " USDC on Base — the payment would fail.", "err");
   }
 
   function lisSolde(){
@@ -108,9 +162,10 @@ a{ color:var(--bleu); }
     var data = "0x70a08231" + "000000000000000000000000" + etat.compte.slice(2).toLowerCase();
     return eth.request({ method: "eth_call", params: [{ to: USDC, data: data }, "latest"] }).then(function(r){
       var n = parseInt(String(r || "0x0"), 16) || 0;
+      etat.solde = n;
       $("solde").textContent = (n / 1e6).toLocaleString("en-US", { maximumFractionDigits: 6 }) + " USDC";
       return n;
-    })["catch"](function(){ $("solde").textContent = "unreadable"; return null; });
+    })["catch"](function(){ $("solde").textContent = "unreadable"; etat.solde = null; return null; });
   }
 
   function versBase(){
@@ -134,28 +189,36 @@ a{ color:var(--bleu); }
     }).then(function(){ return lisSolde(); }).then(function(n){
       fait(1);
       $("payer").disabled = false;
-      statut(n !== null && n < 20000 ? "This wallet has less than 0.02 USDC on Base — the payment would fail." : "Connected on Base. Ready to pay.", n !== null && n < 20000 ? "err" : "");
+      statut("Connected on Base. Ready to pay.");
+      avertitSolde();
+      devis();
     })["catch"](function(e){ statut("Connection failed: " + String(e && (e.message || e.code) || e).slice(0, 160), "err"); });
   });
 
   $("payer").addEventListener("click", function(){
     var eth = window.ethereum;
     if (!eth || !etat.compte) return;
+    var nom = outil(), a = args();
+    if (nom === "ask_agent" && !a.task) { statut("Write a task for the agent first.", "err"); return; }
     $("payer").disabled = true;
+    $("resultat").hidden = true;
     statut("Asking the server for its payment request…");
-    appel().then(function(r){
-      if (r.status !== 402) throw new Error("the server did not ask for a payment (HTTP " + r.status + ")");
-      var h = r.headers.get("payment-required");
-      if (!h) throw new Error("no PAYMENT-REQUIRED header");
-      var req = de64(h);
-      var acc = (req.accepts || []).filter(function(a){ return a.network === "eip155:8453"; })[0];
+    appel(nom, a).then(function(r){
+      if (r.status !== 402) {
+        return r.text().then(function(t){ var c = null; try { c = JSON.parse(t); } catch (e) {}
+          throw new Error((c && (c.raison || c.error)) ? String(c.raison || c.error) : "the server did not ask for a payment (HTTP " + r.status + ")"); });
+      }
+      var o = offreBase(r);
+      if (!o) throw new Error("no PAYMENT-REQUIRED header");
+      var req = o.req, acc = o.acc;
       if (!acc) throw new Error("the server does not offer Base right now");
       if (String(acc.asset).toLowerCase() !== USDC.toLowerCase() || !adresseOk(acc.payTo) || !/^[0-9]+$/.test(String(acc.amount))) throw new Error("unexpected payment request");
       $("prix").textContent = "$" + (Number(acc.amount) / 1e6);
+      etat.montant[nom] = Number(acc.amount);
       etat.requete = req;
       var s = Math.floor(Date.now() / 1000);
       var auth = { from: etat.compte, to: acc.payTo, value: String(acc.amount), validAfter: String(s - 600),
-                   validBefore: String(s + Math.min(100, Number(acc.maxTimeoutSeconds) || 100)), nonce: hex32() };
+                   validBefore: String(s + Math.max(30, (Number(acc.maxTimeoutSeconds) || 120) - 20)), nonce: hex32() };
       var extra = acc.extra || {};
       var typed = {
         types: {
@@ -170,9 +233,9 @@ a{ color:var(--bleu); }
       statut("Sign the authorization in your wallet: " + (Number(acc.amount) / 1e6) + " USDC to " + acc.payTo.slice(0, 6) + "…" + acc.payTo.slice(-4) + ".");
       return eth.request({ method: "eth_signTypedData_v4", params: [etat.compte, JSON.stringify(typed)] }).then(function(signature){
         fait(2);
-        statut("Signed. Settling through Coinbase…");
+        statut(nom === "ask_agent" ? "Signed. The agent is working (2–3 minutes), then Coinbase settles — keep this page open…" : "Signed. Settling through Coinbase…");
         var paiement = { x402Version: 2, resource: req.resource, accepted: acc, payload: { signature: signature, authorization: auth }, extensions: req.extensions };
-        return appel({ "payment-signature": b64(paiement) });
+        return appel(nom, a, { "payment-signature": b64(paiement) });
       });
     }).then(function(r){
       var rep = r.headers.get("payment-response");

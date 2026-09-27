@@ -11,7 +11,11 @@
  *      extensions) et montre le resultat et le lien de la transaction ;
  *   4. une offre Base absente, un portefeuille absent, un refus du serveur :
  *      rien n'est signe ou le refus est montre tel quel, echappe ;
- *   5. rien ne deborde a 320 px ; la page est hors moteurs.
+ *   5. rien ne deborde a 320 px ; la page est hors moteurs ;
+ *   6. ask_agent (l'agent engage, 27 septembre 2026) : la tache part dans les
+ *      arguments, le prix affiche est celui du 402, et l'echeance signee laisse
+ *      au moins 180 s (le serveur refuse en dessous : 150 s de travail + 30 s
+ *      pour regler) sans depasser le maxTimeoutSeconds annonce (300 s).
  * Portefeuille : une cle de test dans Node (ethers), jamais dans la page.
  * ==========================================================================*/
 const fs = require('fs'), path = require('path'), http = require('http');
@@ -44,11 +48,12 @@ const de64 = (s) => JSON.parse(Buffer.from(s, 'base64').toString());
     const ctx = await nav.newContext({ viewport: { width: largeur || 1100, height: 900 } });
     const page = await ctx.newPage();
     const vu = { appels: [], signatures: 0, chaine: null };
-    const REQ = { x402Version: 2, error: 'PAYMENT-SIGNATURE header is required',
-      resource: { url: 'https://srv.example/agentic/call/scan_token', description: 'scan', mimeType: 'application/json' },
-      accepts: (sansBase ? [] : [{ scheme: 'exact', network: 'eip155:8453', amount: '20000', asset: USDC, payTo: TRESOR, maxTimeoutSeconds: 120, extra: { name: 'USD Coin', version: '2' } }])
+    const REQ_DE = (outil) => ({ x402Version: 2, error: 'PAYMENT-SIGNATURE header is required',
+      resource: { url: 'https://srv.example/agentic/call/' + outil, description: outil, mimeType: 'application/json' },
+      accepts: (sansBase ? [] : [{ scheme: 'exact', network: 'eip155:8453', amount: outil === 'ask_agent' ? '541000' : '20000', asset: USDC, payTo: TRESOR,
+        maxTimeoutSeconds: outil === 'ask_agent' ? 300 : 120, extra: { name: 'USD Coin', version: '2' } }])
         .concat([{ scheme: 'exact', network: 'eip155:4663', amount: '21617', asset: '0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168', payTo: TRESOR, maxTimeoutSeconds: 120, extra: { name: 'Global Dollar', version: '1' } }]),
-      extensions: { bazaar: { info: { input: { type: 'http' } }, schema: {} } } };
+      extensions: { bazaar: { info: { input: { type: 'http' } }, schema: {} } } });
     if (!sansPortefeuille) {
       /* Le portefeuille : la page parle EIP-1193, Node signe avec la cle de test. */
       await page.exposeFunction('__portefeuille', async (methode, params) => {
@@ -67,10 +72,11 @@ const de64 = (s) => JSON.parse(Buffer.from(s, 'base64').toString());
     }
     await page.route((u) => !u.href.startsWith('http://127.0.0.1:' + port), async (r) => {
       const q = r.request(), u = q.url();
-      if (!/\/agentic\/call\/scan_token$/.test(u)) return r.abort();
+      const m = /\/agentic\/call\/(scan_token|ask_agent)$/.exec(u);
+      if (!m) return r.abort();
       const sig = q.headers()['payment-signature'];
-      vu.appels.push({ corps: JSON.parse(q.postData() || '{}'), sig: sig || null });
-      if (!sig) return r.fulfill({ status: 402, headers: { 'payment-required': b64(REQ), 'access-control-expose-headers': 'payment-required, payment-response' }, contentType: 'application/json', body: '{}' });
+      vu.appels.push({ outil: m[1], corps: JSON.parse(q.postData() || '{}'), sig: sig || null });
+      if (!sig) return r.fulfill({ status: 402, headers: { 'payment-required': b64(REQ_DE(m[1])), 'access-control-expose-headers': 'payment-required, payment-response' }, contentType: 'application/json', body: '{}' });
       if (refus) return r.fulfill({ status: 402, contentType: 'application/json', body: JSON.stringify({ ok: false, raison: '<img src=x onerror=window.pirate=1>insufficient_funds' }) });
       const p = de64(sig);
       vu.paiement = p;
@@ -78,7 +84,7 @@ const de64 = (s) => JSON.parse(Buffer.from(s, 'base64').toString());
       const qui = ethers.utils.verifyTypedData({ name: 'USD Coin', version: '2', chainId: 8453, verifyingContract: USDC }, TYPES, a, p.payload.signature);
       vu.signataire = qui;
       return r.fulfill({ status: 200, headers: { 'payment-response': b64({ success: true, transaction: '0x' + 'ab'.repeat(32), network: 'eip155:8453', payer: a.from }), 'access-control-expose-headers': 'payment-required, payment-response' },
-        contentType: 'application/json', body: JSON.stringify({ ok: true, outil: 'scan_token', texte: 'Token 0x8a16…: <b>Swole Doge</b> …', x402: { network: acc.network } }) });
+        contentType: 'application/json', body: JSON.stringify({ ok: true, outil: m[1], texte: m[1] === 'ask_agent' ? 'AGENT ANSWER: <i>hold</i>' : 'Token 0x8a16…: <b>Swole Doge</b> …', x402: { network: acc.network } }) });
     });
     await page.goto('http://127.0.0.1:' + port + '/x402_essai.html', { waitUntil: 'domcontentloaded' });
     return { page, vu, ctx };
@@ -93,7 +99,11 @@ const de64 = (s) => JSON.parse(Buffer.from(s, 'base64').toString());
     ok(/5 USDC/.test(await page.textContent('#solde')), 'le solde USDC sur Base est affiche');
     await page.click('#payer');
     await page.waitForSelector('#resultat:not([hidden])', { timeout: 10000 });
-    ok(vu.appels.length === 2 && vu.appels.every((x) => x.corps.arguments.address === '0x8a166fb41cd659a0a43396272ff73973ce29f817'), 'deux appels : le 402 puis le paiement, memes arguments (le devis est lie aux arguments)');
+    /* Le devis lu a la connexion (prix affiche), puis le 402 et le paiement : un seul signe, le dernier. */
+    const [av, der] = vu.appels.slice(-2);
+    ok(vu.appels.every((x) => x.outil === 'scan_token' && x.corps.arguments.address === '0x8a166fb41cd659a0a43396272ff73973ce29f817'),
+       'chaque appel porte les memes arguments (le devis est lie aux arguments) [' + vu.appels.length + ' appels]');
+    ok(!av.sig && !!der.sig && vu.appels.filter((x) => x.sig).length === 1, 'le 402 puis UN paiement signe');
     const p = vu.paiement, a = p.payload.authorization;
     ok(p.x402Version === 2 && p.accepted.network === 'eip155:8453' && p.resource.url === 'https://srv.example/agentic/call/scan_token' && p.extensions && p.extensions.bazaar,
        'PAYMENT-SIGNATURE v2 : resource, offre Base, extensions reprises du 402');
@@ -134,7 +144,45 @@ const de64 = (s) => JSON.parse(Buffer.from(s, 'base64').toString());
     await ctx.close();
   }
 
-  console.log('\n-- 3. telephone et moteurs --');
+  console.log('\n-- 3. engager l agent (ask_agent) --');
+  {
+    const { page, vu, ctx } = await ouvre();
+    ok(await page.isHidden('#tache_bloc'), 'la case de la tache est cachee tant que scan_token est choisi');
+    await page.click('#connecter');
+    await page.waitForFunction(() => !document.getElementById('payer').disabled);
+    await page.check('input[value="ask_agent"]');
+    ok(await page.isVisible('#tache_bloc'), 'choisir ask_agent montre la case de la tache');
+    await page.waitForFunction(() => /0\.541/.test(document.getElementById('prix').textContent));
+    ok(/\$0\.541/.test(await page.textContent('#prix_ask_agent')), 'le prix affiche est celui du 402 ($0.541), avant toute signature');
+    ok(vu.signatures === 0, 'rien n est signe par le devis');
+    await page.fill('#tache', '');
+    await page.click('#payer');
+    ok(/Write a task/.test(await page.textContent('#statut')) && vu.signatures === 0, 'sans tache : rien n est demande ni signe');
+    await page.fill('#tache', 'Compare two tokens <script>');
+    const avant = vu.appels.length;
+    await page.click('#payer');
+    await page.waitForSelector('#resultat:not([hidden])', { timeout: 10000 });
+    const nouveaux = vu.appels.slice(avant);
+    ok(nouveaux.length === 2 && nouveaux.every((x) => x.outil === 'ask_agent' && x.corps.arguments.task === 'Compare two tokens <script>'),
+       'le 402 puis le paiement vont a ask_agent, la tache telle quelle dans les arguments');
+    const a = vu.paiement.payload.authorization, s = Math.floor(Date.now() / 1000);
+    ok(a.value === '541000' && vu.paiement.accepted.maxTimeoutSeconds === 300, 'le montant et l echeance annonces pour l agent');
+    ok(Number(a.validBefore) - s >= 180 && Number(a.validBefore) <= s + 300,
+       'l echeance laisse au moins 180 s (le serveur refuse en dessous) sans depasser 300 s [' + (Number(a.validBefore) - s) + ' s]');
+    ok(vu.signataire === W.address, 'la signature se verifie');
+    ok((await page.textContent('#sortie')).includes('<i>hold</i>') && (await page.$('#sortie i')) === null, 'la reponse de l agent est montree en texte');
+    await ctx.close();
+  }
+  {
+    const ctx = await nav.newContext();
+    const page = await ctx.newPage();
+    await page.route((u) => !u.href.startsWith('http://127.0.0.1:' + port), (r) => r.abort());
+    await page.goto('http://127.0.0.1:' + port + '/x402_essai.html?outil=ask_agent', { waitUntil: 'domcontentloaded' });
+    ok(await page.isChecked('input[value="ask_agent"]') && await page.isVisible('#tache_bloc'), '?outil=ask_agent preselectionne l agent');
+    await ctx.close();
+  }
+
+  console.log('\n-- 4. telephone et moteurs --');
   {
     const { page, ctx } = await ouvre({ largeur: 320 });
     const deb = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);

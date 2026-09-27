@@ -1990,7 +1990,7 @@ async function auditDesVetos() {
          maintenant EN TETE de « Your mirror », au-dessus de la console. */
       const m = document.getElementById('tm-mirror');
       return { visible: !b.hidden, sous: !!(m && m.contains(b)) && b.getBoundingClientRect().bottom <= p.getBoundingClientRect().top,
-               profit: t('mir-profit'), wr: t('mir-wr'), trades: t('mir-trades'), best: t('mir-best'), open: t('mir-open'),
+               solde: t('mir-solde'), profit: t('mir-profit'), wr: t('mir-wr'), trades: t('mir-trades'), best: t('mir-best'), open: t('mir-open'),
                etiquettes: [...b.querySelectorAll('i')].map((x) => x.textContent) };
     });
     console.log('   barre : ' + JSON.stringify(bar));
@@ -1999,7 +1999,9 @@ async function auditDesVetos() {
        '0,0031 ETH a 2 455,73 $ font +$7.61, avec l ETH en dessous (« ' + bar.profit + ' »)');
     ok(bar.wr === '58%' && bar.trades === '12' && bar.best === '2.40×' && bar.open === '1',
        'taux 58 % · 12 trades · meilleur 2.40× · 1 ouvert');
-    ok(/mirror/i.test(bar.etiquettes[0]) && bar.etiquettes.length === 5, 'et la premiere etiquette dit « mirror »');
+    /* « Rajoute le solde du miroir aussi » (27/09) : six cases, le solde en tete. */
+    ok(/mirror/i.test(bar.etiquettes[0]) && bar.etiquettes.length === 6 && /balance/i.test(bar.etiquettes[0]), 'six cases, et la premiere dit « Mirror balance »');
+    ok(/^\$/.test(bar.solde) && /0\.05 ETH/.test(bar.solde), 'le solde du miroir en dollars, avec l ETH dessous (« ' + bar.solde + ' »)');
     /* « La ligne des stats du miroir déborde. » Sur un telephone, aucune case
        ne doit laisser sortir son chiffre ni son etiquette, et le profit
        negatif ne doit pas se couper apres le signe. */

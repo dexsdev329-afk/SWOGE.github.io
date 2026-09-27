@@ -108,9 +108,16 @@ html,body{ height:auto }
 .tm-stat b{ display:block; margin-top:7px; font:700 22px/1.05 var(--t-mono); color:var(--t-titre); font-variant-numeric:tabular-nums;
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
 .tm-stat span{ display:block; margin-top:5px; font-size:11.5px; color:var(--t-pale); line-height:1.35 }
-.tm-graphe{ min-height:320px; display:flex; align-items:center; justify-content:center; border-radius:18px;
+.tm-graphe{ min-height:320px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; border-radius:18px;
   background:radial-gradient(circle at 50% 50%, rgba(59,130,246,.10), transparent 62%) }
-.tm-graphe svg{ width:100%; height:100%; max-height:420px; overflow:visible }
+.tm-graphe svg{ width:100%; height:auto; max-height:440px; overflow:visible }
+.tm-graphe .nom{ font:600 10.5px "Outfit",sans-serif; fill:#E6EDF7 }
+.tm-graphe .st{ font:700 8px var(--t-mono); letter-spacing:.8px }
+.tm-graphe .anneau{ opacity:.55 }
+.tm-graphe .tm-noeud.actif .anneau{ opacity:1; animation:tm-halo 1.8s ease-in-out infinite }
+@keyframes tm-halo{ 50%{ stroke-width:4; opacity:.5 } }
+.tm-graphe .paquet{ filter:drop-shadow(0 0 4px currentColor) }
+.tm-hero .tm-legende{ justify-content:center; color:#94A3B8; font-size:10.5px; gap:10px }
 .tm-orbite{ transform-origin:200px 200px; animation:tm-tourne 120s linear infinite }
 .tm-orbite .tm-contre{ animation:tm-tourne 120s linear infinite reverse; transform-box:fill-box; transform-origin:center }
 @keyframes tm-tourne{ to{ transform:rotate(360deg) } }
@@ -325,7 +332,7 @@ html,body{ height:auto }
   /* La constellation est un decor : sur telephone elle se fait petite, pour
      que le miroir arrive vite sous le pouce. */
   .tm-graphe{ min-height:0 }
-  .tm-graphe svg{ max-height:150px }
+  .tm-graphe svg{ max-height:330px }
   .tm-stats{ grid-template-columns:repeat(2,minmax(0,1fr)) }
   .tm-stat b{ font-size:18px }
   .tm-hero h1{ font-size:44px }

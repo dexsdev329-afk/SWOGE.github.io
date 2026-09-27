@@ -53,7 +53,7 @@
     sScan:[null,"Jetons scannés"], sSignaux:[null,"Signaux générés"], sTrades:[null,"Trades papier"],
     sAgents:[null,"Agents actifs"], sWin:[null,"Taux de gain"], sPnl:[null,"P&amp;L papier"],
     chargement:[null,"Chargement…"], tFil:[null,"Activité de la colonie en direct"], tSante:[null,"Santé de la colonie"],
-    tColonie:[null,"La colonie"], sColonie:[null,"Chaque agent, ce qu'il fait maintenant et ce qu'il a décidé. Les paquets ne bougent que quand le serveur rapporte un vrai événement."],
+    tColonie:[null,"La colonie"], sColonie:[null,"Chaque agent, ce qu'il fait maintenant et ce qu'il a décidé. Le réseau en haut montre les mêmes statuts en direct ; ses paquets ne bougent que sur un vrai événement du serveur."],
     tConsole:[null,"Console de la colonie"], sConsole:[null,"La vue d'origine : le village, les positions de papier et tous les panneaux de mesure. Votre miroir est en haut de la page."],
     tMarche:[null,"Scanner de marché"], cherche:[null,"Chercher un jeton ou une adresse"],
     fTout:[null,"Tout"], fAchat:[null,"Achat"], fVeille:[null,"Surveillé"], fRefus:[null,"Refusé"], fRisque:[null,"Risque élevé"], fNeuf:[null,"Nouveaux"],
@@ -385,45 +385,6 @@
     pose("tmPnl", p == null ? t("na") : usd(p, true), p == null ? "" : t("pnlS", pct(p / v.depart * 100), entier(v.depart)), p == null ? "" : (p >= 0 ? "tm-up" : "tm-dn"));
   }
 
-  /* La constellation du hero : les agents du roster servi, autour de la
-     colonie. Elle tourne lentement (decor) ; elle ne s'allume que sur un
-     evenement reel (voir `eclate`). */
-  let empreinteConst = "";
-  function peintConstellation(){
-    const v = G().v, svg = $("tmConstellation");
-    const r = (v && v.roster) || [];
-    const emp = r.map(a => a.key).join(",");
-    if(emp === empreinteConst && svg.childNodes.length) return;
-    empreinteConst = emp;
-    const n = r.length, R = 150;
-    let h = '<defs><radialGradient id="tmCoeur"><stop offset="0" stop-color="#6366F1" stop-opacity=".9"/><stop offset="1" stop-color="#0B1020" stop-opacity="0"/></radialGradient></defs>';
-    h += '<circle cx="200" cy="200" r="150" fill="none" stroke="rgba(148,163,184,.14)" stroke-dasharray="3 6"/>';
-    h += '<circle cx="200" cy="200" r="95" fill="none" stroke="rgba(148,163,184,.10)"/>';
-    h += '<g class="tm-coeur"><circle cx="200" cy="200" r="70" fill="url(#tmCoeur)"/><circle cx="200" cy="200" r="34" fill="#0C111B" stroke="#6366F1" stroke-width="2"/>'
-       + '<text x="200" y="207" text-anchor="middle" font-size="22">🐕</text></g>';
-    h += '<g class="tm-orbite">';
-    r.forEach((a, i) => {
-      const ang = (i / Math.max(1, n)) * Math.PI * 2 - Math.PI / 2;
-      const x = 200 + Math.cos(ang) * R, y = 200 + Math.sin(ang) * R;
-      h += '<line x1="200" y1="200" x2="' + x.toFixed(1) + '" y2="' + y.toFixed(1) + '" stroke="' + esc(a.couleur || "#3B82F6") + '" stroke-opacity=".22"/>';
-      h += '<g data-k="' + esc(a.key) + '"><g class="tm-contre"><circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="19" fill="#0C111B" stroke="' + esc(a.couleur || "#3B82F6") + '" stroke-width="2"/>'
-         + '<text x="' + x.toFixed(1) + '" y="' + (y + 6).toFixed(1) + '" text-anchor="middle" font-size="16">' + esc(a.emoji || "•") + "</text></g></g>";
-    });
-    h += "</g>";
-    svg.innerHTML = h;
-  }
-  function eclate(k){
-    if(RM) return;
-    const g = $("tmConstellation").querySelector('g[data-k="' + (window.CSS && CSS.escape ? CSS.escape(k) : k) + '"] circle');
-    if(!g) return;
-    const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-    c.setAttribute("cx", g.getAttribute("cx")); c.setAttribute("cy", g.getAttribute("cy")); c.setAttribute("r", "19");
-    c.setAttribute("fill", "none"); c.setAttribute("stroke", g.getAttribute("stroke")); c.setAttribute("stroke-width", "2");
-    c.setAttribute("class", "tm-eclat");
-    g.parentNode.appendChild(c);
-    setTimeout(() => c.remove(), 1300);
-  }
-
   /* ==================== LE FIL EN DIRECT ==================== */
   const vusFil = new Set();
   let filPeint = false;
@@ -503,59 +464,85 @@
     $("tmSanteN").textContent = num(v.tours) != null ? t("tourN", entier(v.tours)) : "—";
   }
 
-  /* ==================== LE RESEAU DES AGENTS ==================== */
+  /* ==================== LE RESEAU DES AGENTS, DANS LE HERO ====================
+   * « Ca met le derriere, comme ca on gagne de la place » (27/09) : le hero
+   * portait une constellation de decor ET la section Colony un second reseau,
+   * le vrai. Il n'en reste qu'un, le vrai, dans le hero : les agents du roster
+   * servi en cercle, le pipeline dans l'ordre que la colonie a choisi, les
+   * agents de cote relies a celui qu'ils servent, l'anneau a la couleur du
+   * statut REEL, et les paquets sur un evenement du serveur. Immobile : un
+   * reseau qui tourne ne se lit pas. */
+  const COUL_HERO = { ONLINE:"#60A5FA", ANALYZING:"#22D3EE", THINKING:"#A78BFA", SIGNAL:"#FBBF24", EXECUTING:"#4ADE80", LEARNING:"#C084FC", IDLE:"#64748B", OFFLINE:"#64748B" };
+  const ACTIFS = ["ANALYZING","THINKING","SIGNAL","EXECUTING","LEARNING"];
   let empreinteReseau = "", POS = {};
+  const sel = k => (window.CSS && CSS.escape ? CSS.escape(k) : k);
   function peintReseau(){
-    const v = G().v, svg = $("tmReseau");
+    const v = G().v, svg = $("tmConstellation");
     const S = structure(v);
-    if(!S.tous.length){ svg.innerHTML = '<text x="500" y="180" text-anchor="middle" fill="#8A99B4" font-size="16">' + esc(v ? t("na") : t("rienLu")) + "</text>"; empreinteReseau = ""; return; }
+    if(!S.tous.length){
+      svg.innerHTML = '<text x="200" y="205" text-anchor="middle" fill="#7C8BA5" font-size="14">' + esc(v ? t("na") : (G().err ? t("etatOff") : t("rienLu"))) + "</text>";
+      empreinteReseau = ""; $("tmLegende").innerHTML = ""; return;
+    }
     const st = statuts(v, S);
     const emp = S.tous.map(a => a.key + ":" + a.ordre).join(",");
     if(emp !== empreinteReseau){
       empreinteReseau = emp; POS = {};
-      const n = S.principal.length;
-      S.principal.forEach((a, i) => { POS[a.key] = { x: n > 1 ? 70 + i * (860 / (n - 1)) : 500, y: 165 }; });
-      /* Les agents de cote se rangent au-dessus (le conseil) ou au-dessous,
-         au plus pres de celui qu'ils servent, sans jamais se chevaucher :
-         trois agents accroches au Closer tombaient au meme endroit. */
-      const range = (liste, y) => {
-        const PAS = 118, voulu = liste.map(a => ({ a, x: (POS[(S.cotes.find(c => c.a === a) || {}).ancre] || { x:500 }).x }))
-          .sort((p, q) => p.x - q.x);
-        for(let i = 1; i < voulu.length; i++) voulu[i].x = Math.max(voulu[i].x, voulu[i-1].x + PAS);
-        const deborde = voulu.length ? voulu[voulu.length - 1].x - 940 : 0;
-        if(deborde > 0) voulu.forEach(p => { p.x -= deborde; });
-        for(let i = voulu.length - 2; i >= 0; i--) voulu[i].x = Math.min(voulu[i].x, voulu[i+1].x - PAS);
-        voulu.forEach(p => { POS[p.a.key] = { x: Math.max(60, p.x), y }; });
-      };
-      range(S.cotes.filter(c => c.a.role === "conseil").map(c => c.a), 50);
-      range(S.cotes.filter(c => c.a.role !== "conseil").map(c => c.a), 290);
-      let h = '<g id="tmAretes">';
+      /* Le pipeline dans l'ordre, puis chaque agent de cote juste apres celui qu'il sert. */
+      const ordre = [];
+      S.principal.forEach(a => { ordre.push(a); S.cotes.filter(c => c.ancre === a.key).forEach(c => ordre.push(c.a)); });
+      S.cotes.filter(c => ordre.indexOf(c.a) < 0).forEach(c => ordre.push(c.a));
+      const n = ordre.length, R = 150;
+      ordre.forEach((a, i) => { const ang = (i / Math.max(1, n)) * Math.PI * 2 - Math.PI / 2;
+        POS[a.key] = { x: 200 + Math.cos(ang) * R, y: 200 + Math.sin(ang) * R, ang }; });
+      let h = '<defs><radialGradient id="tmCoeur"><stop offset="0" stop-color="#6366F1" stop-opacity=".9"/><stop offset="1" stop-color="#0B1020" stop-opacity="0"/></radialGradient></defs>';
+      h += '<circle cx="200" cy="200" r="' + R + '" fill="none" stroke="rgba(148,163,184,.10)" stroke-dasharray="3 6"/>';
+      h += '<g class="tm-coeur"><circle cx="200" cy="200" r="60" fill="url(#tmCoeur)"/><circle cx="200" cy="200" r="30" fill="#0C111B" stroke="#6366F1" stroke-width="2"/>'
+         + '<text x="200" y="207" text-anchor="middle" font-size="20">🐕</text></g>';
+      h += '<g>';
       for(let i = 1; i < S.principal.length; i++){
         const a = POS[S.principal[i-1].key], b = POS[S.principal[i].key];
-        h += '<line class="arete" x1="' + a.x + '" y1="' + a.y + '" x2="' + b.x + '" y2="' + b.y + '"/>';
+        h += '<line x1="' + a.x.toFixed(1) + '" y1="' + a.y.toFixed(1) + '" x2="' + b.x.toFixed(1) + '" y2="' + b.y.toFixed(1) + '" stroke="rgba(147,197,253,.35)" stroke-width="1.4"/>';
       }
-      S.cotes.forEach(c => { const a = POS[c.ancre], b = POS[c.a.key]; if(a && b) h += '<line class="arete lat" x1="' + a.x + '" y1="' + a.y + '" x2="' + b.x + '" y2="' + b.y + '"/>'; });
-      h += '</g><g id="tmNoeuds">';
-      S.tous.forEach(a => {
-        const p = POS[a.key]; if(!p) return;
-        const c = esc(a.couleur || "#3B82F6");
-        h += '<g class="noeud" data-k="' + esc(a.key) + '" transform="translate(' + p.x.toFixed(1) + "," + p.y + ')"><title>' + esc(a.nom + " — " + (a.mission || "")) + "</title>"
-          + '<circle class="anneau" r="25" stroke="' + c + '"/><circle class="fond" r="23" stroke="' + c + '"/>'
-          + '<text y="7" font-size="20">' + esc(a.emoji || "•") + '</text><text class="nom" y="42">' + esc(a.nom) + '</text><text class="st" y="56"></text></g>';
+      S.cotes.forEach(c => { const a = POS[c.ancre], b = POS[c.a.key]; if(a && b)
+        h += '<line x1="' + a.x.toFixed(1) + '" y1="' + a.y.toFixed(1) + '" x2="' + b.x.toFixed(1) + '" y2="' + b.y.toFixed(1) + '" stroke="rgba(148,163,184,.30)" stroke-dasharray="3 4"/>'; });
+      h += "</g><g>";
+      ordre.forEach(a => {
+        const p = POS[a.key], c = esc(a.couleur || "#3B82F6");
+        /* L'etiquette part vers l'exterieur du cercle : elle ne tombe jamais sur le coeur. */
+        const lx = p.x + Math.cos(p.ang) * 30, ly = p.y + Math.sin(p.ang) * 30 + 3;
+        const anc = Math.abs(Math.cos(p.ang)) < 0.3 ? "middle" : (Math.cos(p.ang) > 0 ? "start" : "end");
+        h += '<g class="tm-noeud" data-k="' + esc(a.key) + '"><title>' + esc(a.nom + " — " + (a.mission || "")) + "</title>"
+          + '<circle class="anneau" cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="21" fill="none" stroke-width="2"/>'
+          + '<circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="16" fill="#0C111B" stroke="' + c + '" stroke-width="2"/>'
+          + '<text x="' + p.x.toFixed(1) + '" y="' + (p.y + 5).toFixed(1) + '" text-anchor="middle" font-size="14">' + esc(a.emoji || "•") + "</text>"
+          + '<text class="nom" x="' + lx.toFixed(1) + '" y="' + (ly - 4).toFixed(1) + '" text-anchor="' + anc + '">' + esc(a.nom) + "</text>"
+          + '<text class="st" x="' + lx.toFixed(1) + '" y="' + (ly + 6).toFixed(1) + '" text-anchor="' + anc + '"></text></g>';
       });
       h += '</g><g id="tmPaquets"></g>';
       svg.innerHTML = h;
     }
     S.tous.forEach(a => {
-      const g = svg.querySelector('g.noeud[data-k="' + (window.CSS && CSS.escape ? CSS.escape(a.key) : a.key) + '"]'); if(!g) return;
+      const g = svg.querySelector('g.tm-noeud[data-k="' + sel(a.key) + '"]'); if(!g) return;
       const s = st[a.key] || { code:"ONLINE" };
-      const txt = g.querySelector(".st"); txt.textContent = t(s.code); txt.style.fill = COUL_STATUT[s.code];
-      g.classList.toggle("actif", ["ANALYZING","THINKING","SIGNAL","EXECUTING","LEARNING"].indexOf(s.code) >= 0);
+      const txt = g.querySelector(".st"); txt.textContent = t(s.code); txt.style.fill = COUL_HERO[s.code];
+      g.querySelector(".anneau").setAttribute("stroke", COUL_HERO[s.code]);
+      g.classList.toggle("actif", ACTIFS.indexOf(s.code) >= 0);
     });
-    $("tmLegende").innerHTML = ["SIGNAL","EXECUTING","ANALYZING","LEARNING","THINKING","ONLINE"]
-      .map(k => '<span><i style="background:' + COUL_STATUT[k] + '"></i>' + esc(t(k)) + "</span>").join("")
-      + '<span><i style="background:#22C55E"></i>' + esc(G().fr ? "paquet : jeton qui passe" : "packet: token cleared") + "</span>"
-      + '<span><i style="background:#EF4444"></i>' + esc(G().fr ? "paquet : veto" : "packet: veto") + "</span>";
+    $("tmLegende").innerHTML = ["SIGNAL","EXECUTING","ANALYZING","LEARNING","ONLINE"]
+      .map(k => '<span><i style="background:' + COUL_HERO[k] + '"></i>' + esc(t(k)) + "</span>").join("")
+      + '<span><i style="background:#22C55E"></i>' + esc(G().fr ? "jeton qui passe" : "token cleared") + "</span>"
+      + '<span><i style="background:#EF4444"></i>' + esc(G().fr ? "veto" : "veto") + "</span>";
+  }
+  function eclate(k){
+    if(RM) return;
+    const g = $("tmConstellation").querySelector('g.tm-noeud[data-k="' + sel(k) + '"] .anneau');
+    if(!g) return;
+    const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    c.setAttribute("cx", g.getAttribute("cx")); c.setAttribute("cy", g.getAttribute("cy")); c.setAttribute("r", "18");
+    c.setAttribute("fill", "none"); c.setAttribute("stroke", g.getAttribute("stroke") || "#60A5FA"); c.setAttribute("stroke-width", "2");
+    c.setAttribute("class", "tm-eclat");
+    g.parentNode.appendChild(c);
+    setTimeout(() => c.remove(), 1300);
   }
   /* Un paquet suit le pipeline jusqu'a l'agent `jusqua` (inclus). */
   let paquetsVivants = 0;
@@ -566,11 +553,11 @@
     setTimeout(() => {
       const box = $("tmPaquets"); if(!box) return;
       const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-      c.setAttribute("r", "6"); c.setAttribute("fill", couleur); c.setAttribute("class", "paquet"); c.style.color = couleur;
+      c.setAttribute("r", "4.5"); c.setAttribute("fill", couleur); c.setAttribute("class", "paquet"); c.style.color = couleur;
       box.appendChild(c); paquetsVivants++;
       const long = []; let tot = 0;
       for(let i = 1; i < pts.length; i++){ const d = Math.hypot(pts[i].x - pts[i-1].x, pts[i].y - pts[i-1].y); long.push(d); tot += d; }
-      const vit = 360, t0 = performance.now(), dureeMs = Math.max(500, tot / vit * 1000);
+      const vit = 220, t0 = performance.now(), dureeMs = Math.max(500, tot / vit * 1000);
       (function pas(now){
         let f = Math.min(1, (now - t0) / dureeMs), d = f * tot, i = 0;
         while(i < long.length && d > long[i]){ d -= long[i]; i++; }
@@ -578,7 +565,7 @@
         c.setAttribute("cx", (a.x + (b.x - a.x) * Math.min(1, d / l)).toFixed(1));
         c.setAttribute("cy", (a.y + (b.y - a.y) * Math.min(1, d / l)).toFixed(1));
         if(f < 1) requestAnimationFrame(pas);
-        else { c.setAttribute("r", "10"); c.style.opacity = ".0"; c.style.transition = "opacity .5s, r .5s"; setTimeout(() => { c.remove(); paquetsVivants--; }, 520); }
+        else { c.setAttribute("r", "8"); c.style.opacity = ".0"; c.style.transition = "opacity .5s, r .5s"; setTimeout(() => { c.remove(); paquetsVivants--; }, 520); }
       })(t0);
     }, delai || 0);
   }
@@ -1093,7 +1080,7 @@
 
   /* ==================== TOUT REPEINDRE ==================== */
   function peintTout(){
-    const zones = [peintHero, peintConstellation, peintFil, peintSante, peintReseau, peintFiches, peintMarche, peintTrades, peintSecond, peintApprend, peintPreuve, peintInfra];
+    const zones = [peintHero, peintFil, peintSante, peintReseau, peintFiches, peintMarche, peintTrades, peintSecond, peintApprend, peintPreuve, peintInfra];
     /* Une zone qui casse ne doit pas emporter les autres : elle se tait, les
        autres continuent — et l'erreur remonte a la console pour qu'on la voie. */
     zones.forEach(f => { try{ f(); }catch(e){ setTimeout(() => { throw e; }); } });

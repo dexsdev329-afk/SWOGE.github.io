@@ -40,7 +40,7 @@
  * une fois par session pour savoir si le serveur en a une plus recente.
  * Sans ca, un joueur garde des semaines une version corrigee depuis
  * longtemps — et ici, cela voudrait dire un agent qui a cesse d'apprendre. */
-var MARQUE_PAGE = 'fff405bb';
+var MARQUE_PAGE = 'cba95c0d';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -796,7 +796,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   .tab-ecran .panel{ max-height:none; }
 }
 </style>
-<link rel="stylesheet" href="swoge_terminal.css?v=e8f86119">
+<link rel="stylesheet" href="swoge_terminal.css?v=6229304d">
 
 
 <!-- ==================== LA BARRE DU SITE ====================
@@ -954,7 +954,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
             <div class="tm-stat"><small data-tt="sPnl">Paper P&amp;L</small><b id="tmPnl">—</b><span id="tmPnlS"></span></div>
           </div>
         </div>
-        <div class="tm-graphe" aria-hidden="true"><svg id="tmConstellation" viewBox="0 0 400 400" role="presentation"></svg></div>
+        <div class="tm-graphe"><svg id="tmConstellation" viewBox="-40 -10 480 420" role="img" aria-label="The colony's agents and what each one is doing now"></svg><div class="tm-legende" id="tmLegende"></div></div>
       </section>
 
       <!-- ---- LE MIROIR, EN PREMIER ----
@@ -1016,11 +1016,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       </section>
 
       <section class="tm-sec" id="tm-colony" aria-labelledby="tmColH">
-        <div class="tm-titre"><h2 id="tmColH" data-tt="tColonie">The colony</h2><span class="tm-sous" data-tt="sColonie">Every agent, what it is doing now and what it has decided. Packets move only when the server reports a real event.</span></div>
-        <div class="tm-carte">
-          <svg class="tm-reseau" id="tmReseau" viewBox="0 0 1000 360" role="img" aria-label="Colony network"></svg>
-          <div class="tm-legende" id="tmLegende"></div>
-        </div>
+        <div class="tm-titre"><h2 id="tmColH" data-tt="tColonie">The colony</h2><span class="tm-sous" data-tt="sColonie">Every agent, what it is doing now and what it has decided. The network at the top shows the same statuses live; its packets move only when the server reports a real event.</span></div>
         <div class="tm-fiches" id="tmFiches"><div class="tm-vide" data-tt="chargement">Loading…</div></div>
         <div class="tm-titre tm-console-titre" id="tm-console"><h2 data-tt="tConsole">Colony console</h2><span class="tm-sous" data-tt="sConsole">The original view: the village, the paper positions and every measurement panel. Your mirror is at the top of the page.</span></div>
       </section>
@@ -1336,7 +1332,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 </div>
 
 <script src="swogeprofil.js?v=aa21d613" defer></script>
-<script src="swogemiroir.js?v=9fde21bb" defer></script>
+<script src="swogemiroir.js?v=3f42867b" defer></script>
 
 <!-- La carte « YOUR BALANCE » recopie #bal, jamais l'inverse. -->
 <script>
@@ -3765,5 +3761,5 @@ requestAnimationFrame(loop);
 demande(false);
 </script>
 <!-- Le terminal : il lit `VUE` et `LANGUE` de la page, et repeint sur « swoge:vue ». -->
-<script src="swoge_terminal.js?v=76443519"></script>
+<script src="swoge_terminal.js?v=98051956"></script>
 </html>

@@ -240,7 +240,10 @@
         /* « La ligne des stats du miroir déborde. » Quinze caracteres en
            capitales espacees ne tiennent pas dans une case de 70 px : « mirror »
            n est dit qu une fois, sur le profit, et la couleur fait le reste. */
-        '<div class="b-item b-gros"><b id="mir-profit">—</b><i>Mirror profit</i></div>'
+        /* « Rajoute le solde du miroir aussi » (27/09) : ce qu'il y a sur le
+           portefeuille, en tete, avant ce qu'il a gagne. */
+        '<div class="b-item b-gros"><b id="mir-solde">—</b><i>Mirror balance</i></div>'
+      + '<div class="b-item b-gros"><b id="mir-profit">—</b><i>Profit</i></div>'
       + '<div class="b-item"><b id="mir-wr">—</b><i>Win rate</i></div>'
       + '<div class="b-item"><b id="mir-trades">0</b><i>Trades</i></div>'
       + '<div class="b-item"><b id="mir-best">—</b><i>Best</i></div>'
@@ -287,9 +290,16 @@
       + (bl.horsMiroir ? '<small>+' + bl.horsMiroir + ' closed outside</small>' : '');
     b.querySelector('#mir-best').textContent = bl.meilleur > 0 ? Number(bl.meilleur).toFixed(2) + '×' : '—';
     b.querySelector('#mir-open').textContent = String(bl.ouvertes !== undefined ? bl.ouvertes : (ETAT.ouvertes || []).length);
+    /* Le solde : l'ETH libre du portefeuille, comme la case « YOUR MIRROR » ;
+       les positions ouvertes n'y sont pas comptees, et c'est dit. */
+    var soldeEth = parseFloat(ETAT.solde);
+    var so = b.querySelector('#mir-solde');
+    so.innerHTML = soldeEth >= 0 ? '<span id="mir-solde-v" class="v">' + nb(soldeEth) + ' ETH</span>' : '—';
     b.hidden = false;
     prixEth().then(function (p) {
       if (!(p > 0)) return;
+      var sv = b.querySelector('#mir-solde-v');
+      if (sv && soldeEth >= 0) { sv.textContent = enDollars(soldeEth * p); sv.insertAdjacentHTML('afterend', '<small>' + nb(soldeEth) + ' ETH</small>'); }
       var v = b.querySelector('#mir-profit-v');
       if (v) { v.textContent = signe + enDollars(Math.abs(eth) * p); v.insertAdjacentHTML('afterend', '<small>' + enEth + '</small>'); }
     });

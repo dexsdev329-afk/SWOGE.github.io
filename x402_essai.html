@@ -328,7 +328,7 @@ a{ color:var(--bleu); }
   function solLisSolde(){
     return SwogeSolana.ata(solEtat.compte.address, SOL.usdc).then(function(a){ return solRpc("getTokenAccountBalance", [a]); })
       .then(function(r){ var n = Number(r && r.value && r.value.amount) || 0; solEtat.solde = n; $("sol_solde").textContent = (n / 1e6).toLocaleString("en-US", { maximumFractionDigits: 6 }) + " USDC"; return n; })
-      ["catch"](function(e){ solEtat.solde = /could not find account|Invalid param/i.test(String(e && e.message)) ? 0 : null; $("sol_solde").textContent = solEtat.solde === 0 ? "0 USDC (no USDC account yet)" : "unreadable"; return solEtat.solde; });
+      ["catch"](function(e){ solEtat.solde = /could not find account|Invalid param/i.test(String(e && e.message)) ? 0 : null; $("sol_solde").textContent = solEtat.solde === 0 ? "0 USDC (no USDC account yet)" : "check it in your wallet"; return solEtat.solde; });
   }
   /* Le reseau choisi montre SES boutons : le bouton Base appelle
      window.ethereum, que Rabby prend toujours (demande du 27/09 : « ca connecte
@@ -365,6 +365,19 @@ a{ color:var(--bleu); }
       solStatut("Connected to " + (w.name || "your wallet") + ". Ready to pay.");
     })["catch"](function(e){ solStatut("Connection failed: " + String(e && (e.message || e.code) || e).slice(0, 160), "err"); });
   }
+  /* Le blockhash : celui de NOTRE serveur d'abord (le RPC public de Solana
+     refuse les pages web : « Solana RPC: Access forbidden », 27/09), puis celui
+     du 402, puis le RPC public. */
+  function solBlockhash(acc){
+    return fetch(serveur() + "/agentic/solana/blockhash", { cache: "no-store" }).then(function(r){ return r.json(); }).then(function(d){
+      if (d && d.ok && d.blockhash) return d.blockhash;
+      throw new Error(d && d.raison || "no blockhash");
+    })["catch"](function(e){
+      if (acc.extra && acc.extra.recentBlockhash) return acc.extra.recentBlockhash;
+      return solRpc("getLatestBlockhash", [{ commitment: "confirmed" }]).then(function(x){ return x.value.blockhash; })
+        ["catch"](function(){ throw new Error("no recent blockhash (" + String(e && e.message || e).slice(0, 120) + ")"); });
+    });
+  }
   function solRaisonServeur(){
     return fetch(serveur() + "/agentic/x402", { cache: "no-store" }).then(function(r){ return r.json(); })
       .then(function(d){ return d && d.solana && d.solana.raison ? " (" + String(d.solana.raison).slice(0, 200) + ")" : ""; })["catch"](function(){ return ""; });
@@ -384,8 +397,7 @@ a{ color:var(--bleu); }
       if (!acc) return solRaisonServeur().then(function(t){ throw new Error("the server does not offer Solana right now" + t); });
       if (acc.asset !== SOL.usdc || !/^[0-9]+$/.test(String(acc.amount)) || !(acc.extra && acc.extra.feePayer)) throw new Error("unexpected payment request");
       if (solEtat.solde !== null && solEtat.solde !== undefined && solEtat.solde < Number(acc.amount)) throw new Error("this wallet has less than " + (Number(acc.amount) / 1e6) + " USDC on Solana");
-      var bh = acc.extra.recentBlockhash;
-      return (bh ? Promise.resolve(bh) : solRpc("getLatestBlockhash", [{ commitment: "confirmed" }]).then(function(x){ return x.value.blockhash; }));
+      return solBlockhash(acc);
     }).then(function(bh){
       return SwogeSolana.construit(acc, { payeur: solEtat.compte.address, blockhash: bh });
     }).then(function(t){

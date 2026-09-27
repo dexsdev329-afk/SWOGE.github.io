@@ -220,7 +220,7 @@ const de64 = (s) => JSON.parse(Buffer.from(s, 'base64').toString());
     const brut = publicKey.export({ format: 'der', type: 'spki' }).slice(-32);
     const ADR = ethers.utils.base58.encode(brut);
     const SOLS = require('./x402_solana.js');
-    const ouvreSol = async ({ sansSolana, tardif, autre } = {}) => {
+    const ouvreSol = async ({ sansSolana, tardif, autre, rpcInterdit } = {}) => {
       const ctx = await nav.newContext({ viewport: { width: 1100, height: 900 } });
       const page = await ctx.newPage();
       const vu = { appels: [], signatures: 0, rpc: [] };
@@ -252,10 +252,13 @@ const de64 = (s) => JSON.parse(Buffer.from(s, 'base64').toString());
         const q = r.request(), u = q.url();
         if (u.startsWith('https://rpc.test/')) {
           const c = JSON.parse(q.postData() || '{}'); vu.rpc.push(c);
+          if (rpcInterdit) return r.fulfill({ status: 403, contentType: 'application/json', body: JSON.stringify({ jsonrpc: '2.0', id: c.id, error: { code: 403, message: 'Access forbidden' } }) });
           const res = c.method === 'getLatestBlockhash' ? { context: { slot: 1 }, value: { blockhash: BH, lastValidBlockHeight: 100 } }
             : c.method === 'getTokenAccountBalance' ? { context: { slot: 1 }, value: { amount: '5000000', decimals: 6, uiAmount: 5 } } : null;
           return r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ jsonrpc: '2.0', id: c.id, result: res }) });
         }
+        if (/\/agentic\/solana\/blockhash$/.test(u)) { vu.bhServeur = (vu.bhServeur || 0) + 1;
+          return r.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify(rpcInterdit ? { ok: true, blockhash: BH, lastValidBlockHeight: 100 } : { ok: false, raison: 'off' }) }); }
         if (/\/agentic\/x402$/.test(u)) return r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, solana: { etat: 'off', raison: 'payTo has no USDC account on Solana yet' } }) });
         const m = /\/agentic\/call\/([a-z_]+)$/.exec(u);
         if (!m) return r.abort();
@@ -313,6 +316,20 @@ const de64 = (s) => JSON.parse(Buffer.from(s, 'base64').toString());
       await page.waitForFunction(() => /Not paid/.test(document.getElementById('sol_statut').textContent), null, { timeout: 10000 });
       ok(/does not offer Solana right now \(payTo has no USDC account/.test(await page.textContent('#sol_statut')) && vu.signatures === 0,
          'pas d offre Solana dans le 402 : la raison du serveur est montree, rien n est signe');
+      await ctx.close();
+    }
+    {
+      /* Le vrai cas du 27/09 : le RPC public repond 403 « Access forbidden » a la page. */
+      const { page, vu, ctx } = await ouvreSol({ rpcInterdit: true });
+      await page.click('#sol_connecter');
+      await page.waitForFunction(() => !document.getElementById('sol_payer').disabled);
+      ok(/check it in your wallet/.test(await page.textContent('#sol_solde')), 'RPC public interdit : le solde renvoie au portefeuille, la connexion passe');
+      await page.click('#sol_payer');
+      await page.waitForFunction(() => /Done|Not paid/.test(document.getElementById('sol_statut').textContent), null, { timeout: 10000 });
+      const msg = Buffer.from(vu.paiement.payload.transaction, 'base64').slice(1 + 128);
+      ok(/Done: paid in USDC on Solana/.test(await page.textContent('#sol_statut')) && vu.bhServeur === 1 && !vu.rpc.some((c) => c.method === 'getLatestBlockhash')
+         && ethers.utils.base58.encode(msg.slice(4 + 1 + 8 * 32, 4 + 1 + 9 * 32)) === BH,
+         'le blockhash vient de NOTRE serveur (/agentic/solana/blockhash) : paye malgre le 403 du RPC public');
       await ctx.close();
     }
     {

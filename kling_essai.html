@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Kling video test — owner only</title>
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/img/site/icone-32.png">
+<link rel="apple-touch-icon" href="/img/site/icone-180.png">
+<!-- ==================================================================
+ * ESSAI KLING, PROPRIETAIRE SEULEMENT (27 septembre 2026)
+ *
+ * Avant de proposer Kling aux joueurs, le proprietaire tourne quelques videos
+ * pour mesurer la qualite, l'attente et le cout reel (comme l'essai de
+ * restylage xAI). La page reprend la session de SwoleMind (localStorage
+ * swogeSession) ; le serveur reverifie AI_OWNER a chaque geste (route
+ * /studio/kling) et n'agit que pour la session. Aucun debit : c'est le compte
+ * Kling du proprietaire qui paie. L'estimation vient de la grille officielle
+ * (kling.js). Hors moteurs (noindex).
+ * ================================================================== -->
+<style>
+:root{ --fond:#EEF3FB; --carte:#fff; --encre:#0B1B36; --pale:#5a6b85; --bleu:#1652f0; --ligne:#E1E9F6; --ok:#0a7d3e; --err:#b3261e; }
+*{ box-sizing:border-box; }
+body{ margin:0; background:var(--fond); color:var(--encre); font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
+main{ max-width:600px; margin:0 auto; padding:20px 16px 40px; }
+h1{ font-size:22px; margin:0 0 6px; }
+.carte{ background:var(--carte); border:1px solid var(--ligne); border-radius:14px; padding:14px 16px; margin:14px 0; }
+.pale{ color:var(--pale); font-size:13.5px; }
+label{ display:block; font-weight:700; font-size:13px; margin:10px 0 4px; }
+textarea,select{ width:100%; font:inherit; border:1px solid var(--ligne); border-radius:10px; padding:10px; background:#fff; color:var(--encre); }
+textarea{ min-height:90px; resize:vertical; }
+.rang{ display:flex; gap:8px; flex-wrap:wrap; } .rang > *{ flex:1 1 140px; min-width:0; }
+button{ font:inherit; font-weight:700; border:0; border-radius:999px; padding:12px 18px; background:var(--bleu); color:#fff; cursor:pointer; width:100%; min-height:44px; margin-top:12px; }
+button[disabled]{ opacity:.45; cursor:default; }
+button.pale2{ background:var(--ligne); color:var(--encre); width:auto; }
+#statut{ min-height:22px; font-weight:600; margin-top:10px; }
+#statut.err{ color:var(--err); } #statut.ok{ color:var(--ok); }
+video{ width:100%; border-radius:12px; margin-top:10px; background:#000; }
+.essai{ border-top:1px solid var(--ligne); padding:8px 0; font-size:13px; }
+img.vign{ width:64px; height:64px; object-fit:cover; border-radius:10px; vertical-align:middle; margin-right:8px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Kling video test</h1>
+  <p class="pale">Owner only. Tests Kling before it is offered to players: quality, waiting time and real cost. Paid by the owner's Kling account; nothing is charged in $SWOGE.</p>
+
+  <div class="carte" id="porte"><p id="acces">Checking access…</p></div>
+
+  <div class="carte" id="formulaire" hidden>
+    <label for="prompt">What happens in the video</label>
+    <textarea id="prompt" maxlength="2500" placeholder="SWOGE, a very muscular shiba inu, lifts a giant barbell in a neon gym, slow motion"></textarea>
+    <label>First frame (optional)</label>
+    <div><img class="vign" id="vign" alt="" hidden><button class="pale2" id="photo" type="button">Choose a picture</button> <button class="pale2" id="sansPhoto" type="button" hidden>Remove</button></div>
+    <div class="rang">
+      <div><label for="modele">Model</label><select id="modele"><option value="kling-2.6">Kling 2.6</option><option value="kling-3.0-turbo">Kling 3.0 Turbo (sound)</option></select></div>
+      <div><label for="duree">Length</label><select id="duree"></select></div>
+    </div>
+    <div class="rang">
+      <div><label for="resolution">Resolution</label><select id="resolution"><option value="720p">720p</option><option value="1080p">1080p</option></select></div>
+      <div id="blocAudio"><label for="audio">Sound</label><select id="audio"><option value="off">No sound</option><option value="native">Native sound</option></select></div>
+    </div>
+    <p class="pale" id="prix"></p>
+    <button id="lancer" type="button">Make the video</button>
+    <p id="statut" role="status"></p>
+    <video id="video" controls playsinline hidden></video>
+  </div>
+
+  <div class="carte" id="historique" hidden><b>Recent tests</b><div id="liste"></div></div>
+</main>
+<script>
+(function(){
+  "use strict";
+  var $ = function(id){ return document.getElementById(id); };
+  function serveur(){
+    try { var q = new URLSearchParams(location.search).get("server"); if (q) return String(q).replace(/\/$/, ""); } catch (e) {}
+    return "https://web-production-220a3.up.railway.app";
+  }
+  function jeton(){ try { return localStorage.getItem("swogeSession"); } catch (e) { return null; } }
+  var M = null, image = null, suivi = null;
+  function statut(t, g){ var s = $("statut"); s.textContent = t || ""; s.className = g || ""; }
+  function api(chemin, methode, corps){
+    return fetch(serveur() + chemin, { method: methode || "GET", cache: "no-store",
+      headers: { "content-type": "application/json", authorization: "Bearer " + jeton() }, body: corps ? JSON.stringify(corps) : undefined })
+      .then(function(r){ return r.json().catch(function(){ return {}; }).then(function(o){ if (!r.ok || o.ok === false) throw new Error(o.raison || ("error " + r.status)); return o; }); });
+  }
+  /* Le prix, d'apres la grille que le serveur renvoie (kling.js, grille officielle). */
+  function prix(){
+    if (!M) return null;
+    var m = M[$("modele").value]; if (!m) return null;
+    var a = m.audioReglable ? $("audio").value : "native";
+    var p = m.prix[$("resolution").value] && m.prix[$("resolution").value][a];
+    return p ? Math.round(p * Number($("duree").value) * 1000) / 1000 : null;
+  }
+  function peintReglages(){
+    var m = M[$("modele").value], d = $("duree"), avant = d.value;
+    d.innerHTML = ""; m.durees.forEach(function(x){ var o = document.createElement("option"); o.value = String(x); o.textContent = x + " s"; d.appendChild(o); });
+    if (m.durees.indexOf(Number(avant)) >= 0) d.value = avant;
+    $("blocAudio").hidden = !m.audioReglable;
+    var p = prix();
+    $("prix").textContent = p === null ? "This combination is not offered by Kling." : "About $" + p.toFixed(3) + " on your Kling account (official price list).";
+    $("lancer").disabled = p === null;
+  }
+  function peintHistorique(essais){
+    var l = $("liste"); l.innerHTML = "";
+    (essais || []).forEach(function(e){
+      var d = document.createElement("div"); d.className = "essai";
+      d.textContent = new Date(e.t).toISOString().slice(0, 16).replace("T", " ") + " · " + (e.modele ? e.modele + " · " + e.duree + " s · " + e.resolution + " · ~$" + e.estimationUsd : (e.statut + (e.duree ? " · " + e.duree + " s" : "") + (e.message ? " · " + e.message : "")));
+      l.appendChild(d);
+    });
+    $("historique").hidden = !(essais && essais.length);
+  }
+  function charge(){
+    if (!jeton()) { $("acces").textContent = "Sign in with your wallet on SwoleMind first, then come back to this page."; return; }
+    api("/studio/kling").then(function(o){
+      if (!o.proprietaire) { $("acces").textContent = "This test is for the owner only."; return; }
+      M = o.modeles;
+      $("acces").textContent = o.actif ? "Kling is connected." : "Kling is not set up yet: add KLING_API_KEY on Railway.";
+      $("formulaire").hidden = !o.actif;
+      peintReglages(); peintHistorique(o.essais);
+    })["catch"](function(e){ $("acces").textContent = "Access check failed: " + e.message; });
+  }
+  function suis(id, depart){
+    api("/studio/kling/" + encodeURIComponent(id)).then(function(r){
+      var s = Math.round((Date.now() - depart) / 1000);
+      if (r.statut === "succeeded" && r.url) {
+        statut("Done in " + s + " s.", "ok"); var v = $("video"); v.src = r.url; v.hidden = false; $("lancer").disabled = false; charge(); return;
+      }
+      if (r.statut === "failed") { statut("Kling failed: " + (r.message || "no reason given"), "err"); $("lancer").disabled = false; charge(); return; }
+      statut("Filming… " + s + " s (" + r.statut + ")");
+      suivi = setTimeout(function(){ suis(id, depart); }, 5000);
+    })["catch"](function(e){ statut("Follow-up failed: " + e.message, "err"); $("lancer").disabled = false; });
+  }
+  ["modele", "duree", "resolution", "audio"].forEach(function(k){ $(k).addEventListener("change", peintReglages); });
+  $("photo").addEventListener("click", function(){
+    var i = document.createElement("input"); i.type = "file"; i.accept = "image/png,image/jpeg,image/webp";
+    i.addEventListener("change", function(){
+      var f = i.files && i.files[0]; if (!f) return;
+      if (f.size > 10 * 1024 * 1024) { statut("Picture too large (10 MB at most).", "err"); return; }
+      var r = new FileReader(); r.onload = function(){ image = String(r.result); $("vign").src = image; $("vign").hidden = false; $("sansPhoto").hidden = false; }; r.readAsDataURL(f);
+    });
+    i.click();
+  });
+  $("sansPhoto").addEventListener("click", function(){ image = null; $("vign").hidden = true; $("sansPhoto").hidden = true; });
+  $("lancer").addEventListener("click", function(){
+    var t = $("prompt").value.trim(); if (!t) { statut("Write what happens first.", "err"); return; }
+    if (suivi) clearTimeout(suivi);
+    $("lancer").disabled = true; $("video").hidden = true; statut("Sending to Kling…");
+    api("/studio/kling", "POST", { prompt: t, image: image, modele: $("modele").value, duree: Number($("duree").value), resolution: $("resolution").value, audio: $("audio").value })
+      .then(function(r){ suis(r.id, Date.now()); })
+      ["catch"](function(e){ statut("Not sent: " + e.message, "err"); $("lancer").disabled = false; });
+  });
+  charge();
+})();
+</script>
+</body>
+</html>

@@ -17,7 +17,7 @@
 <link rel="icon" type="image/png" sizes="32x32" href="/img/site/icone-32.png">
 <link rel="apple-touch-icon" href="/img/site/icone-180.png">
 <link rel="manifest" href="/site.webmanifest">
-<meta name="theme-color" content="#05070D">
+<meta name="theme-color" content="#1B5FE0">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="SWOGE WORLD">
 <meta property="og:locale" content="en_US">
@@ -40,7 +40,7 @@
  * une fois par session pour savoir si le serveur en a une plus recente.
  * Sans ca, un joueur garde des semaines une version corrigee depuis
  * longtemps — et ici, cela voudrait dire un agent qui a cesse d'apprendre. */
-var MARQUE_PAGE = 'cd5d034f';
+var MARQUE_PAGE = '14735383';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -796,7 +796,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   .tab-ecran .panel{ max-height:none; }
 }
 </style>
-<link rel="stylesheet" href="swoge_terminal.css?v=f8ba3b34">
+<link rel="stylesheet" href="swoge_terminal.css?v=afbd780a">
 
 
 <!-- ==================== LA BARRE DU SITE ====================
@@ -957,6 +957,44 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
         <div class="tm-graphe" aria-hidden="true"><svg id="tmConstellation" viewBox="0 0 400 400" role="presentation"></svg></div>
       </section>
 
+      <!-- ---- LE MIROIR, EN PREMIER ----
+           « L'utilisateur veut voir son miroir dans les premiers, faut descendre
+             bas la. » (27/09) Les deux cartes du miroir vivaient dans l'onglet
+           « Live » de la console, sous le hero, le fil, le reseau et treize
+           fiches : c'etait la seule chose qui DEMANDE quelque chose au joueur,
+           et la plus loin. Elles sont deplacees telles quelles (memes
+           identifiants : `swogemiroir.js` les remplit sans rien savoir du
+           deplacement), juste sous le hero. -->
+      <section class="tm-sec" id="tm-mirror" aria-labelledby="tmMirH">
+        <div class="tm-titre"><h2 id="tmMirH" data-tt="tMiroirT">Your mirror</h2><span class="tm-pastille tm-p-vert">LIVE</span><span class="tm-sous" data-tt="sMiroirT">Real money, on a mirror wallet you create and fund yourself: the colony buys and sells in it at the same moment as its paper.</span></div>
+        <div class="tm-grille2 tm-miroir">
+          <div class="tm-carte">
+        <!-- ---- SUIVRE LA COLONIE AVEC SON PROPRE ARGENT ----
+             En tete du groupe « Live » parce que c'est la seule carte qui
+             DEMANDE quelque chose au lecteur ; les autres racontent. Son
+             contenu est pose par `swogemiroir.js`, qui parle au serveur par la
+             socket que `stakebubble.js` tient deja. -->
+        <div class="card" data-pan="miroir">
+          <h2><span data-t="tMiroir">Trade with the colony</span> <span class="count">your wallet</span></h2>
+          <div id="gxMiroir"></div>
+        </div>
+          </div>
+          <div class="tm-carte">
+        <!-- ---- LES POSITIONS DU MIROIR, A COTE DE CELLES DU PAPIER ----
+             « Rajoute un bouton sell maintenant, et une colonne apres Direct
+               pour voir les positions ouvertes du miroir et pouvoir les fermer
+               et les ouvrir. »
+             La carte d'a cote raconte ce que la colonie tient de papier ; celle-ci
+             montre ce que LE JOUEUR tient d'ETH reel, et lui donne les deux gestes.
+             Son contenu est pose par `swogemiroir.js`, comme la carte du miroir. -->
+        <div class="card" data-pan="miroirPositions">
+          <h2><span data-t="tMirPos">Your mirror · open positions</span> <span class="count" id="mirPosN">—</span></h2>
+          <div id="gxMiroirPositions"><div class="empty" data-t="vMirPos">Sign in and create a mirror wallet to see your positions here.</div></div>
+        </div>
+          </div>
+        </div>
+      </section>
+
       <nav class="tm-nav" id="tmNav" aria-label="Sections">
         <a href="#tm-live" data-s="tm-live">LIVE</a><a href="#tm-colony" data-s="tm-colony">COLONY</a><a href="#tm-market" data-s="tm-market">MARKET</a><a href="#tm-trades" data-s="tm-trades">TRADES</a><a href="#tm-learning" data-s="tm-learning">LEARNING</a><a href="#tm-proof" data-s="tm-proof">PROOF</a>
       </nav>
@@ -981,7 +1019,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
           <div class="tm-legende" id="tmLegende"></div>
         </div>
         <div class="tm-fiches" id="tmFiches"><div class="tm-vide" data-tt="chargement">Loading…</div></div>
-        <div class="tm-titre tm-console-titre" id="tm-console"><h2 data-tt="tConsole">Colony console</h2><span class="tm-sous" data-tt="sConsole">The original view, unchanged: the village, trading with the colony on your own mirror wallet, open positions and every measurement panel.</span></div>
+        <div class="tm-titre tm-console-titre" id="tm-console"><h2 data-tt="tConsole">Colony console</h2><span class="tm-sous" data-tt="sConsole">The original view: the village, the paper positions and every measurement panel. Your mirror is at the top of the page.</span></div>
       </section>
     </div>
     <div class="tablette">
@@ -990,7 +1028,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     <div class="brand">
       <div class="logo">🤖</div>
       <div>
-        <h1>SWOGE AI · Colonie</h1>
+        <h1>SWOGE AI · Colony</h1>
         <p id="soustitre" data-t="sousTitre">Agents that organise themselves &middot; real Robinhood Chain tokens &middot; they learn from their trades</p>
       </div>
     </div>
@@ -1073,29 +1111,9 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       </nav>
 
       <div class="grp" data-grp="live">
-        <!-- ---- SUIVRE LA COLONIE AVEC SON PROPRE ARGENT ----
-             En tete du groupe « Live » parce que c'est la seule carte qui
-             DEMANDE quelque chose au lecteur ; les autres racontent. Son
-             contenu est pose par `swogemiroir.js`, qui parle au serveur par la
-             socket que `stakebubble.js` tient deja. -->
-        <div class="card" data-pan="miroir">
-          <h2><span data-t="tMiroir">Trade with the colony</span> <span class="count">your wallet</span></h2>
-          <div id="gxMiroir"></div>
-        </div>
         <div class="card" data-pan="positions">
           <h2><span data-t="tPositions">Open positions</span> <span class="count" id="poscount">0</span></h2>
           <div id="positions"><div class="empty" data-t="vPositions">No open position.</div></div>
-        </div>
-        <!-- ---- LES POSITIONS DU MIROIR, A COTE DE CELLES DU PAPIER ----
-             « Rajoute un bouton sell maintenant, et une colonne apres Direct
-               pour voir les positions ouvertes du miroir et pouvoir les fermer
-               et les ouvrir. »
-             La carte d'a cote raconte ce que la colonie tient de papier ; celle-ci
-             montre ce que LE JOUEUR tient d'ETH reel, et lui donne les deux gestes.
-             Son contenu est pose par `swogemiroir.js`, comme la carte du miroir. -->
-        <div class="card" data-pan="miroirPositions">
-          <h2><span data-t="tMirPos">Your mirror · open positions</span> <span class="count" id="mirPosN">—</span></h2>
-          <div id="gxMiroirPositions"><div class="empty" data-t="vMirPos">Sign in and create a mirror wallet to see your positions here.</div></div>
         </div>
         <div class="card" data-pan="pipeline">
           <h2><span data-t="tPipe">Tokens in flight</span> <span class="count" id="flowcount">0 tokens</span></h2>
@@ -2277,7 +2295,7 @@ function drawPaths(){
   ctx.fillStyle="rgba(9,20,14,.62)"; roundRect(ENTREE.x-16, ENTREE.y-4, 130, 22, 7); ctx.fill();
   ctx.fillStyle="#cfe0d5"; ctx.font="600 12px Fredoka, sans-serif";
   ctx.textAlign="left"; ctx.textBaseline="middle";
-  ctx.fillText("Jetons neufs →", ENTREE.x-6, ENTREE.y+7);
+  ctx.fillText(LANGUE === "fr" ? "Jetons neufs →" : "New tokens →", ENTREE.x-6, ENTREE.y+7);
 }
 function drawHouse(a){
   const {x,y} = a.house;
@@ -3106,7 +3124,7 @@ function peintAudit(){
     const protege = !estRef && refP !== null && x.partMontes <= refP - 15;
     return `<div class="evt">
       <span class="pill ${cher?"retrait":"naissance"}">${echappe(ph("montes", x.partMontes))}</span>
-      <span><b>${echappe(x.cle)}</b>
+      <span><b>${echappe(window.SwogeTerminal && SwogeTerminal.en ? SwogeTerminal.en(x.cle) : x.cle)}</b>
         <span class="mini">${echappe(ph("auditDetail", x.n, x.montes, x.effondres,
           (x.moyenne>=0?"+":"")+x.moyenne))}</span>
         ${x.nStrat >= 3 && x.strat !== null ? '<span class="mini">' + echappe(ph("auditStrat", x.nStrat, (x.strat >= 0 ? "+" : "") + x.strat)) + '</span>' : ''}
@@ -3744,5 +3762,5 @@ requestAnimationFrame(loop);
 demande(false);
 </script>
 <!-- Le terminal : il lit `VUE` et `LANGUE` de la page, et repeint sur « swoge:vue ». -->
-<script src="swoge_terminal.js?v=ef9383df"></script>
+<script src="swoge_terminal.js?v=76443519"></script>
 </html>

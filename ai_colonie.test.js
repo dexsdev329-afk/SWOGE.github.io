@@ -1048,9 +1048,12 @@ async function panneauAlertes() {
      * C'est la seule chose qui rendrait le rangement pire que la file : un
      * panneau qui n'est dans aucun groupe n'est plus atteignable du tout. */
     const dansUnGroupe = await page.evaluate(() =>
-      [...document.querySelectorAll('.card[data-pan]')].filter((x) => x.closest('.grp')).length);
+      [...document.querySelectorAll('.card[data-pan]')].filter((x) => x.closest('.grp') || x.closest('#tm-mirror')).length);
+    /* Depuis le 27/09 les deux cartes du miroir vivent sous le hero, toujours
+       visibles, hors des onglets : elles restent atteignables, c est ce que
+       cette verification garde. */
     ok(dansUnGroupe === p.pans.length,
-       'les ' + p.pans.length + ' panneaux sont tous dans un groupe : ranger n est pas retirer');
+       'les ' + p.pans.length + ' panneaux sont tous atteignables — dans un onglet, ou dans « Your mirror » sous le hero');
     /* ---- AU MOINS UN, ET NON EXACTEMENT UN ----
      * La regle exigeait UN seul panneau deplie par groupe. Sa raison, ecrite
      * ici, n a jamais porte que sur le zero : « un onglet dont tout est replie
@@ -2044,11 +2047,12 @@ async function auditDesVetos() {
     const carte = await page.evaluate(() => {
       const c = document.querySelector('.card[data-pan="miroirPositions"]');
       const p = document.querySelector('.card[data-pan="positions"]');
-      const live = document.querySelector('.grp[data-grp="live"]');
+      const miroir = document.getElementById('tm-mirror'), colonie = document.getElementById('tm-colony');
       const b = c && c.querySelector('[data-m="vends"]');
       const achete = c && c.querySelector('[data-m="ouvre"]');
-      return { existe: !!c, dansLive: !!(c && live && live.contains(c)),
-               apres: !!(c && p && (p.compareDocumentPosition(c) & Node.DOCUMENT_POSITION_FOLLOWING)),
+      return { existe: !!c, dansLive: !!(c && miroir && miroir.contains(c)),
+               apres: !!(c && colonie && (c.compareDocumentPosition(colonie) & Node.DOCUMENT_POSITION_FOLLOWING)
+                         && document.querySelector('.card[data-pan="miroir"]').compareDocumentPosition(c) & Node.DOCUMENT_POSITION_FOLLOWING),
                titre: c ? c.querySelector('h2 span').textContent : null, compte: (document.getElementById('mirPosN') || {}).textContent,
                vends: b ? { texte: b.textContent.trim(), adr: b.getAttribute('data-adr') } : null,
                acheteDesactive: achete ? achete.disabled : null,
@@ -2060,7 +2064,11 @@ async function auditDesVetos() {
     ok(/via NVDA/.test(carte.ligne || ''), 'une position prise par un pont le dit sur sa ligne : « ' + (carte.ligne || '').replace(/\s+/g, ' ').trim().slice(0, 80) + ' »');
     ok(/In transit: 0\.02 NVDA/.test(carte.transit || '') && /every turn/.test(carte.transit || ''), 'et ce qui est reste entre deux jambes est dit, avec le montant : « ' + (carte.transit || '').slice(0, 90) + '… »');
     console.log('   ' + JSON.stringify(carte).slice(0, 400));
-    ok(carte.existe && carte.dansLive && carte.apres, 'la carte est dans « Live », juste apres les positions de papier de la colonie');
+    /* « L utilisateur veut voir son miroir dans les premiers, faut descendre
+       bas la » (27/09) : la carte etait dans « Live », a cote des positions de
+       papier, sous tout le terminal. Elle est maintenant juste sous le hero,
+       dans « Your mirror », apres la carte du miroir, AVANT la colonie. */
+    ok(carte.existe && carte.dansLive && carte.apres, 'la carte est dans « Your mirror », sous le hero, apres la carte du miroir et avant la colonie');
     ok(/mirror/i.test(carte.titre || '') && carte.compte === '1', 'elle dit « mirror » dans son titre et compte la position ouverte (' + carte.compte + ')');
     ok(!!carte.vends && carte.vends.texte === 'Sell now' && carte.vends.adr === ADR_NOVA,
        'chaque position porte un bouton « Sell now » qui connait son jeton');

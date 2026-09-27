@@ -2,118 +2,89 @@
  * SWOGE AI — LE TERMINAL DE LA COLONIE
  *
  * Demande du proprietaire, 27 septembre 2026 : « transformer SWOGE AI en un
- * veritable AI Trading Colony Terminal, moderne, vivant, premium », fond
- * #05070D / #080B12, cartes #0C111B / #101624. Cela renverse la demande du
- * mois d'aout (« mettre SWOGE AI en blanc comme les autres pages ») : c'est la
- * plus recente qui fait foi, et elle ne vaut que pour cette page — la barre et
- * le menu du site gardent leurs classes, seules leurs couleurs passent au noir
- * ICI.
+ * veritable AI Trading Colony Terminal, moderne, vivant, premium ». Le meme
+ * jour, apres l'avoir vu en noir : « laisse le fond de SWOGE AI en blanc, mais
+ * le design est cool ». Le fond, la barre, le menu et la console restent donc
+ * ceux du site (blanc, bleu #1B5FE0, encre #0A1F44, traits #E1E9F6) ; seul le
+ * hero garde un ecran sombre, comme la tablette a toujours eu son cadre bleu
+ * nuit. Cette feuille ne touche QUE le terminal (`.tm`).
  *
  * Rien dans cette feuille ne cree une donnee : elle habille ce que
  * `swoge_terminal.js` peint depuis /ai/colonie. Les animations sont en CSS et
  * se coupent toutes sous `prefers-reduced-motion`.
  * ======================================================================== */
-:root{
-  --t-fond:#05070D; --t-fond2:#080B12; --t-carte:#0C111B; --t-carte2:#101624;
-  --t-trait:rgba(148,163,184,.12); --t-trait2:rgba(148,163,184,.22);
-  --t-encre:#E6EDF7; --t-pale:#94A3B8; --t-tres-pale:#64748B;
-  --t-bleu:#3B82F6; --t-cyan:#22D3EE; --t-violet:#A78BFA;
-  --t-vert:#22C55E; --t-rouge:#EF4444; --t-ambre:#F59E0B; --t-or:#FBBF24;
-  --t-haut:58px;           /* hauteur de la barre du site : posee par le script */
+:root{ --t-haut:58px;        /* hauteur de la barre du site : posee par le script */
+  --t-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace; }
+html{ scroll-padding-top:calc(var(--t-haut) + 64px) }
+/* La page fixait `body` a la hauteur de la fenetre (du temps ou elle tenait
+   dans l'ecran) : la barre du site, collante DANS body, partait donc avec le
+   defilement. Le terminal fait defiler la page : body reprend sa hauteur. */
+html,body{ height:auto }
+.tm{
+  --t-carte:#FFFFFF; --t-carte2:#FFFFFF; --t-creux:#F6F8FC; --t-trait:#E1E9F6; --t-trait2:#D3DEEF;
+  --t-encre:#0A1F44; --t-titre:#0A1F44; --t-texte:#34476B; --t-pale:#5B6B88; --t-tres-pale:#8A99B4;
+  --t-lien:#1B5FE0; --t-bleu:#1B5FE0;
+  --t-up:#0E8A45; --t-dn:#D93A3F;
+  --pv:#0E8A45; --pv-f:rgba(18,161,80,.08); --pv-b:rgba(18,161,80,.30);
+  --pr:#C9353A; --pr-f:rgba(229,72,77,.08); --pr-b:rgba(229,72,77,.30);
+  --pa:#A15C00; --pa-f:rgba(199,119,0,.09); --pa-b:rgba(199,119,0,.32);
+  --pb:#1B5FE0; --pb-f:rgba(27,95,224,.07); --pb-b:rgba(27,95,224,.30);
+  --pl:#6D28D9; --pl-f:rgba(109,40,217,.07); --pl-b:rgba(109,40,217,.28);
+  --pc:#0E7490; --pc-f:rgba(14,116,144,.07); --pc-b:rgba(14,116,144,.28);
+  --t-ombre:0 1px 2px rgba(11,27,54,.06), 0 8px 24px rgba(11,27,54,.05);
   --t-rayon:16px;
   --t-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
 }
-html{ background:var(--t-fond); scroll-padding-top:calc(var(--t-haut) + 64px) }
-body{ background:
-  radial-gradient(1200px 600px at 70% -10%, rgba(59,130,246,.10), transparent 60%),
-  radial-gradient(900px 500px at 0% 20%, rgba(34,211,238,.05), transparent 60%),
-  var(--t-fond) !important;
-  color:var(--t-encre) !important; }
-html,body{ height:auto }
-
-/* ---- LA BARRE ET LE MENU DU SITE, EN NOIR SUR CETTE PAGE ---- */
-.sw-haut{ background:rgba(8,11,18,.86) !important; border-bottom:1px solid var(--t-trait) !important;
-  backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px) }
-.sw-marque b{ color:#fff !important } .sw-marque i{ color:var(--t-pale) !important }
-.sw-patte{ background:rgba(59,130,246,.16) !important }
-.sw-chiffres{ background:var(--t-carte) !important; border-color:var(--t-trait) !important }
-.sw-ch+.sw-ch{ border-left-color:var(--t-trait) !important }
-.sw-ch .ic{ background:rgba(59,130,246,.16) !important }
-.sw-ch small{ color:var(--t-pale) !important } .sw-ch b{ color:var(--t-encre) !important }
-.sb-ancre .chip{ background:var(--t-carte) !important; color:var(--t-encre) !important; border-color:var(--t-trait) !important; box-shadow:none !important }
-.sb-ancre .chip b{ color:var(--t-encre) !important }
-.sw-b-vide{ background:transparent !important; color:#93C5FD !important; border-color:#3B82F6 !important }
-.sw-b-vide:hover{ background:rgba(59,130,246,.12) !important }
-.sw-b-plein{ background:var(--t-bleu) !important }
-.sw-avatar{ background:var(--t-carte) !important; border-color:var(--t-trait) !important; color:var(--t-encre) }
-.gx-menu,.menu{ background:var(--t-carte) !important; border-color:var(--t-trait) !important }
-.gx-menu a,.menu a{ color:var(--t-encre) !important }
-.gx-menu a:hover,.menu a:hover{ background:rgba(59,130,246,.14) !important; color:#fff !important }
-.gx-menu .gx-sep,.menu .msep{ background:var(--t-trait) !important }
-.sw-nav{ background:var(--t-carte) !important; border-color:var(--t-trait) !important; box-shadow:none !important }
-.sw-nav a{ color:var(--t-encre) !important }
-.sw-nav a:hover{ background:var(--t-carte2) !important }
-.sw-nav a.on{ background:rgba(59,130,246,.16) !important; color:#93C5FD !important }
-.sw-reseaux a{ background:var(--t-carte) !important; border-color:var(--t-trait) !important; color:var(--t-pale) !important }
-.sw-lat .carte{ background:var(--t-carte) !important; border-color:var(--t-trait) !important; box-shadow:none !important }
-.sw-solde .ic{ background:rgba(59,130,246,.16) !important }
-.sw-solde .tx small{ color:var(--t-pale) !important } .sw-solde .tx b{ color:var(--t-encre) !important }
-
-/* ---- L'ANCIENNE CONSOLE, REHABILLEE ET INTACTE ----
- * Ses variables sont reposees : chaque carte, chaque panneau et chaque onglet
- * les lisent deja. Le village garde son herbe : c'est le jeu, pas l'interface. */
-.tablette{ background:linear-gradient(180deg,#131a28,#0a0f19) !important;
-  box-shadow:0 0 0 1px var(--t-trait), 0 30px 80px rgba(0,0,0,.55) !important }
-.tab-ecran{ background:var(--t-carte) !important }
-.tab-ecran{ --hud:#0C111B; --hud-2:#0C111B; --hud-3:#101624; --line:rgba(148,163,184,.12);
-  --ink:#E6EDF7; --ink-dim:#94A3B8; --ink-faint:#64748B; --bleu:#3B82F6; --bleu-clair:rgba(59,130,246,.14);
-  --gain:#22C55E; --loss:#EF4444; --warn:#F59E0B; --gold:#FBBF24; --gold-dk:#F59E0B;
-  --ombre:none; color:var(--ink) }
-.tab-ecran header.bar{ background:#0C111B !important; border-bottom:1px solid var(--line) !important }
-.tab-ecran .panel{ background:#0C111B !important }
-.tab-ecran .bandeau{ background:#0A0F19 !important; border-color:var(--line) !important }
-.tab-ecran .card{ background:transparent }
-.tab-ecran .empty{ color:var(--ink-faint) !important }
-.tab-ecran code, .tab-ecran pre{ background:rgba(148,163,184,.08) !important; color:var(--ink) !important }
-.tab-ecran .foot{ background:transparent !important }
+/* Le hero : un ecran sombre dans la page blanche. Il redefinit les jetons,
+   tout ce qu'il contient suit. */
+.tm-hero{
+  --t-carte:rgba(12,17,27,.72); --t-trait:rgba(148,163,184,.14); --t-trait2:rgba(148,163,184,.24);
+  --t-encre:#E6EDF7; --t-titre:#FFFFFF; --t-texte:#CBD5E1; --t-pale:#94A3B8; --t-tres-pale:#7C8BA5;
+  --t-up:#4ADE80; --t-dn:#F87171;
+  --pv:#4ADE80; --pv-f:rgba(34,197,94,.10); --pv-b:rgba(34,197,94,.38);
+  --pr:#F87171; --pr-f:rgba(239,68,68,.10); --pr-b:rgba(239,68,68,.38);
+  --pa:#FBBF24; --pa-f:rgba(245,158,11,.10); --pa-b:rgba(245,158,11,.38);
+}
 
 /* ============================ LE TERMINAL ============================ */
 .tm{ container-type:inline-size; max-width:1180px; margin:0 auto 18px; font-family:"Outfit",system-ui,sans-serif; color:var(--t-encre) }
 .tm *{ box-sizing:border-box }
-.tm a{ color:#93C5FD }
+.tm a{ color:var(--t-lien) }
+.tm-hero a{ color:#93C5FD }
 .tm h2,.tm h3{ margin:0 }
 .tm .mono{ font-family:var(--t-mono); font-variant-numeric:tabular-nums }
 .tm-sec{ margin:26px 0 0; scroll-margin-top:calc(var(--t-haut) + 64px) }
 .tm-titre{ display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; margin:0 0 12px }
-.tm-titre h2{ font:700 13px/1.2 "Outfit",sans-serif; letter-spacing:2.2px; text-transform:uppercase; color:#fff }
+.tm-titre h2{ font:700 13px/1.2 "Outfit",sans-serif; letter-spacing:2.2px; text-transform:uppercase; color:var(--t-titre) }
 .tm-titre .tm-sous{ font-size:12.5px; color:var(--t-pale) }
 .tm-titre .tm-n{ margin-left:auto; font:500 11.5px/1 var(--t-mono); color:var(--t-tres-pale) }
-.tm-carte{ background:linear-gradient(180deg,var(--t-carte2),var(--t-carte)); border:1px solid var(--t-trait);
+.tm-carte{ background:var(--t-carte); border:1px solid var(--t-trait); box-shadow:var(--t-ombre);
   border-radius:var(--t-rayon); padding:16px; position:relative; min-width:0 }
 .tm-vide{ color:var(--t-tres-pale); font-size:13px; padding:14px 2px; line-height:1.5 }
 .tm-pastille{ display:inline-flex; align-items:center; gap:6px; font:700 10.5px/1 var(--t-mono); letter-spacing:1px;
   text-transform:uppercase; padding:5px 8px; border-radius:999px; border:1px solid var(--t-trait2); color:var(--t-pale); white-space:nowrap }
 .tm-pastille i{ width:7px; height:7px; border-radius:50%; background:currentColor; display:inline-block; font-style:normal }
-.tm-p-vert{ color:#4ADE80; border-color:rgba(34,197,94,.35); background:rgba(34,197,94,.08) }
-.tm-p-rouge{ color:#F87171; border-color:rgba(239,68,68,.35); background:rgba(239,68,68,.08) }
-.tm-p-ambre{ color:#FBBF24; border-color:rgba(245,158,11,.35); background:rgba(245,158,11,.08) }
-.tm-p-bleu{ color:#93C5FD; border-color:rgba(59,130,246,.35); background:rgba(59,130,246,.08) }
-.tm-p-violet{ color:#C4B5FD; border-color:rgba(167,139,250,.35); background:rgba(167,139,250,.08) }
-.tm-p-cyan{ color:#67E8F9; border-color:rgba(34,211,238,.35); background:rgba(34,211,238,.08) }
-.tm-up{ color:#4ADE80 } .tm-dn{ color:#F87171 } .tm-mu{ color:var(--t-pale) }
+.tm-p-vert{ color:var(--pv); border-color:var(--pv-b); background:var(--pv-f) }
+.tm-p-rouge{ color:var(--pr); border-color:var(--pr-b); background:var(--pr-f) }
+.tm-p-ambre{ color:var(--pa); border-color:var(--pa-b); background:var(--pa-f) }
+.tm-p-bleu{ color:var(--pb); border-color:var(--pb-b); background:var(--pb-f) }
+.tm-p-violet{ color:var(--pl); border-color:var(--pl-b); background:var(--pl-f) }
+.tm-p-cyan{ color:var(--pc); border-color:var(--pc-b); background:var(--pc-f) }
+.tm-up{ color:var(--t-up) } .tm-dn{ color:var(--t-dn) } .tm-mu{ color:var(--t-pale) }
 .tm-bouton{ display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:44px; padding:0 20px;
   border-radius:12px; font:700 13px/1 "Outfit",sans-serif; letter-spacing:1.4px; text-transform:uppercase;
   text-decoration:none !important; cursor:pointer; border:1px solid transparent; transition:transform .15s, box-shadow .15s, background .15s }
 .tm-bouton:hover{ transform:translateY(-1px) }
 .tm-b-plein{ background:linear-gradient(135deg,#3B82F6,#6366F1); color:#fff !important; box-shadow:0 8px 30px rgba(59,130,246,.35) }
-.tm-b-vide{ background:rgba(148,163,184,.06); color:var(--t-encre) !important; border-color:var(--t-trait2) }
-.tm-puce{ font:600 12px/1 "Outfit",sans-serif; padding:8px 12px; border-radius:999px; background:transparent;
+.tm-b-vide{ background:rgba(148,163,184,.08); color:var(--t-encre) !important; border-color:var(--t-trait2) }
+.tm-puce{ font:600 12px/1 "Outfit",sans-serif; padding:8px 12px; border-radius:999px; background:var(--t-carte);
   color:var(--t-pale); border:1px solid var(--t-trait2); cursor:pointer; min-height:34px }
-.tm-puce[aria-pressed="true"]{ background:rgba(59,130,246,.18); color:#fff; border-color:rgba(59,130,246,.6) }
+.tm-puce[aria-pressed="true"]{ background:var(--t-bleu); color:#fff; border-color:var(--t-bleu); box-shadow:0 2px 10px rgba(27,95,224,.22) }
 
 /* ---- LE HERO ---- */
 .tm-hero{ display:grid; grid-template-columns:minmax(0,1fr); gap:18px; align-items:stretch;
-  padding:26px; border-radius:22px; border:1px solid var(--t-trait); overflow:hidden; position:relative;
+  padding:26px; border-radius:22px; border:1px solid #0A1F44; overflow:hidden; position:relative; color:var(--t-encre);
+  box-shadow:0 2px 4px rgba(11,27,54,.10), 0 18px 48px rgba(11,27,54,.18);
   background:radial-gradient(700px 380px at 85% 30%, rgba(99,102,241,.18), transparent 65%),
              radial-gradient(500px 300px at 10% 110%, rgba(34,211,238,.10), transparent 60%),
              linear-gradient(180deg,#0B1020,#070A12) }
@@ -126,15 +97,15 @@ html,body{ height:auto }
 .tm-hero h1{ margin:0; font:800 clamp(38px,6vw,64px)/.95 "Outfit",sans-serif; letter-spacing:-1px;
   background:linear-gradient(135deg,#fff 30%,#93C5FD 70%,#A78BFA); -webkit-background-clip:text; background-clip:text; color:transparent }
 .tm-kicker{ margin:10px 0 0; font:700 13px/1.3 var(--t-mono); letter-spacing:3px; color:#67E8F9 }
-.tm-devise{ margin:14px 0 0; font-size:17px; line-height:1.5; color:#CBD5E1; max-width:520px }
+.tm-devise{ margin:14px 0 0; font-size:17px; line-height:1.5; color:var(--t-texte); max-width:520px }
 .tm-boutons{ display:flex; gap:10px; flex-wrap:wrap; margin:20px 0 0 }
 .tm-papier{ margin:18px 0 0; display:flex; gap:10px; align-items:flex-start; padding:11px 13px; border-radius:12px;
   background:rgba(245,158,11,.07); border:1px solid rgba(245,158,11,.28); font-size:12.5px; line-height:1.5; color:#FDE68A }
 .tm-papier b{ color:#FBBF24; letter-spacing:.6px }
 .tm-stats{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin-top:20px }
-.tm-stat{ background:rgba(12,17,27,.72); border:1px solid var(--t-trait); border-radius:14px; padding:12px 13px; min-width:0 }
+.tm-stat{ background:var(--t-carte); border:1px solid var(--t-trait); border-radius:14px; padding:12px 13px; min-width:0 }
 .tm-stat small{ display:block; font:700 10px/1.2 var(--t-mono); letter-spacing:1.3px; color:var(--t-tres-pale); text-transform:uppercase }
-.tm-stat b{ display:block; margin-top:7px; font:700 22px/1.05 var(--t-mono); color:#fff; font-variant-numeric:tabular-nums;
+.tm-stat b{ display:block; margin-top:7px; font:700 22px/1.05 var(--t-mono); color:var(--t-titre); font-variant-numeric:tabular-nums;
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
 .tm-stat span{ display:block; margin-top:5px; font-size:11.5px; color:var(--t-pale); line-height:1.35 }
 .tm-graphe{ min-height:320px; display:flex; align-items:center; justify-content:center; border-radius:18px;
@@ -155,13 +126,13 @@ html,body{ height:auto }
 
 /* ---- LA NAVIGATION DES SECTIONS ---- */
 .tm-nav{ position:sticky; top:var(--t-haut); z-index:25; margin:16px 0 0; display:flex; gap:4px; padding:6px;
-  background:rgba(8,11,18,.88); border:1px solid var(--t-trait); border-radius:14px; overflow-x:auto; scrollbar-width:none;
+  background:rgba(255,255,255,.92); border:1px solid var(--t-trait); border-radius:14px; overflow-x:auto; scrollbar-width:none; box-shadow:var(--t-ombre);
   backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px) }
 .tm-nav::-webkit-scrollbar{ display:none }
 .tm-nav a{ flex:1 0 auto; text-align:center; padding:10px 14px; border-radius:10px; font:700 12px/1 var(--t-mono);
   letter-spacing:1.6px; color:var(--t-pale) !important; text-decoration:none !important; white-space:nowrap }
-.tm-nav a:hover{ color:#fff !important; background:rgba(148,163,184,.08) }
-.tm-nav a.on{ color:#fff !important; background:rgba(59,130,246,.2); box-shadow:inset 0 0 0 1px rgba(59,130,246,.45) }
+.tm-nav a:hover{ color:var(--t-encre) !important; background:var(--t-creux) }
+.tm-nav a.on{ color:#fff !important; background:var(--t-bleu); box-shadow:0 2px 10px rgba(27,95,224,.22) }
 .tm-bnav{ display:none }
 
 /* ---- LE FIL EN DIRECT ---- */
@@ -172,86 +143,100 @@ html,body{ height:auto }
 .tm-fil li:last-child{ border-bottom:none }
 .tm-fil .h{ font:500 11px/1.6 var(--t-mono); color:var(--t-tres-pale) }
 .tm-fil .e{ font-size:17px; line-height:1.2; text-align:center }
-.tm-fil .c b{ color:#fff; font-weight:600 }
+.tm-fil .c b{ color:var(--t-titre); font-weight:600 }
 .tm-fil .c .d{ color:var(--t-pale); display:block; font-size:12px; margin-top:2px; overflow-wrap:anywhere }
 .tm-fil li.neuf{ animation:tm-neuf 2.4s ease-out 1 }
-@keyframes tm-neuf{ from{ background:rgba(59,130,246,.18) } to{ background:transparent } }
+@keyframes tm-neuf{ from{ background:rgba(27,95,224,.12) } to{ background:transparent } }
 
 /* ---- LA COLONIE : LE RESEAU ET LES FICHES ---- */
 .tm-reseau{ width:100%; height:auto; display:block }
-.tm-reseau .arete{ stroke:rgba(148,163,184,.22); stroke-width:1.4; fill:none }
+.tm-reseau .arete{ stroke:#C9D6EA; stroke-width:1.4; fill:none }
 .tm-reseau .arete.lat{ stroke-dasharray:4 5 }
-.tm-reseau .noeud circle.fond{ fill:#0C111B; stroke-width:2 }
-.tm-reseau .noeud text{ font-family:"Outfit",sans-serif; fill:#E6EDF7; text-anchor:middle }
+.tm-reseau .noeud circle.fond{ fill:#FFFFFF; stroke-width:2 }
+.tm-reseau .noeud text{ font-family:"Outfit",sans-serif; fill:#0A1F44; text-anchor:middle }
 .tm-reseau .noeud .nom{ font-size:12px; font-weight:600 }
 .tm-reseau .noeud .st{ font:700 9px var(--t-mono); letter-spacing:1px }
 .tm-reseau .noeud .anneau{ fill:none; stroke-width:2; opacity:.0 }
 .tm-reseau .noeud.actif .anneau{ opacity:.9; animation:tm-anneau 1.8s ease-out infinite }
 @keyframes tm-anneau{ from{ stroke-opacity:.9; r:25 } to{ stroke-opacity:0; r:38 } }
-.tm-reseau .paquet{ filter:drop-shadow(0 0 5px currentColor) }
+.tm-reseau .paquet{ filter:drop-shadow(0 0 4px currentColor) }
 .tm-legende{ display:flex; gap:12px; flex-wrap:wrap; font-size:11.5px; color:var(--t-pale); margin-top:8px }
 .tm-legende i{ display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:5px; vertical-align:-1px }
 .tm-fiches{ display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:10px; margin-top:14px }
-.tm-fiche{ background:var(--t-carte); border:1px solid var(--t-trait); border-radius:14px; padding:12px; min-width:0 }
+.tm-fiche{ background:var(--t-carte); border:1px solid var(--t-trait); border-radius:14px; padding:12px; min-width:0; box-shadow:var(--t-ombre) }
 .tm-fiche .t{ display:flex; align-items:center; gap:9px }
 .tm-fiche .t .em{ width:34px; height:34px; border-radius:10px; display:grid; place-items:center; font-size:18px;
-  background:rgba(148,163,184,.08); flex:0 0 auto }
-.tm-fiche .t b{ display:block; font-size:14px; color:#fff }
+  background:var(--t-creux); flex:0 0 auto }
+.tm-fiche .t b{ display:block; font-size:14px; color:var(--t-titre) }
 .tm-fiche .t small{ display:block; font:600 10px/1.3 var(--t-mono); color:var(--t-tres-pale); letter-spacing:1px; text-transform:uppercase }
 .tm-fiche .t .tm-pastille{ margin-left:auto }
 .tm-fiche dl{ display:grid; grid-template-columns:auto minmax(0,1fr); gap:4px 10px; margin:10px 0 0; font-size:12px }
-.tm-fiche dt{ color:var(--t-tres-pale) } .tm-fiche dd{ margin:0; color:#CBD5E1; text-align:right; overflow-wrap:anywhere }
+.tm-fiche dt{ color:var(--t-tres-pale) } .tm-fiche dd{ margin:0; color:var(--t-texte); text-align:right; overflow-wrap:anywhere }
 .tm-fiche .m{ margin-top:8px; font-size:12px; color:var(--t-pale); line-height:1.45 }
 .tm-console-titre{ margin:26px 0 10px }
+/* Les fiches se replient : le nom, le statut, la derniere action. Le reste d'un clic. */
+.tm-fiche{ cursor:pointer; transition:border-color .15s }
+.tm-fiche:hover{ border-color:#C9D6EA }
+.tm-fiche .plus{ display:none }
+.tm-fiche.ouvert .plus{ display:block }
+.tm-fiche .m.act{ display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden }
+.tm-fiche.ouvert .m.act{ display:block }
+.tm-plus{ display:block; margin:10px auto 0; min-height:36px; padding:0 16px; border-radius:999px; cursor:pointer;
+  border:1px solid var(--t-trait2); background:var(--t-carte); color:var(--t-lien); font:600 12.5px "Outfit",sans-serif }
+.tm-plus:hover{ background:#EAF1FF }
+/* Les deux cartes du miroir, sorties de la console : elles gardent leurs
+   propres regles (.card), on retire seulement leur marge de panneau. */
+.tm-miroir .card{ padding:0; border:none; box-shadow:none !important }
+.tm-miroir .tm-carte{ padding:14px 16px }
 
 /* ---- LE MARCHE ---- */
 .tm-outils{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:12px }
 .tm-champ{ flex:1 1 220px; min-width:0; min-height:40px; padding:0 14px; border-radius:12px; border:1px solid var(--t-trait2);
-  background:var(--t-carte); color:#fff; font:500 14px "Outfit",sans-serif; outline:none }
-.tm-champ:focus{ border-color:rgba(59,130,246,.7); box-shadow:0 0 0 3px rgba(59,130,246,.18) }
+  background:var(--t-carte); color:var(--t-encre); font:500 14px "Outfit",sans-serif; outline:none }
+.tm-champ:focus{ border-color:var(--t-bleu); box-shadow:0 0 0 3px rgba(27,95,224,.14) }
 .tm-marche{ display:grid; grid-template-columns:minmax(0,1fr); gap:14px; align-items:start }
-.tm-tab-box{ overflow-x:auto; border-radius:12px; border:1px solid var(--t-trait); -webkit-overflow-scrolling:touch }
-.tm-marche .tm-tab-box{ max-height:620px; overflow:auto }
+.tm-tab-box{ overflow-x:auto; border-radius:12px; border:1px solid var(--t-trait); background:var(--t-carte); -webkit-overflow-scrolling:touch }
+.tm-marche .tm-tab-box{ max-height:480px; overflow:auto }
 .tm-table{ width:100%; border-collapse:collapse; font-size:12.5px; min-width:760px }
-.tm-table th{ position:sticky; top:0; background:#0A0F19; color:var(--t-tres-pale); font:700 10px/1 var(--t-mono);
+.tm-table th{ position:sticky; top:0; background:var(--t-creux); color:var(--t-tres-pale); font:700 10px/1 var(--t-mono);
   letter-spacing:1.2px; text-transform:uppercase; text-align:right; padding:10px; white-space:nowrap }
 .tm-table th:first-child,.tm-table td:first-child{ text-align:left }
 .tm-table td{ padding:10px; border-top:1px solid var(--t-trait); text-align:right; white-space:nowrap;
-  font-family:var(--t-mono); font-variant-numeric:tabular-nums; color:#CBD5E1 }
+  font-family:var(--t-mono); font-variant-numeric:tabular-nums; color:var(--t-texte) }
 .tm-table tbody tr{ cursor:pointer; transition:background .12s }
-.tm-table tbody tr:hover{ background:rgba(59,130,246,.07) }
-.tm-table tbody tr.choisi{ background:rgba(59,130,246,.14) }
-.tm-table td .sym{ font-family:"Outfit",sans-serif; font-weight:700; color:#fff }
+.tm-table tbody tr:hover{ background:#F2F6FD }
+.tm-table tbody tr.choisi{ background:#EAF1FF }
+.tm-table td .sym{ font-family:"Outfit",sans-serif; font-weight:700; color:var(--t-titre) }
 .tm-table td .tm-adr{ display:block; font-size:10.5px; color:var(--t-tres-pale) }
 .tm-analyse{ position:static; order:-1 }
-.tm-analyse h3{ font-size:18px; color:#fff }
+.tm-analyse h3{ font-size:18px; color:var(--t-titre) }
 .tm-barre{ margin:10px 0 0 }
 .tm-barre .l{ display:flex; justify-content:space-between; gap:8px; font-size:12px; color:var(--t-pale) }
-.tm-barre .l b{ color:#E6EDF7; font:600 12px var(--t-mono) }
-.tm-barre .j{ height:6px; border-radius:6px; background:rgba(148,163,184,.12); margin-top:5px; overflow:hidden }
-.tm-barre .j i{ display:block; height:100%; border-radius:6px; background:linear-gradient(90deg,#3B82F6,#22D3EE); transition:width .5s }
-.tm-barre.ko .j i{ background:linear-gradient(90deg,#EF4444,#F59E0B) }
-.tm-barre.nd .j i{ background:rgba(148,163,184,.3) }
+.tm-barre .l b{ color:var(--t-encre); font:600 12px var(--t-mono) }
+.tm-barre .j{ height:6px; border-radius:6px; background:#E8EEF8; margin-top:5px; overflow:hidden }
+.tm-barre .j i{ display:block; height:100%; border-radius:6px; background:linear-gradient(90deg,#1B5FE0,#0EA5E9); transition:width .5s }
+.tm-barre.ko .j i{ background:linear-gradient(90deg,#E5484D,#F59E0B) }
+.tm-barre.nd .j i{ background:#C9D6EA }
 .tm-verdict{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:14px }
-.tm-verdict > div{ background:var(--t-carte); border:1px solid var(--t-trait); border-radius:12px; padding:10px }
+.tm-verdict > div{ background:var(--t-creux); border:1px solid var(--t-trait); border-radius:12px; padding:10px }
 .tm-verdict small{ display:block; font:700 9.5px/1 var(--t-mono); letter-spacing:1.2px; color:var(--t-tres-pale) }
 .tm-verdict b{ display:block; margin-top:6px; font:700 16px var(--t-mono) }
-.tm-pourquoi{ margin-top:12px; padding:11px 12px; border-radius:12px; background:rgba(148,163,184,.06); border:1px solid var(--t-trait);
-  font-size:12.5px; line-height:1.5; color:#CBD5E1 }
-.tm-pourquoi b{ color:#fff; letter-spacing:1px; font:700 11px var(--t-mono); display:block; margin-bottom:4px }
+.tm-pourquoi{ margin-top:12px; padding:11px 12px; border-radius:12px; background:var(--t-creux); border:1px solid var(--t-trait);
+  font-size:12.5px; line-height:1.5; color:var(--t-texte) }
+.tm-pourquoi b{ color:var(--t-titre); letter-spacing:1px; font:700 11px var(--t-mono); display:block; margin-bottom:4px }
 
 /* ---- LES TRADES ---- */
 .tm-tuiles{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px }
-.tm-tuile{ background:var(--t-carte); border:1px solid var(--t-trait); border-radius:12px; padding:10px 11px; min-width:0 }
+.tm-tuile{ background:var(--t-carte); border:1px solid var(--t-trait); border-radius:12px; padding:10px 11px; min-width:0; box-shadow:var(--t-ombre) }
 .tm-tuile small{ display:block; font:700 9.5px/1.25 var(--t-mono); letter-spacing:1px; color:var(--t-tres-pale); text-transform:uppercase }
-.tm-tuile b{ display:block; margin-top:6px; font:700 16px/1.1 var(--t-mono); color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.tm-tuile b{ display:block; margin-top:6px; font:700 16px/1.1 var(--t-mono); color:var(--t-titre); white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
 .tm-tuile span{ display:block; margin-top:3px; font-size:10.5px; color:var(--t-tres-pale) }
 .tm-courbe{ width:100%; height:220px; display:block }
 .tm-onglets{ display:flex; gap:6px; flex-wrap:wrap; margin:0 0 10px }
 .tm-pages{ display:flex; gap:6px; justify-content:center; align-items:center; margin-top:10px; font:500 12px var(--t-mono); color:var(--t-pale) }
-.tm-pages button{ min-width:36px; min-height:34px; border-radius:9px; border:1px solid var(--t-trait2); background:transparent; color:var(--t-encre); cursor:pointer }
+.tm-pages button{ min-width:36px; min-height:34px; border-radius:9px; border:1px solid var(--t-trait2); background:var(--t-carte); color:var(--t-encre); cursor:pointer }
 .tm-pages button[disabled]{ opacity:.35; cursor:default }
-.tm-reel{ border-color:rgba(34,197,94,.3); background:linear-gradient(180deg,rgba(34,197,94,.06),var(--t-carte)) }
+.tm-reel{ border-color:rgba(18,161,80,.35); background:linear-gradient(180deg,rgba(18,161,80,.06),#FFFFFF 60%) }
 .tm-grille3{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px }
 
 /* ---- SECOND REGARD, APPRENTISSAGE, PREUVE ---- */
@@ -261,35 +246,35 @@ html,body{ height:auto }
 .tm-regle:last-child{ border-bottom:none }
 .tm-regle .q .tm-pastille{ display:inline-flex; margin-top:0 }
 .tm-table td.tm-sortie{ text-align:left; white-space:normal; min-width:220px; font-family:"Outfit",sans-serif; font-size:12px; color:var(--t-pale) }
-.tm-regle .q b{ color:#fff; font-weight:600 } .tm-regle .q span{ display:block; color:var(--t-tres-pale); font-size:11.5px; margin-top:2px }
-.tm-duo{ position:relative; height:8px; border-radius:6px; background:rgba(148,163,184,.12) }
-.tm-duo i{ position:absolute; left:0; top:0; bottom:0; border-radius:6px; background:#60A5FA }
-.tm-duo em{ position:absolute; top:-3px; bottom:-3px; width:2px; background:#FBBF24; font-style:normal }
+.tm-regle .q b{ color:var(--t-titre); font-weight:600 } .tm-regle .q span{ display:block; color:var(--t-tres-pale); font-size:11.5px; margin-top:2px }
+.tm-duo{ position:relative; height:8px; border-radius:6px; background:#E8EEF8 }
+.tm-duo i{ position:absolute; left:0; top:0; bottom:0; border-radius:6px; background:#1B5FE0 }
+.tm-duo em{ position:absolute; top:-3px; bottom:-3px; width:2px; background:#C77700; font-style:normal }
 .tm-lecons{ display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:10px }
-.tm-borne .j{ position:relative; height:6px; border-radius:6px; background:rgba(148,163,184,.12); margin-top:8px }
-.tm-borne .j i{ position:absolute; top:-4px; width:14px; height:14px; margin-left:-7px; border-radius:50%; background:#A78BFA; box-shadow:0 0 0 3px rgba(167,139,250,.25) }
+.tm-borne .j{ position:relative; height:6px; border-radius:6px; background:#E8EEF8; margin-top:8px }
+.tm-borne .j i{ position:absolute; top:-4px; width:14px; height:14px; margin-left:-7px; border-radius:50%; background:#6D28D9; box-shadow:0 0 0 3px rgba(109,40,217,.18) }
 .tm-evt{ display:grid; grid-template-columns:92px minmax(0,1fr); gap:10px; padding:10px 2px; border-bottom:1px solid var(--t-trait); font-size:13px; line-height:1.45 }
 .tm-evt:last-child{ border-bottom:none }
 .tm-evt .h{ font:500 11px/1.5 var(--t-mono); color:var(--t-tres-pale) }
-.tm-preuve td,.tm-preuve th{ text-align:left !important } .tm-preuve td{ white-space:normal } .tm-preuve td:last-child{ text-align:left; min-width:280px; font-family:"Outfit",sans-serif; color:#CBD5E1 }
+.tm-preuve td,.tm-preuve th{ text-align:left !important } .tm-preuve td{ white-space:normal } .tm-preuve td:last-child{ text-align:left; min-width:280px; font-family:"Outfit",sans-serif; color:var(--t-texte) }
 .tm-preuve .tm-table{ min-width:680px }
 
 /* ---- INFRASTRUCTURE, SANTE, FONCTIONNEMENT ---- */
 .tm-services{ display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:8px }
 .tm-service{ display:grid; grid-template-columns:10px minmax(0,1fr) auto; gap:10px; align-items:start; padding:11px;
-  background:var(--t-carte); border:1px solid var(--t-trait); border-radius:12px; font-size:12px }
+  background:var(--t-carte); border:1px solid var(--t-trait); border-radius:12px; font-size:12px; box-shadow:var(--t-ombre) }
 .tm-service > i{ width:9px; height:9px; border-radius:50%; margin-top:4px; background:#64748B }
-.tm-service > i.ok{ background:#22C55E; box-shadow:0 0 10px rgba(34,197,94,.6) } .tm-service > i.moyen{ background:#F59E0B } .tm-service > i.ko{ background:#EF4444 }
-.tm-service b{ color:#fff; font-weight:600; display:block } .tm-service span{ color:var(--t-tres-pale); display:block; margin-top:2px; overflow-wrap:anywhere }
+.tm-service > i.ok{ background:#12A150; box-shadow:0 0 0 3px rgba(18,161,80,.16) } .tm-service > i.moyen{ background:#C77700 } .tm-service > i.ko{ background:#E5484D }
+.tm-service b{ color:var(--t-titre); font-weight:600; display:block } .tm-service span{ color:var(--t-tres-pale); display:block; margin-top:2px; overflow-wrap:anywhere }
 .tm-service em{ font:600 11px var(--t-mono); font-style:normal; color:var(--t-pale); white-space:nowrap }
 .tm-etapes{ list-style:none; counter-reset:e; margin:0; padding:0; display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px }
-.tm-etapes li{ counter-increment:e; background:var(--t-carte); border:1px solid var(--t-trait); border-radius:14px; padding:14px; font-size:12.5px; color:var(--t-pale); line-height:1.5 }
+.tm-etapes li{ counter-increment:e; background:var(--t-carte); border:1px solid var(--t-trait); border-radius:14px; padding:14px; font-size:12.5px; color:var(--t-pale); line-height:1.5; box-shadow:var(--t-ombre) }
 .tm-etapes li::before{ content:counter(e); display:grid; place-items:center; width:28px; height:28px; border-radius:9px;
-  background:rgba(59,130,246,.16); color:#93C5FD; font:700 13px var(--t-mono); margin-bottom:10px }
-.tm-etapes li b{ display:block; color:#fff; font-size:13.5px; margin-bottom:4px }
-.tm-alerte{ padding:10px 12px; border-radius:12px; border:1px solid rgba(245,158,11,.3); background:rgba(245,158,11,.06); font-size:12.5px; line-height:1.5; margin-top:8px }
-.tm-alerte.haute{ border-color:rgba(239,68,68,.35); background:rgba(239,68,68,.06) }
-.tm-alerte b{ color:#fff }
+  background:#EAF1FF; color:#1B5FE0; font:700 13px var(--t-mono); margin-bottom:10px }
+.tm-etapes li b{ display:block; color:var(--t-titre); font-size:13.5px; margin-bottom:4px }
+.tm-alerte{ padding:10px 12px; border-radius:12px; border:1px solid rgba(199,119,0,.3); background:rgba(199,119,0,.06); color:var(--t-texte); font-size:12.5px; line-height:1.5; margin-top:8px }
+.tm-alerte.haute{ border-color:rgba(229,72,77,.35); background:rgba(229,72,77,.05) }
+.tm-alerte b{ color:var(--t-titre) }
 .tm-petit{ font-size:11.5px; color:var(--t-tres-pale); line-height:1.5; margin-top:8px }
 
 /* ============================ LES LARGEURS ============================
@@ -324,15 +309,19 @@ html,body{ height:auto }
   .tm-nav{ display:none }
   /* Sur telephone la navigation descend au pouce, en bas de l'ecran. */
   .tm-bnav{ display:flex; position:fixed; left:0; right:0; bottom:0; z-index:40; justify-content:space-around;
-    padding:6px 4px calc(6px + env(safe-area-inset-bottom)); background:rgba(8,11,18,.94); border-top:1px solid var(--t-trait);
+    padding:6px 4px calc(6px + env(safe-area-inset-bottom)); background:rgba(255,255,255,.96); border-top:1px solid #E1E9F6; box-shadow:0 -6px 20px rgba(11,27,54,.06);
     backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px) }
   .tm-bnav a{ flex:1 1 0; min-width:0; display:flex; flex-direction:column; align-items:center; gap:3px; padding:5px 2px;
-    font:700 9px/1 var(--t-mono); letter-spacing:.6px; color:var(--t-pale); text-decoration:none; border-radius:10px; min-height:44px; justify-content:center }
+    font:700 9px/1 var(--t-mono); letter-spacing:.6px; color:#5B6B88; text-decoration:none; border-radius:10px; min-height:44px; justify-content:center }
   .tm-bnav a span{ font-size:16px; line-height:1 }
-  .tm-bnav a.on{ color:#fff; background:rgba(59,130,246,.18) }
+  .tm-bnav a.on{ color:#fff; background:#1B5FE0 }
   body{ padding-bottom:calc(64px + env(safe-area-inset-bottom)) }
 }
 @media (max-width:560px){
+  /* La constellation est un decor : sur telephone elle se fait petite, pour
+     que le miroir arrive vite sous le pouce. */
+  .tm-graphe{ min-height:0 }
+  .tm-graphe svg{ max-height:150px }
   .tm-stats{ grid-template-columns:repeat(2,minmax(0,1fr)) }
   .tm-stat b{ font-size:18px }
   .tm-hero h1{ font-size:44px }

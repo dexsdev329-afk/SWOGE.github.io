@@ -54,7 +54,7 @@
     sAgents:[null,"Agents actifs"], sWin:[null,"Taux de gain"], sPnl:[null,"P&amp;L papier"],
     chargement:[null,"Chargement…"], tFil:[null,"Activité de la colonie en direct"], tSante:[null,"Santé de la colonie"],
     tColonie:[null,"La colonie"], sColonie:[null,"Chaque agent, ce qu'il fait maintenant et ce qu'il a décidé. Les paquets ne bougent que quand le serveur rapporte un vrai événement."],
-    tConsole:[null,"Console de la colonie"], sConsole:[null,"La vue d'origine, inchangée : le village, trader avec la colonie sur votre propre miroir, les positions ouvertes et tous les panneaux de mesure."],
+    tConsole:[null,"Console de la colonie"], sConsole:[null,"La vue d'origine : le village, les positions de papier et tous les panneaux de mesure. Votre miroir est en haut de la page."],
     tMarche:[null,"Scanner de marché"], cherche:[null,"Chercher un jeton ou une adresse"],
     fTout:[null,"Tout"], fAchat:[null,"Achat"], fVeille:[null,"Surveillé"], fRefus:[null,"Refusé"], fRisque:[null,"Risque élevé"], fNeuf:[null,"Nouveaux"],
     choisis:[null,"Choisissez un jeton dans le tableau pour voir comment la colonie l'a jugé."],
@@ -66,6 +66,10 @@
     tPreuve:[null,"Preuves"], sPreuve:[null,"Tout ce que le serveur a gardé, le plus récent d'abord. Chaque jeton mène à sa paire sur DexScreener."],
     tInfra:[null,"Infrastructure de données"], sInfra:[null,"Chaque source lue par la colonie, avec son vrai taux de réussite depuis le dernier redémarrage."],
     tComment:[null,"Comment ça marche"],
+    tMiroirT:[null,"Votre miroir"], sMiroirT:[null,"De l'argent réel, sur un portefeuille miroir que vous créez et alimentez vous-même : la colonie y achète et y vend au même moment que sur son papier."],
+    voirTout:(n)=>["Show all ("+n+")","Tout voir ("+n+")"], voirMoins:["Show less","Voir moins"],
+    infraToutVa:(n)=>["All "+n+" sources in use are healthy.","Les "+n+" sources utilisées sont en forme."],
+    details:["Details","Détails"],
     e1:[null,"<b>Découvrir</b>Le Scout balaie les nouvelles piscines, les profils frais, les boosts et les launchpads de Robinhood Chain."],
     e2:[null,"<b>Filtrer</b>Des planchers de liquidité, de capitalisation, d'âge et de mouvement écartent ce qui ne se trade pas."],
     e3:[null,"<b>Se contredire</b>Le Warden lit le contrat, Whale-Watch les détenteurs, Whisper les trades un par un. Chacun peut opposer un veto."],
@@ -206,6 +210,31 @@
     if(typeof e === "function"){ const r = e.apply(null, [].slice.call(arguments, 1)); return r[f]; }
     return e[f] == null ? e[0] : e[f];
   }
+  /* ---- CE QUE LE SERVEUR A ECRIT EN FRANCAIS, EN ANGLAIS ----
+   * « Faut en anglais aussi. » Quelques textes viennent du serveur deja
+   * rediges : un specialiste ne avant que ses missions s'ecrivent en anglais,
+   * et d'anciennes familles de l'audit (cles tronquees a 40 caracteres).
+   * Traduits a l'affichage seulement ; en francais, ils restent tels quels. */
+  const VERS_ANGLAIS = [
+    [/^Recoupe « (.+?) » par (\S+)\s*:.*$/, (m, a, b) => "Splits « " + a + " » by " + b + ": the Scout's bucket there is too spread out"],
+    [/\bne de <10 min\b/g, "born <10 min ago"],
+    [/^deja \+#% en cinq minutes : on paierait.*$/, "already up #% in five minutes: we would be paying the top"],
+    [/^piscine de \$# : sous le plancher d'ac.*$/, "pool of $#: below the buy floor"],
+    [/^capitalisation de \$# : au-dessus du.*$/, "cap of $#: above the buy ceiling"],
+  ];
+  function en(txt){
+    let x = String(txt == null ? "" : txt);
+    if(G().fr) return x;
+    for(const [re, par] of VERS_ANGLAIS) x = x.replace(re, par);
+    return x;
+  }
+  const NOM_BORNE = { ageMin:["Minimum age (min)","Âge minimum (min)"], liqParMise:["Pool depth per stake (×)","Profondeur par mise (×)"],
+                      mcMax:["Maximum market cap ($)","Capitalisation max ($)"], pumpMax:["Maximum 5-min rise (%)","Hausse max sur 5 min (%)"] };
+  const nomBorne = k => NOM_BORNE[k] ? NOM_BORNE[k][G().fr ? 1 : 0] : k;
+  /* Ce qui est replie : les longues listes montrent leur debut, le reste d'un clic. */
+  const DEPLIE = { regles:false, evts:false, infra:false, lecons:false };
+  const fichesOuvertes = new Set();
+  const boutonPlus = (k, n) => '<button type="button" class="tm-plus" data-plus="' + k + '">' + esc(DEPLIE[k] ? t("voirMoins") : t("voirTout", n)) + "</button>";
   function role(r){ const e = P.ROLE[r]; return e ? e[G().fr ? 1 : 0] : (r || "—"); }
 
   /* ---- LES FORMATS ---- */
@@ -326,7 +355,8 @@
     }
     return out;
   }
-  const COUL_STATUT = { ONLINE:"#60A5FA", ANALYZING:"#22D3EE", THINKING:"#A78BFA", SIGNAL:"#FBBF24", EXECUTING:"#22C55E", LEARNING:"#C084FC", IDLE:"#64748B", OFFLINE:"#64748B" };
+  /* Lisibles sur fond blanc (la page est restee blanche, 27/09). */
+  const COUL_STATUT = { ONLINE:"#1B5FE0", ANALYZING:"#0E7490", THINKING:"#6D28D9", SIGNAL:"#B45309", EXECUTING:"#0E8A45", LEARNING:"#9333EA", IDLE:"#8A99B4", OFFLINE:"#8A99B4" };
   const CL_STATUT = { ONLINE:"tm-p-bleu", ANALYZING:"tm-p-cyan", THINKING:"tm-p-violet", SIGNAL:"tm-p-ambre", EXECUTING:"tm-p-vert", LEARNING:"tm-p-violet", IDLE:"", OFFLINE:"" };
 
   /* ==================== LE HERO ==================== */
@@ -478,7 +508,7 @@
   function peintReseau(){
     const v = G().v, svg = $("tmReseau");
     const S = structure(v);
-    if(!S.tous.length){ svg.innerHTML = '<text x="500" y="180" text-anchor="middle" fill="#64748B" font-size="16">' + esc(v ? t("na") : t("rienLu")) + "</text>"; empreinteReseau = ""; return; }
+    if(!S.tous.length){ svg.innerHTML = '<text x="500" y="180" text-anchor="middle" fill="#8A99B4" font-size="16">' + esc(v ? t("na") : t("rienLu")) + "</text>"; empreinteReseau = ""; return; }
     const st = statuts(v, S);
     const emp = S.tous.map(a => a.key + ":" + a.ordre).join(",");
     if(emp !== empreinteReseau){
@@ -605,10 +635,11 @@
       dl += "<dt>" + esc(t("activite")) + "</dt><dd>" + esc(s.t ? ilya(s.t) : "—") + "</dd>";
       const l = ((ag[a.key] || {}).lecons || [])[0];
       const lecon = l ? (l.n >= LECON_ASSEZ && !l.nonLue ? t("croit", l.quoi, Math.round(l.n), pct(l.moyenne)) : t("apprendEncore", (ag[a.key] || {}).obs || l.n)) : "";
-      return '<article class="tm-fiche"><div class="t"><span class="em" style="box-shadow:inset 0 0 0 1px ' + esc(a.couleur || "#3B82F6") + '">' + esc(a.emoji || "•") + "</span>"
+      const ouvert = fichesOuvertes.has(a.key);
+      return '<article class="tm-fiche' + (ouvert ? " ouvert" : "") + '" data-k="' + esc(a.key) + '" tabindex="0" aria-expanded="' + ouvert + '"><div class="t"><span class="em" style="box-shadow:inset 0 0 0 1px ' + esc(a.couleur || "#3B82F6") + '">' + esc(a.emoji || "•") + "</span>"
         + "<span><b>" + esc(a.nom) + "</b><small>" + esc(role(a.role)) + "</small></span>" + pastille(t(s.code), CL_STATUT[s.code]) + "</div>"
-        + '<div class="m"><b style="color:#CBD5E1">' + esc(t("derniereAction")) + " · </b>" + esc(String(s.action || "—").slice(0, 220)) + "</div>"
-        + "<dl>" + dl + "</dl>" + (lecon ? '<div class="m">' + esc(lecon) + "</div>" : "") + "</article>";
+        + '<div class="m act"><b style="color:var(--t-titre)">' + esc(t("derniereAction")) + " · </b>" + esc(en(String(s.action || "—")).slice(0, 220)) + "</div>"
+        + '<div class="plus"><dl>' + dl + "</dl>" + (lecon ? '<div class="m">' + esc(en(lecon)) + "</div>" : "") + "</div></article>";
     }).join("");
   }
 
@@ -755,7 +786,7 @@
     const r = v.reel || {}, sm = v.suiviMiroir || null;
     let lv = "";
     if(num(r.n) != null && r.n > 0){
-      lv += '<div class="tm-petit" style="margin-top:0;color:#CBD5E1">' + esc(t("liveTx", entier(r.n), pct(r.moyenne))) + "</div>";
+      lv += '<div class="tm-petit" style="margin-top:0;color:var(--t-texte)">' + esc(t("liveTx", entier(r.n), pct(r.moyenne))) + "</div>";
       if(r.n >= REEL_ASSEZ && num(r.ecart) != null) lv += '<div class="tm-petit">' + esc(t("liveEcart", r.ecart.toFixed(1), num(r.nEcart) != null ? r.nEcart : r.n)) + "</div>";
       else lv += '<div class="tm-petit">' + esc(t("livePeu", r.n)) + "</div>";
       const b = r.bilan && r.bilan.tout;
@@ -861,7 +892,8 @@
       + tu(t("q3"), regles.length ? entier(se) : t("na"), t("q3s"), "tm-up")
       + tu(t("q4"), refP != null ? String(regles.filter(cher).length) + " / " + regles.length : t("na"), t("q4s"));
     if(!l.length){ box.innerHTML = '<div class="tm-vide">' + esc(t("pasAudit")) + "</div>"; return; }
-    const ordre = (ref ? [ref] : []).concat(regles.slice().sort((a, b) => (b.partMontes || 0) - (a.partMontes || 0)));
+    const tous = (ref ? [ref] : []).concat(regles.slice().sort((a, b) => (b.partMontes || 0) - (a.partMontes || 0)));
+    const ordre = DEPLIE.regles ? tous : tous.slice(0, 8);
     const S = structure(v);
     box.innerHTML = ordre.map(x => {
       const i = String(x.cle).indexOf(" · "), qui = i > 0 ? x.cle.slice(0, i) : "", quoi = i > 0 ? x.cle.slice(i + 3) : x.cle;
@@ -872,10 +904,10 @@
       else if(cher(x)) verdict = pastille(t("vFaux"), "tm-p-rouge");
       else if(protege(x)) verdict = pastille(t("vJuste"), "tm-p-vert");
       else verdict = pastille(t("vPareil"), "");
-      return '<div class="tm-regle"><span class="q"><b>' + (a ? esc(a.emoji) + " " : "") + esc(x === ref ? t("vRef") : quoi) + "</b><span>" + esc((a ? a.nom + " · " : "") + t("regleS", entier(x.n), entier(x.montes), entier(x.effondres), pct(x.moyenne))) + "</span></span>"
+      return '<div class="tm-regle"><span class="q"><b>' + (a ? esc(a.emoji) + " " : "") + esc(x === ref ? t("vRef") : en(quoi)) + "</b><span>" + esc((a ? a.nom + " · " : "") + t("regleS", entier(x.n), entier(x.montes), entier(x.effondres), pct(x.moyenne))) + "</span></span>"
         + '<span><div class="tm-petit" style="margin:0 0 4px">' + esc(t("montesP", x.partMontes)) + '</div><div class="tm-duo" title="' + esc(refP != null ? t("refMarque", refP) : "") + '"><i style="width:' + Math.min(100, x.partMontes || 0) + '%"></i>'
         + (refP != null ? '<em style="left:' + Math.min(100, refP) + '%"></em>' : "") + "</div></span><span>" + verdict + "</span></div>";
-    }).join("");
+    }).join("") + (tous.length > 8 ? boutonPlus("regles", tous.length) : "");
   }
 
   /* ==================== CE QUE LA COLONIE APPREND ==================== */
@@ -885,12 +917,12 @@
     const S = structure(v), ag = v.agents || {};
     const cartes = [];
     const avec = S.tous.filter(a => ag[a.key] && (ag[a.key].lecons || []).length);
-    avec.forEach(a => {
+    (DEPLIE.lecons ? avec : avec.slice(0, 5)).forEach(a => {
       const x = ag[a.key];
       cartes.push('<div class="tm-carte"><div class="tm-titre" style="margin-bottom:8px"><h2 style="font-size:12px;letter-spacing:1px">' + esc(a.emoji + " " + a.nom) + '</h2><span class="tm-n">' + esc(t("obsT", x.obs || 0)) + "</span></div>"
         + x.lecons.slice(0, 3).map(l => {
           const peu = l.n < LECON_ASSEZ;
-          return '<div class="tm-regle" style="grid-template-columns:minmax(0,1fr) auto;padding:7px 0"><span class="q"><b>' + esc(l.quoi) + "</b><span>" + esc(Math.round(l.n) + " obs" + (peu ? " · " + t("peu") : "") + (l.nonLue ? " · " + t("lectureRatee") : "")) + "</span></span>"
+          return '<div class="tm-regle" style="grid-template-columns:minmax(0,1fr) auto;padding:7px 0"><span class="q"><b>' + esc(en(l.quoi)) + "</b><span>" + esc(Math.round(l.n) + " obs" + (peu ? " · " + t("peu") : "") + (l.nonLue ? " · " + t("lectureRatee") : "")) + "</span></span>"
             + '<b class="mono ' + (peu || l.nonLue ? "tm-mu" : l.moyenne >= 0 ? "tm-up" : "tm-dn") + '">' + esc(peu ? "—" : pct(l.moyenne)) + "</b></div>";
         }).join("") + "</div>");
     });
@@ -898,7 +930,7 @@
     if(bornes.length) cartes.push('<div class="tm-carte"><div class="tm-titre" style="margin-bottom:8px"><h2 style="font-size:12px;letter-spacing:1px">📐 ' + esc(t("bornesT")) + "</h2></div>"
       + bornes.map(b => {
         const f = num(b.min) != null && num(b.max) != null && b.max > b.min ? (b.valeur - b.min) / (b.max - b.min) : null;
-        return '<div class="tm-borne" style="padding:6px 0"><div class="tm-barre" style="margin:0"><div class="l"><span>' + esc(b.cle) + " · " + esc(b.appris ? t("appris") : t("defaut")) + "</span><b>" + esc(entier(b.valeur)) + " (" + esc(entier(b.min)) + "–" + esc(entier(b.max)) + ")</b></div></div>"
+        return '<div class="tm-borne" style="padding:6px 0"><div class="tm-barre" style="margin:0"><div class="l"><span>' + esc(nomBorne(b.cle)) + " · " + esc(b.appris ? t("appris") : t("defaut")) + "</span><b>" + esc(entier(b.valeur)) + " (" + esc(entier(b.min)) + "–" + esc(entier(b.max)) + ")</b></div></div>"
           + '<div class="j">' + (f == null ? "" : '<i style="left:' + Math.max(0, Math.min(100, f * 100)).toFixed(0) + '%"></i>') + "</div></div>";
       }).join("") + "</div>");
     const div = [];
@@ -909,7 +941,8 @@
       div.push("<b>🧠 " + esc(t("conseilTT")) + "</b><span>" + esc(cs.actif ? t("conseilS", cs.modele || "?", entier(cs.rendus || 0), au.detail || au.verdict || "—") : t("conseilOff")) + "</span>");
     }
     if(div.length) cartes.push('<div class="tm-carte">' + div.map(d => '<div class="tm-regle" style="grid-template-columns:minmax(0,1fr)"><span class="q">' + d + "</span></div>").join("") + "</div>");
-    box.innerHTML = cartes.length ? cartes.join("") : '<div class="tm-vide">' + esc(t("na")) + "</div>";
+    box.innerHTML = (cartes.length ? cartes.join("") : '<div class="tm-vide">' + esc(t("na")) + "</div>")
+      + (avec.length > 5 ? '<div style="grid-column:1/-1">' + boutonPlus("lecons", avec.length) + "</div>" : "");
     $("tmAppN").textContent = t("appN", avec.length);
     peintEvts();
   }
@@ -919,7 +952,8 @@
     const j = (v.journalStructure || []).slice().sort((a, b) => b.t - a.t);
     $("tmEvtN").textContent = t("evtN", j.length);
     const CL = { naissance:"tm-p-vert", retrait:"tm-p-rouge", ordre:"tm-p-bleu", regard:"tm-p-violet" };
-    box.innerHTML = j.length ? j.map(e => '<div class="tm-evt"><span class="h">' + esc(jourHeure(e.t)) + "</span><span>" + pastille(String(e.quoi || "event").toUpperCase(), CL[e.quoi] || "") + " " + esc(e.txt) + "</span></div>").join("")
+    const jv = DEPLIE.evts ? j : j.slice(0, 4);
+    box.innerHTML = j.length ? jv.map(e => '<div class="tm-evt"><span class="h">' + esc(jourHeure(e.t)) + "</span><span>" + pastille(String(e.quoi || "event").toUpperCase(), CL[e.quoi] || "") + " " + esc(e.txt) + "</span></div>").join("") + (j.length > 4 ? boutonPlus("evts", j.length) : "")
       : '<div class="tm-vide">' + esc(t("aucunEvt")) + "</div>";
   }
 
@@ -961,13 +995,14 @@
     const s = santeServices(v), u = s.filter(x => x.etat !== "rien");
     $("tmInfN").textContent = u.length ? t("infN", u.filter(x => x.etat === "ok").length, u.length) : "—";
     const cg = v.coingecko || null;
-    box.innerHTML = s.length ? s.map(x => {
+    const aVoir = DEPLIE.infra ? s : s.filter(x => x.etat !== "ok");
+    box.innerHTML = s.length ? (aVoir.length ? "" : '<div class="tm-petit" style="grid-column:1/-1;margin:0">' + esc(t("infraToutVa", u.length)) + "</div>") + aVoir.map(x => {
       let sous = x.etat === "rien" ? t("srvJamais") : t("srvS", Math.round(x.part * 100), entier(x.essais), x.dernier ? ilya(x.dernier) : t("jamais"));
       if(x.cle === "coingecko" && cg && cg.porte) sous += " · " + t("cgT", cg.porte);
-      const echec = x.dernierEchec && x.etat !== "ok" ? '<span style="color:#FCA5A5">' + esc(String(x.dernierEchec).slice(0, 120)) + "</span>" : "";
+      const echec = x.dernierEchec && x.etat !== "ok" ? '<span style="color:var(--t-dn)">' + esc(String(x.dernierEchec).slice(0, 120)) + "</span>" : "";
       return '<div class="tm-service"><i class="' + (x.etat === "rien" ? "" : x.etat) + '" aria-hidden="true"></i><div><b>' + esc(x.nom) + "</b><span>" + esc(x.quoi || "") + "</span><span>" + esc(sous) + "</span>" + echec + "</div>"
         + "<em>" + esc(x.etat === "rien" ? "—" : Math.round(x.part * 100) + "%") + "</em></div>";
-    }).join("") : '<div class="tm-vide">' + esc(t("na")) + "</div>";
+    }).join("") + (aVoir.length < s.length || DEPLIE.infra ? '<div style="grid-column:1/-1">' + boutonPlus("infra", s.length) + "</div>" : "") : '<div class="tm-vide">' + esc(t("na")) + "</div>";
     const hs = v.horsService || {};
     const k = Object.keys(hs);
     $("tmHors").textContent = k.length ? t("horsT") + k.map(x => hs[x]).join(" · ") : "";
@@ -1040,6 +1075,17 @@
     fenetre = Number(b.dataset.w); const v = G().v;
     peintBacktest(v || {}, v ? ((v.carnet || {}).lignes || []).slice().sort((a, c) => (c.t || 0) - (a.t || 0)) : []);
   }));
+  document.addEventListener("click", e => {
+    const b = e.target.closest && e.target.closest(".tm-plus");
+    if(b){ DEPLIE[b.dataset.plus] = !DEPLIE[b.dataset.plus]; ({ regles:peintSecond, evts:peintEvts, infra:peintInfra, lecons:peintApprend })[b.dataset.plus](); return; }
+    const f = e.target.closest && e.target.closest(".tm-fiche");
+    if(f && !e.target.closest("a")){ const k = f.dataset.k; fichesOuvertes.has(k) ? fichesOuvertes.delete(k) : fichesOuvertes.add(k); peintFiches(); }
+  });
+  $("tmFiches").addEventListener("keydown", e => {
+    const f = e.target.closest(".tm-fiche"); if(!f || (e.key !== "Enter" && e.key !== " ")) return;
+    e.preventDefault(); f.click();
+    const g = document.querySelector('.tm-fiche[data-k="' + f.dataset.k + '"]'); if(g) g.focus();
+  });
   $("tmPrF").addEventListener("click", e => {
     const b = e.target.closest("[data-p]"); if(!b) return;
     filtrePreuve = b.dataset.p; pagePreuve = 0; peintPreuve();
@@ -1060,5 +1106,6 @@
   poseLangue();
   peintTout();
   if(G().v) animeEvenements();
-  window.SwogeTerminal = { peintTout };
+  window.SwogeTerminal = { peintTout, en };
+  try{ peintAudit(); }catch(e){}   /* la console relit ses cles avec `en` des qu'il existe */
 })();

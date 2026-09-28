@@ -837,6 +837,21 @@ async function panneauAlertes() {
     ok(v.alerteCachee, 'et elle disparait quand la colonie n a besoin de rien');
     await page.context().close();
   }
+  {
+    /* 28/09 au soir : « haute » valait 0 et `rang[g]||9` la rangeait derniere ; et une alerte
+       basse (un creux ordinaire) allumait la pastille de l'onglet comme une vraie demande. */
+    const basse = { gravite: 'basse', quoi: 'Nothing bought for 228 turns (9.5 h)', pourquoi: 'At the pace of the last 7 days (18 buys, 2.6 a day), a silence this long happens 36% of the time: it is ordinary.', quoiFaire: 'Nothing.' };
+    const haute = { gravite: 'haute', quoi: 'The chain nodes are refusing 34% of reads', pourquoi: 'x', quoiFaire: 'y' };
+    const { page } = await ouvre(nav, port, { vue: vueFausse({ alertes: [basse, haute] }) });
+    const ordre = await page.$$eval('#alertes .alerte .pill', (l) => l.map((x) => x.textContent));
+    ok(ordre.join() === 'haute,basse', 'la haute d abord, meme listee apres [' + ordre.join() + ']');
+    ok(await page.$eval('.onglet[data-grp="preuve"]', (b) => b.classList.contains('demande')), 'une haute allume la pastille de l onglet');
+    await page.context().close();
+    const p2 = (await ouvre(nav, port, { vue: vueFausse({ alertes: [basse] }) })).page;
+    ok(!(await p2.$eval('.onglet[data-grp="preuve"]', (b) => b.classList.contains('demande'))) && /ordinary/.test(await p2.textContent('#alertes')),
+       'une basse seule se lit dans la carte, sans allumer la pastille');
+    await p2.context().close();
+  }
 
   /* ---- LA COLONNE EST REPLIEE, ET « CE QU IL LUI FAUT » EST EN BAS ----
    *

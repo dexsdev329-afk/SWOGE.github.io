@@ -40,7 +40,7 @@
  * une fois par session pour savoir si le serveur en a une plus recente.
  * Sans ca, un joueur garde des semaines une version corrigee depuis
  * longtemps — et ici, cela voudrait dire un agent qui a cesse d'apprendre. */
-var MARQUE_PAGE = '0c942e2d';
+var MARQUE_PAGE = '1303fa97';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -3152,11 +3152,15 @@ function peintAlertes(){
   if(!carte) return;
   carte.hidden = !l.length;
   $("alerteN").textContent = l.length;
-  majPastilleOnglet(l.length);
+  /* La pastille de l'onglet ne s'allume que pour ce qui demande d'agir : une alerte
+     « basse » (un creux ordinaire, 28/09) se lit dans la carte, sans appeler. */
+  majPastilleOnglet(l.filter(a=>a.gravite!=="basse").length);
   if(!l.length) return;
+  /* « haute » vaut 0 : `rang[g]||9` la rangeait DERNIERE, et le tri n'etait pas garde. */
   const rang = { haute:0, moyenne:1, basse:2 };
-  l.slice().sort((a,b)=>(rang[a.gravite]||9)-(rang[b.gravite]||9));
-  $("alertes").innerHTML = l.map(a=>`<div class="alerte">
+  const r = g => (g in rang ? rang[g] : 9);
+  const triees = l.slice().sort((a,b)=>r(a.gravite)-r(b.gravite));
+  $("alertes").innerHTML = triees.map(a=>`<div class="alerte">
     <span class="pill ${echappe(a.gravite)}">${echappe(a.gravite)}</span>
     <span><b>${echappe(a.quoi)}</b>${echappe(a.pourquoi)}
       <span class="faire">→ ${echappe(a.quoiFaire)}</span></span>

@@ -157,6 +157,14 @@ a[href], button{ pointer-events:none; cursor:default; }
    Trouve par l essai qui clique pour de vrai ; a la lecture, tout avait l air
    complet. */
 a.vif, button.vif{ pointer-events:auto; cursor:pointer; }
+/* ---- LE MENU DE GAUCHE REPOND TOUJOURS (28/09/2026) ----
+   Signale : « parfois des pages ne sont pas cliquables via certaines pages ».
+   Mesure : sur l'accueil et le Casino, six entrees du menu (AI Perp, Predict,
+   OSINT, SwoleMind, SwogeAgentic, eSIM) etaient MUETTES — ajoutees sans `.vif`,
+   donc eteintes par la regle du dessus ; les autres pages n'ont pas cette regle.
+   Tout lien du menu est un lien de navigation : il repond, avec ou sans `.vif`,
+   et une entree ajoutee demain ne pourra plus naitre muette. */
+.sw-nav a[href]{ pointer-events:auto; cursor:pointer; }
 a.vif:hover{ opacity:.86; }
 body{
   background:var(--fond); color:var(--texte);

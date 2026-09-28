@@ -198,6 +198,14 @@ a[href], button{ pointer-events:none; cursor:default; }
    Trouve par l essai qui clique pour de vrai ; a la lecture, tout avait l air
    complet. */
 a.vif, button.vif{ pointer-events:auto; cursor:pointer; }
+/* ---- LE MENU DE GAUCHE REPOND TOUJOURS (28/09/2026) ----
+   Signale : « parfois des pages ne sont pas cliquables via certaines pages ».
+   Mesure : sur l'accueil et le Casino, six entrees du menu (AI Perp, Predict,
+   OSINT, SwoleMind, SwogeAgentic, eSIM) etaient MUETTES — ajoutees sans `.vif`,
+   donc eteintes par la regle du dessus ; les autres pages n'ont pas cette regle.
+   Tout lien du menu est un lien de navigation : il repond, avec ou sans `.vif`,
+   et une entree ajoutee demain ne pourra plus naitre muette. */
+.sw-nav a[href]{ pointer-events:auto; cursor:pointer; }
 a.vif:hover{ opacity:.86; }
 body{
   background:var(--fond); color:var(--texte);
@@ -962,7 +970,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px}
             <div><small>STAKING APR</small><b data-eco="apr">100%</b><i data-eco-i="apr">CAP 200,000,000</i></div>
           </div>
           <div style="margin-top:13px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
-            <a href="whitepaper.html" style="font:700 11px/1 'Inter',system-ui,sans-serif;letter-spacing:.8px;color:var(--bleu)">VIEW TOKENOMICS &nbsp;&rarr;</a>
+            <a href="whitepaper.html" class="vif" style="font:700 11px/1 'Inter',system-ui,sans-serif;letter-spacing:.8px;color:var(--bleu)">VIEW TOKENOMICS &nbsp;&rarr;</a>
             <small id="ecoSource" style="font:600 9px/1.3 'Inter',system-ui,sans-serif;color:var(--gris)">Read on-chain</small>
           </div>
         </div>

@@ -26,6 +26,7 @@ Tools:
 - `robinhood_tx(hash)` — $0.004. Use this when you need to understand what a Robinhood Chain transaction did.
 - `robinhood_rpc(method, params?)` — $0.004. Use this when you need a raw read on Robinhood Chain (chain id 4663) without running a node: one read-only JSON-RPC call.
 - `token_verdict(address)` — $0.008. Use this when you must decide fast whether an EVM token is worth a closer look: one verdict you can branch on (red_flags, caution, unknown or no_red_flag_found) with its reasons.
+- `roast_token(address)` — $0.015. Use this when you want a funny, shareable take on an EVM token for a post or a chat: SWOGE, a very muscular shiba inu, roasts it in 2 or 3 sentences built only on its real data.
 - `ask_agent(task, model?)` — real cost, up to $1.296. Use this when a question needs several of these tools chained together and a written answer, for example comparing tokens or researching a launcher.
 - `generate_image(prompt, provider?, quality?, aspect_ratio?, count?)` — real cost, up to $0.7037. Use this when you need an image: an illustration, a meme, a post visual, or the SWOGE character (a prompt that names SWOGE is drawn from the official character).
 - `generate_video(prompt, quality?, duration?, resolution?, aspect_ratio?)` — real cost, up to $3.6. Use this when you need a short video clip, 6 or 10 seconds, made with Grok Imagine.

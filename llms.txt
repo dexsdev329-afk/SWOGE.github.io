@@ -47,6 +47,10 @@ Tools:
 - [Live llms.txt](https://web-production-220a3.up.railway.app/llms.txt): this file, generated from the live catalogue
 - [x402 discovery manifest](https://web-production-220a3.up.railway.app/.well-known/x402): the resources payable per call
 
+## Travel eSIM (no account)
+
+`GET https://web-production-220a3.up.railway.app/esim/plans?country=France` (free) lists data-only eSIM plans for a country or a region (Europe, Asia, Middle East, South America, North America, Global), cheapest per GB first, each with `priceUsd`. `POST https://web-production-220a3.up.railway.app/esim/buy` with `{"plan": "<plan id>"}` answers 402 (x402 v2, USDC on Base or Solana, the plan price); sign and retry with `PAYMENT-SIGNATURE` and the same plan. The eSIM is bought before the payment settles: if it cannot be bought, nothing is charged. The answer carries the activation (LPA code) and `orderLink`, a secret: `GET https://web-production-220a3.up.railway.app/esim/order/<orderLink>` returns it again. Data only, no phone number; check the device supports eSIM.
+
 ## Optional
 
 - [SwogeAgentic in the browser](https://swoleeswoge.dog/swogeagentic.html): the same agent for humans, and where API keys are created

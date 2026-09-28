@@ -63,8 +63,12 @@ const servirLeSite = async () => {
   process.env.RPC_URL = ''; process.env.ADMIN_KEY = 'k';
   process.chdir(SERVEUR);
   const cotes = require(path.join(SERVEUR, 'cotes'));
-  const DEMAIN = new Date(Date.now() + 26 * 3600 * 1000).toISOString();
-  const APRES = new Date(Date.now() + 50 * 3600 * 1000).toISOString();
+  /* « Demain » au CALENDRIER, a midi (heure locale, celle du navigateur de l'essai) : un
+     decalage de +26 h tombait le SURLENDEMAIN des 22 h, et la page ecrivait — a raison —
+     la date au lieu de « TOMORROW » (echec vu le 28/09 a 22 h 55 UTC). */
+  const aMidi = (j) => { const d = new Date(); d.setDate(d.getDate() + j); d.setHours(12, 0, 0, 0); return d.toISOString(); };
+  const DEMAIN = aMidi(1);
+  const APRES = aMidi(2);
   const HIER = new Date(Date.now() - 26 * 3600 * 1000).toISOString();
   /* AUCUN de ces noms ne figure dans games.html. C'est ce qui fait la preuve :
      s'ils apparaissent a l'ecran, ils viennent du serveur et de nulle part

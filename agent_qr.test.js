@@ -20,6 +20,13 @@ const W = fs.readFileSync(__dirname + '/swoge_wallet.html', 'utf8'), P = fs.read
 const corps = (s) => s.slice(s.indexOf('var QR_TAILLE'), s.indexOf('}', s.indexOf('function qrMatrice(') + 900));
 ok(corps(W).split('function qrMatrice(')[0] === corps(P).split('function qrMatrice(')[0], 'le code est la copie exacte de celui du portefeuille');
 
+/* La boutique sans compte (swoge_esim.html, 28/09 au soir) porte la meme copie. */
+const QE = qr(__dirname + '/swoge_esim.html'), E = fs.readFileSync(__dirname + '/swoge_esim.html', 'utf8');
+let bonsE = 0;
+for (const e of REF.empreintes) if (crypto.createHash('sha256').update(QE.lignes(e.adresse).join('|')).digest('hex') === e.sha256) bonsE++;
+ok(bonsE === REF.empreintes.length && corps(W).split('function qrMatrice(')[0] === corps(E).split('function qrMatrice(')[0],
+   'la boutique eSIM : ' + bonsE + ' / ' + REF.empreintes.length + ' matrices, et le code est la copie exacte');
+
 console.log('\n-- un code d activation LPA --');
 const lpa = 'LPA:1$rsp.truphone.com$QR-G-5C-1LS-1W1Z9P7';
 ok(Q.lignes(lpa) && Q.lignes(lpa).length === 33, 'un code LPA de ' + lpa.length + ' caracteres tient dans le symbole');

@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>SWOGE eSIM — travel data, paid from your wallet</title>
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/img/site/icone-32.png">
+<link rel="apple-touch-icon" href="/img/site/icone-180.png">
+<!-- ==================================================================
+ * LA BOUTIQUE eSIM SANS COMPTE (28 septembre 2026, au soir)
+ *
+ * Demande du proprietaire : « les gens peuvent signer avec leur wallet pour
+ * acheter ? ils sont pas obliges de deposer en SWOGE dans le vault et avoir un
+ * compte ». Un pays, un forfait, une signature USDC (Base : EIP-3009, comme
+ * x402_essai.html ; Solana : x402_solana.js, le meme fichier), et le code.
+ * Le serveur (boutique_esim.js) verifie le paiement, achete l'eSIM, PUIS regle :
+ * une eSIM qui n'a pas pu etre achetee ne coute rien au joueur.
+ * Le code d'activation se retrouve par un lien secret (?order=…) rendu avec
+ * l'achat : pas de compte. Il n'est JAMAIS ecrit dans localStorage (seul le
+ * lien, sur demande du joueur, reste dans l'adresse de la page).
+ * Tout ce qui vient du serveur est pose en textContent, jamais en HTML.
+ * ================================================================== -->
+<style>
+:root{ --fond:#EEF3FB; --carte:#fff; --encre:#0B1B36; --pale:#5a6b85; --bleu:#1652f0; --ligne:#E1E9F6; --ok:#0a7d3e; --err:#b3261e; }
+*{ box-sizing:border-box; }
+html{ -webkit-text-size-adjust:100%; }
+body{ margin:0; background:var(--fond); color:var(--encre); font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
+main{ max-width:560px; margin:0 auto; padding:20px 16px 40px; }
+h1{ font-size:22px; margin:0 0 6px; }
+p{ margin:6px 0; }
+.carte{ background:var(--carte); border:1px solid var(--ligne); border-radius:14px; padding:14px 16px; margin:14px 0; }
+.pale{ color:var(--pale); font-size:13.5px; }
+button{ font:inherit; font-weight:700; border:0; border-radius:999px; padding:12px 18px; background:var(--bleu); color:#fff; cursor:pointer; width:100%; min-height:44px; touch-action:manipulation; }
+button[disabled]{ opacity:.45; cursor:default; }
+button.petit{ width:auto; min-height:32px; padding:6px 12px; font-size:13px; }
+input[type=text]{ width:100%; font:inherit; border:1px solid var(--ligne); border-radius:10px; padding:10px 12px; margin:6px 0 10px; }
+.choix{ display:flex; gap:10px; align-items:flex-start; padding:10px 12px; border:1px solid var(--ligne); border-radius:12px; margin:8px 0; cursor:pointer; }
+.choix input{ margin-top:3px; flex:0 0 auto; }
+.choix span{ min-width:0; }
+.prix{ font-weight:800; white-space:nowrap; }
+.statut{ min-height:22px; font-weight:600; }
+.statut.err{ color:var(--err); }
+.statut.ok{ color:var(--ok); }
+code,.mono{ font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12.5px; word-break:break-all; }
+a{ color:var(--bleu); }
+.ach-act > div{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin:8px 0; }
+.ach-act > div span{ font-weight:700; font-size:13px; }
+.ach-act > div code{ flex:1 1 200px; background:#f6f8fc; border-radius:8px; padding:6px 8px; }
+.ach-qr{ width:216px; height:216px; image-rendering:pixelated; border-radius:8px; background:#fff; display:block; margin:8px auto; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Travel eSIM — paid from your wallet</h1>
+  <p class="pale">Mobile data abroad, installed in minutes. No account, no deposit: pick a plan, sign one USDC payment on Base or Solana, get your eSIM. You are charged only if the eSIM is bought.</p>
+
+  <div class="carte" id="carteRecherche">
+    <label for="pays"><b>Where are you going?</b></label>
+    <input type="text" id="pays" maxlength="40" placeholder="France, Japan, US, Europe…" autocomplete="off">
+    <button type="button" id="chercher">Show plans</button>
+    <p class="statut" id="statutRecherche" role="status"></p>
+  </div>
+
+  <div class="carte" id="cartePlans" hidden>
+    <p><b id="destination"></b></p>
+    <div id="plans"></div>
+    <p class="pale" id="plansNote"></p>
+    <p class="pale">Data only (no phone number). Seller: CHIPS — by buying you accept its <a id="lienConditions" target="_blank" rel="noopener" href="https://vamoschips.com/legal/terms">terms</a>. <a id="lienCompat" target="_blank" rel="noopener" href="https://vamoschips.com/compatibility">Check that your phone supports eSIM</a> before buying.</p>
+  </div>
+
+  <div class="carte" id="cartePaiement" hidden>
+    <p><b>Pay <span id="prixChoisi"></span> in USDC on</b></p>
+    <label class="choix"><input type="radio" name="reseau" value="base" checked><span><b>Base</b> — MetaMask, Coinbase Wallet, Rabby</span></label>
+    <label class="choix"><input type="radio" name="reseau" value="solana"><span><b>Solana</b> — Phantom, Solflare, Backpack</span></label>
+    <p class="pale">You need USDC only: the network fee is paid for you.</p>
+    <div id="blocBase">
+      <p>Wallet: <span class="mono" id="adresse">not connected</span></p>
+      <p style="margin-top:10px"><button type="button" id="connecter">Connect Base wallet</button></p>
+      <p style="margin-top:8px"><button type="button" id="payer" disabled>Buy with USDC on Base</button></p>
+    </div>
+    <div id="blocSol" hidden>
+      <p>Solana wallet: <span class="mono" id="solAdresse">not connected</span></p>
+      <p style="margin-top:10px"><button type="button" id="solConnecter">Connect Phantom or another Solana wallet</button></p>
+      <div id="solChoix" hidden></div>
+      <p style="margin-top:8px"><button type="button" id="solPayer" disabled>Buy with USDC on Solana</button></p>
+    </div>
+    <p class="statut" id="statut" role="status"></p>
+  </div>
+
+  <div class="carte" id="carteResultat" hidden>
+    <p><b id="resTitre"></b></p>
+    <p id="resTx" class="pale"></p>
+    <div id="resLien" hidden>
+      <p><b>Your order link — save it now.</b> It is the only way to see your activation code again (there is no account).</p>
+      <div class="ach-act"><div><code id="lienCommande"></code><button type="button" class="petit" id="copierLien">Copy</button></div></div>
+    </div>
+    <div id="resActivation"></div>
+    <p class="statut" id="statutCommande" role="status"></p>
+    <p style="margin-top:8px"><button type="button" id="rafraichir" hidden>Check again</button></p>
+  </div>
+
+  <p class="pale">No wallet in this browser? Open this page inside your wallet app's browser. The page never sees a key: your wallet signs, the SWOGE server checks the signature, buys the eSIM, and only then the payment settles.</p>
+</main>
+<script src="x402_solana.js?v=1d86ed41"></script>
+<script>
+/* ---- LE QR DU CODE D'ACTIVATION ----
+   Copie A L'IDENTIQUE du generateur de swoge_wallet.html (via swogeagentic.html) :
+   agent_qr.test.js le passe sur ces lignes-ci avec les 200 empreintes de reference. */
+var QR_TAILLE = 33, QR_DONNEES = 64, QR_EC = 18, QR_BLOCS = 2, QR_MARGE = 4;
+
+function qrCorps(){
+  var exp=new Array(512), log=new Array(256), x=1, i;
+  for(i=0;i<255;i++){ exp[i]=x; log[x]=i; x<<=1; if(x&256) x^=0x11d; }
+  for(i=255;i<512;i++) exp[i]=exp[i-255];
+  return { exp:exp, log:log };
+}
+var QRC = qrCorps();
+function qrMul(a,b){ return (a===0||b===0) ? 0 : QRC.exp[QRC.log[a]+QRC.log[b]]; }
+
+/* Le polynome generateur de degre n, dans le corps a 256 elements. */
+function qrGenerateur(n){
+  var g=[1];
+  for(var i=0;i<n;i++){
+    var h=g.concat([0]);
+    for(var j=0;j<g.length;j++) h[j+1]^=qrMul(g[j], QRC.exp[i]);
+    g=h;
+  }
+  return g;
+}
+/* Les codets de correction : le reste de la division du bloc par le
+   generateur. C'est ce qui permet au lecteur de retrouver l'adresse meme
+   si un doigt couvre un coin du symbole. */
+function qrReste(bloc, n){
+  var g=qrGenerateur(n), r=bloc.slice(), i, j;
+  for(i=0;i<n;i++) r.push(0);
+  for(i=0;i<bloc.length;i++){
+    var c=r[i]; if(!c) continue;
+    for(j=0;j<g.length;j++) r[i+j]^=qrMul(g[j], c);
+  }
+  return r.slice(bloc.length);
+}
+
+function qrOctets(txt){
+  var o=[], i;
+  for(i=0;i<txt.length;i++){
+    var c=txt.charCodeAt(i);
+    if(c<128) o.push(c);
+    else if(c<2048){ o.push(192|(c>>6), 128|(c&63)); }
+    else { o.push(224|(c>>12), 128|((c>>6)&63), 128|(c&63)); }
+  }
+  return o;
+}
+
+function qrCodets(txt){
+  var d=qrOctets(txt), i;
+  if(d.length > QR_DONNEES-2) return null;      /* 62 octets, pas un de plus */
+  var bits=[];
+  var pousse=function(v,n){ for(var k=n-1;k>=0;k--) bits.push((v>>k)&1); };
+  pousse(4,4);                                   /* mode « octets » */
+  pousse(d.length,8);                            /* longueur, 8 bits en version 1 a 9 */
+  for(i=0;i<d.length;i++) pousse(d[i],8);
+  pousse(0, Math.min(4, QR_DONNEES*8 - bits.length));
+  while(bits.length % 8) bits.push(0);
+  var c=[];
+  for(i=0;i<bits.length;i+=8){ var v=0; for(var j=0;j<8;j++) v=(v<<1)|bits[i+j]; c.push(v); }
+  var bourre=[0xEC,0x11], k=0;
+  while(c.length < QR_DONNEES) c.push(bourre[k++ % 2]);
+  return c;
+}
+
+/* Deux blocs de 32, entrelaces : un octet de l'un, un octet de l'autre.
+   C'est ce qui fait qu'une eraflure abime un peu des deux plutot que
+   beaucoup d'un seul. */
+function qrEntrelace(codets){
+  var t=QR_DONNEES/QR_BLOCS, blocs=[], ecs=[], b, i, out=[];
+  for(b=0;b<QR_BLOCS;b++){
+    var s=codets.slice(b*t,(b+1)*t);
+    blocs.push(s); ecs.push(qrReste(s, QR_EC));
+  }
+  for(i=0;i<t;i++) for(b=0;b<QR_BLOCS;b++) out.push(blocs[b][i]);
+  for(i=0;i<QR_EC;i++) for(b=0;b<QR_BLOCS;b++) out.push(ecs[b][i]);
+  return out;
+}
+
+function qrMasque(n,y,x){
+  switch(n){
+    case 0: return (x+y)%2===0;
+    case 1: return y%2===0;
+    case 2: return x%3===0;
+    case 3: return (x+y)%3===0;
+    case 4: return (Math.floor(x/3)+Math.floor(y/2))%2===0;
+    case 5: return (x*y)%2+(x*y)%3===0;
+    case 6: return ((x*y)%2+(x*y)%3)%2===0;
+    default: return ((x+y)%2+(x*y)%3)%2===0;
+  }
+}
+
+/* Les motifs fixes : les trois yeux, leurs separateurs, les deux lignes
+   de synchronisation, et l'unique motif d'alignement de la version 4. */
+function qrTrame(){
+  var T=QR_TAILLE, m=[], f=[], y, x, i;
+  for(y=0;y<T;y++){ m.push([]); f.push([]); for(x=0;x<T;x++){ m[y].push(0); f[y].push(0); } }
+  var pose=function(y,x,v){ if(y<0||x<0||y>=T||x>=T) return; m[y][x]=v; f[y][x]=1; };
+  var oeil=function(oy,ox){
+    for(var dy=-1;dy<=7;dy++) for(var dx=-1;dx<=7;dx++){
+      var d=Math.max(Math.abs(dy-3), Math.abs(dx-3));
+      pose(oy+dy, ox+dx, (d!==2 && d!==4) ? 1 : 0);
+    }
+  };
+  oeil(0,0); oeil(0,T-7); oeil(T-7,0);
+  for(i=8;i<T-8;i++){ pose(6,i, i%2===0?1:0); pose(i,6, i%2===0?1:0); }
+  for(var dy=-2;dy<=2;dy++) for(var dx=-2;dx<=2;dx++)
+    pose(T-7+dy, T-7+dx, Math.max(Math.abs(dy),Math.abs(dx))!==1 ? 1 : 0);
+  return { m:m, f:f };
+}
+
+/* Le format : niveau de correction et masque, protege par un code BCH
+   puis brouille. Il est ecrit DEUX fois, a deux endroits du symbole. */
+function qrFormat(masque){
+  var bits=(0<<3)|masque, d=bits<<10, i;
+  for(i=14;i>=10;i--) if((d>>i)&1) d^=0x537<<(i-10);
+  return ((bits<<10)|d)^0x5412;
+}
+function qrPoseFormat(masque, m, T){
+  var bits=qrFormat(masque), i;
+  var b=function(i){ return (bits>>i)&1; };
+  for(i=0;i<=5;i++) m[i][8]=b(i);
+  m[7][8]=b(6); m[8][8]=b(7); m[8][7]=b(8);
+  for(i=9;i<15;i++) m[8][14-i]=b(i);
+  for(i=0;i<8;i++) m[8][T-1-i]=b(i);
+  for(i=8;i<15;i++) m[T-15+i][8]=b(i);
+  m[T-8][8]=1;                                   /* le module toujours sombre */
+}
+
+/* La penalite du tableau 11 de la norme : quatre regles, et le masque
+   retenu est celui qui en recolte le moins. */
+var QR_N3=[1,0,1,1,1,0,1];
+function qrCherche(seq, dep){
+  for(var i=dep;i+7<=seq.length;i++){
+    var ok=true;
+    for(var k=0;k<7;k++) if(seq[i+k]!==QR_N3[k]){ ok=false; break; }
+    if(ok) return i;
+  }
+  return -1;
+}
+function qrClair(seq,a,b){
+  for(var i=Math.max(a,0);i<Math.min(b,seq.length);i++) if(seq[i]) return false;
+  return true;
+}
+function qrRegle3(seq){
+  var T=seq.length, s=0, i=qrCherche(seq,0);
+  while(i!==-1){
+    var apres=i+7;
+    if(i===0 || i===T-7 || qrClair(seq,i-4,i) || qrClair(seq,apres,apres+4)) s+=40;
+    else apres=i+4;
+    i=qrCherche(seq,apres);
+  }
+  return s;
+}
+function qrPenalite(m){
+  var T=QR_TAILLE, s=0, y, x, c, n;
+  for(y=0;y<T;y++){
+    var col=[]; for(x=0;x<T;x++) col.push(m[x][y]);
+    s+=qrRegle3(m[y]); s+=qrRegle3(col);
+  }
+  for(y=0;y<T;y++){
+    c=m[y][0]; n=1;
+    for(x=1;x<T;x++){ if(m[y][x]===c) n++; else { if(n>=5) s+=n-2; c=m[y][x]; n=1; } }
+    if(n>=5) s+=n-2;
+  }
+  for(x=0;x<T;x++){
+    c=m[0][x]; n=1;
+    for(y=1;y<T;y++){ if(m[y][x]===c) n++; else { if(n>=5) s+=n-2; c=m[y][x]; n=1; } }
+    if(n>=5) s+=n-2;
+  }
+  for(y=0;y<T-1;y++) for(x=0;x<T-1;x++){
+    var v=m[y][x];
+    if(m[y][x+1]===v && m[y+1][x]===v && m[y+1][x+1]===v) s+=3;
+  }
+  var noirs=0;
+  for(y=0;y<T;y++) for(x=0;x<T;x++) noirs+=m[y][x];
+  s += 10*Math.floor(Math.abs(noirs*100/(T*T)-50)/5);
+  return s;
+}
+
+function qrMatrice(txt){
+  var codets=qrCodets(txt); if(!codets) return null;
+  var flux=qrEntrelace(codets), T=QR_TAILLE, base=qrTrame(), res=base.f, i;
+  /* La zone du format est reservee AVANT le placement : le module toujours
+     sombre en fait partie, et l'oublier decalait tout le flux d'un bit. */
+  for(i=0;i<=8;i++){ if(i!==6){ res[8][i]=1; res[i][8]=1; } }
+  for(i=0;i<8;i++) res[8][T-1-i]=1;
+  for(i=T-8;i<T;i++) res[i][8]=1;
+
+  var meilleure=null, gagnante=null, masque=0;
+  for(var k=0;k<8;k++){
+    var m=[], y;
+    for(y=0;y<T;y++) m.push(base.m[y].slice());
+    var bit=0;
+    for(var droite=T-1; droite>=1; droite-=2){
+      if(droite===6) droite=5;
+      for(var vert=0;vert<T;vert++) for(var j=0;j<2;j++){
+        var x=droite-j, monte=((droite+1)&2)===0, yy=monte ? (T-1-vert) : vert;
+        if(res[yy][x]){ continue; }
+        var v=0;
+        if(bit < flux.length*8) v=(flux[bit>>3]>>(7-(bit&7)))&1;
+        bit++;
+        m[yy][x]=qrMasque(k,yy,x) ? (v^1) : v;
+      }
+    }
+    var p=qrPenalite(m);
+    if(meilleure===null || p<meilleure){ meilleure=p; gagnante=m; masque=k; }
+  }
+  qrPoseFormat(masque, gagnante, T);
+  return gagnante;
+}
+(function(){
+  "use strict";
+  var $ = function(id){ return document.getElementById(id); };
+  function serveur(){
+    try { var q = new URLSearchParams(location.search).get("server"); if (q) return String(q).replace(/\/$/, ""); } catch (e) {}
+    return "https://web-production-220a3.up.railway.app";
+  }
+  var USDC_BASE = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", BASE_ID = "0x2105";
+  var SOL = { reseau: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp", usdc: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", chaine: "solana:mainnet" };
+  var etat = { plan: null, prix: null, compte: null, portefeuilles: [], sol: null, solCompte: null };
+  function statut(id, t, genre){ var s = $(id); s.textContent = t || ""; s.className = "statut" + (genre ? " " + genre : ""); }
+  function b64(o){ return btoa(unescape(encodeURIComponent(JSON.stringify(o)))); }
+  function de64(s){ return JSON.parse(decodeURIComponent(escape(atob(s)))); }
+  function hex32(){ var a = new Uint8Array(32); crypto.getRandomValues(a); return "0x" + Array.prototype.map.call(a, function(x){ return ("0" + x.toString(16)).slice(-2); }).join(""); }
+  function adresseOk(a){ return /^0x[0-9a-fA-F]{40}$/.test(String(a || "")); }
+  function lienSur(u){ return /^https:\/\/[a-z0-9.-]+\//i.test(String(u || "")) ? String(u) : null; }
+  function copie(txt, b){ try { navigator.clipboard.writeText(txt).then(function(){ b.textContent = "Copied"; }, function(){ b.textContent = "Copy failed"; }); } catch (e) { b.textContent = "Copy failed"; } }
+  function ligneCopie(nom, val){
+    var r = document.createElement("div"), l = document.createElement("span"), c = document.createElement("code"), b = document.createElement("button");
+    l.textContent = nom; c.textContent = val; b.type = "button"; b.className = "petit"; b.textContent = "Copy";
+    b.addEventListener("click", function(){ copie(val, b); });
+    r.appendChild(l); r.appendChild(c); r.appendChild(b); return r;
+  }
+
+  /* ---- 1. chercher ---- */
+  function cherche(){
+    var pays = String($("pays").value || "").trim();
+    if (!pays) { statut("statutRecherche", "Type a country or a region.", "err"); return; }
+    $("chercher").disabled = true; statut("statutRecherche", "Looking for plans…");
+    fetch(serveur() + "/esim/plans?country=" + encodeURIComponent(pays.slice(0, 40)), { cache: "no-store" }).then(function(r){ return r.json(); }).then(function(d){
+      $("chercher").disabled = false;
+      if (!d || !d.ok) { statut("statutRecherche", (d && d.raison) || "The shop did not answer - try again.", "err"); return; }
+      statut("statutRecherche", "");
+      peintPlans(d);
+    })["catch"](function(){ $("chercher").disabled = false; statut("statutRecherche", "The shop did not answer - try again.", "err"); });
+  }
+  function peintPlans(d){
+    $("cartePlans").hidden = false; $("cartePaiement").hidden = true; etat.plan = null;
+    $("destination").textContent = d.plans.length ? "Plans for " + d.destination : "No plan for " + d.destination + " right now.";
+    var box = $("plans"); box.textContent = "";
+    d.plans.forEach(function(p){
+      var l = document.createElement("label"); l.className = "choix";
+      var i = document.createElement("input"); i.type = "radio"; i.name = "plan"; i.value = p.plan;
+      var s = document.createElement("span"), b = document.createElement("b"), pr = document.createElement("span"), br = document.createElement("br"), pa = document.createElement("span");
+      b.textContent = String(p.name || "eSIM"); pr.className = "prix"; pr.textContent = " — $" + Number(p.priceUsd).toFixed(2);
+      pa.className = "pale"; pa.textContent = (p.gb ? p.gb + " GB" : "") + (p.days ? " · " + p.days + " days" : "");
+      s.appendChild(b); s.appendChild(pr); s.appendChild(br); s.appendChild(pa); l.appendChild(i); l.appendChild(s);
+      i.addEventListener("change", function(){ etat.plan = p.plan; etat.prix = Number(p.priceUsd); $("prixChoisi").textContent = "$" + etat.prix.toFixed(2);
+        $("cartePaiement").hidden = false; statut("statut", ""); });
+      box.appendChild(l);
+    });
+    var autres = (d.otherDestinations || []).slice(0, 3);
+    $("plansNote").textContent = (autres.length ? "Also covering it: " + autres.join("; ") + ". " : "") + (d.unavailable ? d.unavailable + " more plan(s) are sold out here right now." : "");
+    var c = lienSur(d.terms), k = lienSur(d.compatibility);
+    if (c) $("lienConditions").href = c; if (k) $("lienCompat").href = k;
+  }
+  $("chercher").addEventListener("click", cherche);
+  $("pays").addEventListener("keydown", function(e){ if (e.key === "Enter") cherche(); });
+
+  /* ---- 2. payer : le devis et le paiement portent le MEME plan (le serveur lie l'un a l'autre) ---- */
+  function appel(entetes){
+    return fetch(serveur() + "/esim/buy", { method: "POST", cache: "no-store", headers: Object.assign({ "content-type": "application/json" }, entetes || {}),
+      body: JSON.stringify({ plan: etat.plan }) });
+  }
+  function demande(){
+    return appel().then(function(r){
+      if (r.status !== 402) return r.text().then(function(t){ var c = null; try { c = JSON.parse(t); } catch (e) {}
+        throw new Error((c && c.raison) || "the shop did not ask for a payment (HTTP " + r.status + ")"); });
+      var h = r.headers.get("payment-required");
+      if (!h) throw new Error("no payment request from the shop");
+      return de64(h);
+    });
+  }
+  function reseau(){ var r = document.querySelector('input[name="reseau"]:checked'); return r ? r.value : "base"; }
+  function montreReseau(){ var sol = reseau() === "solana"; $("blocBase").hidden = sol; $("blocSol").hidden = !sol; }
+  Array.prototype.forEach.call(document.querySelectorAll('input[name="reseau"]'), function(r){ r.addEventListener("change", montreReseau); });
+  montreReseau();
+
+  /* Base : Rabby, MetaMask, Coinbase — EIP-3009, le domaine « USD Coin » v2 de Base (lu sur la chaine le 27/09). */
+  function versBase(){
+    var eth = window.ethereum;
+    return eth.request({ method: "wallet_switchEthereumChain", params: [{ chainId: BASE_ID }] })["catch"](function(e){
+      if (!e || e.code !== 4902) throw e;
+      return eth.request({ method: "wallet_addEthereumChain", params: [{ chainId: BASE_ID, chainName: "Base",
+        nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 }, rpcUrls: ["https://mainnet.base.org"], blockExplorerUrls: ["https://basescan.org"] }] });
+    });
+  }
+  $("connecter").addEventListener("click", function(){
+    var eth = window.ethereum;
+    if (!eth) { statut("statut", "No wallet found in this browser — open this page inside your wallet app.", "err"); return; }
+    statut("statut", "Connecting…");
+    eth.request({ method: "eth_requestAccounts" }).then(function(l){
+      if (!l || !adresseOk(l[0])) throw new Error("no account");
+      etat.compte = l[0]; $("adresse").textContent = l[0];
+      return versBase();
+    }).then(function(){ $("payer").disabled = false; statut("statut", "Connected on Base. Ready to buy."); })
+      ["catch"](function(e){ statut("statut", "Connection failed: " + String(e && (e.message || e.code) || e).slice(0, 160), "err"); });
+  });
+  $("payer").addEventListener("click", function(){
+    var eth = window.ethereum;
+    if (!eth || !etat.compte || !etat.plan) return;
+    $("payer").disabled = true; statut("statut", "Asking the shop for its payment request…");
+    demande().then(function(req){
+      var acc = (req.accepts || []).filter(function(a){ return a.network === "eip155:8453"; })[0];
+      if (!acc) throw new Error("the shop does not take Base right now - try Solana");
+      if (String(acc.asset).toLowerCase() !== USDC_BASE.toLowerCase() || !adresseOk(acc.payTo) || !/^[0-9]+$/.test(String(acc.amount))) throw new Error("unexpected payment request");
+      var s = Math.floor(Date.now() / 1000);
+      var auth = { from: etat.compte, to: acc.payTo, value: String(acc.amount), validAfter: String(s - 600),
+                   validBefore: String(s + Math.max(30, (Number(acc.maxTimeoutSeconds) || 120) - 20)), nonce: hex32() };
+      var extra = acc.extra || {};
+      var typed = { types: {
+          EIP712Domain: [{ name: "name", type: "string" }, { name: "version", type: "string" }, { name: "chainId", type: "uint256" }, { name: "verifyingContract", type: "address" }],
+          TransferWithAuthorization: [{ name: "from", type: "address" }, { name: "to", type: "address" }, { name: "value", type: "uint256" },
+            { name: "validAfter", type: "uint256" }, { name: "validBefore", type: "uint256" }, { name: "nonce", type: "bytes32" }] },
+        primaryType: "TransferWithAuthorization",
+        domain: { name: extra.name || "USD Coin", version: extra.version || "2", chainId: 8453, verifyingContract: acc.asset }, message: auth };
+      statut("statut", "Sign in your wallet: " + (Number(acc.amount) / 1e6) + " USDC to SWOGE (" + acc.payTo.slice(0, 6) + "…" + acc.payTo.slice(-4) + ").");
+      return eth.request({ method: "eth_signTypedData_v4", params: [etat.compte, JSON.stringify(typed)] }).then(function(signature){
+        statut("statut", "Signed. Buying your eSIM, then the payment settles — a few seconds…");
+        return appel({ "payment-signature": b64({ x402Version: 2, resource: req.resource, accepted: acc, payload: { signature: signature, authorization: auth }, extensions: req.extensions }) });
+      });
+    }).then(function(r){ return fin(r, "base"); })
+      ["catch"](function(e){ $("payer").disabled = false; statut("statut", "Not bought, not charged: " + String(e && (e.message || e.code) || e).slice(0, 200), "err"); });
+  });
+
+  /* Solana : Wallet Standard (Phantom d'abord) + x402_solana.js, comme x402_essai.html. */
+  (function(){
+    function enregistre(){ for (var i = 0; i < arguments.length; i++) if (etat.portefeuilles.indexOf(arguments[i]) < 0) etat.portefeuilles.push(arguments[i]); return function(){}; }
+    var api = Object.freeze({ register: enregistre });
+    try { window.addEventListener("wallet-standard:register-wallet", function(e){ try { e.detail(api); } catch (x) {} }); } catch (e) {}
+    try { var ev = new Event("wallet-standard:app-ready"); Object.defineProperty(ev, "detail", { value: api }); window.dispatchEvent(ev); } catch (e) {}
+  })();
+  function solPeutSigner(w){ var f = w && w.features || {}; return !!(f["solana:signTransaction"] && f["standard:connect"]) && (!w.chains || w.chains.indexOf(SOL.chaine) >= 0); }
+  $("solConnecter").addEventListener("click", function(){
+    var l = etat.portefeuilles.filter(solPeutSigner);
+    l.sort(function(a, b){ return (/phantom/i.test(b.name) ? 1 : 0) - (/phantom/i.test(a.name) ? 1 : 0); });
+    if (!l.length) { statut("statut", "No Solana wallet found in this browser — install Phantom, Solflare or Backpack, or open this page in its app.", "err"); return; }
+    if (l.length === 1) return solConnecte(l[0]);
+    var c = $("solChoix"); c.textContent = ""; c.hidden = false;
+    l.forEach(function(w){
+      var b = document.createElement("button"); b.type = "button"; b.style.marginTop = "8px"; b.textContent = "Connect " + String(w.name || "wallet").slice(0, 40);
+      b.addEventListener("click", function(){ c.hidden = true; solConnecte(w); });
+      c.appendChild(b);
+    });
+    statut("statut", "Choose your Solana wallet.");
+  });
+  function solConnecte(w){
+    statut("statut", "Connecting to " + String(w.name || "your wallet").slice(0, 40) + "…");
+    Promise.resolve(w.features["standard:connect"].connect()).then(function(r){
+      var c = (r && r.accounts && r.accounts[0]) || (w.accounts && w.accounts[0]);
+      if (!c || !c.address) throw new Error("no account");
+      etat.sol = w; etat.solCompte = c; $("solAdresse").textContent = c.address;
+      $("solPayer").disabled = false; statut("statut", "Connected. Ready to buy.");
+    })["catch"](function(e){ statut("statut", "Connection failed: " + String(e && (e.message || e.code) || e).slice(0, 160), "err"); });
+  }
+  function solBlockhash(acc){
+    return fetch(serveur() + "/agentic/solana/blockhash", { cache: "no-store" }).then(function(r){ return r.json(); }).then(function(d){
+      if (d && d.ok && d.blockhash) return d.blockhash;
+      if (acc.extra && acc.extra.recentBlockhash) return acc.extra.recentBlockhash;
+      throw new Error("no recent Solana blockhash - try again");
+    });
+  }
+  function solPaie(sansMemo){
+    var req, acc, lu = null;
+    statut("statut", "Asking the shop for its payment request…");
+    return demande().then(function(r){
+      req = r;
+      acc = (req.accepts || []).filter(function(x){ return x.network === SOL.reseau; })[0];
+      if (!acc) throw new Error("the shop does not take Solana right now - try Base");
+      if (acc.asset !== SOL.usdc || !/^[0-9]+$/.test(String(acc.amount)) || !(acc.extra && acc.extra.feePayer)) throw new Error("unexpected payment request");
+      return solBlockhash(acc);
+    }).then(function(bh){
+      return SwogeSolana.construit(acc, { payeur: etat.solCompte.address, blockhash: bh, sansMemo: sansMemo });
+    }).then(function(t){
+      statut("statut", "Approve in your wallet: " + (Number(acc.amount) / 1e6) + " USDC to SWOGE.");
+      return etat.sol.features["solana:signTransaction"].signTransaction({ account: etat.solCompte, transaction: t.octets, chain: SOL.chaine });
+    }).then(function(sorties){
+      var signe = sorties && sorties[0] && sorties[0].signedTransaction;
+      if (!signe || !signe.length) throw new Error("the wallet returned no signed transaction");
+      try { lu = SwogeSolana.lit(new Uint8Array(signe)); } catch (e) { lu = null; }
+      statut("statut", "Signed. Buying your eSIM, then the payment settles — a few seconds…");
+      return appel({ "payment-signature": b64({ x402Version: 2, resource: req.resource, accepted: acc, payload: { transaction: SwogeSolana.b64(new Uint8Array(signe)) }, extensions: req.extensions }) });
+    }).then(function(r){ return fin(r, "solana"); })["catch"](function(e){ if (e) e.lu = lu; throw e; });
+  }
+  $("solPayer").addEventListener("click", function(){
+    if (!etat.sol || !etat.plan) return;
+    $("solPayer").disabled = true;
+    solPaie(false)["catch"](function(e){
+      /* Le portefeuille a ajoute des instructions (Phantom : jusqu'a 3) et le facilitateur plafonne a 6 : une fois encore, sans le memo. */
+      if (e && e.lu && e.lu.programmes.length > 6 && /smart_wallet|instructions_length/.test(e.raison || e.message)) {
+        statut("statut", "Your wallet added instructions the facilitator refuses — sign once more (a shorter transaction)…");
+        return solPaie(true);
+      }
+      throw e;
+    })["catch"](function(e){ $("solPayer").disabled = false; statut("statut", "Not bought, not charged: " + String(e && (e.message || e.code) || e).slice(0, 200), "err"); });
+  });
+
+  /* ---- 3. le resultat : le lien secret, puis le code ---- */
+  function fin(r, res){
+    var rep = r.headers.get("payment-response");
+    return r.text().then(function(t){
+      var c = null; try { c = JSON.parse(t); } catch (e) {}
+      if (r.status !== 200 || !c || !c.ok) { var err = new Error(String(c && (c.raison || c.error || c.detail) || ("HTTP " + r.status)).slice(0, 200)); err.raison = String(c && c.raison || ""); throw err; }
+      var tx = null; try { tx = rep ? de64(rep) : null; } catch (e) {}
+      $("cartePaiement").hidden = true; $("carteRecherche").hidden = true; $("cartePlans").hidden = true;
+      montreCommande(c.orderLink, c.achat, tx && tx.transaction, res);
+    });
+  }
+  function lienDe(k){ return location.origin + location.pathname + "?order=" + k; }
+  function montreCommande(k, achat, tx, res){
+    $("carteResultat").hidden = false;
+    $("resTitre").textContent = achat && achat.nom ? "Your eSIM: " + achat.nom : "Your eSIM";
+    var p = $("resTx"); p.textContent = "";
+    if (tx && res === "base" && /^0x[0-9a-fA-F]{64}$/.test(tx)) { var a = document.createElement("a"); a.href = "https://basescan.org/tx/" + tx; a.target = "_blank"; a.rel = "noopener"; a.textContent = "Payment on BaseScan"; p.appendChild(a); }
+    else if (tx && res === "solana" && /^[1-9A-HJ-NP-Za-km-z]{64,90}$/.test(tx)) { var b = document.createElement("a"); b.href = "https://solscan.io/tx/" + tx; b.target = "_blank"; b.rel = "noopener"; b.textContent = "Payment on Solscan"; p.appendChild(b); }
+    if (/^[0-9a-f]{32}$/.test(String(k || ""))) {
+      $("resLien").hidden = false; $("lienCommande").textContent = lienDe(k); etat.lien = k;
+      try { history.replaceState(null, "", "?order=" + k); } catch (e) {}
+    }
+    peintAchat(achat);
+  }
+  function peintAchat(achat){
+    var box = $("resActivation"); box.textContent = "";
+    var a = achat && achat.activation;
+    if (!a) { statut("statutCommande", "Paid. Your eSIM is being prepared — check again in a minute."); $("rafraichir").hidden = false; return; }
+    $("rafraichir").hidden = true; statut("statutCommande", "Ready.", "ok");
+    var d = document.createElement("div"); d.className = "ach-act";
+    if (a.smdp) d.appendChild(ligneCopie("SM-DP+ address", a.smdp));
+    if (a.code) d.appendChild(ligneCopie("Activation code", a.code));
+    if (a.uri) d.appendChild(ligneCopie("Full code (LPA)", a.uri));
+    var h = document.createElement("p"); h.className = "pale";
+    h.textContent = "To install: in your phone's settings, add an eSIM and enter the details manually, or scan the QR code below from another screen." + (a.iccid4 ? " eSIM ending in " + a.iccid4 + "." : "");
+    d.appendChild(h);
+    var m = null;
+    try { m = a.uri ? qrMatrice(a.uri) : null; } catch (e) { m = null; }
+    if (m) {
+      var T = QR_TAILLE, pas = 6, cv = document.createElement("canvas");
+      cv.width = cv.height = (T + 2 * QR_MARGE) * pas; cv.className = "ach-qr"; cv.setAttribute("role", "img"); cv.setAttribute("aria-label", "QR code of your eSIM activation code");
+      var g = cv.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, cv.width, cv.height); g.fillStyle = "#000";
+      for (var y = 0; y < T; y++) for (var x = 0; x < T; x++) if (m[y][x]) g.fillRect((x + QR_MARGE) * pas, (y + QR_MARGE) * pas, pas, pas);
+      d.appendChild(cv);
+    }
+    box.appendChild(d);
+  }
+  $("copierLien").addEventListener("click", function(){ copie($("lienCommande").textContent, $("copierLien")); });
+  function relit(k){
+    statut("statutCommande", "Looking for your eSIM…");
+    fetch(serveur() + "/esim/order/" + encodeURIComponent(k), { cache: "no-store" }).then(function(r){ return r.json(); }).then(function(d){
+      if (d && d.achat) { $("carteResultat").hidden = false; montreCommande(k, d.achat, d.achat.tx, d.achat.reseau === SOL.reseau ? "solana" : "base"); return; }
+      statut("statutCommande", (d && d.raison) || "Order not found.", "err");
+    })["catch"](function(){ statut("statutCommande", "The shop did not answer - try again.", "err"); });
+  }
+  $("rafraichir").addEventListener("click", function(){ if (etat.lien) relit(etat.lien); });
+  /* ?order=<lien> : retrouver son eSIM sans compte. */
+  try { var k0 = new URLSearchParams(location.search).get("order"); if (/^[0-9a-f]{32}$/.test(String(k0 || ""))) { etat.lien = k0; $("carteResultat").hidden = false; $("carteRecherche").hidden = true; relit(k0); } } catch (e) {}
+})();
+</script>
+</body>
+</html>

@@ -298,6 +298,10 @@ button.ghost:hover{color:var(--paper);border-color:var(--believer);filter:none}
 
 /* concentration */
 .section{display:none;margin-top:34px}
+.act-al{margin-top:18px;padding:13px 16px;border-radius:14px;font-size:14px;line-height:1.45;border:1px solid #e0b4b4;background:#fdeeee;color:#7a1f1f}
+.act-al b{font-weight:800}.act-al code{font-family:'Space Mono',monospace;font-size:12px;overflow-wrap:anywhere}
+.act-al a{color:inherit;text-decoration:underline}
+.act-al.ok{border-color:#b9dcc4;background:#eef8f1;color:#1f5a33}
 .section h2{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);margin:0 0 4px;font-weight:500}
 .section .cap{color:var(--dim);font-size:12px;margin:0 0 16px}
 
@@ -751,6 +755,11 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     <img class="scandoge" src="img/3c02eff6fbc8.jpg" alt="">
   </div>
 
+  <!-- Les actions tokenisees (28/09/2026) : un jeton qui copie le symbole d'une action
+       officielle de Robinhood n'est PAS cette action. Le serveur compare a la liste officielle
+       (actions_rh.identite) ; la page ne fait que le dire. Texte seulement, jamais de HTML recu. -->
+  <div id="actionAlerte" class="act-al" role="alert" style="display:none"></div>
+
   <div class="tokenhead" id="tokenhead">
     <span class="nm" id="tName">—</span>
     <span class="sy" id="tSym"></span>
@@ -1139,6 +1148,28 @@ async function mesure(token){
   }catch(e){ return; }        /* le scan des detenteurs se suffit a lui-meme */
   MESURE_DERNIERE = r;
 
+  /* ---- L'ACTION TOKENISEE : l'officielle, ou une copie de son symbole ---- */
+  const al = $("#actionAlerte"), ac = r.action;
+  al.style.display = "none"; al.textContent = ""; al.className = "act-al";
+  if (ac && /^0x[0-9a-f]{40}$/.test(String(ac.adresse || "")) && (ac.statut === "not_the_stock_token" || ac.statut === "official")) {
+    const sym = String(ac.symbole || "").replace(/[^A-Za-z0-9.]/g, "").slice(0, 12);
+    const b = document.createElement("b");
+    if (ac.statut === "official") {
+      al.className = "act-al ok";
+      b.textContent = "Official Robinhood Stock Token (" + sym + ").";
+      al.appendChild(b);
+      al.appendChild(document.createTextNode(" This contract is on Robinhood's official list."));
+    } else {
+      b.textContent = "This is NOT the Robinhood Stock Token " + sym + ".";
+      al.appendChild(b);
+      al.appendChild(document.createTextNode(" It uses the same ticker or name, but a different contract. The official " + sym + " is "));
+      const a2 = document.createElement("a"); a2.href = "?t=" + ac.adresse;
+      const c = document.createElement("code"); c.textContent = ac.adresse; a2.appendChild(c); al.appendChild(a2);
+      al.appendChild(document.createTextNode(" (source: Robinhood's official token list)."));
+    }
+    al.style.display = "block";
+  }
+
   const ech = (x) => String(x==null?"":x).replace(/[&<>"']/g, c => (
     {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
 
@@ -1200,6 +1231,7 @@ async function scan(){
   const token = m[0].toLowerCase();
   $("#run").disabled = true;
   ["#tokenhead","#health","#verdict","#inspect","#track","#secConc","#secHolders","#method"].forEach(id=>$(id).style.display="none");
+  $("#actionAlerte").style.display = "none";
   $("#secMesure").style.display = "none";
   /* Sans `await` : elle s'affiche quand elle arrive, elle ne retarde rien. */
   mesure(token);

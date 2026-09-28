@@ -229,6 +229,29 @@ const brute = (t) => CLES.some((k) => String(t).trim().toLowerCase() === k.toLow
     await page.close();
   }
 
+  console.log('\n-- une copie d action tokenisee est dite, l officielle aussi (28/09) --');
+  {
+    const NV = '0xd0601ce157db5bdc3162bbac2a2c8af5320d9eec';
+    const copie = Object.assign({}, SCAN, { jeton: Object.assign({}, SCAN.jeton, { adr: '0xdecf74e4aa6ff30b1612e65665aaf650bedecba3', sym: 'NVDA', nom: 'NVDA' }),
+      action: { statut: 'not_the_stock_token', symbole: 'NVDA', adresse: NV } });
+    const page = await ouvre('/swoge_scan.html?t=0xdecf74e4aa6ff30b1612e65665aaf650bedecba3', { scan: copie });
+    const al = await page.$eval('#actionAlerte', (e) => ({ vu: e.style.display !== 'none', t: e.textContent, lien: (e.querySelector('a') || {}).href || '', role: e.getAttribute('role') }));
+    ok(al.vu && /This is NOT the Robinhood Stock Token NVDA\./.test(al.t) && al.t.includes(NV) && /\?t=0xd0601ce1/.test(al.lien) && al.role === 'alert',
+       'une copie : le bandeau le dit, avec l adresse officielle en lien (qui la scanne)');
+    await page.close();
+    const piege = await ouvre('/swoge_scan.html?t=0xdecf74e4aa6ff30b1612e65665aaf650bedecba3',
+      { scan: Object.assign({}, copie, { action: { statut: 'not_the_stock_token', symbole: 'NVDA<img src=x onerror=window.pirate=1>', adresse: NV } }) });
+    ok(!(await piege.evaluate(() => window.pirate)) && (await piege.$('#actionAlerte img')) === null && /NOT the Robinhood Stock Token/.test(await piege.textContent('#actionAlerte')),
+       'un symbole pieges reste du texte (lettres et chiffres seulement)');
+    await piege.close();
+    const off = await ouvre('/swoge_scan.html?t=' + NV, { scan: Object.assign({}, SCAN, { action: { statut: 'official', symbole: 'NVDA', adresse: NV } }) });
+    ok(await off.$eval('#actionAlerte', (e) => e.style.display !== 'none' && e.classList.contains('ok') && /Official Robinhood Stock Token \(NVDA\)/.test(e.textContent)), 'l officielle : dite officielle');
+    await off.close();
+    const rien = await ouvre('/swoge_scan.html?t=0x254afb9fd36789bea39fb5656ba6fdb827be8dc5', { scan: Object.assign({}, SCAN, { action: { statut: 'none' } }) });
+    ok(await rien.$eval('#actionAlerte', (e) => e.style.display === 'none'), 'un jeton sans rapport : aucun bandeau');
+    await rien.close();
+  }
+
   await nav.close();
   await new Promise((r) => srv.close(r));
   console.log(rates ? `\nscan_page.test.js : RATES : ${rates}/${n}` : `\nscan_page.test.js : ${n} verifications OK`);

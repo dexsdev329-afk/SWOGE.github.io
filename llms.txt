@@ -26,6 +26,8 @@ Tools:
 - `robinhood_tx(hash)` — $0.003. Use this when you need to understand what a Robinhood Chain transaction did.
 - `robinhood_rpc(method, params?)` — $0.003. Use this when you need a raw read on Robinhood Chain (chain id 4663) without running a node: one read-only JSON-RPC call.
 - `token_verdict(address)` — $0.008. Use this when you must decide fast whether an EVM token is worth a closer look: one verdict you can branch on (red_flags, caution, unknown or no_red_flag_found) with its reasons.
+- `stock_token_check(address?, symbol?)` — $0.005. Use this before touching a stock token on Robinhood Chain (NVDA, TSLA, SPY…): it tells whether a contract is the official Robinhood Stock Token or a copy using the same ticker.
+- `stock_tokens_premium(limit?, min_liquidity_usd?)` — $0.005. Use this when you want the Robinhood Chain stock tokens whose on-chain pools trade furthest from their Chainlink feed.
 - `base_launches(platform?, limit?, traded_only?)` — $0.005. Use this when you want the newest memecoin launches on Base (Clanker v4 and Zora coins), read on-chain: each with its deployer and the deployer's MEASURED record.
 - `base_deployer(address)` — $0.005. Use this when you need the track record of an address that launches tokens on Base (Clanker v4 or Zora).
 - `fair_commit()` — $0.001. Use this before any draw other players must trust (a game between agents, a raffle, a giveaway): the server picks a secret seed and publishes its SHA-256 hash now, so it cannot change the seed later.

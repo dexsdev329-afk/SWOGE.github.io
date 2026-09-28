@@ -48,7 +48,7 @@ function vueFausse(o) {
     trades: o.trades === undefined ? 34 : o.trades,
     meilleur: 2.41,
     partGagnantes: o.partGagnantes === undefined ? 56 : o.partGagnantes,
-    financement: { n: 34, total: -0.412, moyenne: -0.012 },
+    financement: o.financement || { n: 34, total: -0.412, moyenne: -0.012 },
     positions: o.positions || [
       { sym: 'DOGEUSDT', nom: 'DOGE', sens: 1, prix0: 0.2134, prix: 0.2201, prixVu: now - 40000,
         stop: 0.2011, cible: 0.2290, mise: 106.3, levier: 1,
@@ -189,9 +189,12 @@ const txt = (page, sel) => page.$eval(sel, (e) => (e.textContent || '').trim()).
     ok(l.length === 5, 'les cinq marches sont listes : ' + l.map((x) => x.nom).join(', '));
     const btc = l.find((x) => x.nom === 'BTC');
     ok(btc && btc.n === '18' && btc.part === '61%', 'chacun avec ses trades fermes et sa part de gagnantes');
-    ok(btc && btc.gain === '+$40.20' && btc.cls.includes('pp-vert'), 'et ce qu il a rapporte : ' + (btc && btc.gain));
+    /* 28/09/2026 : sous le seuil du bilan (143 trades), le chiffre reste et la couleur part —
+       18 trades verts se lisaient comme un marche qui gagne. Le signe, lui, distingue toujours. */
+    ok(btc && btc.gain === '+$40.20' && !btc.cls.includes('pp-vert'), 'et ce qu il a rapporte : ' + (btc && btc.gain) + ', sans couleur sur 18 trades');
     const doge = l.find((x) => x.nom === 'DOGE');
-    ok(doge && doge.cls.includes('pp-rouge'), 'un marche qui perd ne se lit pas comme un marche qui gagne');
+    ok(doge && /^-/.test(doge.gain) && !doge.cls.includes('pp-rouge'), 'un marche qui perd se lit a son signe (' + (doge && doge.gain) + '), pas a une couleur qui conclurait sous le seuil');
+    ok(/Green or red only from 143 closed trades/.test(await txt(page, '#ppMarchesSous')), 'et la page dit a partir de combien de trades la couleur vient');
     /* ---- « APPRIS » N EST PAS « FERME » ----
      * L un porte sur les trades reellement clotures, l autre sur toutes les
      * ombres jugees — bien plus nombreuses. Les confondre ferait lire 220
@@ -265,16 +268,24 @@ const txt = (page, sel) => page.$eval(sel, (e) => (e.textContent || '').trim()).
        place : le plafond existe parce que la mise est une part de la
        tresorerie, et trois positions font trois dixiemes d exposition. */
     ok(await txt(page, '#ppOuvertes') === '1 / 3', 'les positions ouvertes, et combien la colonie en tient au plus');
-    ok(/2\.41%/.test(await txt(page, '#ppMeilleur')), 'le meilleur trade');
+    ok(/2\.41%/.test(await txt(page, '#ppMeilleur')) && await txt(page, '#ppMeilleurSur') === '', 'le carnet ne porte pas les 34 trades : le seul chiffre du serveur, sans pire invente');
+    ok(/^since .+ · 34 closed trades$/.test(await txt(page, '#ppProfitSur')), 'le profit dit depuis quand et sur combien de trades : ' + await txt(page, '#ppProfitSur'));
     /* ---- LE FINANCEMENT A SA PROPRE CASE ----
      * Toutes les huit heures, un cote paie l autre. C'est la ligne qu'on
      * regarde quand le mouvement du prix a l'air bon et que le net ne suit
      * pas : la cacher, c'est laisser croire au papier. */
     ok(/-0\.41%/.test(await txt(page, '#ppFin')), 'le financement paye, a part du prix');
-    ok(/34 closed trades/.test(await txt(page, '#ppFinSur')), 'et sur combien de trades il porte');
+    ok(/^paid over 34 closed trades$/.test(await txt(page, '#ppFinSur')) && await txt(page, '#ppLFin') === 'Funding (net)', 'et sur combien de trades il porte, « paid » quand il coute');
     const classe = await page.$eval('#ppFin', (e) => e.className);
     ok(classe === 'pp-rouge', 'un financement negatif se voit comme un cout');
     await page.close();
+    /* 28/09/2026 : le carnet porte TOUS les trades → meilleur ET pire, aux frais reels ; un
+       financement positif est RECU (ai_perp.js : brut + financement - frais), pas « paid » en vert. */
+    const c = await ouvre(nav, port, 'swoge_perp.html', { vue: { trades: 2, financement: { n: 2, total: 0.114, moyenne: 0.057 } } });
+    ok(await txt(c.page, '#ppMeilleur') === '+1.75% / -1.29%' && await txt(c.page, '#ppMeilleurSur') === 'at real fees, over 2 trades',
+       'meilleur et pire cote a cote, aux frais reels : ' + await txt(c.page, '#ppMeilleur'));
+    ok(await txt(c.page, '#ppFinSur') === 'received over 2 closed trades' && await c.page.$eval('#ppFin', (e) => e.className) === 'pp-vert', 'un financement positif est dit recu, en vert');
+    await c.page.close();
   }
 
   console.log('\n-- un chiffre se tait quand l echantillon ne le porte pas --');
@@ -337,7 +348,7 @@ const txt = (page, sel) => page.$eval(sel, (e) => (e.textContent || '').trim()).
        Sans elle, « 20 % de gagnantes » ne veut rien dire — on ne sait pas
        contre quoi. */
     const sous = await txt(page, '#ppAuditSous');
-    ok(/43% winners over 120/.test(sous), 'la reference est nommee avec son echantillon');
+    ok(/43% of them up at least \+1\.5% after 4 hours, over 120/.test(sous), 'la reference est nommee avec son echantillon et sa definition (+1,5 % a 4 h, pas « winners »)');
     ok(/Below 60 observations/.test(sous), 'et le seuil en dessous duquel rien n est juge');
     await page.close();
   }
@@ -410,7 +421,7 @@ const txt = (page, sel) => page.$eval(sel, (e) => (e.textContent || '').trim()).
     ok(/marches perpetuels/i.test(await txt(page, '#ppSous')), 'le drapeau bascule en francais');
     ok(/Rien n'est signe/i.test(await txt(page, '#ppAvis')), 'et l avertissement aussi');
     const sous = await txt(page, '#ppAuditSous');
-    ok(/43 % de gagnantes/.test(sous), 'la phrase francaise a sa propre forme, espace comprise : ' + sous.slice(0, 40) + '…');
+    ok(/43 % montent d'au moins \+1,5 % a 4 h/.test(sous), 'la phrase francaise a sa propre forme, espace comprise : ' + sous.slice(0, 40) + '…');
     /* Ce que le SERVEUR ecrit lui-meme reste tel quel : les raisons de refus
        arrivent avec leurs chiffres dedans, les retraduire ici les
        inventerait. */
@@ -453,7 +464,9 @@ const txt = (page, sel) => page.$eval(sel, (e) => (e.textContent || '').trim()).
      * voir +0,30 % par trade. En dessous, la case le DIT. */
     const { page } = await ouvre(nav, port, 'swoge_perp.html');
     const net = await txt(page, '#ppNet');
-    ok(/-0\.45%/.test(net) && /± 0\.23/.test(net), 'le net par trade, aux frais reels, avec son erreur-type : ' + net);
+    /* L'erreur-type (« ± 0,23 ») se lisait comme un intervalle : c'est l'intervalle a 95 % qui est ecrit. */
+    const netSur = await txt(page, '#ppNetSur');
+    ok(/-0\.45%/.test(net) && !/±/.test(net) && /95% CI -0\.90% to \+0\.00%/.test(netSur), 'le net par trade, aux frais reels, avec son intervalle a 95 % : ' + net + ' · ' + netSur);
     ok(/not judgeable \(34\/143\)/.test(await txt(page, '#ppNetSur')), 'et « not judgeable (34/143) » sous le seuil');
     ok(!(await page.$eval('#ppNet', (e) => e.className)).includes('pp-vert'), 'un net non jugeable ne se colore pas en gagnant');
     ok(/95% CI 39–71%/.test(await txt(page, '#ppTauxSur')), 'le taux de gain porte son intervalle de Wilson : ' + await txt(page, '#ppTauxSur'));

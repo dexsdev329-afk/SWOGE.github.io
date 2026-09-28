@@ -59,10 +59,21 @@ var PP_PHRASES = {
   tresor: ["Paper treasury", "Tresorerie papier"],
   taux: ["Win rate", "Taux de gain"],
   trades: ["Closed trades", "Trades fermes"],
-  meilleur: ["Best trade", "Meilleur"],
+  meilleur: ["Best / worst trade", "Meilleur / pire trade"],
+  /* 28/09/2026 : le meilleur trade s'affichait seul, au chiffre papier. Le pire
+     a cote, les deux aux frais reels, avec leur effectif. */
+  extremesSur: function(n){ return "at real fees, over " + n + " trades"; },
+  extremesSurFr: function(n){ return "aux frais reels, sur " + n + " trades"; },
+  profitSur: function(d, n){ return "since " + d + " \u00b7 " + n + " closed trades"; },
+  profitSurFr: function(d, n){ return "depuis le " + d + " \u00b7 " + n + " trades fermes"; },
+  ciNet: function(lo, hi){ return "95% CI " + lo + " to " + hi; },
+  ciNetFr: function(lo, hi){ return "IC 95 % " + lo + " a " + hi; },
   ouvertes: ["Open now", "Ouvertes"],
-  financement: ["Funding paid", "Financement paye"],
-  finSur: function(n){ return n ? "over " + n + " closed trades" : "nothing closed yet"; },
+  /* « Funding paid » en vert disait l'inverse du chiffre : le financement s'AJOUTE
+     au net (ai_perp.js, rReelDe : brut + financement - frais), positif = recu. */
+  financement: ["Funding (net)", "Financement (net)"],
+  finSur: function(n, t){ return !n ? "nothing closed yet" : (t > 0 ? "received" : t < 0 ? "paid" : "net zero") + " over " + n + " closed trades"; },
+  finSurFr: function(n, t){ return !n ? "rien de ferme" : (t > 0 ? "recu" : t < 0 ? "paye" : "nul") + " sur " + n + " trades fermes"; },
   positions: ["Open positions", "Positions ouvertes"],
   posVide: ["No position open right now.", "Aucune position ouverte pour le moment."],
   sens: ["Side", "Sens"], entree: ["Entry", "Entree"], stop: ["Stop", "Stop"],
@@ -103,13 +114,25 @@ var PP_PHRASES = {
   audit: ["What each refusal is worth", "Ce que vaut chaque refus"],
   auditSous: function(n, ref){
     if(!ref) return "Every refusal is shadowed and judged later. Nothing is comparable yet: the colony has taken too few positions to have a reference.";
-    return "Every refusal is shadowed and judged later against what the colony actually takes (" + ref + "% winners over " + n + " observations). Returns are also read in units of each market's own 4-hour volatility (σ), so a rule that mostly turns away DOGE is not judged on DOGE's size. Below " + PP_MIN + " observations a rule gets no verdict at all: that minimum comes from a power calculation, not a round number.";
+    return "Every refusal is shadowed and judged later against what the colony actually takes (" + ref + "% of them up at least +1.5% after 4 hours, over " + n + " observations). Returns are also read in units of each market's own 4-hour volatility (σ), so a rule that mostly turns away DOGE is not judged on DOGE's size. Below " + PP_MIN + " observations a rule gets no verdict at all: that minimum comes from a power calculation, not a round number.";
   },
   auditSousFr: function(n, ref){
     if(!ref) return "Chaque refus laisse une ombre, jugee plus tard. Rien n'est encore comparable : la colonie a pris trop peu de positions pour avoir une reference.";
-    return "Chaque refus laisse une ombre, jugee plus tard contre ce que la colonie prend vraiment (" + ref + " % de gagnantes sur " + n + " observations). Les rendements se lisent aussi en unites de la volatilite a 4 h de chaque marche (σ), pour qu'une regle qui ecarte surtout du DOGE ne soit pas jugee sur la taille de DOGE. En dessous de " + PP_MIN + " observations, une regle n'a aucun verdict : ce minimum vient d'un calcul de puissance, pas d'un chiffre rond.";
+    return "Chaque refus laisse une ombre, jugee plus tard contre ce que la colonie prend vraiment (" + ref + " % montent d'au moins +1,5 % a 4 h, sur " + n + " observations). Les rendements se lisent aussi en unites de la volatilite a 4 h de chaque marche (σ), pour qu'une regle qui ecarte surtout du DOGE ne soit pas jugee sur la taille de DOGE. En dessous de " + PP_MIN + " observations, une regle n'a aucun verdict : ce minimum vient d'un calcul de puissance, pas d'un chiffre rond.";
   },
-  regle: ["Rule", "Regle"], obs: ["Obs", "Obs"], part: ["Winners", "Gagnantes"],
+  /* « Winners » valait deux choses : net > 0 pour un trade (36 %), ≥ +1,5 % a 4 h
+     pour une ombre de l'audit (10 %). Deux mots, chacun sa definition. */
+  regle: ["Rule", "Regle"], obs: ["Obs", "Obs"], part: ["Winners (net > 0)", "Gagnants (net > 0)"],
+  partOmbre: ["≥ +1.5% at 4 h", "≥ +1,5 % a 4 h"],
+  /* Le verdict se juge en unites de σ : son effectif est celui-la, pas la colonne Obs. */
+  vSigmaObs: function(n, m){ return "σ-obs " + n + "/" + m; },
+  vSigmaObsFr: function(n, m){ return "obs. en σ " + n + "/" + m; },
+  vReference: function(k){ return "reference needs " + k + " more"; },
+  vReferenceFr: function(k){ return "la reference attend encore " + k; },
+  marchesSeuil: function(k){ return "Green or red only from " + k + " closed trades on a market: below that, it is noise."; },
+  marchesSeuilFr: function(k){ return "Vert ou rouge seulement a partir de " + k + " trades fermes sur un marche : en dessous, c'est du bruit."; },
+  tours: function(n){ return n + " turns"; },
+  toursFr: function(n){ return n + " tours"; },
   verdict: ["Verdict", "Verdict"],
   vProtege: ["protects", "protege"], vCoute: ["costs", "coute"],
   vPareil: ["same as taking", "comme prendre"], vAttente: ["not yet", "pas encore"],
@@ -229,13 +252,15 @@ function ppTete(v){
   var vieux = !v.maj || (Date.now() - v.maj) > 20 * 60000;
   st.className = "pp-puce" + (vieux ? " vieux" : "");
   st.textContent = "● " + (!v.maj ? pph("attente")
-                   : vieux ? pph("vieux") : ppHeure(v.maj) + " · " + v.tours + " turns");
+                   : vieux ? pph("vieux") : ppHeure(v.maj) + " · " + pphF("tours", v.tours));
 }
 
 function ppBande(v){
   var p = v.profit;
   $$("ppProfit").textContent = ppSigne(p);
   $$("ppProfit").className = p > 0 ? "pp-vert" : p < 0 ? "pp-rouge" : "";
+  var ps = $$("ppProfitSur");
+  if(ps) ps.textContent = v.depuis ? pphF("profitSur", new Date(v.depuis).toLocaleDateString(PP_LANGUE === "fr" ? "fr-FR" : "en-US", { day:"numeric", month:"short" }), v.trades || 0) : "";
   $$("ppTresor").textContent = ppArgent(v.tresor);
   /* Le taux de gain n'a de sens qu'au-dela d'une poignee de trades : en
      dessous, il n'est pas affiche du tout. Quinze trades a 60 %, c'est neuf
@@ -262,13 +287,26 @@ function ppBande(v){
   var net = $$("ppNet"), netSur = $$("ppNetSur");
   if(net){
     if(bi && bi.n && bi.netReel != null){
-      net.textContent = ppPct(bi.netReel) + (bi.seReel != null ? " ± " + bi.seReel.toFixed(2) : "");
+      /* « ± 0,09 » etait l'erreur-type, lue comme un intervalle. L'intervalle a
+         95 % (± 1,96 erreur-type) est ecrit en clair a cote. */
+      net.textContent = ppPct(bi.netReel);
       net.className = bi.jugeable ? (bi.netReel - 1.96 * (bi.seReel || 0) > 0 ? "pp-vert" : bi.netReel + 1.96 * (bi.seReel || 0) < 0 ? "pp-rouge" : "") : "";
-      netSur.textContent = bi.jugeable ? pphF("jugeableSur", bi.n, bi.jours) : pphF("pasJugeable", bi.n, bi.seuil);
+      var ci = bi.seReel != null ? pphF("ciNet", ppPct(bi.netReel - 1.96 * bi.seReel), ppPct(bi.netReel + 1.96 * bi.seReel)) + " \u00b7 " : "";
+      netSur.textContent = ci + (bi.jugeable ? pphF("jugeableSur", bi.n, bi.jours) : pphF("pasJugeable", bi.n, bi.seuil));
     } else { net.textContent = "—"; net.className = ""; netSur.textContent = ""; }
   }
   $$("ppTrades").textContent = v.trades || 0;
-  $$("ppMeilleur").textContent = (typeof v.meilleur === "number" && v.meilleur) ? ppPct(v.meilleur) : "—";
+  /* Le meilleur ET le pire, aux frais reels, lus dans le carnet — quand il porte
+     tous les trades ; sinon le seul chiffre du serveur (papier), sans pire invente. */
+  var rr = (v.carnet || []).map(function(t){ return typeof t.rReel === "number" ? t.rReel : null; }).filter(function(x){ return x != null; });
+  var mSur = $$("ppMeilleurSur");
+  if(rr.length && rr.length >= (v.trades || 0)){
+    $$("ppMeilleur").textContent = ppPct(Math.max.apply(null, rr)) + " / " + ppPct(Math.min.apply(null, rr));
+    if(mSur) mSur.textContent = pphF("extremesSur", rr.length);
+  } else {
+    $$("ppMeilleur").textContent = (typeof v.meilleur === "number" && v.meilleur) ? ppPct(v.meilleur) : "—";
+    if(mSur) mSur.textContent = "";
+  }
   /* « 2 » ne dit pas si la colonie est pleine ou si elle a de la place. Le
      plafond existe parce que la mise est une part de la tresorerie : trois
      positions font trois dixiemes d exposition. */
@@ -276,7 +314,7 @@ function ppBande(v){
   var f = v.financement || { n:0, total:0 };
   $$("ppFin").textContent = f.n ? ppPct(f.total, 2) : "—";
   $$("ppFin").className = f.total < 0 ? "pp-rouge" : f.total > 0 ? "pp-vert" : "";
-  $$("ppFinSur").textContent = pph("finSur", f.n);
+  $$("ppFinSur").textContent = pphF("finSur", f.n, f.total);
 }
 
 function ppPositions(v){
@@ -332,7 +370,7 @@ function ppCarnet(v){
        + "<td class='num " + (t.r > 0 ? "pp-vert" : t.r < 0 ? "pp-rouge" : "") + "'>" + ppPct(t.r) + "</td>"
        + "<td class='num " + (t.rReel > 0 ? "pp-vert" : t.rReel < 0 ? "pp-rouge" : "") + "'>" + (typeof t.rReel === "number" ? ppPct(t.rReel) : "—") + "</td>"
        + "<td class='num'>" + ppDuree(t.minutes) + "</td>"
-       + "<td>" + ppEch(t.pourquoi) + "</td></tr>";
+       + "<td>" + ppEch(pphF("sortieNoms", t.pourquoi)) + "</td></tr>";
   });
   c.innerHTML = h + "</table>";
 }
@@ -370,7 +408,7 @@ function ppAudit(v){
   var parCle = {};
   (v.verdicts || []).forEach(function(x){ parCle[x.cle] = x; });
   var h = '<table class="pp-tab"><tr><th>' + ppEch(pph("regle")) + "</th><th>" + ppEch(pph("obs"))
-        + "</th><th>" + ppEch(pph("part")) + "</th><th>" + ppEch(pph("verdict")) + "</th><th>"
+        + "</th><th>" + ppEch(pph("partOmbre")) + "</th><th>" + ppEch(pph("verdict")) + "</th><th>"
         + ppEch(pph("enSigma")) + "</th><th>" + ppEch(pph("auDessus")) + "</th></tr>";
   lignes.forEach(function(l){
     var w = parCle[l.cle] || { verdict:"unknown" };
@@ -381,7 +419,9 @@ function ppAudit(v){
     var mot = w.verdict === "protects" ? pph("vProtege")
             : w.verdict === "costs" ? pph("vCoute")
             : w.verdict === "same" ? pph("vPareil")
-            : pph("vAttente") + (w.manque ? " · " + pphF("vManque", w.manque) : "");
+            : pph("vAttente") + (w.minObs ? " · " + pphF("vSigmaObs", w.n || 0, w.minObs)
+                                 : w.manqueReference ? " · " + pphF("vReference", w.manqueReference)
+                                 : w.manque ? " · " + pphF("vManque", w.manque) : "");
     /* ---- EN UNITES DE σ, AVEC LEUR EFFECTIF ----
      * La moyenne ± erreur-type et la part a ≥ +1 σ (Wilson) portent leur
      * propre n : les anciennes ombres n ont pas de σ, et « 0 » ne doit pas
@@ -458,6 +498,10 @@ function ppParMarche(v){
   var t = $$("ppMarches");
   var l = v.parMarche || [];
   if(!l.length){ t.innerHTML = '<div class="pp-vide">' + ppEch(pph("marchesVide")) + "</div>"; return; }
+  /* 28/09/2026 : « Made » etait vert ou rouge sur 11 a 18 trades. Sous le seuil du
+     bilan (le meme calcul de puissance), le chiffre reste, la couleur non. */
+  var seuilM = (v.bilan && v.bilan.seuil) || 143;
+  var ms = $$("ppMarchesSous"); if(ms) ms.textContent = pph("marchesSous") + " " + pphF("marchesSeuil", seuilM);
   var h = '<table class="pp-tab"><tr><th>' + ppEch(pph("marche")) + "</th><th>" + ppEch(pph("fermes"))
         + "</th><th>" + ppEch(pph("part")) + "</th><th>" + ppEch(pph("rapporte")) + "</th><th>"
         + ppEch(pph("fin")) + "</th><th>" + ppEch(pph("appris")) + "</th></tr>";
@@ -467,7 +511,7 @@ function ppParMarche(v){
     h += "<tr><td><b>" + ppEch(m.nom) + "</b></td>"
        + "<td class='num'>" + (m.n || "—") + "</td>"
        + "<td class='num'>" + (m.n ? m.partGagnantes + "%" : "—") + "</td>"
-       + "<td class='num " + (m.gain > 0 ? "pp-vert" : m.gain < 0 ? "pp-rouge" : "") + "'>"
+       + "<td class='num " + (m.n < seuilM ? "" : m.gain > 0 ? "pp-vert" : m.gain < 0 ? "pp-rouge" : "") + "'>"
        + (m.n ? ppSigne(m.gain) : "—") + "</td>"
        + "<td class='num " + (m.financement < 0 ? "pp-rouge" : "") + "'>"
        + (m.n ? ppPct(m.financement, 2) : "—") + "</td>"

@@ -38,7 +38,7 @@
  * Meme garde que `swoge_ai.html` : sans elle, un joueur garde des semaines
  * une version corrigee depuis longtemps, et ici cela voudrait dire une
  * colonie qui a l'air arretee alors qu'elle tourne. */
-var MARQUE_PAGE = 'a9d6a646';
+var MARQUE_PAGE = '98b2c67f';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -201,7 +201,7 @@ var MARQUE_PAGE = 'a9d6a646';
     <div class="pp-avis" id="ppAvis">&nbsp;</div>
 
     <div class="pp-bande">
-      <div class="pp-b gros"><b id="ppProfit">&mdash;</b><i id="ppLProfit">Profit</i></div>
+      <div class="pp-b gros"><b id="ppProfit">&mdash;</b><i id="ppLProfit">Profit</i><small id="ppProfitSur"></small></div>
       <div class="pp-b"><b id="ppTresor">&mdash;</b><i id="ppLTresor">Paper treasury</i></div>
       <div class="pp-b"><b id="ppTaux">&mdash;</b><i id="ppLTaux">Win rate</i><small id="ppTauxSur"></small></div>
       <!-- Le net par trade AUX FRAIS REELS, avec son erreur-type et son
@@ -209,12 +209,12 @@ var MARQUE_PAGE = 'a9d6a646';
            se tait tant qu'il n'a pas les 143 trades qui le rendent jugeable. -->
       <div class="pp-b"><b id="ppNet">&mdash;</b><i id="ppLNet">Net per trade</i><small id="ppNetSur"></small></div>
       <div class="pp-b"><b id="ppTrades">&mdash;</b><i id="ppLTrades">Closed trades</i></div>
-      <div class="pp-b"><b id="ppMeilleur">&mdash;</b><i id="ppLMeilleur">Best trade</i></div>
+      <div class="pp-b"><b id="ppMeilleur">&mdash;</b><i id="ppLMeilleur">Best / worst trade</i><small id="ppMeilleurSur"></small></div>
       <div class="pp-b"><b id="ppOuvertes">&mdash;</b><i id="ppLOuvertes">Open now</i></div>
       <!-- Le financement a sa propre case : c'est le cout qu'un marche
            perpetuel fait payer a qui tient, et le seul que le papier oublie
            quand on ne le montre pas. -->
-      <div class="pp-b"><b id="ppFin">&mdash;</b><i id="ppLFin">Funding paid</i><small id="ppFinSur"></small></div>
+      <div class="pp-b"><b id="ppFin">&mdash;</b><i id="ppLFin">Funding (net)</i><small id="ppFinSur"></small></div>
     </div>
 
     <div class="pp-grille">
@@ -329,5 +329,5 @@ var MARQUE_PAGE = 'a9d6a646';
 <!-- La page ne lui dit que les marches suivis ; lequel est ouvert vient de
      `?m=`, et le serveur corrige la liste des la premiere reponse. -->
 <script>window.PERP_MARCHES = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "DOGEUSDT"];</script>
-<script src="perp.js?v=7479cb5a"></script>
+<script src="perp.js?v=fb6cf914"></script>
 </html>

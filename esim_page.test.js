@@ -87,7 +87,8 @@ const ACHAT = { id: 'a1', nom: 'Europe 1GB 7 days', go: 1, jours: 7, etat: 'livr
       if (/\/esim\/plans\?/.test(u)) {
         vu.recherche = new URL(u).searchParams.get('country');
         return r.fulfill({ status: 200, headers: H, contentType: 'application/json', body: JSON.stringify({ ok: true, destination: 'France', otherDestinations: ['Europe'],
-          plans: [{ plan: 'europe-1gb-7days', name: 'Europe <img src=x onerror=window.pirate=1>', gb: 1, days: 7, priceUsd: 2.5 }, { plan: 'fr-3gb', name: 'France 3GB', gb: 3, days: 15, priceUsd: 4.23 }],
+          plans: [{ plan: 'europe-1gb-7days', name: 'Europe <img src=x onerror=window.pirate=1>', covers: 'Region of 33 countries (Austria, Belgium, Bulgaria…)', gb: 1, days: 7, priceUsd: 2.5 },
+            { plan: 'fr-3gb', name: 'France 3GB', covers: 'France', gb: 3, days: 15, priceUsd: 4.23 }],
           unavailable: 1, terms: 'javascript:alert(1)', compatibility: 'https://vamoschips.com/compatibility' }) });
       }
       if (/\/agentic\/solana\/blockhash$/.test(u)) return r.fulfill({ status: 200, headers: H, contentType: 'application/json', body: JSON.stringify({ ok: true, blockhash: BH }) });
@@ -131,6 +132,7 @@ const ACHAT = { id: 'a1', nom: 'Europe 1GB 7 days', go: 1, jours: 7, etat: 'livr
     ok(vu.recherche === 'France' && (await page.$$('#plans .choix')).length === 2, 'la recherche part au serveur, deux forfaits montres');
     ok(/Europe <img src=x onerror=window\.pirate=1>/.test(await page.textContent('#plans')) && (await page.$('#plans img')) === null && !(await page.evaluate(() => window.pirate)),
        'le nom d un forfait est du texte, jamais du HTML');
+    ok(/covers Region of 33 countries/.test(await page.textContent('#plans')) && /covers France/.test(await page.textContent('#plans')), 'chaque forfait dit ce qu il couvre : le pays, ou la region qui le contient');
     ok(/\$2\.50/.test(await page.textContent('#plans')) && /\$4\.23/.test(await page.textContent('#plans')) && /1 more plan/.test(await page.textContent('#plansNote')), 'le prix de la boutique, et les forfaits epuises comptes');
     ok((await page.getAttribute('#lienConditions', 'href')).startsWith('https://vamoschips.com/'), 'un lien de conditions qui n est pas https n est jamais pose');
     ok(await page.isHidden('#cartePaiement'), 'rien a payer avant d avoir choisi');

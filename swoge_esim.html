@@ -361,7 +361,8 @@ function qrMatrice(txt){
       var i = document.createElement("input"); i.type = "radio"; i.name = "plan"; i.value = p.plan;
       var s = document.createElement("span"), b = document.createElement("b"), pr = document.createElement("span"), br = document.createElement("br"), pa = document.createElement("span");
       b.textContent = String(p.name || "eSIM"); pr.className = "prix"; pr.textContent = " — $" + Number(p.priceUsd).toFixed(2);
-      pa.className = "pale"; pa.textContent = (p.gb ? p.gb + " GB" : "") + (p.days ? " · " + p.days + " days" : "");
+      /* Ce que couvre le forfait : le pays, ou une region qui le contient (souvent moins chere par Go). */
+      pa.className = "pale"; pa.textContent = (p.gb ? p.gb + " GB" : "") + (p.days ? " · " + p.days + " days" : "") + (p.covers ? " · covers " + String(p.covers).slice(0, 80) : "");
       s.appendChild(b); s.appendChild(pr); s.appendChild(br); s.appendChild(pa); l.appendChild(i); l.appendChild(s);
       i.addEventListener("change", function(){ etat.plan = p.plan; etat.prix = Number(p.priceUsd); $("prixChoisi").textContent = "$" + etat.prix.toFixed(2);
         $("cartePaiement").hidden = false; statut("statut", ""); });

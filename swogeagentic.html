@@ -737,6 +737,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 .ach-act{display:grid;gap:6px;margin-top:8px}
 .ach-act div{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center;font-size:12.5px}
 .ach-act code{font-family:'Space Mono',monospace;font-size:11.5px;overflow-wrap:anywhere;background:var(--paper);border-radius:6px;padding:2px 6px}
+.ach-qr{width:216px;height:216px;image-rendering:pixelated;border-radius:8px;background:#fff}
 .ach-act button{border:1px solid var(--line);background:var(--paper);color:var(--void);border-radius:999px;padding:4px 10px;font:700 11px/1 inherit;font-family:inherit;cursor:pointer}
 .emb-plaf{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;font-size:12.5px;margin:4px 0 8px}
 .emb-plaf select{border:1px solid var(--line);background:var(--paper);color:var(--void);border-radius:999px;padding:6px 10px;font:700 12px/1 inherit;font-family:inherit}
@@ -1409,6 +1410,219 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       })["catch"](function(){ sel.disabled = false; msg.textContent = "Not saved: the server did not answer."; });
   }
   $("embPlaf").addEventListener("change", fixePlafond);
+  /* ---- LE QR DU CODE D'ACTIVATION (28/09/2026) ----
+     Copie A L'IDENTIQUE du generateur de swoge_wallet.html (version 4, correction M,
+     mode octets, 62 octets au plus), prouve contre segno 1.6.6 et relu par OpenCV :
+     agent_qr.test.js le passe sur ces lignes-ci avec les memes 200 empreintes.
+     Trop long pour le symbole : pas de QR, le code en clair (jamais de faux code). */
+var QR_TAILLE = 33, QR_DONNEES = 64, QR_EC = 18, QR_BLOCS = 2, QR_MARGE = 4;
+
+function qrCorps(){
+  var exp=new Array(512), log=new Array(256), x=1, i;
+  for(i=0;i<255;i++){ exp[i]=x; log[x]=i; x<<=1; if(x&256) x^=0x11d; }
+  for(i=255;i<512;i++) exp[i]=exp[i-255];
+  return { exp:exp, log:log };
+}
+var QRC = qrCorps();
+function qrMul(a,b){ return (a===0||b===0) ? 0 : QRC.exp[QRC.log[a]+QRC.log[b]]; }
+
+/* Le polynome generateur de degre n, dans le corps a 256 elements. */
+function qrGenerateur(n){
+  var g=[1];
+  for(var i=0;i<n;i++){
+    var h=g.concat([0]);
+    for(var j=0;j<g.length;j++) h[j+1]^=qrMul(g[j], QRC.exp[i]);
+    g=h;
+  }
+  return g;
+}
+/* Les codets de correction : le reste de la division du bloc par le
+   generateur. C'est ce qui permet au lecteur de retrouver l'adresse meme
+   si un doigt couvre un coin du symbole. */
+function qrReste(bloc, n){
+  var g=qrGenerateur(n), r=bloc.slice(), i, j;
+  for(i=0;i<n;i++) r.push(0);
+  for(i=0;i<bloc.length;i++){
+    var c=r[i]; if(!c) continue;
+    for(j=0;j<g.length;j++) r[i+j]^=qrMul(g[j], c);
+  }
+  return r.slice(bloc.length);
+}
+
+function qrOctets(txt){
+  var o=[], i;
+  for(i=0;i<txt.length;i++){
+    var c=txt.charCodeAt(i);
+    if(c<128) o.push(c);
+    else if(c<2048){ o.push(192|(c>>6), 128|(c&63)); }
+    else { o.push(224|(c>>12), 128|((c>>6)&63), 128|(c&63)); }
+  }
+  return o;
+}
+
+function qrCodets(txt){
+  var d=qrOctets(txt), i;
+  if(d.length > QR_DONNEES-2) return null;      /* 62 octets, pas un de plus */
+  var bits=[];
+  var pousse=function(v,n){ for(var k=n-1;k>=0;k--) bits.push((v>>k)&1); };
+  pousse(4,4);                                   /* mode « octets » */
+  pousse(d.length,8);                            /* longueur, 8 bits en version 1 a 9 */
+  for(i=0;i<d.length;i++) pousse(d[i],8);
+  pousse(0, Math.min(4, QR_DONNEES*8 - bits.length));
+  while(bits.length % 8) bits.push(0);
+  var c=[];
+  for(i=0;i<bits.length;i+=8){ var v=0; for(var j=0;j<8;j++) v=(v<<1)|bits[i+j]; c.push(v); }
+  var bourre=[0xEC,0x11], k=0;
+  while(c.length < QR_DONNEES) c.push(bourre[k++ % 2]);
+  return c;
+}
+
+/* Deux blocs de 32, entrelaces : un octet de l'un, un octet de l'autre.
+   C'est ce qui fait qu'une eraflure abime un peu des deux plutot que
+   beaucoup d'un seul. */
+function qrEntrelace(codets){
+  var t=QR_DONNEES/QR_BLOCS, blocs=[], ecs=[], b, i, out=[];
+  for(b=0;b<QR_BLOCS;b++){
+    var s=codets.slice(b*t,(b+1)*t);
+    blocs.push(s); ecs.push(qrReste(s, QR_EC));
+  }
+  for(i=0;i<t;i++) for(b=0;b<QR_BLOCS;b++) out.push(blocs[b][i]);
+  for(i=0;i<QR_EC;i++) for(b=0;b<QR_BLOCS;b++) out.push(ecs[b][i]);
+  return out;
+}
+
+function qrMasque(n,y,x){
+  switch(n){
+    case 0: return (x+y)%2===0;
+    case 1: return y%2===0;
+    case 2: return x%3===0;
+    case 3: return (x+y)%3===0;
+    case 4: return (Math.floor(x/3)+Math.floor(y/2))%2===0;
+    case 5: return (x*y)%2+(x*y)%3===0;
+    case 6: return ((x*y)%2+(x*y)%3)%2===0;
+    default: return ((x+y)%2+(x*y)%3)%2===0;
+  }
+}
+
+/* Les motifs fixes : les trois yeux, leurs separateurs, les deux lignes
+   de synchronisation, et l'unique motif d'alignement de la version 4. */
+function qrTrame(){
+  var T=QR_TAILLE, m=[], f=[], y, x, i;
+  for(y=0;y<T;y++){ m.push([]); f.push([]); for(x=0;x<T;x++){ m[y].push(0); f[y].push(0); } }
+  var pose=function(y,x,v){ if(y<0||x<0||y>=T||x>=T) return; m[y][x]=v; f[y][x]=1; };
+  var oeil=function(oy,ox){
+    for(var dy=-1;dy<=7;dy++) for(var dx=-1;dx<=7;dx++){
+      var d=Math.max(Math.abs(dy-3), Math.abs(dx-3));
+      pose(oy+dy, ox+dx, (d!==2 && d!==4) ? 1 : 0);
+    }
+  };
+  oeil(0,0); oeil(0,T-7); oeil(T-7,0);
+  for(i=8;i<T-8;i++){ pose(6,i, i%2===0?1:0); pose(i,6, i%2===0?1:0); }
+  for(var dy=-2;dy<=2;dy++) for(var dx=-2;dx<=2;dx++)
+    pose(T-7+dy, T-7+dx, Math.max(Math.abs(dy),Math.abs(dx))!==1 ? 1 : 0);
+  return { m:m, f:f };
+}
+
+/* Le format : niveau de correction et masque, protege par un code BCH
+   puis brouille. Il est ecrit DEUX fois, a deux endroits du symbole. */
+function qrFormat(masque){
+  var bits=(0<<3)|masque, d=bits<<10, i;
+  for(i=14;i>=10;i--) if((d>>i)&1) d^=0x537<<(i-10);
+  return ((bits<<10)|d)^0x5412;
+}
+function qrPoseFormat(masque, m, T){
+  var bits=qrFormat(masque), i;
+  var b=function(i){ return (bits>>i)&1; };
+  for(i=0;i<=5;i++) m[i][8]=b(i);
+  m[7][8]=b(6); m[8][8]=b(7); m[8][7]=b(8);
+  for(i=9;i<15;i++) m[8][14-i]=b(i);
+  for(i=0;i<8;i++) m[8][T-1-i]=b(i);
+  for(i=8;i<15;i++) m[T-15+i][8]=b(i);
+  m[T-8][8]=1;                                   /* le module toujours sombre */
+}
+
+/* La penalite du tableau 11 de la norme : quatre regles, et le masque
+   retenu est celui qui en recolte le moins. */
+var QR_N3=[1,0,1,1,1,0,1];
+function qrCherche(seq, dep){
+  for(var i=dep;i+7<=seq.length;i++){
+    var ok=true;
+    for(var k=0;k<7;k++) if(seq[i+k]!==QR_N3[k]){ ok=false; break; }
+    if(ok) return i;
+  }
+  return -1;
+}
+function qrClair(seq,a,b){
+  for(var i=Math.max(a,0);i<Math.min(b,seq.length);i++) if(seq[i]) return false;
+  return true;
+}
+function qrRegle3(seq){
+  var T=seq.length, s=0, i=qrCherche(seq,0);
+  while(i!==-1){
+    var apres=i+7;
+    if(i===0 || i===T-7 || qrClair(seq,i-4,i) || qrClair(seq,apres,apres+4)) s+=40;
+    else apres=i+4;
+    i=qrCherche(seq,apres);
+  }
+  return s;
+}
+function qrPenalite(m){
+  var T=QR_TAILLE, s=0, y, x, c, n;
+  for(y=0;y<T;y++){
+    var col=[]; for(x=0;x<T;x++) col.push(m[x][y]);
+    s+=qrRegle3(m[y]); s+=qrRegle3(col);
+  }
+  for(y=0;y<T;y++){
+    c=m[y][0]; n=1;
+    for(x=1;x<T;x++){ if(m[y][x]===c) n++; else { if(n>=5) s+=n-2; c=m[y][x]; n=1; } }
+    if(n>=5) s+=n-2;
+  }
+  for(x=0;x<T;x++){
+    c=m[0][x]; n=1;
+    for(y=1;y<T;y++){ if(m[y][x]===c) n++; else { if(n>=5) s+=n-2; c=m[y][x]; n=1; } }
+    if(n>=5) s+=n-2;
+  }
+  for(y=0;y<T-1;y++) for(x=0;x<T-1;x++){
+    var v=m[y][x];
+    if(m[y][x+1]===v && m[y+1][x]===v && m[y+1][x+1]===v) s+=3;
+  }
+  var noirs=0;
+  for(y=0;y<T;y++) for(x=0;x<T;x++) noirs+=m[y][x];
+  s += 10*Math.floor(Math.abs(noirs*100/(T*T)-50)/5);
+  return s;
+}
+
+function qrMatrice(txt){
+  var codets=qrCodets(txt); if(!codets) return null;
+  var flux=qrEntrelace(codets), T=QR_TAILLE, base=qrTrame(), res=base.f, i;
+  /* La zone du format est reservee AVANT le placement : le module toujours
+     sombre en fait partie, et l'oublier decalait tout le flux d'un bit. */
+  for(i=0;i<=8;i++){ if(i!==6){ res[8][i]=1; res[i][8]=1; } }
+  for(i=0;i<8;i++) res[8][T-1-i]=1;
+  for(i=T-8;i<T;i++) res[i][8]=1;
+
+  var meilleure=null, gagnante=null, masque=0;
+  for(var k=0;k<8;k++){
+    var m=[], y;
+    for(y=0;y<T;y++) m.push(base.m[y].slice());
+    var bit=0;
+    for(var droite=T-1; droite>=1; droite-=2){
+      if(droite===6) droite=5;
+      for(var vert=0;vert<T;vert++) for(var j=0;j<2;j++){
+        var x=droite-j, monte=((droite+1)&2)===0, yy=monte ? (T-1-vert) : vert;
+        if(res[yy][x]){ continue; }
+        var v=0;
+        if(bit < flux.length*8) v=(flux[bit>>3]>>(7-(bit&7)))&1;
+        bit++;
+        m[yy][x]=qrMasque(k,yy,x) ? (v^1) : v;
+      }
+    }
+    var p=qrPenalite(m);
+    if(meilleure===null || p<meilleure){ meilleure=p; gagnante=m; masque=k; }
+  }
+  qrPoseFormat(masque, gagnante, T);
+  return gagnante;
+}
   /* ---- LES eSIM : l'offre que l'agent a preparee, que SEUL le joueur confirme ---- */
   function copie(txt, b){
     try { navigator.clipboard.writeText(txt).then(function(){ b.textContent = "Copied"; }, function(){ b.textContent = "Copy failed"; }); } catch (e) { b.textContent = "Copy failed"; }
@@ -1428,7 +1642,20 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     var h = document.createElement("p");
     h.textContent = "To install: in your phone's settings, add an eSIM and choose to enter the details manually, then paste the SM-DP+ address and the activation code."
       + (a.iccid4 ? " eSIM ending in " + a.iccid4 + "." : "");
-    box.appendChild(h); return box;
+    box.appendChild(h);
+    /* Le QR du code complet, s'il tient dans le symbole : on le scanne depuis un autre ecran. */
+    var m = null;
+    try { m = a.uri ? qrMatrice(a.uri) : null; } catch (e) { m = null; }
+    if (m) {
+      var T = QR_TAILLE, pas = 6, cv = document.createElement("canvas");
+      cv.width = cv.height = (T + 2 * QR_MARGE) * pas;
+      cv.className = "ach-qr"; cv.setAttribute("role", "img"); cv.setAttribute("aria-label", "QR code of your eSIM activation code");
+      var g = cv.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, cv.width, cv.height); g.fillStyle = "#000";
+      for (var y = 0; y < T; y++) for (var x = 0; x < T; x++) if (m[y][x]) g.fillRect((x + QR_MARGE) * pas, (y + QR_MARGE) * pas, pas, pas);
+      var pq = document.createElement("p"); pq.textContent = "Or scan this QR code from your phone's eSIM settings (show it on another screen).";
+      box.appendChild(pq); box.appendChild(cv);
+    }
+    return box;
   }
   function lien(txt, url){ var a = document.createElement("a"); a.href = url; a.target = "_blank"; a.rel = "noopener"; a.textContent = txt; return a; }
   function carteAchat(o){

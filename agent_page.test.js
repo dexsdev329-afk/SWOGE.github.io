@@ -204,6 +204,7 @@ const PEPE = { adresse:'0x6982508145454ce325ddbe47a25d4ec3d2311933', trouve:true
     const act = await page.$$eval('.achat .ach-act code', (l) => l.map((x) => x.textContent));
     ok(act.join('|') === 'smdp.example.net|ACT-0101|LPA:1$smdp.example.net$ACT-0101' && await page.$eval('.achat .ach-btn', (b) => b.disabled && b.textContent === 'Bought'),
        'achete : l adresse SM-DP+, le code d activation et le code complet, a copier ; le bouton ne rachete pas');
+    ok(await page.$eval('.achat canvas.ach-qr', (c) => c.width === (33 + 8) * 6 && c.getAttribute('role') === 'img'), 'et le QR du code complet (le generateur prouve du portefeuille), a scanner depuis un autre ecran');
     await page.waitForFunction(() => !document.getElementById('achBox').hidden);
     ok(/Your eSIMs · 2/.test(await page.textContent('#achSum')) && /ready/.test(await page.textContent('#achListe')) && /paid, being prepared/.test(await page.textContent('#achListe')),
        'l encadre « Your eSIMs » : la prete et celle en preparation');

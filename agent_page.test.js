@@ -27,6 +27,10 @@ const CAT = { ouvert:true, note:null, monnaie:'$SWOGE', coursUsd:0.00002801, def
 /* /agentic/x402 tel que le serveur le rend (releve du 28/09) ; un nom pieges pour l injection. */
 let X402 = { actif: true, outils: [{ name: 'scan_token', usd: 0.021001, usdBase: 0.02 }, { name: 'chat_completion', usd: 0.02, usdBase: 0.006642 },
   { name: 'token_verdict', usd: 0.02, usdBase: 0.01 }, { name: 'robinhood_rpc', usd: 0.02, usdBase: 0.005 }, { name: '<img src=x onerror=window.pirate=3>', usd: 0.02, usdBase: 0.02 }] };
+/* Les embauches du joueur (28/09), dont un hote pieges pour l injection. */
+const EMB = { vus: [], rep: { ok: true, actif: true, budget: { jourUsd: 1, depenseUsd: 0.012, maxAppelUsd: 0.1 }, liste: [
+  { t: Date.UTC(2026, 8, 28, 14, 5), hote: 'api.delx.ai', usd: 0.001, factureUsd: 0.0011, etat: 'paye', tx: '5kgNQ9abcdef', reseau: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp' },
+  { t: Date.UTC(2026, 8, 28, 14, 1), hote: '<img src=x onerror=window.pirate=4>', usd: 0.01, factureUsd: 0, etat: 'perte', tx: '0xperdu', reseau: 'eip155:8453' }] } };
 const DEV = { cles: [], appels: [], recus: [{ id: 'r1e2c3u4', outil: 'scan_token', swoge: '357.01535', t: Date.UTC(2026, 8, 26, 13, 5) }] };
 const sse = (evs) => evs.map(([t, d]) => 'event: ' + t + '\ndata: ' + JSON.stringify(d) + '\n\n').join('');
 const PEPE = { adresse:'0x6982508145454ce325ddbe47a25d4ec3d2311933', trouve:true, sym:'PEPE', nom:'Pepe', chaine:'ethereum', prixUsd:0.0000044, liqUsd:25000000, mcUsd:1.8e9,
@@ -72,6 +76,8 @@ const PEPE = { adresse:'0x6982508145454ce325ddbe47a25d4ec3d2311933', trouve:true
       }
       if (/\/agentic\/recus/.test(u)) return r.fulfill({ status:200, contentType:'application/json', body: JSON.stringify({ ok:true, recus: DEV.recus }) });
       if (/vitrine\.json/.test(u)) return r.fulfill({ status:200, contentType:'application/json', body:'{}' });
+      if (/\/studio\/agent\/embauches/.test(u)) { EMB.vus.push(r.request().headers().authorization || null);
+        return r.fulfill({ status:200, contentType:'application/json', body: JSON.stringify(EMB.rep) }); }
       if (/\/agentic\/x402$/.test(u)) return X402 ? r.fulfill({ status:200, contentType:'application/json', body: JSON.stringify(X402) }) : r.abort();
       return r.abort();
     });
@@ -117,7 +123,17 @@ const PEPE = { adresse:'0x6982508145454ce325ddbe47a25d4ec3d2311933', trouve:true
     const { page, ctx } = await ouvre();
     const lit = await page.textContent('#agLit');
     ok(!/Read-only/.test(lit) && /hire an outside AI service \(x402\) from your balance: at most \$0\.1 a call and \$1 a day, price \+ 10%/.test(lit), 'la phrase dit le plafond par appel, par jour, et la marge : « ' + lit.trim() + ' »');
-    delete CAT.embauche; await ctx.close();
+    ok(await page.$eval('#embBox', (e) => e.hidden), 'sans session : l encadre des embauches reste cache');
+    await ctx.close();
+    const s = await ouvre({ session: 'jeton-emb' });
+    await s.page.waitForFunction(() => !document.getElementById('embBox').hidden);
+    const sum = await s.page.textContent('#embSum');
+    const lignes = await s.page.$$eval('#embListe .dev-cle', (l) => l.map((x) => x.textContent));
+    const lien = await s.page.$eval('#embListe a', (a) => a.href);
+    ok(EMB.vus.includes('Bearer jeton-emb') && /\$0\.012 of \$1/.test(sum), 'avec session : le budget du jour, lu avec le jeton (« ' + sum.trim() + ' »)');
+    ok(/api\.delx\.ai\$0\.001 → charged \$0\.0011/.test(lignes[0]) && /not charged \(the service failed after payment\)/.test(lignes[1]), 'chaque embauche : paye → facture, ou « not charged » quand le service a echoue');
+    ok(lien === 'https://solscan.io/tx/5kgNQ9abcdef' && !(await s.page.evaluate(() => window.pirate)) && (await s.page.$('#embListe img')) === null, 'le lien de la transaction (Solscan pour Solana) ; un nom d hote pieges reste du texte');
+    delete CAT.embauche; await s.ctx.close();
   }
 
   console.log('\n-- 2b. le serveur muet : la section le dit, sans inventer de prix --');

@@ -968,6 +968,13 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   </div>
   <div class="ag-outils" id="outils" aria-label="Tools the agent can use"></div>
   <div class="ag-lit" id="agLit">&#128274; Read-only: the agent can't buy, sell, sign or post anything.</div>
+  <!-- ---- MES EMBAUCHES (28/09/2026) : ce que l'agent a paye pour CE joueur, lu sur
+       /studio/agent/embauches avec la session ; ecrit en texte, jamais en HTML. -->
+  <details class="dev" id="embBox" hidden>
+    <summary id="embSum">&#128179; Your paid hires today</summary>
+    <p>Every outside service the agent paid for you: what it cost, what you were charged (price + 10%), and the transaction. A service that failed is not charged.</p>
+    <div id="embListe"></div>
+  </details>
   <!-- ---- POUR LES AGENTS DES AUTRES : x402, SANS COMPTE (28 septembre 2026) ----
        « Le post a fait 250 vues meme si le produit n'est pas bien mis en avant » :
        les posts menent ici, et la page ne parlait que de la cle payee en $SWOGE.
@@ -1315,8 +1322,40 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   }
   $("devCree").addEventListener("click", creeCle);
 
+  /* ---- MES EMBAUCHES : le budget du jour et la liste, relus avec le solde ---- */
+  var EMB_ETATS = { paye: "paid", perte: "not charged (the service failed after payment)", rendu: "not charged", "en cours": "in progress" };
+  function lienTx(tx, reseau){
+    if (!tx) return null;
+    var a = document.createElement("a"); a.target = "_blank"; a.rel = "noopener";
+    a.href = /^solana:/.test(String(reseau || "")) ? "https://solscan.io/tx/" + encodeURIComponent(tx) : "https://basescan.org/tx/" + encodeURIComponent(tx);
+    a.textContent = String(tx).slice(0, 10) + "\u2026"; return a;
+  }
+  function chargeEmbauches(){
+    var box = $("embBox"), j = jeton();
+    if (!box || !j || !(etat.cat && etat.cat.embauche && etat.cat.embauche.actif)) { if (box) box.hidden = true; return; }
+    fetch(serveur() + "/studio/agent/embauches", { headers: { authorization: "Bearer " + j }, cache: "no-store" })
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if (!d || !d.ok || !d.actif) { box.hidden = true; return; }
+        box.hidden = false;
+        var b = d.budget || {};
+        $("embSum").textContent = "\ud83d\udcb3 Your paid hires today: $" + (b.depenseUsd || 0) + " of $" + b.jourUsd + " \u00b7 " + (d.liste || []).length + " recent";
+        var L = $("embListe"); L.innerHTML = "";
+        if (!(d.liste || []).length) { var p = document.createElement("p"); p.textContent = "No hire yet: ask the agent something its own tools can't answer."; L.appendChild(p); return; }
+        d.liste.forEach(function(x){
+          var r = document.createElement("div"); r.className = "dev-cle";
+          var t = document.createElement("span"); t.className = "dim"; t.textContent = new Date(x.t).toISOString().slice(5, 16).replace("T", " ");
+          var h = document.createElement("b"); h.textContent = x.hote || "service";
+          var m = document.createElement("span"); m.textContent = x.etat === "paye" ? "$" + x.usd + " \u2192 charged $" + x.factureUsd : EMB_ETATS[x.etat] || x.etat;
+          r.appendChild(t); r.appendChild(h); r.appendChild(m);
+          var a = lienTx(x.tx, x.reseau); if (a) r.appendChild(a);
+          L.appendChild(r);
+        });
+      })["catch"](function(){ box.hidden = true; });
+  }
   function chargeSolde(){
     var j = jeton();
+    chargeEmbauches();
     if (!j) { $("solde").innerHTML = "Balance <b>sign in</b>"; return; }
     fetch(serveur() + "/studio/chat/solde", { headers: { authorization: "Bearer " + j }, cache: "no-store" })
       .then(function(r){ return r.json(); })
@@ -1362,7 +1401,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
             d.querySelector(".etapes").innerHTML = ""; corps.innerHTML = "";
             peintReponse(d, rep2);
             etat.fil.push(rep2); sauve();
-            if (data.solde) $("solde").innerHTML = "Balance <b>" + nombre(data.solde) + " $SWOGE</b>";
+            if (data.solde) $("solde").innerHTML = "Balance <b>" + nombre(data.solde) + " $SWOGE</b>"; chargeEmbauches();
           }
           else if (type === "erreur") { fini = true; throw data; }
         }
@@ -1495,6 +1534,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     .then(function(r){ return r.json(); })
     .then(function(c){
       etat.cat = c;
+      chargeEmbauches();
       var s = $("modele"); s.innerHTML = "";
       c.modeles.forEach(function(m){ var o = document.createElement("option"); o.value = m.id; o.textContent = m.nom; s.appendChild(o); });
       s.value = (modeleCourant() || {}).id || "";

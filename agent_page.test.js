@@ -256,6 +256,24 @@ const PEPE = { adresse:'0x6982508145454ce325ddbe47a25d4ec3d2311933', trouve:true
     await ctx.close();
   }
 
+  console.log('\n-- 3b. les marches voisins (28/09 au soir) : dits en clair, echappes --');
+  {
+    const BD = '0x' + 'ab'.repeat(20);
+    const rep = () => sse([['outil', { id:'m1', nom:'stock_token_check', entree:{ symbol:'<img src=x onerror=window.pirate=3>' } }], ['resultat', { id:'m1', nom:'stock_token_check', ok:true, resume:'' }],
+      ['outil', { id:'m2', nom:'base_launches', entree:{} }], ['resultat', { id:'m2', nom:'base_launches', ok:true, resume:'' }],
+      ['outil', { id:'m3', nom:'base_deployer', entree:{ address: BD } }], ['resultat', { id:'m3', nom:'base_deployer', ok:true, resume:'' }],
+      ['fin', { ok:true, texte:'done', sources:[], jetons:[], factureSwoge:'10', etapes:2, usage:{}, solde:'1' }]]);
+    const { page, ctx } = await ouvre({ session:'j', rep });
+    ok(/Real stock token or a copy/.test(await page.textContent('#suggestions')), 'une suggestion pour l action officielle ou la copie');
+    await pose(page, 'is this NVDA real?');
+    await page.waitForSelector('.msg.ia .meta');
+    const t = await page.$$eval('.etapes li', (l) => l.map((x) => x.textContent));
+    ok(/is the official Robinhood Stock Token/.test(t[0]) && /newest Base launches/.test(t[1]) && /Base launch record of 0xababab\u2026abab/.test(t[2]),
+       'chaque outil dit ce qu il fait : ' + JSON.stringify(t).slice(0, 200));
+    ok(!(await page.evaluate(() => window.pirate)) && (await page.$('.etapes img')) === null, 'le symbole demande ne peut pas injecter de HTML');
+    await ctx.close();
+  }
+
   console.log('\n-- 4. un refus --');
   {
     /* Comme le vrai serveur : le flux s'ouvre, puis le refus arrive en evenement « erreur ». */

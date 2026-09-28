@@ -1039,6 +1039,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   <div class="accueil" id="accueil">
     <div class="suggestions" id="suggestions">
       <button class="suggestion" type="button" data-t="Check this token and tell me what you find: "><span class="ic">&#128269;</span>Check a token</button>
+      <button class="suggestion" type="button" data-t="Is this the official Robinhood Stock Token or a copy with the same ticker? "><span class="ic">&#127974;</span>Real stock token or a copy?</button>
       <button class="suggestion" type="button" data-t="What is the SWOGE AI colony doing right now? Open positions, latest buys and sells, and how the real-money mirror is doing."><span class="ic">&#129302;</span>What is the colony doing?</button>
       <button class="suggestion" type="button" data-t="How much $SWOGE has been burnt, what is in the casino vault, and what is the price now?"><span class="ic">&#128293;</span>$SWOGE economy</button>
       <button class="suggestion" type="button" data-t="Research this project on the web and summarise what it does, with sources: "><span class="ic">&#127760;</span>Research a project</button>
@@ -1090,7 +1091,11 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     find_paid_services: { ic: "\ud83d\uded2", dit: function(e){ return "Looking for a paid service: " + String(e.need || "").slice(0, 60); } },
     find_esim_plans: { ic: "\ud83d\udcf6", dit: function(e){ return "Looking for eSIM plans: " + String(e.country || ""); } },
     propose_esim_purchase: { ic: "\ud83d\uded2", dit: function(){ return "Preparing an eSIM offer for you to confirm"; } },
-    hire_paid_service: { ic: "\ud83d\udcb3", dit: function(e){ var h = ""; try { h = new URL(String(e.url || "")).hostname; } catch (x) {} return "Hiring " + (h || "a service") + " (paid from your balance)"; } }
+    hire_paid_service: { ic: "\ud83d\udcb3", dit: function(e){ var h = ""; try { h = new URL(String(e.url || "")).hostname; } catch (x) {} return "Hiring " + (h || "a service") + " (paid from your balance)"; } },
+    /* Les marches voisins (28/09/2026 au soir) : l'action officielle ou sa copie, les lancements Base. */
+    stock_token_check: { ic: "\ud83c\udfe6", dit: function(e){ var a = String(e.address || ""); return "Checking whether " + (a ? a.slice(0, 8) + "\u2026" + a.slice(-4) : String(e.symbol || "this stock token").slice(0, 12)) + " is the official Robinhood Stock Token"; } },
+    base_launches: { ic: "\ud83d\udd35", dit: function(){ return "Reading the newest Base launches (Clanker, Zora)"; } },
+    base_deployer: { ic: "\ud83d\udd35", dit: function(e){ return "Reading the Base launch record of " + String(e.address || "").slice(0, 8) + "\u2026" + String(e.address || "").slice(-4); } }
   };
   /* ---- recopie de swolemind.html, a l'identique : serveur, lisLocal, ecrisLocal, jeton, nombre, echappe, enLigne, markdown, copie, actionsEl, usdCourt, lienSur, carteJeton, sourcesEl, nouveauRid ---- */
   function serveur(){

@@ -31,6 +31,9 @@ let X402 = { actif: true, outils: [{ name: 'scan_token', usd: 0.021001, usdBase:
 const EMB = { vus: [], poste: [], refuse: null, rep: { ok: true, actif: true, budget: { jourUsd: 1, maxJoueurUsd: 1, depenseUsd: 0.012, maxAppelUsd: 0.1 }, liste: [
   { t: Date.UTC(2026, 8, 28, 14, 5), hote: 'api.delx.ai', usd: 0.001, factureUsd: 0.0011, etat: 'paye', tx: '5kgNQ9abcdef', reseau: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp' },
   { t: Date.UTC(2026, 8, 28, 14, 1), hote: '<img src=x onerror=window.pirate=4>', usd: 0.01, factureUsd: 0, etat: 'perte', tx: '0xperdu', reseau: 'eip155:8453' }] } };
+/* Les eSIM (28/09) : la route /studio/agent/achats, un faux serveur qui se souvient. */
+const ACT = { uri: 'LPA:1$smdp.example.net$ACT-0101', code: 'ACT-0101', smdp: 'smdp.example.net', iccid4: '4242' };
+const ACH = { poste: [], vus: [], liste: [] };
 const DEV = { cles: [], appels: [], recus: [{ id: 'r1e2c3u4', outil: 'scan_token', swoge: '357.01535', t: Date.UTC(2026, 8, 26, 13, 5) }] };
 const sse = (evs) => evs.map(([t, d]) => 'event: ' + t + '\ndata: ' + JSON.stringify(d) + '\n\n').join('');
 const PEPE = { adresse:'0x6982508145454ce325ddbe47a25d4ec3d2311933', trouve:true, sym:'PEPE', nom:'Pepe', chaine:'ethereum', prixUsd:0.0000044, liqUsd:25000000, mcUsd:1.8e9,
@@ -76,6 +79,18 @@ const PEPE = { adresse:'0x6982508145454ce325ddbe47a25d4ec3d2311933', trouve:true
       }
       if (/\/agentic\/recus/.test(u)) return r.fulfill({ status:200, contentType:'application/json', body: JSON.stringify({ ok:true, recus: DEV.recus }) });
       if (/vitrine\.json/.test(u)) return r.fulfill({ status:200, contentType:'application/json', body:'{}' });
+      if (/\/studio\/agent\/achats/.test(u)) {
+        const q = r.request(); ACH.vus.push(q.headers().authorization || null);
+        let out = { ok: true, actif: true, liste: ACH.liste };
+        if (q.method() === 'POST') {
+          const b = JSON.parse(q.postData() || '{}'); ACH.poste.push(b);
+          if (b.action === 'confirme') { const a = { id: 'a1', t: Date.UTC(2026, 8, 28, 18, 0), nom: 'Japan 1GB 7Days', factureUsd: 1.470148, etat: 'livre', tx: 'solTxA', reseau: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp', activation: ACT };
+            ACH.liste = [a, { id: 'a0', t: Date.UTC(2026, 8, 28, 17, 0), nom: 'France 1GB 7Days', factureUsd: 1.470148, etat: 'paye', tx: 'solTx0', reseau: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp', activation: null }];
+            out = { ok: true, livree: true, achat: a, actif: true, liste: ACH.liste }; }
+          if (b.action === 'livre') { ACH.liste[1] = Object.assign({}, ACH.liste[1], { etat: 'livre', activation: ACT }); out = { ok: true, achat: ACH.liste[1], actif: true, liste: ACH.liste }; }
+        }
+        return r.fulfill({ status:200, contentType:'application/json', body: JSON.stringify(out) });
+      }
       if (/\/studio\/agent\/embauches/.test(u)) { EMB.vus.push(r.request().headers().authorization || null);
         /* POST : le plafond choisi ; la fixture fait comme le serveur (borne, ou refuse si EMB.refuse). */
         if (r.request().method() === 'POST') { const q = JSON.parse(r.request().postData() || '{}'); EMB.poste.push({ q, auth: r.request().headers().authorization || null });
@@ -162,6 +177,43 @@ const PEPE = { adresse:'0x6982508145454ce325ddbe47a25d4ec3d2311933', trouve:true
     await page.waitForFunction(() => /unavailable/.test(document.getElementById('x4Outils').textContent));
     ok((await page.$$('#x4Outils .x4-o')).length === 0, 'aucun prix affiche quand le serveur ne repond pas');
     X402 = garde; await ctx.close();
+  }
+
+  console.log('\n-- 3e. l eSIM (28/09) : l agent propose, seul le joueur achete --');
+  {
+    CAT.achats = { actif: true, maxAchatUsd: 15, jourUsd: 30, marge: 1.05 };
+    const offre = { id: 'o1', plan: 'japan-1gb-7days-x', nom: 'Japan 1GB 7Days <img src=x onerror=window.pirate=5>', destination: 'Japan', go: 1, jours: 7, usd: 1.400141, factureUsd: 1.470148,
+      expire: Date.now() + 15 * 60e3, conditions: 'https://vamoschips.com/legal/terms', remboursements: 'https://vamoschips.com/legal/refunds', compatibles: 'https://vamoschips.com/compatibility' };
+    const rep = () => sse([['outil', { id: 's1', nom: 'find_esim_plans', entree: { country: 'Japan' } }], ['resultat', { id: 's1', nom: 'find_esim_plans', ok: true, resume: '' }],
+      ['outil', { id: 's2', nom: 'propose_esim_purchase', entree: { plan: 'japan-1gb-7days-x' } }], ['resultat', { id: 's2', nom: 'propose_esim_purchase', ok: true, resume: '', achat: offre }],
+      ['texte', { t: 'The offer is on your screen.' }], ['fin', { ok: true, texte: 'The offer is on your screen.', sources: [], jetons: [], factureSwoge: '900', etapes: 3, usage: {}, solde: '199100' }]]);
+    const { page, ctx } = await ouvre({ session: 'jeton-ach', rep, largeur: 360 });
+    ok(/nothing is bought until you press Buy/.test(await page.textContent('#agLit')), 'la phrase d en-tete dit que rien ne s achete sans le joueur');
+    await pose(page, 'I need data in Japan for a week');
+    await page.waitForSelector('.msg.ia .meta');
+    const carte = await page.textContent('.achat');
+    ok(/Japan 1GB 7Days <img/.test(carte) && !(await page.evaluate(() => window.pirate)) && (await page.$('.achat img')) === null, 'la carte de l offre ; un nom pieges reste du texte');
+    ok(/1 GB · 7 days · Japan · data only, no phone number/.test(carte) && /Price: \$1\.470148 ≈ 52,487 \$SWOGE/.test(carte), 'la carte dit ce qu on achete et son prix (en $SWOGE au cours du catalogue)');
+    const liens = await page.$$eval('.achat a', (l) => l.map((a) => a.href + '|' + a.rel + '|' + a.target));
+    ok(liens.length === 3 && liens.every((x) => /noopener\|_blank$/.test(x)) && liens.some((x) => /legal\/terms/.test(x)) && liens.some((x) => /legal\/refunds/.test(x)) && liens.some((x) => /compatibility/.test(x)),
+       'les conditions, les remboursements et la compatibilite du vendeur, en liens');
+    ok(ACH.poste.length === 0, 'afficher l offre n achete rien');
+    await page.click('.achat .ach-btn');
+    await page.waitForFunction(() => /Done/.test(document.querySelector('.achat [role=status]').textContent));
+    ok(ACH.poste.length === 1 && ACH.poste[0].action === 'confirme' && ACH.poste[0].id === 'o1' && ACH.vus.includes('Bearer jeton-ach'), 'Buy : POST { confirme, o1 } avec le jeton de SESSION');
+    const act = await page.$$eval('.achat .ach-act code', (l) => l.map((x) => x.textContent));
+    ok(act.join('|') === 'smdp.example.net|ACT-0101|LPA:1$smdp.example.net$ACT-0101' && await page.$eval('.achat .ach-btn', (b) => b.disabled && b.textContent === 'Bought'),
+       'achete : l adresse SM-DP+, le code d activation et le code complet, a copier ; le bouton ne rachete pas');
+    await page.waitForFunction(() => !document.getElementById('achBox').hidden);
+    ok(/Your eSIMs · 2/.test(await page.textContent('#achSum')) && /ready/.test(await page.textContent('#achListe')) && /paid, being prepared/.test(await page.textContent('#achListe')),
+       'l encadre « Your eSIMs » : la prete et celle en preparation');
+    await page.click('#achSum');
+    await page.click('#achListe button:has-text("Get my eSIM")');
+    await page.waitForFunction(() => document.querySelectorAll('#achListe details').length === 2);
+    ok(ACH.poste[1].action === 'livre' && ACH.poste[1].id === 'a0', '« Get my eSIM » redemande le code au serveur');
+    const larg = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    ok(larg <= 1, 'a 360 px, la carte et l encadre ne debordent pas [' + larg + ']');
+    delete CAT.achats; await ctx.close();
   }
 
   console.log('\n-- 3. une tache : chaque geste se voit --');

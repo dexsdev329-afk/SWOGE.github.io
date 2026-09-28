@@ -728,6 +728,16 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 .dev pre{background:var(--panel2);border-radius:10px;padding:8px 10px;margin:6px 0}
 .dev-cle{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center;font-size:12.5px;border-top:1px solid var(--line);padding:6px 0}
 .dev-cle .dim{color:var(--dim)}
+.achat{border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin:10px 0;background:var(--panel2)}
+.achat h4{margin:0 0 4px;font-size:14.5px}
+.achat p{margin:4px 0;font-size:12.5px;color:var(--dim)}
+.achat a{color:inherit}
+.achat .ach-btn{border:0;background:var(--void);color:var(--paper);border-radius:999px;padding:9px 16px;font:700 13px/1 inherit;font-family:inherit;cursor:pointer;margin-top:6px}
+.achat .ach-btn[disabled]{opacity:.55;cursor:default}
+.ach-act{display:grid;gap:6px;margin-top:8px}
+.ach-act div{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center;font-size:12.5px}
+.ach-act code{font-family:'Space Mono',monospace;font-size:11.5px;overflow-wrap:anywhere;background:var(--paper);border-radius:6px;padding:2px 6px}
+.ach-act button{border:1px solid var(--line);background:var(--paper);color:var(--void);border-radius:999px;padding:4px 10px;font:700 11px/1 inherit;font-family:inherit;cursor:pointer}
 .emb-plaf{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;font-size:12.5px;margin:4px 0 8px}
 .emb-plaf select{border:1px solid var(--line);background:var(--paper);color:var(--void);border-radius:999px;padding:6px 10px;font:700 12px/1 inherit;font-family:inherit}
 .dev-cle button{margin-left:auto;background:transparent;color:var(--serpent);border-color:var(--serpent)}
@@ -979,6 +989,13 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     <label class="emb-plaf"><span>Daily limit for paid hires</span><select id="embPlaf" aria-label="Daily limit for paid hires"></select><span class="dim" id="embPlafMsg" role="status"></span></label>
     <div id="embListe"></div>
   </details>
+  <!-- ---- MES eSIM (achats.js, 28/09/2026) : ce que le joueur a achete, avec le code
+       d'activation ; lu sur /studio/agent/achats avec la session, ecrit en texte. -->
+  <details class="dev" id="achBox" hidden>
+    <summary id="achSum">&#128246; Your eSIMs</summary>
+    <p>Travel data eSIMs you bought through the agent. Data only: no phone number. Keep the activation code private: anyone with it can install your eSIM.</p>
+    <div id="achListe"></div>
+  </details>
   <!-- ---- POUR LES AGENTS DES AUTRES : x402, SANS COMPTE (28 septembre 2026) ----
        « Le post a fait 250 vues meme si le produit n'est pas bien mis en avant » :
        les posts menent ici, et la page ne parlait que de la cle payee en $SWOGE.
@@ -1070,6 +1087,8 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     osint_lookup: { ic: "\ud83d\udd0e", dit: function(e){ return "Passive recon on " + String(e.target || "").slice(0, 60); } },
     /* L'embauche (28/09/2026) : l'agent cherche puis paie un service x402, sur le solde du joueur. */
     find_paid_services: { ic: "\ud83d\uded2", dit: function(e){ return "Looking for a paid service: " + String(e.need || "").slice(0, 60); } },
+    find_esim_plans: { ic: "\ud83d\udcf6", dit: function(e){ return "Looking for eSIM plans: " + String(e.country || ""); } },
+    propose_esim_purchase: { ic: "\ud83d\uded2", dit: function(){ return "Preparing an eSIM offer for you to confirm"; } },
     hire_paid_service: { ic: "\ud83d\udcb3", dit: function(e){ var h = ""; try { h = new URL(String(e.url || "")).hostname; } catch (x) {} return "Hiring " + (h || "a service") + " (paid from your balance)"; } }
   };
   /* ---- recopie de swolemind.html, a l'identique : serveur, lisLocal, ecrisLocal, jeton, nombre, echappe, enLigne, markdown, copie, actionsEl, usdCourt, lienSur, carteJeton, sourcesEl, nouveauRid ---- */
@@ -1390,9 +1409,91 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       })["catch"](function(){ sel.disabled = false; msg.textContent = "Not saved: the server did not answer."; });
   }
   $("embPlaf").addEventListener("change", fixePlafond);
+  /* ---- LES eSIM : l'offre que l'agent a preparee, que SEUL le joueur confirme ---- */
+  function copie(txt, b){
+    try { navigator.clipboard.writeText(txt).then(function(){ b.textContent = "Copied"; }, function(){ b.textContent = "Copy failed"; }); } catch (e) { b.textContent = "Copy failed"; }
+  }
+  function ligneCopie(nom, val){
+    var r = document.createElement("div"), l = document.createElement("span"), c = document.createElement("code"), b = document.createElement("button");
+    l.textContent = nom; c.textContent = val; b.type = "button"; b.textContent = "Copy";
+    b.addEventListener("click", function(){ copie(val, b); });
+    r.appendChild(l); r.appendChild(c); r.appendChild(b); return r;
+  }
+  /* Le code d'activation, en clair avec ses boutons de copie (la saisie manuelle marche partout). */
+  function peintActivation(a){
+    var box = document.createElement("div"); box.className = "ach-act";
+    if (a.smdp) box.appendChild(ligneCopie("SM-DP+ address", a.smdp));
+    if (a.code) box.appendChild(ligneCopie("Activation code", a.code));
+    if (a.uri) box.appendChild(ligneCopie("Full code (LPA)", a.uri));
+    var h = document.createElement("p");
+    h.textContent = "To install: in your phone's settings, add an eSIM and choose to enter the details manually, then paste the SM-DP+ address and the activation code."
+      + (a.iccid4 ? " eSIM ending in " + a.iccid4 + "." : "");
+    box.appendChild(h); return box;
+  }
+  function lien(txt, url){ var a = document.createElement("a"); a.href = url; a.target = "_blank"; a.rel = "noopener"; a.textContent = txt; return a; }
+  function carteAchat(o){
+    var c = document.createElement("div"); c.className = "achat";
+    var t = document.createElement("h4"); t.textContent = "\ud83d\udcf6 " + o.nom; c.appendChild(t);
+    var p1 = document.createElement("p"); p1.textContent = (o.go ? o.go + " GB" : "") + (o.jours ? " \u00b7 " + o.jours + " days" : "") + " \u00b7 " + (o.destination || "") + " \u00b7 data only, no phone number"; c.appendChild(p1);
+    var cours = etat.cat && etat.cat.coursUsd, swoge = cours > 0 ? Math.ceil(o.factureUsd / cours) : null;
+    var p2 = document.createElement("p"); p2.textContent = "Price: $" + o.factureUsd + (swoge ? " \u2248 " + nombre(swoge) + " $SWOGE" : "") + " from your balance. Offer valid until "
+      + new Date(o.expire).toTimeString().slice(0, 5) + "."; c.appendChild(p2);
+    var p3 = document.createElement("p"); p3.appendChild(document.createTextNode("Seller: CHIPS. By buying you accept its "));
+    p3.appendChild(lien("terms", o.conditions || "https://vamoschips.com/legal/terms")); p3.appendChild(document.createTextNode(" and "));
+    p3.appendChild(lien("refund policy", o.remboursements || "https://vamoschips.com/legal/refunds")); p3.appendChild(document.createTextNode(". "));
+    p3.appendChild(lien("Check that your phone supports eSIM", o.compatibles || "https://vamoschips.com/compatibility")); p3.appendChild(document.createTextNode("."));
+    c.appendChild(p3);
+    var b = document.createElement("button"); b.type = "button"; b.className = "ach-btn"; b.textContent = "Buy" + (swoge ? " for \u2248 " + nombre(swoge) + " $SWOGE" : " for $" + o.factureUsd);
+    var msg = document.createElement("p"); msg.setAttribute("role", "status");
+    b.addEventListener("click", function(){
+      var j = jeton(); if (!j) { msg.textContent = TXT.signin; return; }
+      b.disabled = true; msg.textContent = "Buying\u2026 this takes a few seconds.";
+      actionAchat({ action: "confirme", id: o.id }).then(function(d){
+        if (d && d.ok) {
+          b.textContent = "Bought"; msg.textContent = d.livree ? "Done. Your eSIM:" : "Paid. Your eSIM is being prepared: find it in \u201cYour eSIMs\u201d below in a minute.";
+          if (d.achat && d.achat.activation) c.appendChild(peintActivation(d.achat.activation));
+        } else { b.disabled = /already|expired|not yours/.test((d && d.raison) || ""); msg.textContent = (d && d.raison) || "The purchase failed - you were not charged."; }
+        chargeSolde();
+      })["catch"](function(){ b.disabled = false; msg.textContent = "The server did not answer. Check \u201cYour eSIMs\u201d before trying again."; chargeAchats(); });
+    });
+    c.appendChild(b); c.appendChild(msg); return c;
+  }
+  function actionAchat(corps){
+    return fetch(serveur() + "/studio/agent/achats", { method: "POST", cache: "no-store", headers: { authorization: "Bearer " + jeton(), "content-type": "application/json" },
+      body: JSON.stringify(corps) }).then(function(r){ return r.json(); });
+  }
+  var ACH_ETATS = { "en cours": "payment in progress", paye: "paid, being prepared", livre: "ready", perte: "not charged (the seller failed)" };
+  function peintAchats(d){
+    var box = $("achBox");
+    if (!d || !d.actif || !(d.liste || []).length) { box.hidden = true; return; }
+    box.hidden = false;
+    $("achSum").textContent = "\ud83d\udcf6 Your eSIMs \u00b7 " + d.liste.length;
+    var L = $("achListe"); L.innerHTML = "";
+    d.liste.forEach(function(a){
+      var r = document.createElement("div"); r.className = "dev-cle";
+      var t = document.createElement("span"); t.className = "dim"; t.textContent = new Date(a.t).toISOString().slice(5, 16).replace("T", " ");
+      var n = document.createElement("b"); n.textContent = a.nom || "eSIM";
+      var m = document.createElement("span"); m.textContent = "charged $" + a.factureUsd + " \u00b7 " + (ACH_ETATS[a.etat] || a.etat);
+      r.appendChild(t); r.appendChild(n); r.appendChild(m);
+      var x = lienTx(a.tx, a.reseau); if (x) r.appendChild(x);
+      if (a.etat === "paye") {
+        var b = document.createElement("button"); b.type = "button"; b.textContent = "Get my eSIM";
+        b.addEventListener("click", function(){ b.disabled = true; actionAchat({ action: "livre", id: a.id }).then(function(d2){ if (!d2.ok) { b.disabled = false; b.textContent = d2.raison || "Not ready yet"; } else peintAchats(d2); })["catch"](function(){ b.disabled = false; }); });
+        r.appendChild(b);
+      }
+      L.appendChild(r);
+      if (a.activation) { var det = document.createElement("details"), su = document.createElement("summary"); su.textContent = "Show the activation code"; det.appendChild(su); det.appendChild(peintActivation(a.activation)); L.appendChild(det); }
+    });
+  }
+  function chargeAchats(){
+    var box = $("achBox"), j = jeton();
+    if (!box || !j || !(etat.cat && etat.cat.achats && etat.cat.achats.actif)) { if (box) box.hidden = true; return; }
+    fetch(serveur() + "/studio/agent/achats", { headers: { authorization: "Bearer " + j }, cache: "no-store" })
+      .then(function(r){ return r.json(); }).then(peintAchats)["catch"](function(){ box.hidden = true; });
+  }
   function chargeSolde(){
     var j = jeton();
-    chargeEmbauches();
+    chargeEmbauches(); chargeAchats();
     if (!j) { $("solde").innerHTML = "Balance <b>sign in</b>"; return; }
     fetch(serveur() + "/studio/chat/solde", { headers: { authorization: "Bearer " + j }, cache: "no-store" })
       .then(function(r){ return r.json(); })
@@ -1428,6 +1529,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
           else if (type === "resultat") {
             etapes.forEach(function(x){ if (x.id === data.id) { x.ok = data.ok; x.resume = data.ok ? "" : data.resume; } });
             finEtape(d, data);
+            if (data.achat) d.appendChild(carteAchat(data.achat));
           }
           else if (type === "fin") {
             fini = true; if (attente.parentNode) attente.remove();
@@ -1583,6 +1685,8 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       /* L'embauche allumee : « read-only » ne serait plus vrai. La page dit ce que l'agent peut payer, et combien au plus. */
       if (c.embauche && c.embauche.actif) $("agLit").textContent = "\ud83d\udd12 The agent can't buy, sell, sign or post anything. It may hire an outside AI service (x402) from your balance: at most $"
         + c.embauche.maxAppelUsd + " a call and $" + c.embauche.jourUsd + " a day, price + 10%, and it always tells you what it paid.";
+      /* Les eSIM : l'agent propose, SEUL le joueur achete — la phrase le dit tel quel. */
+      if (c.achats && c.achats.actif) $("agLit").textContent += " It can also find a travel data eSIM and show you an offer: nothing is bought until you press Buy.";
       if (!c.ouvert) dit(c.note || TXT.ferme);
       peintPrix(); peintBoutons();
     })["catch"](function(){ $("prixq").textContent = TXT.ferme; });

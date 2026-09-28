@@ -728,6 +728,8 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 .dev pre{background:var(--panel2);border-radius:10px;padding:8px 10px;margin:6px 0}
 .dev-cle{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center;font-size:12.5px;border-top:1px solid var(--line);padding:6px 0}
 .dev-cle .dim{color:var(--dim)}
+.emb-plaf{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;font-size:12.5px;margin:4px 0 8px}
+.emb-plaf select{border:1px solid var(--line);background:var(--paper);color:var(--void);border-radius:999px;padding:6px 10px;font:700 12px/1 inherit;font-family:inherit}
 .dev-cle button{margin-left:auto;background:transparent;color:var(--serpent);border-color:var(--serpent)}
 .dev h3{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--dim);margin:12px 0 4px}
 /* ---- x402 : ce que les agents des autres peuvent payer a l'appel (28/09/2026) ---- */
@@ -973,6 +975,8 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   <details class="dev" id="embBox" hidden>
     <summary id="embSum">&#128179; Your paid hires today</summary>
     <p>Every outside service the agent paid for you: what it cost, what you were charged (price + 10%), and the transaction. A service that failed is not charged.</p>
+    <!-- Le plafond du jour que le joueur choisit : le serveur le borne et le revérifie à chaque embauche. -->
+    <label class="emb-plaf"><span>Daily limit for paid hires</span><select id="embPlaf" aria-label="Daily limit for paid hires"></select><span class="dim" id="embPlafMsg" role="status"></span></label>
     <div id="embListe"></div>
   </details>
   <!-- ---- POUR LES AGENTS DES AUTRES : x402, SANS COMPTE (28 septembre 2026) ----
@@ -1330,16 +1334,28 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     a.href = /^solana:/.test(String(reseau || "")) ? "https://solscan.io/tx/" + encodeURIComponent(tx) : "https://basescan.org/tx/" + encodeURIComponent(tx);
     a.textContent = String(tx).slice(0, 10) + "\u2026"; return a;
   }
-  function chargeEmbauches(){
-    var box = $("embBox"), j = jeton();
-    if (!box || !j || !(etat.cat && etat.cat.embauche && etat.cat.embauche.actif)) { if (box) box.hidden = true; return; }
-    fetch(serveur() + "/studio/agent/embauches", { headers: { authorization: "Bearer " + j }, cache: "no-store" })
-      .then(function(r){ return r.json(); })
-      .then(function(d){
+  /* Les choix du plafond : ceux sous le plafond serveur, plus la valeur en cours si elle n'y est pas. */
+  function peintPlafond(b){
+    var sel = $("embPlaf"), max = Number(b.maxJoueurUsd) || Number(b.jourUsd) || 0, cur = Number(b.jourUsd) || 0;
+    var v = [0, 0.1, 0.25, 0.5, 1, 2, 5].filter(function(x){ return x <= max; });
+    if (v.indexOf(max) < 0) v.push(max);
+    if (v.indexOf(cur) < 0) v.push(cur);
+    v.sort(function(a, c){ return a - c; });
+    sel.innerHTML = "";
+    v.forEach(function(x){
+      var o = document.createElement("option"); o.value = String(x);
+      o.textContent = x === 0 ? "Off (no paid hires)" : "$" + x.toFixed(2) + " a day" + (x === max ? " (maximum)" : "");
+      if (x === cur) o.selected = true;
+      sel.appendChild(o);
+    });
+  }
+  function peintEmbauches(d){
+        var box = $("embBox");
         if (!d || !d.ok || !d.actif) { box.hidden = true; return; }
         box.hidden = false;
         var b = d.budget || {};
-        $("embSum").textContent = "\ud83d\udcb3 Your paid hires today: $" + (b.depenseUsd || 0) + " of $" + b.jourUsd + " \u00b7 " + (d.liste || []).length + " recent";
+        peintPlafond(b);
+        $("embSum").textContent = "\ud83d\udcb3 Your paid hires today: " + (Number(b.jourUsd) > 0 ? "$" + (b.depenseUsd || 0) + " of $" + b.jourUsd : "switched off") + " \u00b7 " + (d.liste || []).length + " recent";
         var L = $("embListe"); L.innerHTML = "";
         if (!(d.liste || []).length) { var p = document.createElement("p"); p.textContent = "No hire yet: ask the agent something its own tools can't answer."; L.appendChild(p); return; }
         d.liste.forEach(function(x){
@@ -1351,8 +1367,29 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
           var a = lienTx(x.tx, x.reseau); if (a) r.appendChild(a);
           L.appendChild(r);
         });
-      })["catch"](function(){ box.hidden = true; });
   }
+  function chargeEmbauches(){
+    var box = $("embBox"), j = jeton();
+    if (!box || !j || !(etat.cat && etat.cat.embauche && etat.cat.embauche.actif)) { if (box) box.hidden = true; return; }
+    fetch(serveur() + "/studio/agent/embauches", { headers: { authorization: "Bearer " + j }, cache: "no-store" })
+      .then(function(r){ return r.json(); })
+      .then(peintEmbauches)["catch"](function(){ box.hidden = true; });
+  }
+  /* Le joueur change son plafond : le serveur le borne, la page repeint ce qu'il a retenu. */
+  function fixePlafond(){
+    var j = jeton(), sel = $("embPlaf"), msg = $("embPlafMsg");
+    if (!j) return;
+    sel.disabled = true; msg.textContent = "Saving\u2026";
+    fetch(serveur() + "/studio/agent/embauches", { method: "POST", cache: "no-store",
+      headers: { authorization: "Bearer " + j, "content-type": "application/json" }, body: JSON.stringify({ plafondUsd: Number(sel.value) }) })
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        sel.disabled = false;
+        if (d && d.ok) { msg.textContent = "Saved."; peintEmbauches(d); }
+        else { msg.textContent = (d && d.raison) || "Not saved."; chargeEmbauches(); }
+      })["catch"](function(){ sel.disabled = false; msg.textContent = "Not saved: the server did not answer."; });
+  }
+  $("embPlaf").addEventListener("change", fixePlafond);
   function chargeSolde(){
     var j = jeton();
     chargeEmbauches();

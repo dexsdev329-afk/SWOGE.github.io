@@ -28,7 +28,7 @@ const CAT = { ouvert:true, note:null, monnaie:'$SWOGE', coursUsd:0.00002801, def
 let X402 = { actif: true, outils: [{ name: 'scan_token', usd: 0.021001, usdBase: 0.02 }, { name: 'chat_completion', usd: 0.02, usdBase: 0.006642 },
   { name: 'token_verdict', usd: 0.02, usdBase: 0.01 }, { name: 'robinhood_rpc', usd: 0.02, usdBase: 0.005 }, { name: '<img src=x onerror=window.pirate=3>', usd: 0.02, usdBase: 0.02 }] };
 /* Les embauches du joueur (28/09), dont un hote pieges pour l injection. */
-const EMB = { vus: [], rep: { ok: true, actif: true, budget: { jourUsd: 1, depenseUsd: 0.012, maxAppelUsd: 0.1 }, liste: [
+const EMB = { vus: [], poste: [], refuse: null, rep: { ok: true, actif: true, budget: { jourUsd: 1, maxJoueurUsd: 1, depenseUsd: 0.012, maxAppelUsd: 0.1 }, liste: [
   { t: Date.UTC(2026, 8, 28, 14, 5), hote: 'api.delx.ai', usd: 0.001, factureUsd: 0.0011, etat: 'paye', tx: '5kgNQ9abcdef', reseau: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp' },
   { t: Date.UTC(2026, 8, 28, 14, 1), hote: '<img src=x onerror=window.pirate=4>', usd: 0.01, factureUsd: 0, etat: 'perte', tx: '0xperdu', reseau: 'eip155:8453' }] } };
 const DEV = { cles: [], appels: [], recus: [{ id: 'r1e2c3u4', outil: 'scan_token', swoge: '357.01535', t: Date.UTC(2026, 8, 26, 13, 5) }] };
@@ -77,6 +77,10 @@ const PEPE = { adresse:'0x6982508145454ce325ddbe47a25d4ec3d2311933', trouve:true
       if (/\/agentic\/recus/.test(u)) return r.fulfill({ status:200, contentType:'application/json', body: JSON.stringify({ ok:true, recus: DEV.recus }) });
       if (/vitrine\.json/.test(u)) return r.fulfill({ status:200, contentType:'application/json', body:'{}' });
       if (/\/studio\/agent\/embauches/.test(u)) { EMB.vus.push(r.request().headers().authorization || null);
+        /* POST : le plafond choisi ; la fixture fait comme le serveur (borne, ou refuse si EMB.refuse). */
+        if (r.request().method() === 'POST') { const q = JSON.parse(r.request().postData() || '{}'); EMB.poste.push({ q, auth: r.request().headers().authorization || null });
+          if (EMB.refuse) return r.fulfill({ status:200, contentType:'application/json', body: JSON.stringify({ ok: false, raison: EMB.refuse }) });
+          EMB.rep.budget.jourUsd = q.plafondUsd; }
         return r.fulfill({ status:200, contentType:'application/json', body: JSON.stringify(EMB.rep) }); }
       if (/\/agentic\/x402$/.test(u)) return X402 ? r.fulfill({ status:200, contentType:'application/json', body: JSON.stringify(X402) }) : r.abort();
       return r.abort();
@@ -133,6 +137,21 @@ const PEPE = { adresse:'0x6982508145454ce325ddbe47a25d4ec3d2311933', trouve:true
     ok(EMB.vus.includes('Bearer jeton-emb') && /\$0\.012 of \$1/.test(sum), 'avec session : le budget du jour, lu avec le jeton (« ' + sum.trim() + ' »)');
     ok(/api\.delx\.ai\$0\.001 → charged \$0\.0011/.test(lignes[0]) && /not charged \(the service failed after payment\)/.test(lignes[1]), 'chaque embauche : paye → facture, ou « not charged » quand le service a echoue');
     ok(lien === 'https://solscan.io/tx/5kgNQ9abcdef' && !(await s.page.evaluate(() => window.pirate)) && (await s.page.$('#embListe img')) === null, 'le lien de la transaction (Solscan pour Solana) ; un nom d hote pieges reste du texte');
+
+    /* Le plafond du jour que le joueur choisit : la page propose, le serveur tranche. */
+    const opts = await s.page.$$eval('#embPlaf option', (l) => l.map((o) => [o.value, o.textContent, o.selected]));
+    ok(opts.map((o) => o[0]).join(',') === '0,0.1,0.25,0.5,1' && /Off/.test(opts[0][1]) && /\$1\.00 a day \(maximum\)/.test(opts[4][1]) && opts[4][2],
+       'les choix vont de « Off » au plafond serveur (1 $), jamais au-dessus ; le plafond en cours est choisi : ' + opts.map((o) => o[0]).join(','));
+    await s.page.click('#embSum');
+    await s.page.selectOption('#embPlaf', '0');
+    await s.page.waitForFunction(() => /switched off/.test(document.getElementById('embSum').textContent));
+    ok(EMB.poste.length === 1 && EMB.poste[0].q.plafondUsd === 0 && EMB.poste[0].auth === 'Bearer jeton-emb' && /Saved/.test(await s.page.textContent('#embPlafMsg')),
+       'choisir « Off » : POST { plafondUsd: 0 } avec le jeton de session, le resume dit « switched off »');
+    EMB.refuse = 'the daily budget cannot be above 1 $';
+    await s.page.selectOption('#embPlaf', '0.5');
+    await s.page.waitForFunction(() => /cannot be above/.test(document.getElementById('embPlafMsg').textContent));
+    ok(await s.page.$eval('#embPlaf', (e) => e.value === '0' && !e.disabled), 'un refus du serveur : sa raison est dite, et la page revient a ce que le serveur a retenu (Off)');
+    EMB.refuse = null; EMB.rep.budget.jourUsd = 1;
     delete CAT.embauche; await s.ctx.close();
   }
 

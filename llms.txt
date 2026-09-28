@@ -39,17 +39,16 @@ Tools:
 - `generate_video(prompt, quality?, duration?, resolution?, aspect_ratio?)` — real cost, up to $3.6. Use this when you need a short video clip, 6 or 10 seconds, made with Grok Imagine.
 - `video_status(id)` — free. Use this when you started a video with generate_video and want to know whether it is ready.
 
+Travel eSIM, no account: `GET https://web-production-220a3.up.railway.app/esim/plans?country=France` (free) lists data-only eSIM plans for a country or a region (Europe, Asia, Middle East, South America, North America, Global), cheapest per GB first, each with `priceUsd`. `POST https://web-production-220a3.up.railway.app/esim/buy` with `{"plan": "<plan id>"}` answers 402 (x402 v2, USDC on Base or Solana, the plan price); sign and retry with `PAYMENT-SIGNATURE` and the same plan. The eSIM is bought before the payment settles: if it cannot be bought, nothing is charged. The answer carries the activation (LPA code) and `orderLink`, a secret: `GET https://web-production-220a3.up.railway.app/esim/order/<orderLink>` returns it again. Data only, no phone number; check the device supports eSIM.
+
 ## Docs
 
 - [API documentation](https://swoleeswoge.dog/swogeagentic_api.html): authentication, endpoints, MCP setup, errors, examples
 - [Live tool catalogue (JSON)](https://web-production-220a3.up.railway.app/agentic/tools): tools, prices in $ and $SWOGE, input schemas
 - [OpenAPI 3.1](https://web-production-220a3.up.railway.app/openapi.json): every tool as an operation, with x-payment-info on those payable without a key
 - [Live llms.txt](https://web-production-220a3.up.railway.app/llms.txt): this file, generated from the live catalogue
+- [Travel eSIM plans (JSON, free)](https://web-production-220a3.up.railway.app/esim/plans?country=France): search, then buy with x402 at /esim/buy
 - [x402 discovery manifest](https://web-production-220a3.up.railway.app/.well-known/x402): the resources payable per call
-
-## Travel eSIM (no account)
-
-`GET https://web-production-220a3.up.railway.app/esim/plans?country=France` (free) lists data-only eSIM plans for a country or a region (Europe, Asia, Middle East, South America, North America, Global), cheapest per GB first, each with `priceUsd`. `POST https://web-production-220a3.up.railway.app/esim/buy` with `{"plan": "<plan id>"}` answers 402 (x402 v2, USDC on Base or Solana, the plan price); sign and retry with `PAYMENT-SIGNATURE` and the same plan. The eSIM is bought before the payment settles: if it cannot be bought, nothing is charged. The answer carries the activation (LPA code) and `orderLink`, a secret: `GET https://web-production-220a3.up.railway.app/esim/order/<orderLink>` returns it again. Data only, no phone number; check the device supports eSIM.
 
 ## Optional
 

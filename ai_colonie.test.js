@@ -1127,6 +1127,65 @@ async function panneauAlertes() {
  * passe tous les vetos — et ne pouvaient donc pas savoir si ces vetos
  * protegeaient. Maintenant chaque jeton analyse est resuivi.
  * ==========================================================================*/
+/* ======================================================================
+ * SOUMETTRE UN CONTRAT A LA COLONIE DEPUIS LE SCANNER (28 septembre 2026)
+ *
+ * « Quand on met un contrat a la main, ce serait cool de pouvoir le soumettre
+ * a la colonie. » Une adresse dans la recherche montre le bouton ; le message
+ * part par la session (le serveur compte par ws.addr, la page ne montre que) ;
+ * la reponse et la liste des soumissions s affichent, echappees.
+ * ====================================================================== */
+async function soumissionScanner() {
+  console.log('\n-- soumettre un contrat a la colonie depuis le scanner --');
+  const WSS = require('ws').Server;
+  const httpJeu = require('http').createServer((q, r) => { r.writeHead(404); r.end(); });
+  await new Promise((r) => httpJeu.listen(0, r));
+  const jeu = new WSS({ server: httpJeu });
+  const recus = [];
+  const ADR = '0x' + 'c3'.repeat(20);
+  jeu.on('connection', (c) => {
+    c.send(JSON.stringify({ type: 'hello', loginNonce: 'a', chainId: 4663 }));
+    c.on('message', (d) => {
+      let m; try { m = JSON.parse(d); } catch (e) { return; }
+      if (m.type === 'resume') c.send(JSON.stringify({ type: 'auth', address: '0x' + '11'.repeat(20), balance: '0', session: 'j' }));
+      if (m.type === 'colonieSoumissions') { recus.push('liste'); c.send(JSON.stringify({ type: 'colonieSoumissions', liste: [] })); }
+      if (m.type === 'colonieSoumets') {
+        recus.push('soumets:' + m.adr);
+        if (m.adr === ADR) {
+          c.send(JSON.stringify({ type: 'colonieSoumis', ok: true, place: 2, soumission: { address: ADR, status: 'queued', text: 'queued: the colony reads it at its next round' } }));
+          c.send(JSON.stringify({ type: 'colonieSoumissions', liste: [{ address: ADR, symbol: null, status: 'queued', text: 'queued: <b>the colony</b> reads it at its next round' }] }));
+        } else c.send(JSON.stringify({ type: 'colonieSoumis', ok: false, raison: '5 submissions a day per wallet - come back tomorrow' }));
+      }
+    });
+  });
+  const ctx = await nav.newContext({ viewport: { width: 1280, height: 900 } });
+  await ctx.addInitScript(() => { try { localStorage.setItem('swogeSession', 'j'); } catch (e) {} });
+  const { page, boum } = await ouvre(nav, port, { ctx, urlSuffixe: '?server=ws://127.0.0.1:' + httpJeu.address().port });
+  await page.waitForTimeout(3500);
+  ok(recus.indexOf('liste') >= 0, 'a la connexion, la page demande ses soumissions (une fois la session ouverte)');
+  ok(await page.isHidden('#tmSoumets'), 'sans adresse dans la recherche : pas de bouton');
+  await page.fill('#tmCherche', 'miel'); await page.waitForTimeout(150);
+  ok(await page.isHidden('#tmSoumets'), 'un symbole n est pas une adresse : pas de bouton');
+  await page.fill('#tmCherche', ADR); await page.waitForTimeout(150);
+  ok(await page.isVisible('#tmSoumets') && /Submit to the colony/.test(await page.textContent('#tmSoumets')), 'une adresse de contrat : le bouton « Submit to the colony »');
+  await page.click('#tmSoumets'); await page.waitForTimeout(600);
+  const box = await page.textContent('#tmSoumis');
+  ok(recus.indexOf('soumets:' + ADR) >= 0, 'le clic envoie colonieSoumets avec l adresse tapee (le serveur, lui, compte par la session)');
+  ok(/Submitted\. The colony reads it at its next round \(#2 in the queue\)/.test(box) && /no shortcut, no forced buy/.test(box), 'la reponse : sa place dans la file, et « sans passe-droit »');
+  ok(/Your submissions/.test(box) && /queued: <b>the colony<\/b>/.test(box) && (await page.$('#tmSoumis b b')) === null, 'la liste de ses soumissions s affiche, le texte du serveur ECHAPPE');
+  await page.fill('#tmCherche', '0x' + 'd4'.repeat(20)); await page.waitForTimeout(150);
+  await page.click('#tmSoumets'); await page.waitForTimeout(600);
+  ok(/5 submissions a day per wallet/.test(await page.textContent('#tmSoumis')), 'un refus du serveur est montre tel quel');
+  ok(boum.length === 0, 'aucune erreur de page' + (boum.length ? ' — ' + boum[0] : ''));
+  await page.close(); await ctx.close(); jeu.close(); httpJeu.close();
+  /* Sans fil (serveur injoignable) : le bouton le dit, rien ne part. */
+  const b2 = await ouvre(nav, port, {});
+  await b2.page.fill('#tmCherche', ADR); await b2.page.waitForTimeout(150);
+  await b2.page.click('#tmSoumets'); await b2.page.waitForTimeout(300);
+  ok(/Connect your wallet to submit a token to the colony/.test(await b2.page.textContent('#tmSoumis')), 'sans session : « connect your wallet », rien n est envoye');
+  await b2.page.context().close();
+}
+
 async function auditDesVetos() {
   console.log('\n-- l audit des refus --');
   const { page, boum } = await ouvre(nav, port, {});
@@ -1409,6 +1468,7 @@ async function auditDesVetos() {
   await filSansDoublon();
   await panneauAlertes();
   await auditDesVetos();
+  await soumissionScanner();
 
   /* ======================================================================
    * 5. LES BOTS REJOUENT LA DECISION, ILS NE LA PRENNENT PAS

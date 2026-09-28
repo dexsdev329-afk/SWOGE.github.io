@@ -56,6 +56,13 @@
     tColonie:[null,"La colonie"], sColonie:[null,"Chaque agent, ce qu'il fait maintenant et ce qu'il a décidé. Le réseau en haut montre les mêmes statuts en direct ; ses paquets ne bougent que sur un vrai événement du serveur."],
     tConsole:[null,"Console de la colonie"], sConsole:[null,"La vue d'origine : le village, les positions de papier et tous les panneaux de mesure. Votre miroir est en haut de la page."],
     tMarche:[null,"Scanner de marché"], cherche:[null,"Chercher un jeton ou une adresse"],
+    soumets:[null,"Soumettre à la colonie"],
+    soumisCo:["Connect your wallet to submit a token to the colony.","Connectez votre portefeuille pour soumettre un jeton à la colonie."],
+    soumisEnvoi:["Sending to the colony…","Envoi à la colonie…"],
+    soumisOk:(n)=>["Submitted. The colony reads it at its next round (#" + n + " in the queue) and judges it with its own rules: no shortcut, no forced buy.",
+      "Soumis. La colonie le lit à son prochain tour (n°" + n + " dans la file) et le juge avec ses propres règles : sans passe-droit ni achat forcé."],
+    soumisDeja:["Already submitted. Here is where it stands.","Déjà soumis. Voici où il en est."],
+    mesSoumis:["Your submissions","Vos soumissions"],
     fTout:[null,"Tout"], fAchat:[null,"Achat"], fVeille:[null,"Surveillé"], fRefus:[null,"Refusé"], fRisque:[null,"Risque élevé"], fNeuf:[null,"Nouveaux"],
     choisis:[null,"Choisissez un jeton dans le tableau pour voir comment la colonie l'a jugé."],
     tTrades:[null,"Terminal des trades"], tEquite:[null,"Courbe de trésorerie"], tOuvertes:[null,"Positions ouvertes"],
@@ -690,6 +697,7 @@
         + "<td>" + pastille(t(TX_DEC[x.dec]), CL_DEC[x.dec]) + "</td></tr>";
     }).join("");
     if(choisi){ const x = tout.find(y => (y.adr || y.sym) === choisi); if(x) peintAnalyse(x, v); }
+    if(typeof relisSoumissions === "function") relisSoumissions();
   }
   function barre(label, valeur, frac, etat){
     const cl = etat === false ? "ko" : etat === null ? "nd" : "";
@@ -1046,7 +1054,55 @@
     document.querySelectorAll("#tmFiltres [data-f]").forEach(x => x.setAttribute("aria-pressed", x === b ? "true" : "false"));
     peintMarche();
   });
-  $("tmCherche").addEventListener("input", peintMarche);
+  $("tmCherche").addEventListener("input", () => { peintMarche(); peintSoumission(); });
+
+  /* ---- SOUMETTRE UN CONTRAT A LA COLONIE (28/09/2026) ----
+   * « Quand on met un contrat a la main, ce serait cool de pouvoir le soumettre
+   * a la colonie. » Une adresse dans la recherche montre le bouton ; la
+   * colonie la lit a son prochain tour et la juge avec SES regles. Le serveur
+   * compte par la session du joueur (ws.addr) et borne tout (ai_colonie.soumets) :
+   * la page ne fait que montrer. */
+  const ADR_RE = /^0x[0-9a-fA-F]{40}$/;
+  /* `var` : peintMarche peut passer AVANT ces lignes (premier rendu) — un `let` y serait en zone morte. */
+  var soumisDit = "", mesSoumissions = [], soumisAttend = false, soumisDemande = 0, soumisEcoute = false;
+  function peintSoumission(){
+    const q = String($("tmCherche").value || "").trim(), b = $("tmSoumets"), box = $("tmSoumis");
+    if(!b || !box) return;
+    b.hidden = !ADR_RE.test(q);
+    const l = mesSoumissions.slice(0, 5).map(s => '<div><span class="mono">' + esc(s.symbol ? "$" + s.symbol : String(s.address).slice(0, 8) + "…" + String(s.address).slice(-4))
+      + "</span> — " + esc(s.text) + "</div>").join("");
+    box.innerHTML = (soumisDit ? "<div><b>" + esc(soumisDit) + "</b></div>" : "") + (l ? '<div style="margin-top:4px">' + esc(t("mesSoumis")) + "</div>" + l : "");
+    box.hidden = !soumisDit && !l;
+  }
+  function ecouteSoumissions(){
+    if(soumisEcoute || !window.swogeFil || !window.swogeFil.ecoute) return;
+    soumisEcoute = true;
+    window.swogeFil.ecoute(m => {
+      if(!m || typeof m !== "object") return;
+      if(m.type === "auth" && window.swogeFil.pret()) window.swogeFil.envoie({ type: "colonieSoumissions" });
+      if(m.type === "colonieSoumis"){ soumisAttend = false; soumisDit = m.ok ? (m.deja ? t("soumisDeja") : t("soumisOk", m.place || 1)) : String(m.raison || "").slice(0, 200); peintSoumission(); }
+      if(m.type === "colonieSoumissions"){ mesSoumissions = Array.isArray(m.liste) ? m.liste : []; peintSoumission(); }
+      if(m.type === "error" && soumisAttend){ soumisAttend = false; soumisDit = String(m.error || "").slice(0, 200); peintSoumission(); }
+    });
+  }
+  ecouteSoumissions();
+  $("tmSoumets").addEventListener("click", () => {
+    ecouteSoumissions();
+    const q = String($("tmCherche").value || "").trim();
+    if(!ADR_RE.test(q)) return;
+    if(!window.swogeFil || !window.swogeFil.pret()){ soumisDit = t("soumisCo"); peintSoumission(); return; }
+    soumisDit = t("soumisEnvoi"); soumisAttend = true; peintSoumission();
+    window.swogeFil.envoie({ type: "colonieSoumets", adr: q });
+  });
+  /* Chaque nouvelle vue de la colonie : ou en sont les soumissions pas encore jugees (au plus toutes les 20 s). */
+  function relisSoumissions(){
+    if(!Array.isArray(mesSoumissions)) return;
+    ecouteSoumissions();
+    if(!mesSoumissions.some(s => s.status === "queued" || s.status === "read")) return;
+    if(!window.swogeFil || !window.swogeFil.pret() || Date.now() - soumisDemande < 20000) return;
+    soumisDemande = Date.now();
+    window.swogeFil.envoie({ type: "colonieSoumissions" });
+  }
   function choisit(tr){
     if(!tr || !tr.dataset.adr) return;
     choisi = tr.dataset.adr;

@@ -967,7 +967,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     <p>An AI agent that works with SWOGE's own data: it reads tokens, the newest launches, wallets, the SWOGE AI colony, the $SWOGE economy, infrastructure and the web, chains the lookups itself, then answers with the numbers it read.</p>
   </div>
   <div class="ag-outils" id="outils" aria-label="Tools the agent can use"></div>
-  <div class="ag-lit">&#128274; Read-only: the agent can't buy, sell, sign or post anything.</div>
+  <div class="ag-lit" id="agLit">&#128274; Read-only: the agent can't buy, sell, sign or post anything.</div>
   <!-- ---- POUR LES AGENTS DES AUTRES : x402, SANS COMPTE (28 septembre 2026) ----
        « Le post a fait 250 vues meme si le produit n'est pas bien mis en avant » :
        les posts menent ici, et la page ne parlait que de la cle payee en $SWOGE.
@@ -1056,7 +1056,10 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     web_search: { ic: "🌐", dit: function(e){ return "Searching the web: “" + String(e.query || "").slice(0, 80) + "”"; } },
     new_launches: { ic: "\ud83d\ude80", dit: function(){ return "Reading the newest tokens the colony found"; } },
     wallet_intel: { ic: "\ud83d\udc5b", dit: function(e){ return "Reading wallet " + String(e.address || "").slice(0, 8) + "\u2026" + String(e.address || "").slice(-4); } },
-    osint_lookup: { ic: "\ud83d\udd0e", dit: function(e){ return "Passive recon on " + String(e.target || "").slice(0, 60); } }
+    osint_lookup: { ic: "\ud83d\udd0e", dit: function(e){ return "Passive recon on " + String(e.target || "").slice(0, 60); } },
+    /* L'embauche (28/09/2026) : l'agent cherche puis paie un service x402, sur le solde du joueur. */
+    find_paid_services: { ic: "\ud83d\uded2", dit: function(e){ return "Looking for a paid service: " + String(e.need || "").slice(0, 60); } },
+    hire_paid_service: { ic: "\ud83d\udcb3", dit: function(e){ var h = ""; try { h = new URL(String(e.url || "")).hostname; } catch (x) {} return "Hiring " + (h || "a service") + " (paid from your balance)"; } }
   };
   /* ---- recopie de swolemind.html, a l'identique : serveur, lisLocal, ecrisLocal, jeton, nombre, echappe, enLigne, markdown, copie, actionsEl, usdCourt, lienSur, carteJeton, sourcesEl, nouveauRid ---- */
   function serveur(){
@@ -1500,6 +1503,9 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
         var e = document.createElement("span"); e.className = "ag-outil"; e.title = x.description;
         e.textContent = ((OUTIL[x.nom] || {}).ic || "🛠️") + " " + x.nom; o.appendChild(e);
       });
+      /* L'embauche allumee : « read-only » ne serait plus vrai. La page dit ce que l'agent peut payer, et combien au plus. */
+      if (c.embauche && c.embauche.actif) $("agLit").textContent = "\ud83d\udd12 The agent can't buy, sell, sign or post anything. It may hire an outside AI service (x402) from your balance: at most $"
+        + c.embauche.maxAppelUsd + " a call and $" + c.embauche.jourUsd + " a day, price + 10%, and it always tells you what it paid.";
       if (!c.ouvert) dit(c.note || TXT.ferme);
       peintPrix(); peintBoutons();
     })["catch"](function(){ $("prixq").textContent = TXT.ferme; });

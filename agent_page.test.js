@@ -111,6 +111,15 @@ const PEPE = { adresse:'0x6982508145454ce325ddbe47a25d4ec3d2311933', trouve:true
     await ctx.close();
   }
 
+  console.log('\n-- 2c. l embauche allumee (28/09) : la page ne dit plus « read-only », elle dit ce que l agent peut payer --');
+  {
+    CAT.embauche = { actif: true, maxAppelUsd: 0.1, jourUsd: 1, marge: 1.1 };
+    const { page, ctx } = await ouvre();
+    const lit = await page.textContent('#agLit');
+    ok(!/Read-only/.test(lit) && /hire an outside AI service \(x402\) from your balance: at most \$0\.1 a call and \$1 a day, price \+ 10%/.test(lit), 'la phrase dit le plafond par appel, par jour, et la marge : « ' + lit.trim() + ' »');
+    delete CAT.embauche; await ctx.close();
+  }
+
   console.log('\n-- 2b. le serveur muet : la section le dit, sans inventer de prix --');
   {
     const garde = X402; X402 = null;

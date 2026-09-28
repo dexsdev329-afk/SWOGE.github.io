@@ -787,6 +787,17 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   </ul>
   </section>
 
+  <!-- La passerelle de depense (passerelle.js, 28/09/2026) : payer un AUTRE service x402 avec sa cle. -->
+  <h2 id="pay">5b. Pay other x402 services with your key</h2>
+  <p>Your agent can pay another x402 service through SWOGE, without holding a wallet: SWOGE pays in USDC and bills the key owner in $SWOGE, within the limits the owner set for that key.</p>
+  <ul>
+    <li><b>Off by default.</b> A key only reads until its owner turns payments on for it on the SwogeAgentic page (<i>Allow payments</i>): a per-call cap up to $0.10, and optionally the only sites it may pay.</li>
+    <li><code>POST /agentic/pay</code> with <code>Authorization: Bearer swg_…</code>, an <code>Idempotency-Key</code> header and <code>{"url": "https://…", "method": "GET", "query": {…}, "body": {…}, "max_usd": 0.01}</code>. Returns the service answer, a receipt (price, network, transaction) and the audit line.</li>
+    <li>Only services of the public x402 catalogue, on public https addresses, without redirects. Paid only if the service answers 200. The key's daily cap applies.</li>
+    <li>The same <code>Idempotency-Key</code> never pays twice: resending it returns the original answer.</li>
+    <li><code>GET /agentic/audit</code>: every attempt, paid or refused, on a hash-chained log (each line carries the SHA-256 of the previous one). The request and the answer are kept only as hashes.</li>
+  </ul>
+
   <h2>6. Errors</h2>
   <table><thead><tr><th>Status</th><th>Meaning</th><th>Billed?</th></tr></thead><tbody>
     <tr><td><code>400</code></td><td>Bad input (address format, empty query, unsupported target)</td><td>No</td></tr>

@@ -729,6 +729,11 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 .dev pre{background:var(--panel2);border-radius:10px;padding:8px 10px;margin:6px 0}
 .dev-cle{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center;font-size:12.5px;border-top:1px solid var(--line);padding:6px 0}
 .dev-cle .dim{color:var(--dim)}
+.dev-paie{border-top:0;padding-top:0}
+.dev-paie-f{display:flex;flex-wrap:wrap;gap:6px;align-items:center;width:100%}
+.dev-paie-f input{font:inherit;font-size:12.5px;border:1px solid var(--line);border-radius:8px;padding:6px 8px;min-width:0}
+.dev-paie-f input[type=number]{width:90px}
+.dev-paie-f input[type=text]{flex:1 1 180px}
 .achat{border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin:10px 0;background:var(--panel2)}
 .achat h4{margin:0 0 4px;font-size:14.5px}
 .achat p{margin:4px 0;font-size:12.5px;color:var(--dim)}
@@ -1026,6 +1031,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     </div>
     <div class="dev-neuve" id="devNeuve" hidden></div>
     <div id="devCles"></div>
+    <div id="devAudit" hidden></div>
     <h3>Connect it</h3>
     <pre id="devClaude"></pre>
     <pre id="devJson"></pre>
@@ -1299,7 +1305,39 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     var mcp = serveur() + "/mcp", k = cle || "swg_YOUR_KEY";
     $("devClaude").textContent = "# Claude Code\nclaude mcp add --transport http swogeagentic " + mcp + " \\\n  --header \"Authorization: Bearer " + k + "\"";
     $("devJson").textContent = "// Cursor (~/.cursor/mcp.json) or .mcp.json\n" + JSON.stringify({ mcpServers: { swogeagentic: { url: mcp, headers: { Authorization: "Bearer " + k } } } }, null, 2);
-    $("devCurl").textContent = "# Any script: quote, then call\ncurl -s " + serveur() + "/agentic/tools\ncurl -s -X POST " + serveur() + "/agentic/call/scan_token \\\n  -H \"Authorization: Bearer " + k + "\" -H \"content-type: application/json\" \\\n  -d '{\"arguments\":{\"address\":\"0x...\"},\"quote\":true}'";
+    $("devCurl").textContent = "# Any script: quote, then call\ncurl -s " + serveur() + "/agentic/tools\ncurl -s -X POST " + serveur() + "/agentic/call/scan_token \\\n  -H \"Authorization: Bearer " + k + "\" -H \"content-type: application/json\" \\\n  -d '{\"arguments\":{\"address\":\"0x...\"},\"quote\":true}'"
+      + "\n\n# Pay another x402 service for your agent (turn payments on for this key first)\ncurl -s -X POST " + serveur() + "/agentic/pay \\\n  -H \"Authorization: Bearer " + k + "\" -H \"Idempotency-Key: $(uuidgen)\" -H \"content-type: application/json\" \\\n  -d '{\"url\":\"https://x402factory.ai/solana/coinprice\",\"query\":{\"symbol\":\"SOL\"},\"max_usd\":0.01}'";
+  }
+  /* ---- LA PERMISSION DE PAYER D'UNE CLE (passerelle, 28/09/2026) ----
+     Eteinte par defaut : la cle ne sert qu'a lire. Le proprietaire l'allume ici, avec un
+     plafond par appel (0,001 a 0,10 $) et, s'il veut, les seuls sites autorises. */
+  function lignePaiements(c, j){
+    var p = c.paiements || { actif: false };
+    var box = document.createElement("div"); box.className = "dev-cle dev-paie";
+    var t = document.createElement("span"); t.className = "dim";
+    t.textContent = p.actif ? "Payments ON: up to $" + p.maxAppelUsd + " per call" + (p.hotes && p.hotes.length ? ", only " + p.hotes.join(", ") : ", any service of the public x402 catalogue")
+      : "Payments OFF: this key can only read.";
+    box.appendChild(t);
+    var f = document.createElement("span"); f.hidden = true; f.className = "dev-paie-f";
+    var m = document.createElement("input"); m.type = "number"; m.min = "0.001"; m.max = "0.1"; m.step = "0.001"; m.value = p.actif ? p.maxAppelUsd : "0.02";
+    m.setAttribute("aria-label", "Max per call in USD"); m.id = "paieMax_" + c.id;
+    var h = document.createElement("input"); h.type = "text"; h.placeholder = "allowed sites (optional): api.example.com, …"; h.value = p.actif && p.hotes ? p.hotes.join(", ") : "";
+    h.setAttribute("aria-label", "Allowed sites"); h.id = "paieHotes_" + c.id;
+    var ok = document.createElement("button"); ok.type = "button"; ok.textContent = "Save";
+    var msg = document.createElement("span"); msg.className = "dim"; msg.setAttribute("role", "status");
+    f.appendChild(m); f.appendChild(h); f.appendChild(ok); f.appendChild(msg);
+    var envoie = function(corps){
+      return fetch(serveur() + "/agentic/cles/" + encodeURIComponent(c.id) + "/paiements", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + j }, body: JSON.stringify(corps) })
+        .then(function(r){ return r.json(); }).then(function(d){ if (d && d.ok) chargeDev(); else msg.textContent = (d && d.raison) || "Not saved."; })["catch"](function(){ msg.textContent = "The server did not answer."; });
+    };
+    ok.addEventListener("click", function(){
+      envoie({ actif: true, maxAppelUsd: Number(m.value), hotes: String(h.value || "").split(/[\s,]+/).filter(Boolean) });
+    });
+    var b = document.createElement("button"); b.type = "button";
+    b.textContent = p.actif ? "Turn payments off" : "Allow payments";
+    b.addEventListener("click", function(){ if (p.actif) envoie({ actif: false }); else { f.hidden = false; b.hidden = true; } });
+    box.appendChild(b); box.appendChild(f);
+    return box;
   }
   function chargeDev(){
     var j = jeton();
@@ -1320,6 +1358,23 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
               .then(function(){ chargeDev(); })["catch"](function(){});
           });
           l.appendChild(x); z.appendChild(l);
+          z.appendChild(lignePaiements(c, j));
+        });
+      })["catch"](function(){});
+    /* Les dernieres lignes d'audit de la passerelle (paiements faits par les cles). */
+    fetch(serveur() + "/agentic/audit", { headers: { authorization: "Bearer " + j }, cache: "no-store" })
+      .then(function(r){ return r.json(); }).then(function(d){
+        var l = (d && d.lignes) || [], z = $("devAudit"); z.textContent = "";
+        if (!l.length) { z.hidden = true; return; }
+        z.hidden = false;
+        var t = document.createElement("p"); t.className = "dim";
+        t.textContent = "Payments made with your keys" + (d.chaine && d.chaine.ok ? " (audit chain intact, " + d.chaine.lignes + " lines)" : " (audit chain BROKEN at line " + (d.chaine && d.chaine.casseA) + ")") + ":";
+        z.appendChild(t);
+        l.slice(0, 10).forEach(function(x){
+          var e = document.createElement("div"); e.className = "dev-cle";
+          e.textContent = new Date(x.t).toISOString().slice(5, 16).replace("T", " ") + " \u00b7 " + String(x.hote || x.url || "").slice(0, 60) + " \u00b7 " + x.statut
+            + (x.usd ? " \u00b7 $" + x.usd : "") + (x.raison ? " \u00b7 " + String(x.raison).slice(0, 90) : "");
+          z.appendChild(e);
         });
       })["catch"](function(){});
     fetch(serveur() + "/agentic/recus", { headers: { authorization: "Bearer " + j }, cache: "no-store" })

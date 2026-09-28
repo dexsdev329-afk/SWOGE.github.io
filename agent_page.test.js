@@ -71,6 +71,10 @@ const PEPE = { adresse:'0x6982508145454ce325ddbe47a25d4ec3d2311933', trouve:true
       if (/\/agentic\/cles/.test(u)) {
         const q = r.request(), m = q.method();
         DEV.appels.push({ m, u, auth: q.headers().authorization || null, corps: q.postData() || '' });
+        /* La permission de payer d'une cle (passerelle, 28/09) : le faux serveur la garde. */
+        if (m === 'POST' && /\/paiements$/.test(u)) { const p = JSON.parse(q.postData());
+          DEV.cles.forEach((c) => { c.paiements = p.actif ? { actif: true, maxAppelUsd: p.maxAppelUsd, hotes: p.hotes } : { actif: false }; });
+          return r.fulfill({ status:200, contentType:'application/json', body:'{"ok":true}' }); }
         if (m === 'POST') { const c = JSON.parse(q.postData()); const k = 'swg_' + 'k'.repeat(43);
           DEV.cles.push({ id: 'abc123def456', nom: c.nom || 'agent', debut: 'swg_kkkk', cree: Date.now(), plafondSwoge: c.plafondSwoge, depenseAujourdhui: 0, revoquee: false });
           return r.fulfill({ status:200, contentType:'application/json', body: JSON.stringify({ ok:true, cle: k }) }); }
@@ -78,6 +82,8 @@ const PEPE = { adresse:'0x6982508145454ce325ddbe47a25d4ec3d2311933', trouve:true
         return r.fulfill({ status:200, contentType:'application/json', body: JSON.stringify({ ok:true, cles: DEV.cles }) });
       }
       if (/\/agentic\/recus/.test(u)) return r.fulfill({ status:200, contentType:'application/json', body: JSON.stringify({ ok:true, recus: DEV.recus }) });
+      if (/\/agentic\/audit/.test(u)) return r.fulfill({ status:200, contentType:'application/json', body: JSON.stringify({ ok:true, chaine: { ok: true, lignes: 3 },
+        lignes: [{ t: Date.UTC(2026, 8, 28, 22, 0), hote: 'x402factory.ai', statut: 'paye', usd: 0.001 }, { t: Date.UTC(2026, 8, 28, 22, 1), hote: '<img src=x onerror=window.pirate=9>', statut: 'refuse', raison: 'not allowed' }] }) });
       if (/vitrine\.json/.test(u)) return r.fulfill({ status:200, contentType:'application/json', body:'{}' });
       if (/\/studio\/agent\/achats/.test(u)) {
         const q = r.request(); ACH.vus.push(q.headers().authorization || null);
@@ -330,6 +336,20 @@ const PEPE = { adresse:'0x6982508145454ce325ddbe47a25d4ec3d2311933', trouve:true
     await page.waitForSelector('#devCles .dev-cle');
     ok(/my-bot/.test(await page.textContent('#devCles')) && /0 \/ 5,000 \$SWOGE today/.test(await page.textContent('#devCles')), 'la liste : nom, depense du jour sur le plafond');
     ok(/scan_token · 357\.01535 \$SWOGE · receipt r1e2c3u4/.test(await page.textContent('#devRecus')), 'les derniers appels, avec leur recu');
+    /* La passerelle (28/09 au soir) : les paiements d'une cle, eteints par defaut, allumes par la session. */
+    ok(/Payments OFF: this key can only read/.test(await page.textContent('#devCles')), 'une cle neuve : paiements eteints, la page le dit');
+    await page.click('.dev-paie button');
+    await page.fill('#paieMax_abc123def456', '0.05'); await page.fill('#paieHotes_abc123def456', 'x402factory.ai, api.example.com');
+    await page.click('.dev-paie-f button');
+    await page.waitForFunction(() => /Payments ON/.test(document.getElementById('devCles').textContent));
+    const pp = DEV.appels.find((a) => /\/paiements$/.test(a.u));
+    ok(pp && pp.auth === 'Bearer jeton-dev' && /\/agentic\/cles\/abc123def456\/paiements$/.test(pp.u) && JSON.stringify(JSON.parse(pp.corps)) === JSON.stringify({ actif: true, maxAppelUsd: 0.05, hotes: ['x402factory.ai', 'api.example.com'] }),
+       'allumer les paiements : par la SESSION, le plafond par appel et les sites autorises');
+    ok(/up to \$0\.05 per call, only x402factory\.ai, api\.example\.com/.test(await page.textContent('#devCles')), 'la cle dit ce qu elle a le droit de payer');
+    await page.waitForSelector('#devAudit:not([hidden])');
+    ok(/audit chain intact, 3 lines/.test(await page.textContent('#devAudit')) && (await page.$('#devAudit img')) === null && !(await page.evaluate(() => window.pirate)),
+       'les paiements faits par les cles, avec l etat de la chaine d audit, en texte');
+    ok((await page.textContent('#devCurl')).includes('/agentic/pay') && (await page.textContent('#devCurl')).includes('Idempotency-Key'), 'l exemple montre comment payer un service, avec son Idempotency-Key');
     const larg = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     ok(larg <= 1, 'a 360 px, la section ne deborde pas [' + larg + ']');
     await page.click('#devCles .dev-cle button');

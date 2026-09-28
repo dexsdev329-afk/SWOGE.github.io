@@ -13,18 +13,18 @@ MCP: Streamable HTTP at `https://web-production-220a3.up.railway.app/mcp` with t
 Tools:
 
 - `scan_token(address)` — $0.01. Use this before buying, listing or writing about an EVM token, to check its market and its contract in one call (contract security Powered by Go+ Security, https://gopluslabs.io).
-- `can_i_sell(address)` — $0.02. Use this right before buying a Robinhood Chain token, to know whether you could sell it back and at what cost.
+- `can_i_sell(address)` — $0.008. Use this right before buying a Robinhood Chain token, to know whether you could sell it back and at what cost.
 - `colony_activity(token?)` — $0.005. Use this when you want to know what the SWOGE AI colony, an autonomous paper-trading colony on Robinhood Chain, holds or did recently, overall or on one token.
 - `swoge_economy()` — $0.001. Use this when you need the current state of the $SWOGE token economy.
 - `new_launches(limit?)` — $0.005. Use this when you want the newest tokens on Robinhood Chain, minutes after their pool opens, with what an autonomous trading colony decided about each.
-- `wallet_intel(address)` — $0.02. Use this when you need to know who is behind an EVM address, typically a token deployer, before trusting what it launches.
-- `osint_lookup(target)` — $0.02. Use this when you need passive reconnaissance on internet infrastructure: a domain, an IP address, a website URL, an autonomous system (AS15169) or a CVE id.
+- `wallet_intel(address)` — $0.008. Use this when you need to know who is behind an EVM address, typically a token deployer, before trusting what it launches.
+- `osint_lookup(target)` — $0.008. Use this when you need passive reconnaissance on internet infrastructure: a domain, an IP address, a website URL, an autonomous system (AS15169) or a CVE id.
 - `web_search(query)` — $0.0075. Use this when the answer is outside SWOGE data: news, projects, teams, people, anything on the open web.
 - `chat_completion(model?, messages, max_tokens?)` — real cost, up to $undefined. Use this when you need an answer from a frontier AI model without an account or an API key: Claude (Opus, Fable, Sonnet, Haiku), GPT-6 or Grok, one call.
-- `robinhood_token(address)` — $0.004. Use this when you need to know what a Robinhood Chain contract is before touching it: one call, decoded.
-- `robinhood_wallet(address, tokens?)` — $0.004. Use this when you need the holdings of a Robinhood Chain address: ETH plus up to 20 tokens, read on-chain in one Multicall3 call.
-- `robinhood_tx(hash)` — $0.004. Use this when you need to understand what a Robinhood Chain transaction did.
-- `robinhood_rpc(method, params?)` — $0.004. Use this when you need a raw read on Robinhood Chain (chain id 4663) without running a node: one read-only JSON-RPC call.
+- `robinhood_token(address)` — $0.003. Use this when you need to know what a Robinhood Chain contract is before touching it: one call, decoded.
+- `robinhood_wallet(address, tokens?)` — $0.003. Use this when you need the holdings of a Robinhood Chain address: ETH plus up to 20 tokens, read on-chain in one Multicall3 call.
+- `robinhood_tx(hash)` — $0.003. Use this when you need to understand what a Robinhood Chain transaction did.
+- `robinhood_rpc(method, params?)` — $0.003. Use this when you need a raw read on Robinhood Chain (chain id 4663) without running a node: one read-only JSON-RPC call.
 - `token_verdict(address)` — $0.008. Use this when you must decide fast whether an EVM token is worth a closer look: one verdict you can branch on (red_flags, caution, unknown or no_red_flag_found) with its reasons.
 - `roast_token(address)` — $0.015. Use this when you want a funny, shareable take on an EVM token for a post or a chat: SWOGE, a very muscular shiba inu, roasts it in 2 or 3 sentences built only on its real data.
 - `ask_agent(task, model?)` — real cost, up to $1.296. Use this when a question needs several of these tools chained together and a written answer, for example comparing tokens or researching a launcher.

@@ -730,6 +730,18 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 .dev-cle .dim{color:var(--dim)}
 .dev-cle button{margin-left:auto;background:transparent;color:var(--serpent);border-color:var(--serpent)}
 .dev h3{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--dim);margin:12px 0 4px}
+/* ---- x402 : ce que les agents des autres peuvent payer a l'appel (28/09/2026) ---- */
+.x4{border:1px solid var(--pool);background:var(--goldlite);border-radius:14px;padding:12px 14px;margin:0 0 12px}
+.x4 h2{font-size:15px;margin:0 0 6px;color:var(--paper)}
+.x4 p{font-size:12.5px;color:var(--paper);margin:6px 0}
+.x4 code{font-family:'Space Mono',monospace;font-size:11.5px}
+.x4-grille{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px;margin:8px 0}
+.x4-o{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:7px 9px;min-width:0}
+.x4-o b{font-family:'Space Mono',monospace;font-size:12px;overflow-wrap:anywhere}
+.x4-o .x4-p{float:right;font-weight:700;font-size:12px;color:var(--pool);margin-left:6px}
+.x4-o small{display:block;clear:both;font-size:11.5px;color:var(--dim);margin-top:2px}
+.x4 .x4-note{font-size:11.5px;color:var(--dim)}
+.x4 a{color:var(--pool);font-weight:700}
 .ag-compose select{border:1px solid var(--line);background:var(--panel);color:var(--paper);border-radius:999px;padding:7px 10px;font:600 12.5px/1 inherit;font-family:inherit;max-width:100%}
 </style>
 <style>
@@ -830,6 +842,12 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 
 /* ---- le composeur, en bas, facon ChatGPT ---- */
 .compose{position:sticky;bottom:0;background:linear-gradient(to top,var(--void) 70%,transparent);padding:10px 0 14px}
+/* La barre de saisie colle au bas de l'ecran : les boutons flottants de
+   stakebubble.js (VS, portefeuille, toasts) se posent AU-DESSUS, par la
+   variable prevue pour ca. A zero, « VS » recouvrait le bouton d'envoi des
+   que la conversation remplissait l'ecran (trouve par agent_page.test.js,
+   28/09/2026). `!important` : stakebubble la pose en style en ligne. */
+:root{--swbb-h:132px!important}
 .boite{background:var(--panel);border:1px solid var(--line);border-radius:26px;padding:10px 12px 8px;
   box-shadow:0 2px 14px rgba(11,27,54,.06)}
 .boite textarea{width:100%;border:0;resize:none;background:transparent;font-family:inherit;font-size:15px;
@@ -950,6 +968,18 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   </div>
   <div class="ag-outils" id="outils" aria-label="Tools the agent can use"></div>
   <div class="ag-lit">&#128274; Read-only: the agent can't buy, sell, sign or post anything.</div>
+  <!-- ---- POUR LES AGENTS DES AUTRES : x402, SANS COMPTE (28 septembre 2026) ----
+       « Le post a fait 250 vues meme si le produit n'est pas bien mis en avant » :
+       les posts menent ici, et la page ne parlait que de la cle payee en $SWOGE.
+       Les outils et leurs prix sont LUS en direct (/agentic/x402, /agentic/tools),
+       jamais recopies ; tout est ecrit en texte, rien du serveur ne devient du HTML. -->
+  <section class="x4" id="x402" aria-labelledby="x4titre">
+    <h2 id="x4titre">&#129302; For AI agents: pay per call with x402</h2>
+    <p>Any AI agent can hire these tools with no account and no API key. It calls a tool, gets a <code>402 Payment Required</code> with the price, pays in <b>USDC on Base or Solana</b> (or USDG / $SWOGE on Robinhood Chain), and gets the answer. The tools are listed in PayAI's public catalog of agent services.</p>
+    <div class="x4-grille" id="x4Outils"><p class="x4-note">Loading live prices&hellip;</p></div>
+    <p><a href="x402_essai.html">&#9889; Try a paid call in your browser</a> &middot; <a href="swogeagentic_api.html">&#128214; API docs</a> &middot; <a id="x4Decouverte" href="https://web-production-220a3.up.railway.app/.well-known/x402" rel="noopener">/.well-known/x402</a></p>
+    <p class="x4-note" id="x4Note">Prices shown are live, in USD on Base. On Solana and Robinhood Chain they can differ slightly (network fees). Read-only tools: none of them can buy, sell or sign anything.</p>
+  </section>
   <!-- ---- POUR LES AUTRES AGENTS (demande du proprietaire, 26 septembre 2026) ----
        Les cles d'API se creent ICI, par la session signee ; le serveur ne garde
        que leur empreinte, la cle se montre une seule fois. Chaque cle a un
@@ -1413,6 +1443,49 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   Array.prototype.forEach.call(document.querySelectorAll(".suggestion"), function(b){
     b.addEventListener("click", function(){ var t = $("question"); t.value = b.getAttribute("data-t"); t.focus(); dimensionne(); });
   });
+
+  /* ---- x402 : les outils payables a l'appel, et leur prix, lus en direct ---- */
+  var X4_PHRASES = {
+    token_verdict: "One fast verdict on any token: red flags, caution or none found",
+    scan_token: "Market + contract checks for any EVM token (Powered by Go+ Security)",
+    can_i_sell: "Simulates selling a Robinhood Chain token before you buy it",
+    robinhood_token: "What a Robinhood Chain contract is: supply, owner, proxy, mint/pause/blacklist powers",
+    robinhood_wallet: "Holdings of a Robinhood Chain address, priced in USD",
+    robinhood_tx: "What a Robinhood Chain transaction did: transfers and swaps decoded",
+    robinhood_rpc: "One read-only Robinhood Chain RPC call, no node needed",
+    chat_completion: "10 AI models in the OpenAI format, priced per request",
+    colony_activity: "Live positions, buys and sells of the SWOGE AI colony",
+    new_launches: "The newest Robinhood Chain launches, as the colony judged them",
+    swoge_economy: "$SWOGE supply, burns, casino vault, staking and price",
+    wallet_intel: "Who is behind an EVM address: the tokens it launched",
+    osint_lookup: "Passive recon on a domain, IP, AS number or CVE",
+    web_search: "Web search with dated, sourced results",
+    ask_agent: "SwogeAgentic chains the tools and writes the answer",
+    generate_image: "An image from a prompt (Grok Imagine or ChatGPT Image)"
+  };
+  var X4_VARIABLE = { chat_completion: true };
+  function x4Prix(u){ var n = Number(u); if (!(n > 0)) return ""; return "$" + String(Number(n.toPrecision(2))); }
+  function peintX402(x){
+    var box = $("x4Outils"); box.innerHTML = "";
+    var l = (x && x.outils) || [];
+    var ordre = Object.keys(X4_PHRASES);
+    l = l.slice().sort(function(a, b){ var i = ordre.indexOf(a.name), j = ordre.indexOf(b.name); return (i < 0 ? 99 : i) - (j < 0 ? 99 : j); });
+    if (!l.length) { var p = document.createElement("p"); p.className = "x4-note"; p.textContent = "Live prices unavailable right now: the discovery file below lists every tool."; box.appendChild(p); return; }
+    l.forEach(function(o){
+      var d = document.createElement("div"); d.className = "x4-o";
+      var b = document.createElement("b"); b.textContent = String(o.name || "");
+      var pr = document.createElement("span"); pr.className = "x4-p";
+      var px = x4Prix(o.usdBase !== undefined ? o.usdBase : o.usd);
+      pr.textContent = px ? (X4_VARIABLE[o.name] ? "from " + px : px) : "";
+      var sm = document.createElement("small"); sm.textContent = X4_PHRASES[o.name] || "";
+      d.appendChild(pr); d.appendChild(b); d.appendChild(sm); box.appendChild(d);
+    });
+  }
+  $("x4Decouverte").href = serveur() + "/.well-known/x402";
+  fetch(serveur() + "/agentic/x402", { cache: "no-store" })
+    .then(function(r){ return r.json(); })
+    .then(function(x){ peintX402(x && x.actif ? x : null); })
+    ["catch"](function(){ peintX402(null); });
 
   fetch(serveur() + "/studio/agent/catalogue", { cache: "no-store" })
     .then(function(r){ return r.json(); })

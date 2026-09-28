@@ -24,6 +24,9 @@ const T = { '.html':'text/html','.js':'text/javascript','.css':'text/css','.json
 const CAT = { ouvert:true, note:null, monnaie:'$SWOGE', coursUsd:0.00002801, defaut:'sonnet-5', etapesMax:6,
   outils:[{ nom:'scan_token', description:'Read a token' }, { nom:'colony_activity', description:'The colony' }, { nom:'swoge_economy', description:'Economy' }, { nom:'web_search', description:'Web' }],
   modeles:[{ id:'opus-5-5', nom:'Opus 5.5', typiqueSwoge:5000, maxSwoge:90000 }, { id:'sonnet-5', nom:'Sonnet 5', typiqueSwoge:2500, maxSwoge:45000 }, { id:'haiku-4-5', nom:'Haiku 4.5', typiqueSwoge:1200, maxSwoge:20000 }] };
+/* /agentic/x402 tel que le serveur le rend (releve du 28/09) ; un nom pieges pour l injection. */
+let X402 = { actif: true, outils: [{ name: 'scan_token', usd: 0.021001, usdBase: 0.02 }, { name: 'chat_completion', usd: 0.02, usdBase: 0.006642 },
+  { name: 'token_verdict', usd: 0.02, usdBase: 0.01 }, { name: 'robinhood_rpc', usd: 0.02, usdBase: 0.005 }, { name: '<img src=x onerror=window.pirate=3>', usd: 0.02, usdBase: 0.02 }] };
 const DEV = { cles: [], appels: [], recus: [{ id: 'r1e2c3u4', outil: 'scan_token', swoge: '357.01535', t: Date.UTC(2026, 8, 26, 13, 5) }] };
 const sse = (evs) => evs.map(([t, d]) => 'event: ' + t + '\ndata: ' + JSON.stringify(d) + '\n\n').join('');
 const PEPE = { adresse:'0x6982508145454ce325ddbe47a25d4ec3d2311933', trouve:true, sym:'PEPE', nom:'Pepe', chaine:'ethereum', prixUsd:0.0000044, liqUsd:25000000, mcUsd:1.8e9,
@@ -69,6 +72,7 @@ const PEPE = { adresse:'0x6982508145454ce325ddbe47a25d4ec3d2311933', trouve:true
       }
       if (/\/agentic\/recus/.test(u)) return r.fulfill({ status:200, contentType:'application/json', body: JSON.stringify({ ok:true, recus: DEV.recus }) });
       if (/vitrine\.json/.test(u)) return r.fulfill({ status:200, contentType:'application/json', body:'{}' });
+      if (/\/agentic\/x402$/.test(u)) return X402 ? r.fulfill({ status:200, contentType:'application/json', body: JSON.stringify(X402) }) : r.abort();
       return r.abort();
     });
     await page.goto('http://127.0.0.1:' + port + '/swogeagentic.html', { waitUntil:'domcontentloaded' });
@@ -94,9 +98,26 @@ const PEPE = { adresse:'0x6982508145454ce325ddbe47a25d4ec3d2311933', trouve:true
     eq(await page.inputValue('#modele'), 'sonnet-5', 'le modele par defaut du serveur');
     ok(/Sonnet 5 · ~2,500 \$SWOGE per task \(max 45,000\) · up to 6 steps/.test(await page.textContent('#prixq')), 'le prix d une tache, son maximum, le nombre d etapes');
     ok(/Read-only/.test(await page.textContent('.ag-lit')), 'la page dit que l agent ne fait que lire');
+    /* x402 (28/09) : les posts menent ici ; la page dit comment un agent paie a l appel, prix lus en direct. */
+    await page.waitForSelector('#x4Outils .x4-o');
+    const x4 = await page.$$eval('#x4Outils .x4-o', (l) => l.map((d) => d.querySelector('b').textContent + '=' + d.querySelector('.x4-p').textContent));
+    eq(x4.slice(0, 4).join(' | '), 'token_verdict=$0.01 | scan_token=$0.02 | robinhood_rpc=$0.005 | chat_completion=from $0.0066', 'les outils x402, dans l ordre voulu, au prix de Base lu en direct');
+    ok(x4[4] === '<img src=x onerror=window.pirate=3>=$0.02' && (await page.$('#x4Outils img')) === null && !(await page.evaluate(() => window.pirate)), 'un nom venu du serveur reste du texte');
+    const x4t = await page.textContent('#x402');
+    ok(/no account and no API key/.test(x4t) && /USDC on Base or Solana/.test(x4t) && /PayAI/.test(x4t) && !/partner/i.test(x4t), 'la section dit x402, sans compte, Base et Solana, le catalogue PayAI — et aucun partenariat');
+    ok(await page.$eval('#x4Decouverte', (a) => a.href) === 'https://web-production-220a3.up.railway.app/.well-known/x402' && (await page.$('#x402 a[href="x402_essai.html"]')) !== null, 'le fichier de decouverte et la page pour payer un appel');
     await pose(page, 'hello');
     ok(/Sign in/.test(await page.textContent('#etat')) && envois.length === 0, 'sans session : la page le dit, rien ne part');
     await ctx.close();
+  }
+
+  console.log('\n-- 2b. le serveur muet : la section le dit, sans inventer de prix --');
+  {
+    const garde = X402; X402 = null;
+    const { page, ctx } = await ouvre();
+    await page.waitForFunction(() => /unavailable/.test(document.getElementById('x4Outils').textContent));
+    ok((await page.$$('#x4Outils .x4-o')).length === 0, 'aucun prix affiche quand le serveur ne repond pas');
+    X402 = garde; await ctx.close();
   }
 
   console.log('\n-- 3. une tache : chaque geste se voit --');

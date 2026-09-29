@@ -524,13 +524,33 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     lignes("ouverts", d.open || [], false);
     lignes("recents", d.recent || [], true);
   }
+  /* ---- LA DERNIERE LECTURE, GARDEE DANS CE NAVIGATEUR (29/09) ----
+     Le proprietaire, a 20:35 UTC : « on dirait que ca a perdu toutes ses donnees ». Le serveur les
+     avait toutes (269 paris depuis 16:02) : il redemarrait, comme a chaque mise en ligne Railway
+     (1 a 2 min, plusieurs fois ce soir-la). Une page ouverte a ce moment-la ne montrait RIEN que
+     « not reachable », et ne reessayait que 30 s plus tard. Elle montre maintenant la derniere
+     lecture recue, datee, et reessaie toutes les 10 s tant que le serveur ne repond pas. Donnees
+     publiques seulement (aucune cle, aucun compte). */
+  var CLE_LOCALE = "swogePolyEtat", minuterie = null;
+  function heure(t){ return new Date(t).toISOString().slice(11, 16) + " UTC"; }
+  function garde(d){ try { localStorage.setItem(CLE_LOCALE, JSON.stringify({ t: Date.now(), d: d })); } catch (e) {} }
+  function relue(){ try { var x = JSON.parse(localStorage.getItem(CLE_LOCALE) || "null"); return x && x.d && x.d.ok && Array.isArray(x.d.agents) ? x : null; } catch (e) { return null; } }
+  var derniere = relue();
+  if (derniere) { peint(derniere.d); statut("Showing the last reading, from " + heure(derniere.t) + " \u2014 loading the latest\u2026"); }
+  function suivant(ms){ clearTimeout(minuterie); minuterie = setTimeout(charge, ms); }
   function charge(){
     fetch(serveur() + "/poly/etat", { cache: "no-store" }).then(function(r){ return r.json(); }).then(function(d){
       if (!d || !d.ok || !Array.isArray(d.agents)) throw new Error("x");
-      peint(d); statut("Updated " + new Date().toISOString().slice(11, 19) + " UTC \u2014 refreshed every 30 seconds.");
-    })["catch"](function(){ statut("The colony is not reachable right now \u2014 try again in a minute.", true); });
+      peint(d); garde(d); derniere = { t: Date.now(), d: d };
+      statut("Updated " + new Date().toISOString().slice(11, 19) + " UTC \u2014 refreshed every 30 seconds.");
+      suivant(30000);
+    })["catch"](function(){
+      statut(derniere ? "The server is restarting \u2014 nothing is lost. Showing the last reading, from " + heure(derniere.t) + "; retrying every 10 seconds."
+                      : "The server is restarting \u2014 nothing is lost. Retrying every 10 seconds\u2026", true);
+      suivant(10000);
+    });
   }
-  charge(); setInterval(charge, 30000);
+  charge();
 })();
 </script>
 </body>

@@ -6,7 +6,9 @@
  *   2. la calibration : aucun match annonce sous le minimum, puis qui du modele
  *      ou du marche est le mieux calibre ;
  *   3. paris ouverts et regles ; un lien seulement vers polymarket.com ;
- *   4. tout est du texte ; serveur injoignable dit ; rien ne deborde a 360 px.
+ *   4. tout est du texte ; serveur injoignable dit ; rien ne deborde a 360 px ;
+ *   5. un redemarrage du serveur n'efface rien a l'ecran : la derniere lecture reste, datee
+ *      (29/09 : « on dirait que ca a perdu toutes ses donnees » pendant une mise en ligne).
  * ==========================================================================*/
 const fs = require('fs'), path = require('path'), http = require('http');
 const SITE = __dirname;
@@ -38,7 +40,7 @@ const CALIBS = {
   async function ouvre(calib, larg, panne) {
     const ctx = await nav.newContext({ viewport: { width: larg || 1100, height: 900 } }), page = await ctx.newPage();
     await page.route((u) => !u.href.startsWith('http://127.0.0.1:' + port), (r) => {
-      if (/\/poly\/etat$/.test(r.request().url()) && !panne) return r.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify(ETAT(CALIBS[calib])) });
+      if (/\/poly\/etat$/.test(r.request().url()) && !(panne === true || (panne && panne.en))) return r.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify(ETAT(CALIBS[calib])) });
       return r.fulfill({ status: 503, body: '' });
     });
     await page.goto('http://127.0.0.1:' + port + '/swoge_polymarket_ai.html', { waitUntil: 'domcontentloaded' });
@@ -89,13 +91,32 @@ const CALIBS = {
   console.log('\n-- 4. panne, 360 px --');
   {
     let { page, ctx } = await ouvre('vide', 1100, true);
-    await page.waitForFunction(() => /not reachable/.test(document.getElementById('statut').textContent));
-    ok(true, 'serveur injoignable : on le dit');
+    await page.waitForFunction(() => /server is restarting/.test(document.getElementById('statut').textContent));
+    ok(/nothing is lost/.test(await page.textContent('#statut')), 'serveur injoignable, sans lecture gardee : on le dit, et qu aucune donnee n est perdue');
     await ctx.close();
     ({ page, ctx } = await ouvre('peu', 360));
     await page.waitForFunction(() => document.querySelectorAll('#agents .agent').length === 5);
     const larg = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     ok(larg <= 1, 'a 360 px, rien ne deborde [' + larg + ']');
+    await ctx.close();
+  }
+
+  console.log('\n-- 5. un redemarrage du serveur n efface rien --');
+  {
+    const panne = { en: false };
+    const { page, ctx } = await ouvre('peu', 1100, panne);
+    await page.waitForFunction(() => document.querySelectorAll('#agents .agent').length === 5 && /Updated/.test(document.getElementById('statut').textContent));
+    panne.en = true;
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => /server is restarting/.test(document.getElementById('statut').textContent), null, { timeout: 15000 });
+    const t = await page.textContent('#agents'), st = await page.textContent('#statut');
+    ok((/118 settled/.test(t) && (await page.$$('#agents .agent')).length === 5), 'page rouverte pendant la panne : les cinq agents et leurs chiffres sont toujours la');
+    ok(/Showing the last reading, from \d\d:\d\d UTC/.test(st) && /retrying every 10 seconds/.test(st), 'et la page dit que c est la derniere lecture, datee, et qu elle reessaie');
+    panne.en = false;
+    await page.waitForFunction(() => /Updated/.test(document.getElementById('statut').textContent), null, { timeout: 15000 });
+    ok(true, 'le serveur revient : la page se remet a jour seule en moins de 15 s');
+    const cle = await page.evaluate(() => localStorage.getItem('swogePolyEtat') || '');
+    ok(!/key|secret|0x[0-9a-f]{64}/i.test(cle) && cle.length > 0, 'ce qui est garde dans le navigateur : la vue publique, rien d autre');
     await ctx.close();
   }
 

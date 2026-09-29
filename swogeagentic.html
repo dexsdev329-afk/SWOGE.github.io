@@ -730,9 +730,9 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 .dev-cle{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center;font-size:12.5px;border-top:1px solid var(--line);padding:6px 0}
 .dev-cle .dim{color:var(--dim)}
 .dev-paie{border-top:0;padding-top:0}
-.dev-paie-f{display:flex;flex-wrap:wrap;gap:6px;align-items:center;width:100%}
-.dev-paie-f input{font:inherit;font-size:12.5px;border:1px solid var(--line);border-radius:8px;padding:6px 8px;min-width:0}
-.dev-paie-f input[type=number]{width:90px}
+.dev-paie-f,.dev-payeur-f{display:flex;flex-wrap:wrap;gap:6px;align-items:center;width:100%}
+.dev-paie-f input,.dev-payeur-f input{font:inherit;font-size:12.5px;border:1px solid var(--line);border-radius:8px;padding:6px 8px;min-width:0}
+.dev-paie-f input[type=number],.dev-payeur-f input[type=number]{width:90px}
 .dev-paie-f input[type=text]{flex:1 1 180px}
 .achat{border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin:10px 0;background:var(--panel2)}
 .achat h4{margin:0 0 4px;font-size:14.5px}
@@ -1033,11 +1033,12 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   <details class="dev" id="dev">
     <summary>&#128268; Use SwogeAgentic from your own agent (API &amp; MCP)</summary>
     <p><a href="swogeagentic_api.html">&#128214; Full API documentation</a> &middot; <a href="llms.txt">llms.txt</a></p>
-    <p>Any AI agent can call these tools — Claude Desktop, Claude Code, Cursor, or your own script. Each call is paid from your $SWOGE balance through an API key, within the daily cap you set. Ask for a price first with <code>quote</code>: it costs nothing.</p>
+    <p>Any AI agent can call these tools — Claude Desktop, Claude Code, Cursor, or your own script. Each call is paid through an API key, within the daily cap you set: from your <b>dollar credit</b> (top it up with one USDC wallet signature, no $SWOGE needed — your agent can even top it up itself) or from your $SWOGE balance. Ask for a price first with <code>quote</code>: it costs nothing.</p>
     <div id="devSession" class="dev-neuve" hidden>Sign in with your wallet (top right) to create API keys.</div>
     <div class="dev-form" id="devForm">
       <input id="devNom" maxlength="40" placeholder="Key name (e.g. my-bot)" aria-label="Key name">
-      <input id="devPlafond" type="number" min="1" step="1" placeholder="Daily cap in $SWOGE" aria-label="Daily cap in $SWOGE">
+      <select id="devPayeur" aria-label="The key pays from"><option value="credit">Pays from my dollar credit</option><option value="swoge">Pays from my $SWOGE</option></select>
+      <input id="devPlafond" type="number" min="0.01" step="0.01" placeholder="Daily cap in USD" aria-label="Daily cap in USD">
       <button type="button" id="devCree">Create key</button>
     </div>
     <div class="dev-neuve" id="devNeuve" hidden></div>
@@ -1381,7 +1382,8 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
           var l = document.createElement("div"); l.className = "dev-cle";
           var b = document.createElement("b"); b.textContent = c.nom; l.appendChild(b);
           var i = document.createElement("span"); i.className = "dim";
-          i.textContent = c.debut + "\u2026 \u00b7 " + nombre(c.depenseAujourdhui) + " / " + nombre(c.plafondSwoge) + " $SWOGE today" + (c.derniere ? " \u00b7 last used " + new Date(c.derniere).toISOString().slice(0, 16).replace("T", " ") + " UTC" : "");
+          var auCredit = c.payeur === "credit";
+          i.textContent = c.debut + "\u2026 \u00b7 " + (auCredit ? usd(c.depenseAujourdhui) + " / " + usd(c.plafondUsd) + " today, from your dollar credit" : nombre(c.depenseAujourdhui) + " / " + nombre(c.plafondSwoge) + " $SWOGE today") + (c.derniere ? " \u00b7 last used " + new Date(c.derniere).toISOString().slice(0, 16).replace("T", " ") + " UTC" : "");
           l.appendChild(i);
           var x = document.createElement("button"); x.type = "button"; x.textContent = "Revoke";
           x.addEventListener("click", function(){
@@ -1389,6 +1391,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
               .then(function(){ chargeDev(); })["catch"](function(){});
           });
           l.appendChild(x); z.appendChild(l);
+          z.appendChild(lignePayeur(c, j));
           z.appendChild(lignePaiements(c, j));
         });
       })["catch"](function(){});
@@ -1414,17 +1417,47 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
         z.innerHTML = "";
         l.slice(0, 10).forEach(function(x){
           var e = document.createElement("div"); e.className = "dev-cle";
-          e.textContent = new Date(x.t).toISOString().slice(5, 16).replace("T", " ") + " \u00b7 " + x.outil + " \u00b7 " + x.swoge + " $SWOGE \u00b7 receipt " + x.id;
+          e.textContent = new Date(x.t).toISOString().slice(5, 16).replace("T", " ") + " \u00b7 " + x.outil + " \u00b7 " + (x.payeur === "credit" ? usd(x.usd) + " from credit" : x.swoge + " $SWOGE") + " \u00b7 receipt " + x.id;
           z.appendChild(e);
         });
       })["catch"](function(){});
   }
+  /* Le payeur d'une cle (29/09/2026) : le credit en dollars ou le $SWOGE, et le plafond du jour
+     dans cette unite. Le serveur ne l'accepte que de la SESSION du proprietaire. */
+  function lignePayeur(c, j){
+    var auCredit = c.payeur === "credit";
+    var box = document.createElement("div"); box.className = "dev-cle dev-paie dev-payeur";
+    var b = document.createElement("button"); b.type = "button"; b.textContent = auCredit ? "Pay from $SWOGE instead" : "Pay from my dollar credit instead";
+    var f = document.createElement("span"); f.hidden = true; f.className = "dev-payeur-f";
+    var m = document.createElement("input"); m.type = "number"; m.id = "payeurCap_" + c.id;
+    if (auCredit) { m.min = "1"; m.step = "1"; m.placeholder = "Daily cap in $SWOGE"; } else { m.min = "0.01"; m.step = "0.01"; m.placeholder = "Daily cap in USD"; m.value = "1"; }
+    m.setAttribute("aria-label", m.placeholder);
+    var ok = document.createElement("button"); ok.type = "button"; ok.textContent = "Save";
+    var msg = document.createElement("span"); msg.className = "dim"; msg.setAttribute("role", "status");
+    f.appendChild(m); f.appendChild(ok); f.appendChild(msg);
+    b.addEventListener("click", function(){ f.hidden = false; b.hidden = true; });
+    ok.addEventListener("click", function(){
+      var corps = auCredit ? { payeur: "swoge", plafondSwoge: Math.floor(Number(m.value)) } : { payeur: "credit", plafondUsd: Number(m.value) };
+      fetch(serveur() + "/agentic/cles/" + encodeURIComponent(c.id) + "/payeur", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + j }, body: JSON.stringify(corps) })
+        .then(function(r){ return r.json(); }).then(function(d){ if (d && d.ok) chargeDev(); else msg.textContent = (d && d.raison) || "Not saved."; })["catch"](function(){ msg.textContent = "The server did not answer."; });
+    });
+    box.appendChild(b); box.appendChild(f);
+    return box;
+  }
+  function peintPayeurCle(){
+    var credit = $("devPayeur").value === "credit", p = $("devPlafond");
+    p.placeholder = credit ? "Daily cap in USD" : "Daily cap in $SWOGE"; p.setAttribute("aria-label", p.placeholder);
+    p.min = credit ? "0.01" : "1"; p.step = credit ? "0.01" : "1";
+  }
+  $("devPayeur").addEventListener("change", peintPayeurCle);
   function creeCle(){
     var j = jeton(); if (!j) { dit(TXT.signin); return; }
-    var plafond = Math.floor(Number($("devPlafond").value));
-    if (!(plafond >= 1)) { dit("Set a daily cap in $SWOGE: it is the most this key can spend per day."); return; }
+    var credit = $("devPayeur").value === "credit";
+    var plafond = credit ? Math.round(Number($("devPlafond").value) * 100) / 100 : Math.floor(Number($("devPlafond").value));
+    if (credit && !(plafond >= 0.01)) { dit("Set a daily cap in USD: it is the most this key can spend per day from your dollar credit."); return; }
+    if (!credit && !(plafond >= 1)) { dit("Set a daily cap in $SWOGE: it is the most this key can spend per day."); return; }
     fetch(serveur() + "/agentic/cles", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + j },
-      body: JSON.stringify({ nom: $("devNom").value, plafondSwoge: plafond }) })
+      body: JSON.stringify(credit ? { nom: $("devNom").value, payeur: "credit", plafondUsd: plafond } : { nom: $("devNom").value, plafondSwoge: plafond }) })
       .then(function(r){ return r.json(); }).then(function(d){
         if (!d || !d.ok) { dit((d && d.raison) || "The key could not be created."); return; }
         /* La cle n'est montree qu'ICI, une fois : jamais ecrite dans le navigateur. */

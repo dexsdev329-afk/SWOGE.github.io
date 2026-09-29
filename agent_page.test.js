@@ -99,11 +99,16 @@ const PEPE = { adresse:'0x6982508145454ce325ddbe47a25d4ec3d2311933', trouve:true
         const q = r.request(), m = q.method();
         DEV.appels.push({ m, u, auth: q.headers().authorization || null, corps: q.postData() || '' });
         /* La permission de payer d'une cle (passerelle, 28/09) : le faux serveur la garde. */
+        /* Le payeur d'une cle (29/09) : credit en dollars ou $SWOGE, le faux serveur le garde. */
+        if (m === 'POST' && /\/payeur$/.test(u)) { const p = JSON.parse(q.postData());
+          DEV.cles.forEach((c) => { c.payeur = p.payeur; c.plafondUsd = p.plafondUsd || null; if (p.plafondSwoge) c.plafondSwoge = p.plafondSwoge; });
+          return r.fulfill({ status:200, contentType:'application/json', body:'{"ok":true}' }); }
         if (m === 'POST' && /\/paiements$/.test(u)) { const p = JSON.parse(q.postData());
           DEV.cles.forEach((c) => { c.paiements = p.actif ? { actif: true, maxAppelUsd: p.maxAppelUsd, hotes: p.hotes } : { actif: false }; });
           return r.fulfill({ status:200, contentType:'application/json', body:'{"ok":true}' }); }
         if (m === 'POST') { const c = JSON.parse(q.postData()); const k = 'swg_' + 'k'.repeat(43);
-          DEV.cles.push({ id: 'abc123def456', nom: c.nom || 'agent', debut: 'swg_kkkk', cree: Date.now(), plafondSwoge: c.plafondSwoge, depenseAujourdhui: 0, revoquee: false });
+          DEV.cles.push({ id: 'abc123def456', nom: c.nom || 'agent', debut: 'swg_kkkk', cree: Date.now(), plafondSwoge: c.plafondSwoge, depenseAujourdhui: 0, revoquee: false,
+            payeur: c.payeur === 'credit' ? 'credit' : 'swoge', plafondUsd: c.plafondUsd || null });
           return r.fulfill({ status:200, contentType:'application/json', body: JSON.stringify({ ok:true, cle: k }) }); }
         if (m === 'DELETE') { DEV.cles.forEach((c) => { c.revoquee = true; }); return r.fulfill({ status:200, contentType:'application/json', body:'{"ok":true}' }); }
         return r.fulfill({ status:200, contentType:'application/json', body: JSON.stringify({ ok:true, cles: DEV.cles }) });
@@ -350,6 +355,9 @@ const PEPE = { adresse:'0x6982508145454ce325ddbe47a25d4ec3d2311933', trouve:true
     await page.waitForFunction(() => !document.getElementById('devForm').hidden);
     await page.click('#devCree');
     ok(/daily cap/.test(await page.textContent('#etat')) && !DEV.appels.some((a) => a.m === 'POST'), 'sans plafond par jour : la page le demande, rien ne part');
+    ok(await page.$eval('#devPayeur', (x) => x.value) === 'credit' && await page.$eval('#devPlafond', (x) => x.placeholder) === 'Daily cap in USD', 'une cle neuve paie par defaut sur le credit en dollars, plafond en dollars');
+    await page.selectOption('#devPayeur', 'swoge');
+    ok(await page.$eval('#devPlafond', (x) => x.placeholder) === 'Daily cap in $SWOGE', 'en $SWOGE : le plafond se dit en $SWOGE');
     await page.fill('#devNom', 'my-bot'); await page.fill('#devPlafond', '5000');
     await page.click('#devCree');
     await page.waitForSelector('#devNeuve:not([hidden]) code');
@@ -365,7 +373,7 @@ const PEPE = { adresse:'0x6982508145454ce325ddbe47a25d4ec3d2311933', trouve:true
     ok(/scan_token · 357\.01535 \$SWOGE · receipt r1e2c3u4/.test(await page.textContent('#devRecus')), 'les derniers appels, avec leur recu');
     /* La passerelle (28/09 au soir) : les paiements d'une cle, eteints par defaut, allumes par la session. */
     ok(/Payments OFF: this key can only read/.test(await page.textContent('#devCles')), 'une cle neuve : paiements eteints, la page le dit');
-    await page.click('.dev-paie button');
+    await page.click('.dev-paie:not(.dev-payeur) button');
     await page.fill('#paieMax_abc123def456', '0.05'); await page.fill('#paieHotes_abc123def456', 'x402factory.ai, api.example.com');
     await page.click('.dev-paie-f button');
     await page.waitForFunction(() => /Payments ON/.test(document.getElementById('devCles').textContent));
@@ -377,6 +385,15 @@ const PEPE = { adresse:'0x6982508145454ce325ddbe47a25d4ec3d2311933', trouve:true
     ok(/audit chain intact, 3 lines/.test(await page.textContent('#devAudit')) && (await page.$('#devAudit img')) === null && !(await page.evaluate(() => window.pirate)),
        'les paiements faits par les cles, avec l etat de la chaine d audit, en texte');
     ok((await page.textContent('#devCurl')).includes('/agentic/pay') && (await page.textContent('#devCurl')).includes('Idempotency-Key'), 'l exemple montre comment payer un service, avec son Idempotency-Key');
+    /* Sortir le $SWOGE du chemin des agents (29/09) : la cle passe au credit en dollars. */
+    await page.click('.dev-payeur button');
+    await page.fill('#payeurCap_abc123def456', '2');
+    await page.click('.dev-payeur-f button');
+    await page.waitForFunction(() => /\$0\.00 \/ \$2\.00 today, from your dollar credit/.test(document.getElementById('devCles').textContent));
+    const py = DEV.appels.find((a) => /\/payeur$/.test(a.u));
+    ok(py && py.auth === 'Bearer jeton-dev' && /\/agentic\/cles\/abc123def456\/payeur$/.test(py.u) && JSON.stringify(JSON.parse(py.corps)) === JSON.stringify({ payeur: 'credit', plafondUsd: 2 }),
+       'la cle passe au credit en dollars : par la SESSION, avec un plafond du jour en dollars');
+    ok(/Pay from \$SWOGE instead/.test(await page.textContent('#devCles')), 'et peut revenir au $SWOGE');
     const larg = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     ok(larg <= 1, 'a 360 px, la section ne deborde pas [' + larg + ']');
     await page.click('#devCles .dev-cle button');

@@ -119,12 +119,12 @@ video{ max-width:100%; }
      versions se font concurrence et aucune ne gagne.
      ================================================================= -->
 <link rel="canonical" href="https://swoleeswoge.dog/swogeagentic_api.html">
-<meta name="description" content="SwogeAgentic API: pay-per-call tools for AI agents over REST and MCP — token scans with SWOGE AI colony measurements, new launches, wallet and infrastructure OSINT, web search, images, a research agent. Read-only, paid in $SWOGE with a daily cap per key.">
+<meta name="description" content="SwogeAgentic API: pay-per-call tools for AI agents over REST and MCP — token scans with SWOGE AI colony measurements, new launches, wallet and infrastructure OSINT, web search, images, a research agent. Read-only, paid from a dollar credit (USDC) or in $SWOGE, with a daily cap per key.">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="SWOGE WORLD">
 <meta property="og:locale" content="en_US">
 <meta property="og:title" content="SwogeAgentic API · tools for AI agents">
-<meta property="og:description" content="SwogeAgentic API: pay-per-call tools for AI agents over REST and MCP — token scans with SWOGE AI colony measurements, new launches, wallet and infrastructure OSINT, web search, images, a research agent. Read-only, paid in $SWOGE with a daily cap per key.">
+<meta property="og:description" content="SwogeAgentic API: pay-per-call tools for AI agents over REST and MCP — token scans with SWOGE AI colony measurements, new launches, wallet and infrastructure OSINT, web search, images, a research agent. Read-only, paid from a dollar credit (USDC) or in $SWOGE, with a daily cap per key.">
 <meta property="og:url" content="https://swoleeswoge.dog/swogeagentic_api.html">
 <meta property="og:image" content="https://swoleeswoge.dog/img/site/partage.jpg">
 <meta property="og:image:width" content="1200">
@@ -132,7 +132,7 @@ video{ max-width:100%; }
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:site" content="@SwoleDogeSwoge">
 <meta name="twitter:title" content="SwogeAgentic API · tools for AI agents">
-<meta name="twitter:description" content="SwogeAgentic API: pay-per-call tools for AI agents over REST and MCP — token scans with SWOGE AI colony measurements, new launches, wallet and infrastructure OSINT, web search, images, a research agent. Read-only, paid in $SWOGE with a daily cap per key.">
+<meta name="twitter:description" content="SwogeAgentic API: pay-per-call tools for AI agents over REST and MCP — token scans with SWOGE AI colony measurements, new launches, wallet and infrastructure OSINT, web search, images, a research agent. Read-only, paid from a dollar credit (USDC) or in $SWOGE, with a daily cap per key.">
 <meta name="twitter:image" content="https://swoleeswoge.dog/img/site/partage.jpg">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="/img/site/icone-32.png">
@@ -724,13 +724,15 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   <div class="cartes">
     <div class="carte-doc"><b>&#128274; Read-only</b><span class="dim">No tool buys, sells, signs or posts. A leaked key can only spend its daily cap on reads.</span></div>
     <div class="carte-doc"><b>&#129534; Quote first</b><span class="dim">Every tool takes <code>quote: true</code>: the price, nothing charged — <b>no key needed</b>. Paid calls return the exact amount and a receipt.</span></div>
-    <div class="carte-doc"><b>&#128184; Paid in $SWOGE</b><span class="dim">From your SWOGE balance, within a daily cap per key. Refused calls are never billed.</span></div>
+    <div class="carte-doc"><b>&#128184; Dollar credit or $SWOGE</b><span class="dim">From your dollar credit (topped up with one USDC signature, no $SWOGE needed) or your SWOGE balance, within a daily cap per key. Refused calls are never billed.</span></div>
   </div>
 
   <h2>1. Get a key</h2>
-  <p>Open <a href="swogeagentic.html">SwogeAgentic</a>, sign in with your wallet (top right), open <b>&#128268; Use SwogeAgentic from your own agent</b>, name the key and set its <b>daily cap</b> in $SWOGE. The key (<code>swg_…</code>) is shown <b>once</b>: the server keeps only its SHA-256 fingerprint. Up to 5 active keys per wallet; revoke any time. A key cannot create or revoke keys.</p>
+  <p>Open <a href="swogeagentic.html">SwogeAgentic</a>, sign in with your wallet (top right), open <b>&#128268; Use SwogeAgentic from your own agent</b>, name the key, choose what it pays from — your <b>dollar credit</b> (daily cap in USD) or your <b>$SWOGE</b> (daily cap in $SWOGE) — and set its <b>daily cap</b>. You can switch a key later. The key (<code>swg_…</code>) is shown <b>once</b>: the server keeps only its SHA-256 fingerprint. Up to 5 active keys per wallet; revoke any time. A key cannot create or revoke keys.</p>
   <p>Send it as <code>Authorization: Bearer swg_…</code> (or <code>x-api-key: swg_…</code>).</p>
 
+  <h3>Paying with the dollar credit</h3>
+  <p>A key set to pay from the dollar credit is billed in dollars, at the same prices, from its owner's credit. Your agent can read the credit with <code>GET /credit</code> and top it up itself with one x402 payment (USDC on Base or Solana): <code>POST /credit/topup</code> with <code>{"usd": 5}</code> and the key — the 402 says what to sign; the credit is added once the payment settles, once per transaction ($0.10 to $50, not withdrawable). Videos stay in $SWOGE for now.</p>
   <h2>2. Tools and prices <span class="dim" id="coursDoc"></span></h2>
   <table class="outils"><thead><tr><th>Tool</th><th>What it does</th><th>Arguments</th><th>Price</th></tr></thead>
     <tbody id="outilsDoc"><tr><td colspan="4" class="dim">Loading the live catalogue…</td></tr></tbody></table>

@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>SWOGE Agent Store — measured agents and paid tools</title>
+<meta name="description" content="Agents and paid tools that AI agents can use, with what SWOGE measured: price, permissions, how to pay, and real usage. No invented ratings.">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/img/site/icone-32.png">
+<link rel="apple-touch-icon" href="/img/site/icone-180.png">
+<!-- ==================================================================
+ * L'AGENT STORE (29 septembre 2026)
+ *
+ * Etape 2 de l'analyse « Agent OS » (ChatGPT/Grok), retenue par le proprietaire.
+ * Deux rayons :
+ *   1. les agents de SWOGE (/agentic/store, store_agents.js du serveur) : prix,
+ *      entree, permissions, facons de payer, et l'USAGE MESURE sur 30 jours par
+ *      des agents exterieurs — aucun taux sous 10 tentatives ;
+ *   2. les services x402 d'autres vendeurs (/agentic/services, sonde_services.js) :
+ *      ce que SWOGE a mesure SANS payer (sondes), aucun verdict sous 3 sondes.
+ * La page ne note rien elle-meme : elle MONTRE ce que le serveur a mesure. Tout ce
+ * qui vient du serveur ou d'un vendeur est pose en textContent, jamais en HTML ;
+ * un lien n'est suivi que s'il est https.
+ * « Use in a mission » ouvre SwoleMind avec l'objectif prerempli (?mission=) : rien
+ * n'est lance, rien n'est paye sans que le joueur envoie.
+ * ================================================================== -->
+<style>
+:root{ --fond:#EEF3FB; --carte:#fff; --encre:#0B1B36; --pale:#5a6b85; --bleu:#1652f0; --violet:#5b3df5; --ligne:#E1E9F6; --ok:#0a7d3e; --err:#b3261e; }
+*{ box-sizing:border-box; }
+html{ -webkit-text-size-adjust:100%; }
+body{ margin:0; background:linear-gradient(180deg,#e9efff 0,var(--fond) 280px); color:var(--encre); font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; min-height:100vh; }
+a{ color:var(--bleu); }
+.haut{ display:flex; gap:14px; align-items:center; flex-wrap:wrap; max-width:1080px; margin:0 auto; padding:14px 16px 0; font-size:14px; }
+.haut .logo{ font-weight:800; color:var(--encre); text-decoration:none; margin-right:auto; }
+.haut a{ text-decoration:none; font-weight:600; }
+main{ max-width:1080px; margin:0 auto; padding:18px 16px 48px; }
+h1{ font-size:30px; margin:6px 0 6px; letter-spacing:-.01em; }
+h1 em{ font-style:normal; background:linear-gradient(90deg,var(--bleu),var(--violet)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+.intro{ color:var(--pale); max-width:720px; margin:0 0 14px; }
+.onglets{ display:flex; gap:6px; margin:16px 0 10px; border-bottom:1px solid var(--ligne); flex-wrap:wrap; }
+.onglets button{ font:inherit; font-weight:700; border:0; background:none; padding:10px 12px; color:var(--pale); cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px; }
+.onglets button[aria-selected="true"]{ color:var(--encre); border-bottom-color:var(--bleu); }
+.filtres{ display:flex; flex-wrap:wrap; gap:6px; margin:10px 0 14px; }
+.puce{ font:inherit; font-size:13.5px; font-weight:600; border:1px solid var(--ligne); background:#fff; color:var(--encre); border-radius:999px; padding:6px 12px; cursor:pointer; min-height:34px; }
+.puce[aria-pressed="true"]{ border-color:var(--bleu); background:#eaf1ff; color:var(--bleu); }
+.grille{ display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:12px; }
+.agent{ background:var(--carte); border:1px solid var(--ligne); border-radius:14px; padding:14px; display:flex; flex-direction:column; gap:8px; box-shadow:0 6px 22px rgba(11,27,54,.05); min-width:0; }
+.agent .tete{ display:flex; justify-content:space-between; gap:8px; align-items:baseline; }
+.agent .nom{ font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-weight:700; font-size:14.5px; overflow-wrap:anywhere; }
+.agent .prix{ font-weight:800; white-space:nowrap; font-size:14px; }
+.agent .resume{ font-size:14px; margin:0; overflow-wrap:anywhere; }
+.etiquettes{ display:flex; flex-wrap:wrap; gap:4px; }
+.etiquettes span{ font-size:12px; background:#f1f4fb; border-radius:999px; padding:2px 8px; color:var(--pale); }
+.mesure{ font-size:13px; color:var(--pale); border-top:1px solid var(--ligne); padding-top:8px; }
+.mesure b{ color:var(--encre); }
+.agent details{ font-size:13px; }
+.agent summary{ cursor:pointer; color:var(--bleu); font-weight:600; }
+.agent dl{ margin:6px 0 0; display:grid; grid-template-columns:auto 1fr; gap:4px 10px; }
+.agent dt{ color:var(--pale); }
+.agent dd{ margin:0; overflow-wrap:anywhere; }
+.agent code{ font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12px; overflow-wrap:anywhere; }
+.actions{ display:flex; gap:6px; flex-wrap:wrap; margin-top:auto; }
+.btn{ font:inherit; font-size:13.5px; font-weight:700; border:0; border-radius:999px; padding:8px 14px; background:var(--bleu); color:#fff; cursor:pointer; text-decoration:none; display:inline-block; min-height:36px; }
+.btn.clair{ background:#eaf1ff; color:var(--bleu); }
+.recherche{ display:flex; gap:8px; }
+.recherche input{ flex:1; min-width:0; font:inherit; border:1px solid var(--ligne); border-radius:10px; padding:10px 12px; }
+.statut{ min-height:20px; color:var(--pale); font-size:13.5px; margin:8px 0; }
+.statut.err{ color:var(--err); }
+.note{ font-size:12.5px; color:var(--pale); margin-top:14px; }
+[hidden]{ display:none !important; }
+@media (max-width:420px){ h1{ font-size:25px; } .grille{ grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<nav class="haut" aria-label="SWOGE">
+  <a class="logo" href="index.html">SWOGE</a>
+  <a href="swolemind.html">SwoleMind</a>
+  <a href="swogeagentic.html">SwogeAgentic</a>
+  <a href="swoge_esim.html">eSIM</a>
+  <a href="swogeagentic_api.html">API docs</a>
+</nav>
+<main>
+  <h1>Agent <em>Store</em></h1>
+  <p class="intro">Agents and paid tools that AI agents &mdash; and you &mdash; can use, pay per task, with no subscription. Every number on this page was measured by SWOGE: usage by outside agents, probes of other sellers&rsquo; services. Nothing is rated that was not measured.</p>
+  <div class="onglets" role="tablist">
+    <button type="button" role="tab" id="ongletSwoge" aria-selected="true" aria-controls="rayonSwoge">SWOGE agents</button>
+    <button type="button" role="tab" id="ongletX402" aria-selected="false" aria-controls="rayonX402">x402 services (other sellers)</button>
+  </div>
+
+  <section id="rayonSwoge" role="tabpanel" aria-labelledby="ongletSwoge">
+    <div class="filtres" id="filtres"></div>
+    <p class="statut" id="statutSwoge" role="status">Loading the agents&hellip;</p>
+    <div class="grille" id="grilleSwoge"></div>
+    <p class="note" id="noteSwoge"></p>
+  </section>
+
+  <section id="rayonX402" role="tabpanel" aria-labelledby="ongletX402" hidden>
+    <p class="intro" id="resumeCatalogue">Services from the public x402 catalogue, with what SWOGE measured without paying: one probe per service at most every 20 hours, a service &ldquo;answers&rdquo; when it returns a readable payment request. No verdict under 3 probes.</p>
+    <div class="recherche"><input type="text" id="besoin" maxlength="80" placeholder="What do you need? weather, token price, news, translation&hellip;" aria-label="What do you need?"><button type="button" class="btn" id="chercher">Search</button></div>
+    <div class="filtres" id="besoins"></div>
+    <p class="statut" id="statutX402" role="status"></p>
+    <div class="grille" id="grilleX402"></div>
+  </section>
+</main>
+<script>
+(function(){
+  "use strict";
+  var $ = function(id){ return document.getElementById(id); };
+  function serveur(){
+    try { var q = new URLSearchParams(location.search).get("server"); if (q) return String(q).replace(/^ws/, "http").replace(/\/$/, ""); } catch (e) {}
+    return "https://web-production-220a3.up.railway.app";
+  }
+  function el(tag, cls, txt){ var e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; }
+  function usd(x){ var n = Number(x); if (!isFinite(n)) return "—"; return "$" + (n >= 1 || n === 0 ? n.toFixed(2) : n.toLocaleString("en-US", { maximumFractionDigits: 4 })); }
+  function nombre(x){ return Number(x || 0).toLocaleString("en-US"); }
+  function statut(id, t, err){ var s = $(id); s.textContent = t || ""; s.className = "statut" + (err ? " err" : ""); }
+  function httpsOk(u){ return /^https:\/\/[^\s"'<>]+$/i.test(String(u || "")); }
+  function copie(t, b){ try { navigator.clipboard.writeText(t).then(function(){ b.textContent = "Copied"; }, function(){ b.textContent = "Copy failed"; }); } catch (e) { b.textContent = "Copy failed"; } }
+  /* SwoleMind, en mode Mission, l'objectif prerempli : le joueur relit, puis envoie. */
+  function lienMission(objectif){ return "swolemind.html?mission=" + encodeURIComponent(String(objectif).slice(0, 400)); }
+
+  /* ---- les onglets ---- */
+  function onglet(x402){
+    $("ongletSwoge").setAttribute("aria-selected", String(!x402)); $("ongletX402").setAttribute("aria-selected", String(x402));
+    $("rayonSwoge").hidden = x402; $("rayonX402").hidden = !x402;
+    if (x402 && !etat.cherche) cherche("");
+  }
+  $("ongletSwoge").addEventListener("click", function(){ onglet(false); });
+  $("ongletX402").addEventListener("click", function(){ onglet(true); });
+
+  /* ---- 1. les agents de SWOGE ---- */
+  var etat = { agents: [], famille: "All", mission: {}, cherche: false };
+  function prixTexte(p){
+    if (!p) return "—";
+    if (p.free) return "free";
+    if (p.variable && p.maxUsd != null) return "real cost, up to " + usd(p.maxUsd);
+    if (p.usd != null) return usd(p.usd) + (p.variable ? " (from)" : "");
+    return "—";
+  }
+  function carteAgent(a){
+    var c = el("article", "agent");
+    var t = el("div", "tete"); t.appendChild(el("span", "nom", a.name)); t.appendChild(el("span", "prix", prixTexte(a.price))); c.appendChild(t);
+    c.appendChild(el("p", "resume", a.summary || ""));
+    var e = el("div", "etiquettes"); (a.capabilities || []).forEach(function(x){ e.appendChild(el("span", null, x)); }); c.appendChild(e);
+    var u = a.usage || {};
+    var m = el("div", "mesure");
+    m.appendChild(el("b", null, nombre(u.paidCalls) + " paid call" + (u.paidCalls === 1 ? "" : "s")));
+    m.appendChild(document.createTextNode(" by outside agents in 30 days" + (u.paidUsd ? " (" + usd(u.paidUsd) + ")" : "") + " · " + nombre(u.priceQuotes) + " price request" + (u.priceQuotes === 1 ? "" : "s")
+      + " · " + (u.verdict || "")));
+    c.appendChild(m);
+    var d = el("details"); d.appendChild(el("summary", null, "Details: input, permissions, how to pay"));
+    var dl = el("dl");
+    function ligne(k, v){ dl.appendChild(el("dt", null, k)); var dd = el("dd"); if (typeof v === "string") dd.textContent = v; else dd.appendChild(v); dl.appendChild(dd); }
+    ligne("Agent ID", a.id || "");
+    ligne("Owner", (a.owner && a.owner.name) || "SWOGE");
+    ligne("Input", (a.input || []).map(function(i){ return i.name + (i.required ? " (required)" : "") + (i.about ? ": " + i.about : ""); }).join("; ") || "none");
+    ligne("Permissions", (a.permissions || []).join("; "));
+    ligne("Payment", (a.payment || []).join(" · "));
+    if (a.price && a.price.note) ligne("Price", a.price.note);
+    var ep = el("code", null, (a.endpoints && a.endpoints.rest) || ""); ligne("REST", ep);
+    d.appendChild(dl); d.appendChild(el("p", null, a.description || ""));
+    c.appendChild(d);
+    var ac = el("div", "actions");
+    if (etat.mission[a.name]) {
+      var b = el("a", "btn", "Use in a mission"); b.href = lienMission(MISSIONS[a.name] || ("Use " + a.name + " to: ")); ac.appendChild(b);
+    }
+    var cp = el("button", "btn clair", "Copy API call"); cp.type = "button";
+    var ex = (a.input || []).filter(function(i){ return i.required; }).reduce(function(o, i){ o[i.name] = "..."; return o; }, {});
+    var curl = "curl -X POST " + ((a.endpoints && a.endpoints.rest) || "") + " -H 'Authorization: Bearer swg_...' -H 'content-type: application/json' -d '" + JSON.stringify({ arguments: ex }) + "'";
+    cp.addEventListener("click", function(){ copie(curl, cp); });
+    ac.appendChild(cp);
+    c.appendChild(ac);
+    return c;
+  }
+  /* L'objectif propose a la mission, pour les outils que l'agent de SwoleMind sait utiliser. */
+  var MISSIONS = {
+    scan_token: "Analyze this token and tell me the risks: ", can_i_sell: "Check whether I could sell this token back before I buy it: ",
+    colony_activity: "What is the SWOGE AI colony doing right now?", swoge_economy: "How much $SWOGE has been burnt, what is in the vault, and what is the price now?",
+    new_launches: "What are the newest tokens the colony found, and what did it decide?", wallet_intel: "Tell me what this wallet does: ",
+    osint_lookup: "Check the public infrastructure of this website (DNS, hosting, certificates): ", web_search: "Research this on the web, with sources: ",
+    stock_token_check: "Is this the official Robinhood Stock Token or a copy? ", base_launches: "What launched on Base today (Clanker, Zora)?",
+    base_deployer: "What is the launch record of this Base deployer? "
+  };
+  function peintFiltres(){
+    var f = $("filtres"); f.textContent = "";
+    var fams = ["All"]; etat.agents.forEach(function(a){ (a.capabilities || []).forEach(function(x){ if (fams.indexOf(x) < 0) fams.push(x); }); });
+    fams.forEach(function(x){
+      var b = el("button", "puce", x); b.type = "button"; b.setAttribute("aria-pressed", String(x === etat.famille));
+      b.addEventListener("click", function(){ etat.famille = x; peintFiltres(); peintAgents(); });
+      f.appendChild(b);
+    });
+  }
+  function peintAgents(){
+    var g = $("grilleSwoge"); g.textContent = "";
+    etat.agents.filter(function(a){ return etat.famille === "All" || (a.capabilities || []).indexOf(etat.famille) >= 0; })
+      .forEach(function(a){ g.appendChild(carteAgent(a)); });
+  }
+  /* Les outils que l'agent des missions sait utiliser (catalogue de /studio/agent). */
+  var missionsLues = fetch(serveur() + "/studio/agent/catalogue", { cache: "no-store" }).then(function(r){ return r.json(); })
+    .then(function(c){ (c && c.outils || []).forEach(function(o){ etat.mission[o.nom] = true; }); })["catch"](function(){});
+  Promise.all([fetch(serveur() + "/agentic/store", { cache: "no-store" }).then(function(r){ return r.json(); }), missionsLues]).then(function(v){
+    var d = v[0];
+    if (!d || !d.ok || !Array.isArray(d.agents)) throw new Error("no store");
+    etat.agents = d.agents;
+    statut("statutSwoge", "");
+    peintFiltres(); peintAgents();
+    $("noteSwoge").textContent = (d.window ? "Usage window: " + d.window.from + " to " + d.window.to + " (UTC). " : "") + (d.note || "");
+    if (d.catalogue) $("resumeCatalogue").textContent = "The public x402 catalogue lists " + nombre(d.catalogue.catalogue) + " services. SWOGE has probed " + nombre(d.catalogue.probed)
+      + " of them without paying, and judged " + nombre(d.catalogue.judged) + " (a verdict needs 3 probes, one every 20 hours at most)"
+      + (d.catalogue.neverAnsweredPct != null ? "; " + d.catalogue.neverAnsweredPct + "% of the judged ones never answered." : ".");
+  })["catch"](function(){ statut("statutSwoge", "The store is not available right now - try again in a minute.", true); });
+
+  /* ---- 2. les services x402 d'autres vendeurs ---- */
+  var BESOINS = ["token price", "crypto news", "weather", "web search", "translate", "image", "wallet", "sentiment"];
+  BESOINS.forEach(function(x){
+    var b = el("button", "puce", x); b.type = "button";
+    b.addEventListener("click", function(){ $("besoin").value = x; cherche(x); });
+    $("besoins").appendChild(b);
+  });
+  function carteService(s){
+    var c = el("article", "agent");
+    var hote = ""; try { hote = new URL(s.url).hostname; } catch (e) {}
+    var t = el("div", "tete"); t.appendChild(el("span", "nom", hote || "service")); t.appendChild(el("span", "prix", s.priceUsd != null ? usd(s.priceUsd) : "price in its 402")); c.appendChild(t);
+    c.appendChild(el("p", "resume", String(s.description || "No description.").slice(0, 300)));
+    var e = el("div", "etiquettes"); (s.networks || []).forEach(function(n){ e.appendChild(el("span", null, /8453$/.test(n) ? "Base" : /^solana/.test(n) ? "Solana" : n)); }); e.appendChild(el("span", null, s.method || "GET")); c.appendChild(e);
+    var p = s.probes || {}, pc = s.paidCalls || {};
+    var m = el("div", "mesure");
+    m.appendChild(el("b", null, s.verdict || ""));
+    m.appendChild(document.createTextNode((p.medianMs != null ? " · median " + p.medianMs + " ms" : "") + (p.lastFailure ? " · last failure: " + String(p.lastFailure.reason || "").slice(0, 60) : "")
+      + " · " + (pc.n ? pc.n + " paid call" + (pc.n > 1 ? "s" : "") + " through SWOGE, " + pc.succeededPct + "% succeeded" : "no paid call through SWOGE yet")));
+    c.appendChild(m);
+    var d = el("details"); d.appendChild(el("summary", null, "Details"));
+    var dl = el("dl");
+    function ligne(k, v){ dl.appendChild(el("dt", null, k)); var dd = el("dd"); if (typeof v === "string") dd.textContent = v; else dd.appendChild(v); dl.appendChild(dd); }
+    ligne("Agent ID", s.url || "");
+    ligne("Owner", hote ? hote + " (not SWOGE)" : "unknown");
+    ligne("Probes", p.n ? p.n + " (answered " + p.answeredPct + "%), last " + String(p.lastProbe || "").slice(0, 16).replace("T", " ") : "not probed yet");
+    ligne("Payment", "x402 per call" + ((s.networks || []).length ? " on " + s.networks.join(", ") : ""));
+    d.appendChild(dl); c.appendChild(d);
+    var ac = el("div", "actions");
+    if (httpsOk(s.url)) {
+      var b = el("a", "btn", "Use in a mission"); b.href = lienMission("Use the paid x402 service " + s.url + " to: "); ac.appendChild(b);
+      var o = el("a", "btn clair", "Open"); o.href = s.url; o.target = "_blank"; o.rel = "noopener nofollow"; ac.appendChild(o);
+    }
+    c.appendChild(ac);
+    return c;
+  }
+  function cherche(q){
+    etat.cherche = true;
+    statut("statutX402", "Searching the measured catalogue…");
+    fetch(serveur() + "/agentic/services?limit=24&q=" + encodeURIComponent(String(q || "").slice(0, 80)), { cache: "no-store" }).then(function(r){ return r.json(); }).then(function(d){
+      var g = $("grilleX402"); g.textContent = "";
+      if (!d || !d.ok) { statut("statutX402", (d && d.raison) || "The catalogue is not available right now.", true); return; }
+      statut("statutX402", d.services.length ? d.services.length + " service" + (d.services.length > 1 ? "s" : "") + (q ? " for “" + q + "”" : "") + ", best measured first." : "No service matches.");
+      d.services.forEach(function(s){ g.appendChild(carteService(s)); });
+    })["catch"](function(){ statut("statutX402", "The catalogue did not answer - try again.", true); });
+  }
+  $("chercher").addEventListener("click", function(){ cherche($("besoin").value.trim()); });
+  $("besoin").addEventListener("keydown", function(e){ if (e.key === "Enter") cherche($("besoin").value.trim()); });
+  try { if (new URLSearchParams(location.search).get("tab") === "x402") onglet(true); } catch (e) {}
+})();
+</script>
+</body>
+</html>

@@ -96,7 +96,6 @@ const ACHAT = { id: 'a1', nom: 'Europe 1GB 7 days', go: 1, jours: 7, etat: 'livr
         return r.fulfill({ status: 200, headers: H, contentType: 'application/json', body: JSON.stringify({ ok: true, regions: ['Europe', 'Asia', 'Middle East', 'South America', 'North America', 'Global'],
           countries: [{ code: 'FR', name: 'France' }, { code: 'JP', name: 'Japan' }, { code: 'US', name: 'United States' }, { code: 'ZZ9', name: 'Bad code' }, { code: 'NZ', name: 'New <img src=x onerror=window.pirate=7> Zealand' }],
           backgrounds: ['https://web-production-220a3.up.railway.app/esim/fond/2.jpg', 'javascript:alert(1)'] }) }); }
-      if (/\/esim\/fond\/2\.jpg$/.test(u)) { vu.fond = true; return r.fulfill({ status: 200, contentType: 'image/png', body: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64') }); }
       if (/\/agentic\/solana\/blockhash$/.test(u)) return r.fulfill({ status: 200, headers: H, contentType: 'application/json', body: JSON.stringify({ ok: true, blockhash: BH }) });
       if (/\/esim\/order\//.test(u)) {
         vu.commandes++;
@@ -230,7 +229,8 @@ const ACHAT = { id: 'a1', nom: 'Europe 1GB 7 days', go: 1, jours: 7, etat: 'livr
     await page.waitForFunction(() => /United States/.test(document.getElementById('pays').value));
     ok(vu.recherche === 'United States', 'un pays de la liste : la recherche part');
     await page.waitForFunction(() => document.body.classList.contains('avec-fond'));
-    ok(vu.fond && /\/esim\/fond\/2\.jpg/.test(await page.evaluate(() => document.body.style.getPropertyValue('--image-fond'))), 'le fond : une image https du serveur, jamais une adresse javascript:');
+    ok(/^url\("img\/esim\/fond_[123]\.jpg"\)$/.test(await page.evaluate(() => document.body.style.getPropertyValue('--image-fond'))), 'le fond : une des trois images Kling, servie par le site');
+    ok([1, 2, 3].every((i) => { const t = fs.statSync(path.join(SITE, 'img/esim/fond_' + i + '.jpg')).size; return t > 20000 && t < 300000; }), 'les trois fonds existent et restent legers (moins de 300 Ko chacun)');
     const larg = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     ok(larg <= 1, 'a 360 px, rien ne deborde [' + larg + ']');
     await ctx.close();

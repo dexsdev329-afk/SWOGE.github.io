@@ -62,7 +62,7 @@ a{ color:var(--bleu); }
 .liste-pays .drapeau{ font-size:20px; line-height:1; width:26px; text-align:center; }
 .liste-pays .vide{ padding:10px 12px; color:var(--pale); }
 /* ---- le fond (29/09) : des images faites une fois par Kling, voilees pour que le texte reste lisible ---- */
-body.avec-fond{ background:linear-gradient(rgba(238,243,251,.62),rgba(238,243,251,.92) 40%,rgba(238,243,251,.97)),var(--image-fond) center top / cover fixed no-repeat,var(--fond); }
+body.avec-fond{ min-height:100vh; background:linear-gradient(rgba(238,243,251,.62),rgba(238,243,251,.92) 40%,rgba(238,243,251,.97)) center / 100% 100% fixed no-repeat,var(--image-fond) center top / cover fixed no-repeat,var(--fond); }
 @media (max-width:700px){ body.avec-fond{ background-attachment:scroll; } }
 .carte{ box-shadow:0 6px 24px rgba(11,27,54,.06); }
 </style>
@@ -455,14 +455,15 @@ function qrMatrice(txt){
       if (PAYS.length) { COURANTS = COURANTS.filter(function(x){ return vendus[x[0]]; }); peintRapides(); }
     }
     peintListe();
-    /* Le fond : une des images faites par Kling, servies par le serveur (https seulement). */
-    var fonds = (d && Array.isArray(d.backgrounds) ? d.backgrounds : []).filter(function(u){ return /^https:\/\/[a-z0-9.-]+\/esim\/fond\/[1-9]\.jpg$/i.test(String(u)); });
-    if (fonds.length) {
-      var u = fonds[Math.floor(Math.random() * fonds.length)], im = new Image();
-      im.onload = function(){ document.body.style.setProperty("--image-fond", "url(\"" + u + "\")"); document.body.classList.add("avec-fond"); };
-      im.src = u;
-    }
   })["catch"](function(){ peintListe(); });
+  /* Le fond : une des trois images faites par Kling le 29/09 (le serveur les garde en PNG
+     de ~6 Mo ; ici des JPEG de 1600 px, 86 a 190 Ko, servis par le site). Posee une fois
+     chargee : sans image, le fond d'avant. */
+  (function(){
+    var u = "img/esim/fond_" + (1 + Math.floor(Math.random() * 3)) + ".jpg", im = new Image();
+    im.onload = function(){ document.body.style.setProperty("--image-fond", "url(\"" + u + "\")"); document.body.classList.add("avec-fond"); };
+    im.src = u;
+  })();
 
   /* ---- 2. payer : le devis et le paiement portent le MEME plan (le serveur lie l'un a l'autre) ---- */
   function appel(entetes){

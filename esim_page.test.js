@@ -91,6 +91,12 @@ const ACHAT = { id: 'a1', nom: 'Europe 1GB 7 days', go: 1, jours: 7, etat: 'livr
             { plan: 'fr-3gb', name: 'France 3GB', covers: 'France', gb: 3, days: 15, priceUsd: 4.23 }],
           unavailable: 1, terms: 'javascript:alert(1)', compatibility: 'https://vamoschips.com/compatibility' }) });
       }
+      /* Choisir sans taper (29/09) : les pays vendus, un nom piege, et les images de fond. */
+      if (/\/esim\/destinations$/.test(u)) { vu.destinations = (vu.destinations || 0) + 1;
+        return r.fulfill({ status: 200, headers: H, contentType: 'application/json', body: JSON.stringify({ ok: true, regions: ['Europe', 'Asia', 'Middle East', 'South America', 'North America', 'Global'],
+          countries: [{ code: 'FR', name: 'France' }, { code: 'JP', name: 'Japan' }, { code: 'US', name: 'United States' }, { code: 'ZZ9', name: 'Bad code' }, { code: 'NZ', name: 'New <img src=x onerror=window.pirate=7> Zealand' }],
+          backgrounds: ['https://web-production-220a3.up.railway.app/esim/fond/2.jpg', 'javascript:alert(1)'] }) }); }
+      if (/\/esim\/fond\/2\.jpg$/.test(u)) { vu.fond = true; return r.fulfill({ status: 200, contentType: 'image/png', body: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64') }); }
       if (/\/agentic\/solana\/blockhash$/.test(u)) return r.fulfill({ status: 200, headers: H, contentType: 'application/json', body: JSON.stringify({ ok: true, blockhash: BH }) });
       if (/\/esim\/order\//.test(u)) {
         vu.commandes++;
@@ -202,6 +208,31 @@ const ACHAT = { id: 'a1', nom: 'Europe 1GB 7 days', go: 1, jours: 7, etat: 'livr
     ok(!(await page.isDisabled('#payer')), 'on peut reessayer');
     const larg = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     ok(larg <= 1, 'a 320 px, rien ne deborde [' + larg + ']');
+    await ctx.close();
+  }
+  console.log('\n-- 6. choisir sans taper : drapeaux, pastilles, tous les pays, le fond (29/09) --');
+  {
+    const { page, vu, ctx } = await ouvre({ largeur: 360 });
+    await page.waitForFunction(() => document.querySelectorAll('#listePays button').length > 0);
+    const puces = await page.$$eval('#rapides .puce', (l) => l.map((b) => b.textContent));
+    ok(puces.includes('\u{1F1EF}\u{1F1F5}Japan') && puces.includes('\u{1F1EB}\u{1F1F7}France') && puces.includes('\u{1F30D}Europe') && puces.includes('\u{1F310}Global'), 'des pastilles avec drapeau : pays courants et regions');
+    ok(!puces.some((t) => /Thailand|Mexico/.test(t)), 'les pastilles ne montrent que des pays vraiment vendus (la liste du serveur)');
+    await page.click('#rapides .puce:has-text("Japan")');
+    await page.waitForSelector('#cartePlans:not([hidden])');
+    ok(vu.recherche === 'Japan' && (await page.inputValue('#pays')) === 'Japan', 'un tap sur Japan : la recherche part, sans rien taper');
+    await page.click('#tousPays summary');
+    const liste = await page.$$eval('#listePays button', (l) => l.map((b) => b.textContent));
+    ok(liste.length === 4 && liste[0] === '\u{1F1EB}\u{1F1F7}France' && !liste.some((t) => /Bad code/.test(t)), 'tous les pays, chacun avec son drapeau ; un code invalide est ecarte');
+    ok((await page.$('#listePays img')) === null && !(await page.evaluate(() => window.pirate)), 'un nom de pays est du texte, jamais du HTML');
+    await page.fill('#pays', 'uni');
+    ok((await page.$$eval('#listePays button', (l) => l.map((b) => b.textContent))).join() === '\u{1F1FA}\u{1F1F8}United States', 'taper filtre la liste');
+    await page.click('#listePays button');
+    await page.waitForFunction(() => /United States/.test(document.getElementById('pays').value));
+    ok(vu.recherche === 'United States', 'un pays de la liste : la recherche part');
+    await page.waitForFunction(() => document.body.classList.contains('avec-fond'));
+    ok(vu.fond && /\/esim\/fond\/2\.jpg/.test(await page.evaluate(() => document.body.style.getPropertyValue('--image-fond'))), 'le fond : une image https du serveur, jamais une adresse javascript:');
+    const larg = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    ok(larg <= 1, 'a 360 px, rien ne deborde [' + larg + ']');
     await ctx.close();
   }
   ok(/<meta name="robots" content="noindex">/.test(fs.readFileSync(path.join(SITE, 'swoge_esim.html'), 'utf8')), 'hors moteurs pour l instant');

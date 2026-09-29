@@ -49,6 +49,22 @@ a{ color:var(--bleu); }
 .ach-act > div span{ font-weight:700; font-size:13px; }
 .ach-act > div code{ flex:1 1 200px; background:#f6f8fc; border-radius:8px; padding:6px 8px; }
 .ach-qr{ width:216px; height:216px; image-rendering:pixelated; border-radius:8px; background:#fff; display:block; margin:8px auto; }
+/* ---- choisir sans taper (29/09) : drapeaux, destinations courantes, tous les pays ---- */
+.rapides{ display:flex; flex-wrap:wrap; gap:8px; margin:12px 0 4px; }
+.puce{ width:auto; min-height:36px; padding:7px 12px; border-radius:999px; background:#f3f6fc; color:var(--encre); border:1px solid var(--ligne); font-weight:600; font-size:14px; display:inline-flex; gap:6px; align-items:center; }
+.puce:hover,.puce:focus-visible{ border-color:var(--bleu); background:#eaf1ff; }
+.puce .drapeau{ font-size:18px; line-height:1; }
+.tous{ margin-top:10px; }
+.tous summary{ cursor:pointer; color:var(--bleu); font-weight:700; padding:6px 0; }
+.liste-pays{ max-height:320px; overflow:auto; border:1px solid var(--ligne); border-radius:12px; margin-top:6px; }
+.liste-pays button{ display:flex; gap:10px; align-items:center; width:100%; min-height:42px; border-radius:0; background:#fff; color:var(--encre); font-weight:500; text-align:left; padding:8px 12px; border-bottom:1px solid var(--ligne); }
+.liste-pays button:hover,.liste-pays button:focus-visible{ background:#eaf1ff; }
+.liste-pays .drapeau{ font-size:20px; line-height:1; width:26px; text-align:center; }
+.liste-pays .vide{ padding:10px 12px; color:var(--pale); }
+/* ---- le fond (29/09) : des images faites une fois par Kling, voilees pour que le texte reste lisible ---- */
+body.avec-fond{ background:linear-gradient(rgba(238,243,251,.62),rgba(238,243,251,.92) 40%,rgba(238,243,251,.97)),var(--image-fond) center top / cover fixed no-repeat,var(--fond); }
+@media (max-width:700px){ body.avec-fond{ background-attachment:scroll; } }
+.carte{ box-shadow:0 6px 24px rgba(11,27,54,.06); }
 </style>
 </head>
 <body>
@@ -61,6 +77,9 @@ a{ color:var(--bleu); }
     <input type="text" id="pays" maxlength="40" placeholder="France, Japan, US, Europe…" autocomplete="off">
     <button type="button" id="chercher">Show plans</button>
     <p class="statut" id="statutRecherche" role="status"></p>
+    <p class="pale" style="margin-top:10px">Or tap your destination:</p>
+    <div class="rapides" id="rapides"></div>
+    <details class="tous" id="tousPays"><summary>All countries</summary><div class="liste-pays" id="listePays"><div class="vide">Loading the list…</div></div></details>
   </div>
 
   <div class="carte" id="cartePlans" hidden>
@@ -354,7 +373,9 @@ function qrMatrice(txt){
   }
   function peintPlans(d){
     $("cartePlans").hidden = false; $("cartePaiement").hidden = true; etat.plan = null;
-    $("destination").textContent = d.plans.length ? "Plans for " + d.destination : "No plan for " + d.destination + " right now.";
+    var dp = PAYS.filter(function(x){ return x.name === d.destination; })[0];
+    var ic = dp ? drapeau(dp.code) + " " : (REGIONS[d.destination] ? REGIONS[d.destination] + " " : "");
+    $("destination").textContent = ic + (d.plans.length ? "Plans for " + d.destination : "No plan for " + d.destination + " right now.");
     var box = $("plans"); box.textContent = "";
     d.plans.forEach(function(p){
       var l = document.createElement("label"); l.className = "choix";
@@ -375,6 +396,73 @@ function qrMatrice(txt){
   }
   $("chercher").addEventListener("click", cherche);
   $("pays").addEventListener("keydown", function(e){ if (e.key === "Enter") cherche(); });
+
+  /* ---- 1b. choisir sans taper (demande du proprietaire, 29/09) ----
+   * Des pastilles pour les destinations courantes, et TOUS les pays que vend CHIPS
+   * (/esim/destinations), avec leur drapeau. Le drapeau est l'emoji tire du code du
+   * pays (deux lettres regionales) : aucune image a charger. Un tap = une recherche. */
+  function drapeau(code){
+    var c = String(code || "").toUpperCase();
+    if (!/^[A-Z]{2}$/.test(c)) return "\ud83c\udf10";
+    return String.fromCodePoint(0x1F1E6 + c.charCodeAt(0) - 65, 0x1F1E6 + c.charCodeAt(1) - 65);
+  }
+  var REGIONS = { "Europe": "\ud83c\udf0d", "Asia": "\ud83c\udf0f", "Middle East": "\ud83c\udf0d", "South America": "\ud83c\udf0e", "North America": "\ud83c\udf0e", "Global": "\ud83c\udf10" };
+  var COURANTS = [["FR", "France"], ["JP", "Japan"], ["US", "United States"], ["GB", "United Kingdom"], ["ES", "Spain"], ["IT", "Italy"],
+    ["TH", "Thailand"], ["TR", "Turkey"], ["AE", "United Arab Emirates"], ["MX", "Mexico"], ["DE", "Germany"], ["PT", "Portugal"]];
+  function choisit(nom){
+    $("pays").value = nom; $("tousPays").open = false; cherche();
+    try { $("carteRecherche").scrollIntoView({ behavior: "smooth", block: "start" }); } catch (e) {}
+  }
+  function puce(txt, ic, nom){
+    var b = document.createElement("button"); b.type = "button"; b.className = "puce";
+    var d = document.createElement("span"); d.className = "drapeau"; d.setAttribute("aria-hidden", "true"); d.textContent = ic;
+    var t = document.createElement("span"); t.textContent = txt;
+    b.appendChild(d); b.appendChild(t);
+    b.addEventListener("click", function(){ choisit(nom); });
+    return b;
+  }
+  function peintRapides(){
+    var z = $("rapides"); z.textContent = "";
+    Object.keys(REGIONS).slice(0, 2).forEach(function(r){ z.appendChild(puce(r, REGIONS[r], r)); });
+    COURANTS.forEach(function(x){ z.appendChild(puce(x[1], drapeau(x[0]), x[1])); });
+    Object.keys(REGIONS).slice(2).forEach(function(r){ z.appendChild(puce(r, REGIONS[r], r)); });
+  }
+  peintRapides();
+  var PAYS = [];
+  function peintListe(){
+    var z = $("listePays"), f = String($("pays").value || "").trim().toLowerCase();
+    z.textContent = "";
+    var l = PAYS.filter(function(x){ return !f || x.name.toLowerCase().indexOf(f) >= 0 || x.code.toLowerCase() === f; });
+    if (!PAYS.length) { var v = document.createElement("div"); v.className = "vide"; v.textContent = "The list is not available right now - type your country above."; z.appendChild(v); return; }
+    if (!l.length) { var v2 = document.createElement("div"); v2.className = "vide"; v2.textContent = "No country matches \u201c" + f.slice(0, 40) + "\u201d - try a region (Europe, Asia, Global)."; z.appendChild(v2); return; }
+    l.forEach(function(x){
+      var b = document.createElement("button"); b.type = "button";
+      var d = document.createElement("span"); d.className = "drapeau"; d.setAttribute("aria-hidden", "true"); d.textContent = drapeau(x.code);
+      var t = document.createElement("span"); t.textContent = x.name;
+      b.appendChild(d); b.appendChild(t);
+      b.addEventListener("click", function(){ choisit(x.name); });
+      z.appendChild(b);
+    });
+  }
+  /* Taper filtre aussi la liste (ouverte) : on voit les drapeaux des pays qui correspondent. */
+  $("pays").addEventListener("input", function(){ if (PAYS.length && $("pays").value.trim().length >= 2) $("tousPays").open = true; peintListe(); });
+  fetch(serveur() + "/esim/destinations", { cache: "default" }).then(function(r){ return r.json(); }).then(function(d){
+    if (d && d.ok && Array.isArray(d.countries)) {
+      PAYS = d.countries.filter(function(x){ return x && /^[A-Z]{2}$/.test(String(x.code)) && x.name; })
+        .map(function(x){ return { code: String(x.code), name: String(x.name).slice(0, 60) }; });
+      /* Les pastilles ne montrent que des pays vraiment vendus. */
+      var vendus = {}; PAYS.forEach(function(x){ vendus[x.code] = true; });
+      if (PAYS.length) { COURANTS = COURANTS.filter(function(x){ return vendus[x[0]]; }); peintRapides(); }
+    }
+    peintListe();
+    /* Le fond : une des images faites par Kling, servies par le serveur (https seulement). */
+    var fonds = (d && Array.isArray(d.backgrounds) ? d.backgrounds : []).filter(function(u){ return /^https:\/\/[a-z0-9.-]+\/esim\/fond\/[1-9]\.jpg$/i.test(String(u)); });
+    if (fonds.length) {
+      var u = fonds[Math.floor(Math.random() * fonds.length)], im = new Image();
+      im.onload = function(){ document.body.style.setProperty("--image-fond", "url(\"" + u + "\")"); document.body.classList.add("avec-fond"); };
+      im.src = u;
+    }
+  })["catch"](function(){ peintListe(); });
 
   /* ---- 2. payer : le devis et le paiement portent le MEME plan (le serveur lie l'un a l'autre) ---- */
   function appel(entetes){

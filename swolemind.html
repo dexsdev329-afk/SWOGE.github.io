@@ -2133,7 +2133,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     scan_token: "🔍 Reading the token", can_i_sell: "🧪 Simulating a sale", colony_activity: "🤖 Reading the SWOGE AI colony",
     swoge_economy: "🔥 Reading the $SWOGE economy", web_search: "🌐 Searching the web", new_launches: "🚀 Reading new launches",
     wallet_intel: "👛 Reading a wallet", osint_lookup: "🔎 Passive infrastructure recon", find_paid_services: "🛒 Looking for a paid service",
-    hire_paid_service: "💳 Hiring a paid service", find_esim_plans: "📶 Looking for eSIM plans", propose_esim_purchase: "📶 Preparing an eSIM offer",
+    hire_paid_service: "💳 Hiring a paid service", find_esim_plans: "📶 Looking for eSIM plans", propose_esim_purchase: "📶 Preparing an eSIM offer", propose_token_launch: "🚀 Preparing a token launch for you to sign",
     stock_token_check: "🏦 Checking a stock token", base_launches: "🔵 Reading Base launches", base_deployer: "🔵 Reading a Base launcher's record"
   };
   function modeleMission(){
@@ -2231,6 +2231,8 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
             x.li.querySelector(".pas-ic").textContent = data.ok ? "✓" : "✗";
             if (!data.ok && data.resume) x.li.querySelector(".pas-txt").textContent += " — " + String(data.resume).slice(0, 120);
             if (data.achat) d.appendChild(offreEsim(data.achat));
+            /* Le lancement V4 (lance_v4.js) : une carte que seul le portefeuille du joueur signe. */
+            if (data.lancement && window.SwogeLance) d.appendChild(window.SwogeLance.carte(data.lancement));
           }
           else if (type === "fin") {
             fini = true;
@@ -3335,6 +3337,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 <script src="x402_solana.js?v=1d86ed41"></script>
 <script src="x402_paie.js?v=6f6b9006"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+<script src="lance_v4.js?v=296a1dd2"></script>
 
 </body>
 </html>

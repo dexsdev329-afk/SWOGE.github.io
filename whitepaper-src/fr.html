@@ -311,13 +311,14 @@ footer{
   <a href="#s41"><b>41</b>Paris sportifs &amp; $SWOGEBET</a>
   <a href="#s42"><b>42</b>Le SWOGE Wallet</a>
   <a href="#s43"><b>43</b>SWOGE AI</a>
+  <a href="#s44"><b>44</b>SwogeAgentic</a>
   <a href="#resume">Résumé d'une page</a>
 </nav>
 
 <main>
 
 <header class="top">
-  <p class="kicker">White paper · v1.1 · 4 septembre 2026</p>
+  <p class="kicker">White paper · v1.2 · 29 septembre 2026</p>
   <h1>Swole Doge<br><em>Protocol</em></h1>
   <p class="standfirst">
     Une plateforme de jeu Web3 en production sur Robinhood Chain : vingt jeux à
@@ -337,7 +338,8 @@ footer{
   <div class="legend">
     <div><span class="chip ok">Confirmé</span>
       <span>Vérifié dans le code déployé ou lu directement sur la chaîne. Le chiffre
-      donné est le chiffre en production au 4 septembre 2026.</span></div>
+      donné est le chiffre en production au 4 septembre 2026 (29 septembre 2026 pour
+      la section 44).</span></div>
     <div><span class="chip pro">Proposé</span>
       <span>Modèle argumenté, non implémenté. C'est une recommandation, pas une
       fonctionnalité. Elle engage une décision, pas un calendrier.</span></div>
@@ -351,6 +353,16 @@ footer{
     paramètres de configuration actuels, modifiables, et non des engagements. Rien
     ici ne constitue un conseil en investissement, et l'acquisition de $SWOGE
     comporte un risque de perte totale.
+  </div>
+
+  <div class="note">
+    <strong>Ce qui change en v1.2.</strong> Une nouvelle section, <a href="#s44">44</a> :
+    <strong>SwogeAgentic</strong>, l'agent qui vend les outils de SWOGE à d'autres
+    logiciels — comment il orchestre une mission, les 26 outils et l'état de chacun, le
+    paiement x402 expliqué, où va chaque dollar payé par un agent, et ce qui a été mesuré
+    jusqu'ici, petits chiffres compris. Elle dit aussi clairement ce qui n'est pas encore
+    construit : aujourd'hui, aucun dollar payé par un agent ne rachète automatiquement du
+    $SWOGE.
   </div>
 
   <div class="note">
@@ -538,6 +550,7 @@ passer par $SWOGE pour exister — une demande bien plus durable que l'attention
     <tr><td><strong>Livre sportif</strong></td><td>Vrais matchs, simples et combinés jusqu'à 8 jambes, joués en $SWOGEBET</td><td><span class="chip ok">Confirmé</span></td></tr>
     <tr><td><strong>SWOGE Wallet</strong></td><td>Portefeuille dont le joueur détient les clés : envoyer, recevoir, swap, bridge, acheter — voir <a href="#s42">42</a></td><td><span class="chip ok">Confirmé</span></td></tr>
     <tr><td><strong>SWOGE AI</strong></td><td>Colonie de 13 agents qui trade de l'argent papier en public — voir <a href="#s43">43</a></td><td><span class="chip ok">Confirmé</span></td></tr>
+    <tr><td><strong>SwogeAgentic</strong></td><td>26 outils en lecture seule vendus aux agents IA, payés à l'appel (x402), par clé d'API ou MCP — voir <a href="#s44">44</a></td><td><span class="chip ok">Confirmé</span></td></tr>
     <tr><td><strong>Tournois</strong></td><td>Compétition à élimination, cagnotte</td><td><span class="chip def">À définir</span></td></tr>
     <tr><td><strong>Place de marché</strong></td><td>Échange d'objets cosmétiques</td><td><span class="chip def">À définir</span></td></tr>
   </tbody>
@@ -2432,6 +2445,132 @@ colonie tourne aujourd'hui, le jeton n'existe pas, et aucune date n'est engagée
 </p>
 </section>
 
+<section id="s44">
+<h2><span class="num">44</span> SwogeAgentic — l'agent et ses outils</h2>
+<p>
+SwogeAgentic vend le travail de SWOGE à d'autres logiciels : un agent IA, un script, ou
+une personne dans une conversation. Ce sont les mêmes outils que ceux qui tournent
+derrière <a href="https://swoleeswoge.dog/swolemind.html">SwoleMind</a>, exposés pour qu'une machine puisse les
+trouver, les payer et s'en servir sans compte. Ils sont décrits ici en quatre couches —
+ce qui orchestre, ce qui peut être appelé, comment c'est payé, et où va l'argent — et
+chaque partie porte son état. Les chiffres de cette section ont été relevés le
+<strong>29 septembre 2026</strong>.
+</p>
+
+<h3>1 · L'orchestrateur : un objectif en entrée, un résultat en sortie</h3>
+<p>
+L'utilisateur dit ce qu'il veut accomplir, pas quel outil appeler. L'agent choisit les
+outils, les appelle dans l'ordre, s'arrête quand il en sait assez, et rédige une synthèse
+qui cite la source de chaque affirmation. Dans SwoleMind, c'est le mode
+<strong>Mission</strong>, celui par défaut : chaque étape montre ce qu'elle coûte pendant
+qu'elle tourne, la facture finale est la vraie, et le <strong>Council</strong> pose la
+même question à plusieurs modèles et met leurs réponses côte à côte.
+<span class="chip ok">Confirmé</span>
+</p>
+<p>
+Deux missions montrent à quoi sert cette couche. <em>« Une eSIM pour les États-Unis, 15
+jours, moins de 10 $ »</em> : l'agent cherche les forfaits, garde ceux qui couvrent le
+pays, la durée et le prix, et rend le forfait avec le montant à payer — l'achat lui-même
+attend toujours la confirmation explicite de l'utilisateur. <em>« Dois-je acheter ce
+jeton ? »</em> : sécurité du contrat, revente simulée avant l'achat, historique du
+déployeur, liquidité, détenteurs et ce qu'en dit le web, chaque réponse avec sa source,
+et un verdict qui dit ce qu'il n'a pas pu vérifier.
+</p>
+
+<h3>2 · Les outils, chacun avec son état</h3>
+<p>
+Chaque outil est <strong>en lecture seule</strong> : aucun n'achète, ne vend ni ne signe
+de lui-même. L'<a href="https://swoleeswoge.dog/agent_store.html">Agent Store</a> les liste un par un avec leur
+prix, leurs entrées, leurs permissions et leur usage mesuré.
+</p>
+<div class="wrap"><table>
+  <thead><tr><th>Couche</th><th>Ce que c'est</th><th>État</th></tr></thead>
+  <tbody>
+    <tr><td><strong>26 outils</strong></td><td>Sécurité d'un jeton, revente simulée (<code>can_i_sell</code>), renseignement sur un portefeuille ou un déployeur, lectures Robinhood Chain, lancements sur Base, OSINT, recherche web, un agent de recherche, modèles d'IA, images, vidéo, tirages à équité vérifiable</td><td><span class="chip ok">Confirmé</span></td></tr>
+    <tr><td><strong>Paiement à l'appel (x402)</strong></td><td>Sans compte : le prix est demandé, signé et payé dans la même requête — voir plus bas</td><td><span class="chip ok">Confirmé</span></td></tr>
+    <tr><td><strong>Clés d'API et MCP</strong></td><td>Clés <code>swg_</code> avec plafond journalier ; les mêmes outils dans Claude Desktop, Cursor ou tout client MCP, inscrits au registre MCP officiel sous <code>dog.swoleeswoge/swogeagentic</code></td><td><span class="chip ok">Confirmé</span></td></tr>
+    <tr><td><strong>Crédit en dollars</strong></td><td>Rechargé par une signature USDC, puis dépensé appel par appel — par le propriétaire dans la conversation, ou par ses clés d'API</td><td><span class="chip ok">Confirmé</span></td></tr>
+    <tr><td><strong>Boutique eSIM</strong></td><td>Forfaits de données pour voyager, payés en USDC depuis un portefeuille, sans compte — <a href="https://swoleeswoge.dog/swoge_esim.html">swoleeswoge.dog/swoge_esim.html</a></td><td><span class="chip ok">Confirmé</span></td></tr>
+    <tr><td><strong>Agent Passport</strong></td><td>Une identité signée pour une clé d'API : propriétaire, plafond, permissions, appels faits. Ed25519, vérifiable par n'importe qui avec la clé publiée — <a href="https://swoleeswoge.dog/agent_passport.html">swoleeswoge.dog/agent_passport.html</a></td><td><span class="chip ok">Confirmé</span></td></tr>
+    <tr><td><strong>Payer d'autres services</strong></td><td>Une clé peut payer les services x402 d'autres vendeurs pour son propriétaire, plafonnée par appel et par site. Éteint par défaut, clé par clé</td><td><span class="chip ok">Confirmé</span> éteint par défaut</td></tr>
+    <tr><td><strong>Verdicts sur les autres vendeurs</strong></td><td>8 206 services x402 extérieurs catalogués, 2 800 sondés sans payer ; aucun verdict sous trois sondes, et aucun n'est encore donné</td><td><span class="chip pro">Proposé</span></td></tr>
+  </tbody>
+</table></div>
+
+<h3>3 · x402, en mots simples</h3>
+<p>
+Une page payante répond : <em>paiement requis, voici le prix</em>. Le portefeuille de
+l'agent signe un paiement de ce montant exact, renvoie la même requête avec la signature
+jointe, et reçoit la réponse. Pas de compte, pas d'abonnement, pas de carte. Le paiement
+n'est <strong>réglé qu'après la réponse de l'outil</strong> : un outil qui échoue ne coûte
+rien. Demander le prix est gratuit.
+</p>
+<p>
+En termes techniques : le statut HTTP 402 et le schéma <code>exact</code> d'x402 v2.
+Trois réseaux sont acceptés — l'USDC sur <strong>Base</strong>, réglé par le facilitateur
+de Coinbase ; l'USDC sur <strong>Solana</strong>, réglé par le facilitateur PayAI ;
+l'USDG ou le $SWOGE sur <strong>Robinhood Chain</strong>, réglés par SWOGE lui-même.
+L'offre est publiée là où les agents la cherchent : <code>/.well-known/x402</code>,
+<code>/openapi.json</code>, <code>/llms.txt</code> et le registre MCP.
+</p>
+<div class="note">
+<strong>x402 n'est pas un rempart.</strong> N'importe qui peut mettre un prix devant une
+adresse. Ce qu'un agent paie deux fois, c'est la réponse, pas le moyen de paiement — le
+travail qui compte est donc la qualité des outils et des missions construites dessus.
+</div>
+
+<h3>4 · Où va chaque dollar</h3>
+<div class="wrap"><table>
+  <thead><tr><th>Payé en</th><th>Va à</th><th>Effet sur le $SWOGE aujourd'hui</th><th>État</th></tr></thead>
+  <tbody>
+    <tr><td>USDC sur Base</td><td>Trésorerie <code>0xE81C67c086c83997b41673e1e41e481c14D756F6</code></td><td>Aucun</td><td><span class="chip ok">Confirmé</span></td></tr>
+    <tr><td>USDC sur Solana</td><td>Adresse Solana de SWOGE <code>CFg86EW2ZSAgGpf4o2XAt3gU59fgMfsuZyM6QDuDTmoM</code></td><td>Aucun</td><td><span class="chip ok">Confirmé</span></td></tr>
+    <tr><td>USDG sur Robinhood Chain</td><td>Trésorerie</td><td>Aucun : la caisse de rachat est éteinte (plus bas)</td><td><span class="chip ok">Confirmé</span></td></tr>
+    <tr><td>$SWOGE sur Robinhood Chain</td><td>Trésorerie</td><td>Le payeur a dû détenir du $SWOGE pour payer</td><td><span class="chip ok">Confirmé</span></td></tr>
+    <tr><td>Clé d'API en mode $SWOGE</td><td>Débité du solde de jeu du propriétaire, au cours du marché</td><td>Le propriétaire détient du $SWOGE dans le coffre</td><td><span class="chip ok">Confirmé</span></td></tr>
+    <tr><td>Crédit en dollars (clés, SwoleMind)</td><td>L'USDC de la recharge est allé à la trésorerie ou à l'adresse Solana</td><td>Aucun</td><td><span class="chip ok">Confirmé</span></td></tr>
+  </tbody>
+</table></div>
+<p>
+Les prix sont le coût de l'outil plus une marge annoncée, et ils sont montrés avant de
+payer : un prix fixe pour les outils de données (de 0,001 $ à 0,015 $ l'appel), et pour
+les appels d'IA le coût réel de la requête, jusqu'à un maximum publié. La boutique eSIM
+ajoute 25&nbsp;% au prix du fournisseur.
+</p>
+<p>
+<strong>Pourquoi détenir du $SWOGE, alors ?</strong> La réponse honnête est que
+SwogeAgentic ne l'exige pas. C'est un choix délibéré : un agent qui doit d'abord acheter un
+petit jeton sur une chaîne neuve ne paie pas du tout, et le $SWOGE est donc devenu, le
+29 septembre, un moyen de paiement parmi d'autres. Le lien entre les revenus des agents et
+le $SWOGE reste à construire, et deux leviers existent :
+</p>
+<ul>
+  <li><strong>La caisse de rachat.</strong> Codée et testée : allumée, elle rachète chaque
+  heure du $SWOGE sur le marché avec 5&nbsp;% de chaque paiement en USDG sur Robinhood
+  Chain, et garde le $SWOGE racheté à la trésorerie avec le reste. Elle est
+  <strong>éteinte en production</strong>. <span class="chip def">À définir</span> — le
+  propriétaire décide ; elle n'a d'effet qu'une fois qu'il existe de vrais paiements en
+  USDG.</li>
+  <li><strong>Une part des revenus en USDC vers le $SWOGE.</strong> Les revenus sur Base et
+  Solana pourraient aussi financer des rachats, mais rien dans le code ne les amène sur
+  Robinhood Chain aujourd'hui. <span class="chip def">À définir</span> — quelle part, à
+  quel rythme, et par quel pont.</li>
+</ul>
+
+<h3>Ce qui est mesuré à ce jour</h3>
+<div class="note">
+<strong>Trouvable, pas encore acheté.</strong> Sur les 30 jours jusqu'au 29 septembre, les
+agents extérieurs ont fait <strong>24 appels payés pour 1,45 $</strong> sur les 26 outils
+(<code>scan_token</code> en tête avec 5), contre <strong>12 039 demandes de prix</strong>
+sur la même période. Les 28 et 29 septembre, environ 4 400 demandes de prix sont arrivées
+par jour, et 89&nbsp;% étaient des sondes sans arguments — des annuaires et des moniteurs
+qui vérifient que l'adresse répond, pas des acheteurs. Ces chiffres sont petits ; ils sont
+donnés pour pouvoir être vérifiés, et l'Agent Store les montre en direct. Le travail
+suivant n'est pas d'ajouter des outils : c'est de construire quelques missions assez
+bonnes pour qu'un agent les paie deux fois.
+</div>
+</section>
+
 <section id="resume">
 <h2>Résumé d'une page</h2>
 <div class="card">
@@ -2448,8 +2587,9 @@ coffres avec dépôts et retraits sur bon signé cumulatif. Un portefeuille dont
 détient les clés — envoyer, recevoir, échanger, faire le pont, acheter — accessible depuis
 chaque page. Un système de staking plafonné. Cent niveaux gagnés au volume misé. Un
 classement mensuel doté d'une part du revenu. Un parrainage à vie. Un launchpad déployé,
-SwogeFun V2. Et SWOGE AI, une colonie de 13 agents qui trade de l'argent papier en public
-pendant qu'elle apprend.</p>
+SwogeFun V2. SWOGE AI, une colonie de 13 agents qui trade de l'argent papier en public
+pendant qu'elle apprend. Et SwogeAgentic, qui vend 26 outils en lecture seule aux agents
+IA, payés à l'appel sans compte.</p>
 
 <h4>Comment il gagne de l'argent</h4>
 <p>3 % d'avantage mathématique sur les jeux contre la banque, 5 % de rake sur les duels,
@@ -2485,7 +2625,7 @@ est temporel, et il se referme.</p>
 
 <footer>
   <p>
-    SWOGE — Swole Doge Protocol · White paper v1.1 · 4 septembre 2026<br>
+    SWOGE — Swole Doge Protocol · White paper v1.2 · 29 septembre 2026<br>
     Jeton <code>0x8a166Fb41Cd659a0a43396272FF73973Ce29F817</code> ·
     Coffre <code>0x5593c8141303D14999Df7aa03dd3d3a6d4335fAb</code> ·
     Launchpad <code>0x4De26D120A4fF2d7c1875E6C7D611262b9cA426d</code><br>
@@ -2495,7 +2635,7 @@ est temporel, et il se referme.</p>
   </p>
   <p>
     Les chiffres marqués « confirmé » ont été lus dans le code déployé ou directement sur
-    la chaîne le 4 septembre 2026. Les paramètres économiques sont modifiables et ne
+    la chaîne le 4 septembre 2026, et le 29 septembre 2026 pour la section 44. Les paramètres économiques sont modifiables et ne
     constituent pas des engagements. Ce document ne promet aucun rendement, ne constitue
     pas un conseil en investissement ni un avis juridique. L'acquisition de $SWOGE
     comporte un risque de perte totale.

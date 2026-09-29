@@ -54,6 +54,22 @@ Vérifications faites après coup, à refaire à la prochaine passe : aucune anc
 morte, aucun identifiant en double, balises `section`/`div`/`table` équilibrées,
 et 44 sections par langue dans les quatre fichiers.
 
+## v1.2 — même report à la main, aux quatre mêmes endroits (29 septembre 2026)
+
+Une section neuve, **44 SwogeAgentic** (l'orchestrateur, les 26 outils avec leur
+état, x402 en mots simples, où va chaque dollar, ce qui est mesuré), plus l'en-tête
+(version, date, encadré « ce qui change en v1.2 »), la légende et le pied de page
+(date des chiffres de la section 44), une ligne au tableau des composants (**02**)
+et une phrase au résumé. Les liens vers les pages du site sont **absolus**
+(`https://swoleeswoge.dog/...`) : `artifact.html` est hébergé ailleurs.
+
+Chiffres relus le 29/09 : `/agentic/store` (26 outils, 24 appels payés extérieurs
+en 30 jours pour 1,45 $, 12 039 devis), `/agentic/x402` (trésorerie de Base et
+Solana), `server.js` (caisse éteinte sans `X402_CAISSE=1`), `caisse.js` (5 % de
+l'USDG, $SWOGE racheté gardé à la trésorerie), `boutique_esim.js` (marge 1,25).
+Vérifié après coup : aucune ancre morte, aucun identifiant en double, balises
+équilibrées, **45** sections par langue dans les quatre fichiers.
+
 ## Modifier le document
 
 1. corriger `fr.html` ou `en.html` — ce sont les deux seules sources de contenu ;

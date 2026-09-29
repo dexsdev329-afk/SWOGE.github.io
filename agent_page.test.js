@@ -507,6 +507,24 @@ const PEPE = { adresse:'0x6982508145454ce325ddbe47a25d4ec3d2311933', trouve:true
     CRED.solde = null;
   }
 
+  console.log('\n-- 10. signer directement avec son portefeuille (29/09) --');
+  {
+    CRED.solde = 0; CRED.topups = [];
+    const CATU = Object.assign({}, CAT, { modeles: CAT.modeles.map((m) => Object.assign({}, m, { typiqueUsd: 0.0126, maxUsd: 0.35 })) });
+    let tour = 0;
+    const rep = () => (++tour === 1 ? sse([['erreur', { ok: false, code: 402, payeur: 'credit', requisUsd: 0.35, creditUsd: 0, raison: 'too low' }]])
+      : sse([['texte', { t: 'Done.' }], ['fin', { ok: true, texte: 'Done.', payeur: 'credit', factureUsd: 0.0126, creditUsd: 0.3374, etapes: 1, modele: 'sonnet-5' }]]));
+    const { page, ctx, envois, signes } = await ouvre({ session: 'j.signe', rep, portefeuille: true, cat: CATU });
+    await page.selectOption('#payeur', 'signe');
+    ok(/your wallet signs USDC on Base/.test(await page.textContent('#prixq')), 'la ligne des prix dit que le portefeuille signera');
+    await pose(page, 'check this token');
+    await page.waitForFunction(() => Array.prototype.some.call(document.querySelectorAll('.msg .meta'), (m) => /\$0\.0126/.test(m.textContent)));
+    ok(signes.length === 1 && CRED.topups.length === 2 && CRED.topups[1].corps.usd === 0.35 && envois.length === 2 && envois.every((e) => e.corps.payeur === 'credit'),
+       'une tache : le portefeuille s ouvre tout seul pour ce qu il faut, puis la tache part, payee');
+    await ctx.close();
+    CRED.solde = null;
+  }
+
   await nav.close(); srv.close();
   console.log('\nRATES : ' + rates + '/' + n);
   process.exit(rates ? 1 : 0);

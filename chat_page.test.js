@@ -744,6 +744,37 @@ const sse = (evs) => evs.map(([t, d]) => 'event: ' + t + '\ndata: ' + JSON.strin
     CRED.solde = null;
   }
 
+  console.log('\n-- 13. signer directement avec son portefeuille, sans rien recharger d avance (29/09) --');
+  {
+    CRED.solde = 0; CRED.topups = [];
+    const CATU = Object.assign({}, CAT, { modeles: CAT.modeles.map((m) => Object.assign({}, m, { typiqueUsd: 0.0081, maxUsd: 0.21 })) });
+    let tour = 0;
+    const rep = () => (++tour === 1 ? sse([['erreur', { ok: false, code: 402, payeur: 'credit', requisUsd: 0.21, creditUsd: 0, raison: 'your dollar credit is too low for this' }]])
+      : sse([['texte', { t: 'Salut.' }], ['fin', { ok: true, texte: 'Salut.', payeur: 'credit', factureUsd: 0.0081, creditUsd: 0.2019, modele: 'opus-5-5' }]]));
+    const { page, ctx, envois, signes } = await ouvre({ session: 'j.signe', cat: CATU, rep, portefeuille: true });
+    const options = await page.$$eval('#payeur option', (l) => l.map((o) => o.textContent));
+    ok(options[0] === 'Sign with my wallet (USDC)' && options.includes('Pay with $SWOGE'), 'le choix dit en clair « Sign with my wallet (USDC) », a cote du $SWOGE');
+    await page.selectOption('#payeur', 'signe');
+    ok(/your wallet signs USDC on Base, only when needed/.test(await page.textContent('#prixq')), 'la ligne des prix dit que le portefeuille signera, et sur quel reseau');
+    await pose(page, 'hi');
+    await page.waitForFunction(() => Array.prototype.some.call(document.querySelectorAll('.msg.ia .meta'), (m) => /\$0\.0081/.test(m.textContent)));
+    ok(signes.length === 1 && CRED.topups.length === 2 && CRED.topups[1].corps.usd === 0.21, 'une question : le portefeuille s ouvre TOUT SEUL pour le montant necessaire, aucun clic de plus');
+    ok(envois.length === 2 && envois.every((e) => e.corps.payeur === 'credit') && (await page.$$('.msg.moi')).length === 1 && !(await page.$('.msg.err')),
+       'puis la question part, payee ; une seule question dans le fil');
+    await ctx.close();
+    CRED.solde = null;
+  }
+  {
+    CRED.solde = 0; CRED.topups = [];
+    const { page, ctx } = await ouvre({ session: 'j.neuf', portefeuille: true, cat: Object.assign({}, CAT, { modeles: CAT.modeles.map((m) => Object.assign({}, m, { typiqueUsd: 0.0081, maxUsd: 0.21 })) }) });
+    await page.route(/\/studio\/chat\/solde/, (r) => r.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true,"adresse":"0xabc","solde":"0"}' }));
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => document.getElementById('payeur').value === 'signe');
+    ok(true, 'ni credit ni $SWOGE : la page propose de signer directement par defaut');
+    await ctx.close();
+    CRED.solde = null;
+  }
+
   await nav.close(); srv.close();
   console.log('\nRATES : ' + rates + '/' + n);
   process.exit(rates ? 1 : 0);

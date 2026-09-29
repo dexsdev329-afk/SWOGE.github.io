@@ -995,14 +995,14 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     <div class="droite">
       <span class="pastille" id="credit" title="Your dollar credit: topped up with one wallet signature (USDC on Base or Solana), spent at real cost">Credit <b>—</b></span>
       <span class="pastille" id="solde" title="Your SWOGE gaming balance">Balance <b>—</b></span>
-      <select class="btn-fin" id="payeur" aria-label="Pay with"><option value="credit">Pay with dollar credit</option><option value="swoge">Pay with $SWOGE</option></select>
+      <select class="btn-fin" id="payeur" aria-label="Pay with"><option value="signe">Sign with my wallet (USDC)</option><option value="credit">Use my dollar credit</option><option value="swoge">Pay with $SWOGE</option></select>
       <button class="btn-fin" id="recharger" type="button" aria-expanded="false">&#43; Top up</button>
       <button class="btn-fin" id="histoBtn" type="button" aria-expanded="false" title="Your past chats">&#128339; History</button>
       <button class="btn-fin" id="nouveau" type="button">&#10133; New chat</button>
     </div>
   </div>
   <div class="recharge" id="rechargeBox" hidden>
-    <p><b>Top up your dollar credit with one wallet signature.</b> No $SWOGE and no deposit needed: USDC goes straight from your wallet, then every answer and image is paid from the credit at real cost, with no new signature. Videos are paid in $SWOGE for now. The credit stays on this wallet's sign-in and is not withdrawable.</p>
+    <p><b>No $SWOGE needed.</b> Choose <i>Sign with my wallet</i> and your wallet asks you to sign USDC when a request needs it, or top up a dollar credit here once. No deposit: USDC goes straight from your wallet, then every answer and image is paid from the credit at real cost, with no new signature. Videos are paid in $SWOGE for now. The credit stays on this wallet's sign-in and is not withdrawable.</p>
     <div class="rc-ligne" id="rcMontants">
       <button type="button" class="btn-fin" data-usd="1">$1</button>
       <button type="button" class="btn-fin choisi" data-usd="5">$5</button>
@@ -1022,7 +1022,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   <section class="accueil" id="accueil">
     <h1>What can I help with?</h1>
     <p>Chat with the top AI models — Claude, ChatGPT and Grok — search the live web with sources,
-       create images with Grok Imagine or ChatGPT Image, and videos with Grok. You pay only for what each request actually costs: with a dollar credit topped up by one wallet signature (USDC on Base or Solana), or in $SWOGE.</p>
+       create images with Grok Imagine or ChatGPT Image, and videos with Grok. You pay only for what each request actually costs: just sign it with your wallet in USDC (Base or Solana), no $SWOGE needed — or pay in $SWOGE.</p>
     <div class="suggestions" id="suggestions">
       <button class="suggestion" type="button" data-sugg="web"><span class="ic">&#127760;</span>Search the web</button>
       <button class="suggestion" type="button" data-sugg="ecrire"><span class="ic">&#9998;&#65039;</span>Write or edit</button>
@@ -1275,7 +1275,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       if (!mm) return;
       if (etat.mode === "image") {
         var n = etat.jointe ? etat.reg.nombre + 1 : etat.reg.nombre;
-        if (payeur() === "credit" && mm.parImageUsd != null) p.textContent = nomMedia(mm) + " \u00b7 ~" + dollars(mm.parImageUsd) + " per image" + (mm.estime ? " (estimate)" : "") + (n > 1 ? " \u00b7 \u2248 " + dollars(mm.parImageUsd * n) + " in all" : "") + " \u00b7 you pay the real cost";
+        if (payeur() !== "swoge" && mm.parImageUsd != null) p.textContent = nomMedia(mm) + " \u00b7 ~" + dollars(mm.parImageUsd) + " per image" + (mm.estime ? " (estimate)" : "") + (n > 1 ? " \u00b7 \u2248 " + dollars(mm.parImageUsd * n) + " in all" : "") + " \u00b7 you pay the real cost" + commentPayer();
         else p.textContent = nomMedia(mm) + " \u00b7 ~" + nombre(mm.parImageSwoge) + " $SWOGE per image" + (mm.estime ? " (estimate)" : "") + (n > 1 ? " \u00b7 \u2248 " + nombre(mm.parImageSwoge * n) + " in all" : "") + " \u00b7 you pay the real cost";
       } else {
         p.textContent = mm.nom + " \u00b7 ~" + nombre(mm.parSecondeSwoge * etat.reg.duree) + " $SWOGE for " + etat.reg.duree + " s at 480p" + (etat.reg.resolution !== "480p" ? " (" + etat.reg.resolution + " costs more)" : "") + " \u00b7 you pay the real cost";
@@ -1294,7 +1294,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     $("modeleNom").textContent = m ? m.nom : "Model";
     $("web").hidden = !(m && m.recherche);
     if (!m) return;
-    $("prixq").textContent = m.nom + " · ~" + (enDollars() ? dollars(m.typiqueUsd) + " per question (max " + dollars(m.maxUsd) + ")" : nombre(m.typiqueSwoge) + " $SWOGE per question (max " + nombre(m.maxSwoge) + ")") + " · you pay only what the answer uses";
+    $("prixq").textContent = m.nom + " · ~" + (enDollars() ? dollars(m.typiqueUsd) + " per question (max " + dollars(m.maxUsd) + ")" : nombre(m.typiqueSwoge) + " $SWOGE per question (max " + nombre(m.maxSwoge) + ")") + " · you pay only what the answer uses" + commentPayer();
   }
   function peintBoutons(){
     var vide = !$("question").value.trim() && !(etat.mode === "video" && etat.jointe) && !(etat.mode === "chat" && etat.pieces.length);
@@ -1850,16 +1850,23 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
    * Solana, x402_paie.js) recharge un credit en dollars ; chaque reponse et chaque image
    * s'y paient au cout reel. Quand il manque, UNE signature du montant qui manque, et la
    * question repart. Le serveur credite l'adresse de SESSION et revérifie tout. */
-  function payeur(){ return $("payeur").value === "swoge" ? "swoge" : "credit"; }
+  /* Trois facons de payer (29/09) : « signe » = le portefeuille signe en USDC, tout seul, ce qui
+     manque a chaque demande (le reste d'une reserve attend la suivante) ; « credit » = un credit
+     recharge d'avance, un bouton quand il manque ; « swoge » = le solde de jeu. Le serveur ne
+     connait que deux payeurs : le credit (les deux premiers) ou le $SWOGE. */
+  function payeur(){ var v = $("payeur").value; return v === "swoge" || v === "credit" ? v : "signe"; }
+  function payeurServeur(){ return payeur() === "swoge" ? "swoge" : "credit"; }
   /* Les prix en dollars seulement si le serveur les donne (un serveur plus ancien : $SWOGE). */
-  function enDollars(){ var m = etat.cat && etat.cat.modeles && etat.cat.modeles[0]; return payeur() === "credit" && !!m && m.typiqueUsd != null; }
+  function enDollars(){ var m = etat.cat && etat.cat.modeles && etat.cat.modeles[0]; return payeur() !== "swoge" && !!m && m.typiqueUsd != null; }
+  /* Ce que dit la ligne des prix sur la facon de payer. */
+  function commentPayer(){ return payeur() === "signe" ? " · your wallet signs USDC on " + (reseauRecharge() === "solana" ? "Solana" : "Base") + ", only when needed (network: Top up)" : ""; }
   function dollars(x){ var n = Number(x); if (!isFinite(n)) return "\u2014"; return "$" + (n >= 1 || n === 0 ? n.toFixed(2) : n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 })); }
   /* Chaque solde recu du serveur (fin de tache, recharge) avance ce compteur : une relecture de
      /credit partie AVANT est perimee et ignoree (sinon elle ecrase un solde plus recent). */
   function poseCredit(v){ etat.creditMaj = (etat.creditMaj || 0) + 1; etat.credit = Number(v) || 0; peintCredit(); }
   function peintCredit(){ $("credit").innerHTML = etat.credit == null ? "Credit <b>sign in</b>" : "Credit <b>" + dollars(etat.credit) + "</b>"; }
   function payeurParDefaut(){
-    var v = etat.payeurChoisi || (etat.credit > 0 ? "credit" : etat.swoge > 0 ? "swoge" : "credit");
+    var v = etat.payeurChoisi || (etat.credit > 0 ? "credit" : etat.swoge > 0 ? "swoge" : "signe");
     if ($("payeur").value !== v) { $("payeur").value = v; if (etat.cat) peintPrix(); }
   }
   function chargeCredit(){
@@ -1881,6 +1888,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       })["catch"](function(){});
   }
   function reseauRecharge(){ var r = document.querySelector('input[name="rcReseau"]:checked'); return r ? r.value : "base"; }
+  Array.prototype.forEach.call(document.querySelectorAll('input[name="rcReseau"]'), function(r){ r.addEventListener("change", function(){ if (etat.cat) peintPrix(); }); });
   function recharge(montant, statut){
     var j = jeton();
     if (!j) return Promise.reject(new Error(TXT.signin));
@@ -1891,7 +1899,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     } }).then(window.SwogePaie.lit).then(function(r){
       if (!r.ok) throw new Error(r.raison);
       poseCredit(r.corps.balanceUsd);
-      if (!etat.payeurChoisi) { $("payeur").value = "credit"; if (etat.cat) peintPrix(); }
+      if (!etat.payeurChoisi && payeur() === "swoge") { $("payeur").value = "credit"; if (etat.cat) peintPrix(); }
       chargeCredit();
       return r;
     });
@@ -1918,11 +1926,13 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   $("payeur").addEventListener("change", function(){ etat.payeurChoisi = payeur(); ecrisLocal("swogeChatPayeur", etat.payeurChoisi); if (etat.cat) { peintPrix(); if (typeof peintFeuille === "function") peintFeuille(); } });
   /* Le credit ne suffit pas : UNE signature du montant qui manque (0,10 $ au moins), puis la
      MEME question repart. Ce que la reponse n'utilise pas reste au credit. */
-  function uneSignature(d, corps, q, e){
+  function uneSignature(d, corps, q, e, verbe){
     var manque = Math.max(0.1, Math.ceil((Number(e.requisUsd) - (Number(e.creditUsd) || 0)) * 100) / 100);
     d.classList.add("err");
-    corps.textContent = "Your dollar credit is too low for this question: " + dollars(e.requisUsd) + " is reserved while it runs (you have " + dollars(e.creditUsd || 0) + "), and you pay only what the answer uses.";
-    var b = document.createElement("button"); b.type = "button"; b.className = "rc-action"; b.textContent = "Sign " + dollars(manque) + " with your wallet and ask";
+    var auto = payeur() === "signe";
+    corps.textContent = auto ? "Sign " + dollars(manque) + " in your wallet to " + (verbe || "ask") + ": " + dollars(e.requisUsd) + " is reserved while it runs and you pay only what it uses; the rest waits for your next request."
+      : "Your dollar credit is too low for this: " + dollars(e.requisUsd) + " is reserved while it runs (you have " + dollars(e.creditUsd || 0) + "), and you pay only what it uses.";
+    var b = document.createElement("button"); b.type = "button"; b.className = "rc-action"; b.textContent = "Sign " + dollars(manque) + " with your wallet and " + (verbe || "ask");
     var p = document.createElement("p"); p.className = "rc-statut"; p.setAttribute("role", "status");
     p.textContent = "USDC on " + (reseauRecharge() === "solana" ? "Solana" : "Base") + " (change it under Top up). What this answer does not use stays in your credit.";
     b.addEventListener("click", function(){
@@ -1934,6 +1944,8 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       })["catch"](function(x){ b.disabled = false; p.className = "rc-statut err"; p.textContent = "Not charged: " + String(x && (x.message || x.code) || x).slice(0, 200); });
     });
     d.appendChild(b); d.appendChild(p);
+    /* « Sign with my wallet » : le portefeuille s'ouvre tout de suite ; le bouton reste si le joueur refuse. */
+    if (auto) b.click();
   }
 
   /* ---- envoyer : un flux SSE lu a la main (EventSource ne sait pas POSTer) ---- */
@@ -2020,6 +2032,15 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     if (!etat.cat || !etat.cat.ouvert) { dit((etat.cat && etat.cat.note) || TXT.ferme); return; }
     var ms = modelesCompares();
     if (ms.length < 2) { dit("Pick 2 or 3 models to compare (tap the model button)."); ouvreFeuille(); return; }
+    /* Signer directement : chaque colonne reserve son pire cas ; on signe d'un coup ce qui manque. */
+    var besoin = payeur() === "signe" ? Math.ceil((ms.reduce(function(t, x){ return t + (Number(x.maxUsd) || 0); }, 0) - (etat.credit || 0)) * 100) / 100 : 0;
+    if (besoin > 0) {
+      if (etat.signeEnCours) return;
+      etat.signeEnCours = true;
+      recharge(Math.max(0.1, besoin), dit).then(function(){ etat.signeEnCours = false; dit(""); envoyerComparaison(); })
+        ["catch"](function(x){ etat.signeEnCours = false; dit("Not charged: " + String(x && (x.message || x.code) || x).slice(0, 200)); });
+      return;
+    }
     var pj = prendsPieces(); if (!pj) return;
     if (!q) q = "What is in this file?";
     if (!etat.conv) nouvelleConv();
@@ -2036,7 +2057,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     ms.forEach(function(m, k){
       var d = colonneCmp(g, m.nom);
       flux(j, { rid: rids[k].rid, modele: m.id, messages: historiques[k], recherche: etat.web && m.recherche,
-                effort: m.effort ? (etat.effort || "medium") : undefined, payeur: payeur() },
+                effort: m.effort ? (etat.effort || "medium") : undefined, payeur: payeurServeur() },
            d, m, { modele: m.id, nomModele: m.nom, comparaison: idc },
            function(ok){ if (ok) servies++; else { rids[k].interrompu = true; sauveConv(); } if (--restant === 0) {
              etat.occupe = false; peintBoutons();
@@ -2075,7 +2096,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     fetch(serveur() + "/studio/chat", {
       method: "POST", signal: ctl.signal,
       headers: { "content-type": "application/json", authorization: "Bearer " + j },
-      body: JSON.stringify({ rid: rid, modele: m.id, messages: historique, recherche: etat.web && m.recherche, effort: m.effort ? (etat.effort || "medium") : undefined, payeur: payeur() })
+      body: JSON.stringify({ rid: rid, modele: m.id, messages: historique, recherche: etat.web && m.recherche, effort: m.effort ? (etat.effort || "medium") : undefined, payeur: payeurServeur() })
     }).then(function(rep){
       if (!rep.ok || !rep.body) {
         return rep.json().then(function(e){ throw { code: rep.status, raison: e && e.raison }; }, function(){ throw { code: rep.status }; });
@@ -2174,11 +2195,15 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     etape.textContent = mode === "image" ? (jointe ? "Editing your photo\u2026" : "Creating " + (reg.nombre > 1 ? reg.nombre + " images" : "the image") + "\u2026") : "Starting the video\u2026";
     d.insertBefore(etape, corps);
     var corpsReq = { rid: rid, modele: reg.vitesse, prompt: q, format: fmt, image: jointe || undefined };
-    if (mode === "image") { corpsReq.payeur = payeur(); corpsReq.n = reg.nombre; corpsReq.fournisseur = (fournisseurImage() || {}).id || "grok"; if (contexte.length) corpsReq.contexte = contexte; }
+    if (mode === "image") { corpsReq.payeur = payeurServeur(); corpsReq.n = reg.nombre; corpsReq.fournisseur = (fournisseurImage() || {}).id || "grok"; if (contexte.length) corpsReq.contexte = contexte; }
     else { corpsReq.duree = reg.duree; corpsReq.resolution = reg.resolution; }
     function fin(){ etat.occupe = false; peintBoutons(); if (etape.parentNode) etape.remove(); }
     /* La demande non servie ne reste pas dans le fil enregistre. */
-    function echec(e){ if (etat.quitte) return; fin(); etat.conv.messages.pop(); sauveConv(); erreurMedia(d, e); }
+    function echec(e){
+      if (etat.quitte) return; fin(); etat.conv.messages.pop(); sauveConv();
+      if (e && e.code === 402 && e.requisUsd != null && mode === "image" && !jointe) return uneSignature(d, d.querySelector(".corps"), q, e, "create");
+      erreurMedia(d, e);
+    }
     function termine(res){ fin(); finMedia(d, mode, res, nomM, fmt, null); }
     fetch(serveur() + "/studio/media/" + mode, { method: "POST",
       headers: { "content-type": "application/json", authorization: "Bearer " + j }, body: JSON.stringify(corpsReq) })

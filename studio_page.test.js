@@ -55,6 +55,8 @@ const CAT = { ouvert: true, note: null, monnaie: '$SWOGE', defaut: 'opus-5-5', e
   const ouvre = async (page, cat, session) => {
     const ctx = await nav.newContext({ viewport: { width: 1200, height: 900 } });
     if (session) await ctx.addInitScript((j) => { try { localStorage.setItem('swogeSession', j); } catch (e) {} }, session);
+    /* Ces scenarios partent du chat (un nouveau visiteur arrive en Mission depuis le 29/09). */
+    await ctx.addInitScript(() => { try { if (localStorage.getItem('swogeStudioMode') === null) localStorage.setItem('swogeStudioMode', '"chat"'); } catch (e) {} });
     const p = await ctx.newPage();
     await p.route((u) => !u.href.startsWith('http://127.0.0.1:' + port), (r) => {
       const u = r.request().url();

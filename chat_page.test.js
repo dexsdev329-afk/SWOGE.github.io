@@ -62,8 +62,11 @@ const sse = (evs) => evs.map(([t, d]) => 'event: ' + t + '\ndata: ' + JSON.strin
   /* `rep(corps)` rend le flux SSE d'une question ; `envois` garde ce que la
      page a POSTe. Tout ce qui sort de la machine est coupe : l'essai ne
      depend ni du reseau ni du vrai serveur. */
-  const ouvre = async ({ session, cat, rep, largeur, reprise, adresses, histo, journal, requete, portefeuille } = {}) => {
+  const ouvre = async ({ session, cat, rep, largeur, reprise, adresses, histo, journal, requete, portefeuille, mode, agent, local } = {}) => {
     const ctx = await nav.newContext({ viewport: { width: largeur || 1200, height: 900 } });
+    /* Ces scenarios portent sur le CHAT : un nouveau visiteur arrive en Mission depuis le 29/09. */
+    if (mode !== false) await ctx.addInitScript((m) => { try { if (localStorage.getItem('swogeStudioMode') === null) localStorage.setItem('swogeStudioMode', JSON.stringify(m)); } catch (e) {} }, mode || 'chat');
+    if (local) await ctx.addInitScript((o) => { try { Object.keys(o).forEach((k) => { if (localStorage.getItem(k) === null) localStorage.setItem(k, JSON.stringify(o[k])); }); } catch (e) {} }, local);
     await ctx.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: 'http://127.0.0.1:' + port });
     if (session) await ctx.addInitScript((j) => { try { localStorage.setItem('swogeSession', j); } catch (e) {} }, session);
     const page = await ctx.newPage();
@@ -81,6 +84,12 @@ const sse = (evs) => evs.map(([t, d]) => 'event: ' + t + '\ndata: ' + JSON.strin
     await page.route((u) => !u.href.startsWith('http://127.0.0.1:' + port), async (r) => {
       const u = r.request().url();
       if (/\/studio\/chat\/catalogue/.test(u)) return r.fulfill({ status:200, contentType:'application/json', body: JSON.stringify(cat || CAT) });
+      /* Les missions (29/09) : le catalogue de l'agent et sa route, quand le scenario les donne. */
+      if (/\/studio\/agent\/catalogue/.test(u) && agent) return r.fulfill({ status:200, contentType:'application/json', body: JSON.stringify(agent.cat) });
+      if (/\/studio\/agent$/.test(u) && agent && r.request().method() === 'POST') {
+        agent.envois.push({ auth: r.request().headers().authorization || null, corps: JSON.parse(r.request().postData() || '{}') });
+        return r.fulfill({ status:200, contentType:'text/event-stream', body: agent.rep(agent.envois[agent.envois.length - 1].corps) });
+      }
       if (/\/credit(\/topup)?$/.test(u) && CRED.solde !== null) {
         const H = { 'access-control-allow-origin': '*', 'access-control-expose-headers': 'payment-required, payment-response' };
         const q = r.request();
@@ -129,7 +138,7 @@ const sse = (evs) => evs.map(([t, d]) => 'event: ' + t + '\ndata: ' + JSON.strin
       return r.abort();
     });
     await page.goto('http://127.0.0.1:' + port + '/swolemind.html' + (requete || ''), { waitUntil:'domcontentloaded' });
-    await page.waitForFunction(() => /per question/.test(document.getElementById('prixq').textContent));
+    await page.waitForFunction(() => /per (question|mission)/.test(document.getElementById('prixq').textContent));
     return { page, ctx, envois, soldes, stops, signes };
   };
   const pose = async (page, q) => { await page.fill('#question', q); await page.click('#envoyer'); };
@@ -773,6 +782,62 @@ const sse = (evs) => evs.map(([t, d]) => 'event: ' + t + '\ndata: ' + JSON.strin
     ok(true, 'ni credit ni $SWOGE : la page propose de signer directement par defaut');
     await ctx.close();
     CRED.solde = null;
+  }
+
+  console.log('\n-- 14. une MISSION : un objectif, les etapes reellement executees, leur cout (29/09) --');
+  {
+    const AG = { cat: { ouvert: true, defaut: 'sonnet-5', etapesMax: 6, modeles: [{ id: 'sonnet-5', nom: 'Sonnet 5', typiqueSwoge: 2500, maxSwoge: 45000, typiqueUsd: 0.0126, maxUsd: 0.35 }] }, envois: [],
+      rep: () => sse([['cout', { etape: 1, coutUsd: 0.004 }], ['outil', { id: 't1', nom: 'scan_token', entree: { address: '0x6982508145454ce325ddbe47a25d4ec3d2311933' } }],
+        ['resultat', { id: 't1', nom: 'scan_token', ok: true, resume: 'PEPE', coutUsd: 0 }], ['outil', { id: 't2', nom: 'web_search', entree: { query: 'pepe' } }],
+        ['resultat', { id: 't2', nom: 'web_search', ok: false, resume: '<img src=x onerror=window.pirate=5>search down', coutUsd: 0.005 }], ['cout', { etape: 2, coutUsd: 0.003 }],
+        ['texte', { t: 'PEPE looks liquid.' }], ['fin', { ok: true, texte: 'PEPE looks liquid.', factureSwoge: '640', factureUsd: 0.018, solde: '199360', etapes: 2, modele: 'sonnet-5', sources: [], jetons: [] }]]) };
+    const { page, ctx } = await ouvre({ session: 'j.mission', mode: false, agent: AG });
+    await page.waitForFunction(() => /per mission/.test(document.getElementById('prixq').textContent));
+    ok(/What do you want to accomplish\?/.test(await page.textContent('#accueil h1')) && await page.getAttribute('.mode[data-mode="mission"]', 'aria-pressed') === 'true',
+       'un nouveau visiteur : « What do you want to accomplish? », en mode Mission');
+    ok(/Mission · Sonnet 5 plans it and runs the tools/.test(await page.textContent('#prixq')) && /every step and its cost shown/.test(await page.textContent('#prixq')), 'la ligne des prix dit ce que fait une mission, et son prix');
+    ok(await page.isHidden('#comparer') && await page.isHidden('#joindre') && await page.isHidden('#modeleBtn'), 'en mission : ni comparaison, ni piece jointe, ni choix de modele (le planificateur est Claude)');
+    await page.click('.suggestion[data-sugg="m_jeton"]');
+    ok(/^Analyze this token and tell me the risks: $/.test(await page.inputValue('#question')), 'une suggestion de mission pose le debut de l objectif');
+    await page.fill('#question', 'Analyze PEPE 0x6982508145454ce325ddbe47a25d4ec3d2311933');
+    await page.click('#envoyer');
+    await page.waitForSelector('.mission-bilan');
+    const e0 = AG.envois[0];
+    ok(e0 && e0.auth === 'Bearer j.mission' && e0.corps.modele === 'sonnet-5' && e0.corps.payeur === 'swoge' && e0.corps.messages.slice(-1)[0].content === 'Analyze PEPE 0x6982508145454ce325ddbe47a25d4ec3d2311933' && !('addr' in e0.corps),
+       'la mission part au moteur de l agent, par la session, avec son payeur, sans adresse');
+    const lignes = await page.$$eval('.mission-pas li', (l) => l.map((x) => x.textContent));
+    ok(lignes.length === 4 && /Sonnet 5 · step 1/.test(lignes[0]) && /Reading the token/.test(lignes[1]) && /Searching the web — /.test(lignes[2]) && /step 2/.test(lignes[3]),
+       'la carte montre les etapes REELLEMENT faites, dans l ordre : appel au modele, outils, appel au modele');
+    ok(/213\.33 \$SWOGE/.test(lignes[0]) && /266\.67 \$SWOGE/.test(lignes[2]) && /160 \$SWOGE/.test(lignes[3]) && !/\$SWOGE/.test(lignes[1]),
+       'chaque etape porte sa part de la facture, au prorata de son cout reel (un outil gratuit : rien)');
+    ok(await page.$eval('.mission-pas li:nth-child(3)', (x) => x.className) === 'rate' && (await page.$('.mission img')) === null && !(await page.evaluate(() => window.pirate)), 'un outil rate se voit, son message est du texte');
+    ok(/Total 640 \$SWOGE · 2 model calls · 2 tools/.test(await page.textContent('.mission-bilan')) && /done in/.test(await page.textContent('.mission-etat')), 'le bilan : total facture, appels, outils, duree');
+    ok(/PEPE looks liquid/.test(await page.textContent('.msg.ia .corps')) && /🎯 Mission · Sonnet 5 · 640 \$SWOGE/.test(await page.textContent('.msg.ia .meta')), 'la reponse, et sa ligne de cout');
+    await page.click('#histoBtn');
+    ok(/🎯 Analyze PEPE/.test(await page.textContent('#histo')) && /1 mission · 2 tools/.test(await page.textContent('#histo')), 'l historique : la mission, son objectif, ses outils, sa duree et son cout');
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('.mission-bilan');
+    ok((await page.$$('.mission-pas li')).length === 4 && /Total 640 \$SWOGE/.test(await page.textContent('.mission-bilan')), 'rechargee : la carte de mission est relue depuis l historique');
+    await ctx.close();
+  }
+
+  console.log('\n-- 15. le CONSEIL : apres une comparaison, un agent de synthese (29/09) --');
+  {
+    const rep = (c) => (c.messages.length === 1 && /synthesis agent of an AI council/.test(c.messages[0].content)
+      ? sse([['texte', { t: 'They agree on X.' }], ['fin', { ok: true, texte: 'They agree on X.', factureSwoge: '300', solde: '1', modele: c.modele }]])
+      : sse([['texte', { t: 'Answer by ' + c.modele }], ['fin', { ok: true, texte: 'Answer by ' + c.modele, factureSwoge: '100', solde: '1', modele: c.modele }]]));
+    const { page, ctx, envois } = await ouvre({ session: 'j.conseil', rep, local: { swogeCompare: true, swogeCompareChoix: ['opus-5-5', 'haiku-4-5'] } });
+    await pose(page, 'Is PEPE safe?');
+    await page.waitForSelector('.conseil button');
+    ok(envois.length === 2 && /Council verdict/.test(await page.textContent('.conseil button')) && /590 \$SWOGE/.test(await page.textContent('.conseil button')), 'deux reponses : le bouton du conseil, avec son prix ; rien n est lance sans clic');
+    await page.click('.conseil button');
+    await page.waitForFunction(() => /They agree on X/.test(document.getElementById('fil').textContent));
+    const c = envois[2];
+    ok(c && c.corps.modele === 'sonnet-5' && c.corps.messages.length === 1 && /Question:\nIs PEPE safe\?/.test(c.corps.messages[0].content)
+       && /Answer 1 \(Opus 5\.5\):\nAnswer by opus-5-5/.test(c.corps.messages[0].content) && /Answer 2 \(Haiku 4\.5\):\nAnswer by haiku-4-5/.test(c.corps.messages[0].content)
+       && /do not add new facts/.test(c.corps.messages[0].content), 'le conseil lit la question et CHAQUE reponse, nommee, et ne doit rien inventer');
+    ok(/Council verdict on the answers above/.test(await page.textContent('#fil')) && (await page.$('.conseil button')) === null, 'le verdict s inscrit dans le fil, le bouton disparait');
+    await ctx.close();
   }
 
   await nav.close(); srv.close();

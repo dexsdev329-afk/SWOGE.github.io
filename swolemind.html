@@ -736,6 +736,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
    l'accueil restait affiche au-dessus de la premiere reponse. */
 .accueil[hidden]{display:none}
 .suggestions{display:flex;flex-direction:column;gap:6px;width:100%;max-width:520px}
+.suggestions[hidden]{display:none}
 .suggestion{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:transparent;border:0;
   border-radius:10px;padding:11px 12px;font-size:15px;color:var(--paper);cursor:pointer;font-family:inherit;text-transform:none;letter-spacing:0}
 .suggestion:hover{background:var(--panel)}
@@ -986,6 +987,23 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   padding:10px 12px;font-size:14px;color:var(--paper);cursor:pointer;font-family:inherit}
 .recents .recent:hover{background:var(--panel)}
 .recents .recent .t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* ---- les missions (29/09/2026) : une carte des etapes reellement executees ---- */
+.mission-intro{font-size:15px}
+.mission{border:1px solid var(--line);border-radius:14px;background:var(--panel);padding:10px 12px;margin:0 0 10px;font-size:13.5px}
+.mission-tete{display:flex;justify-content:space-between;gap:8px;font-weight:700;flex-wrap:wrap}
+.mission-etat{color:var(--dim);font-weight:600}
+.mission-pas{list-style:none;margin:8px 0 0;padding:0}
+.mission-pas li{display:flex;gap:8px;align-items:baseline;padding:4px 0;border-top:1px solid var(--line)}
+.mission-pas li:first-child{border-top:0}
+.mission-pas .pas-ic{flex:0 0 20px;text-align:center}
+.mission-pas .pas-txt{flex:1;min-width:0;overflow-wrap:anywhere}
+.mission-pas .pas-prix{font-family:'Space Mono',monospace;font-size:12px;color:var(--dim);white-space:nowrap}
+.mission-pas li.ok .pas-ic{color:var(--believer)}
+.mission-pas li.rate .pas-ic{color:var(--serpent)}
+.mission-bilan{margin-top:8px;font-size:12.5px;color:var(--dim)}
+.mission-offre{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:8px 0;display:flex;flex-direction:column;gap:6px;align-items:flex-start}
+.conseil{margin:6px 0 14px;text-align:center}
+.histo .ouvre .resume-mission{display:block;font-size:12px;color:var(--dim);font-weight:400;margin-top:2px}
 .recents .tout{background:transparent;border:0;color:var(--pool);font-weight:700;font-size:13px;padding:8px 12px;cursor:pointer;font-family:inherit}
 </style>
 
@@ -1020,8 +1038,15 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   <div class="etat" id="etat" hidden></div>
 
   <section class="accueil" id="accueil">
-    <h1>What can I help with?</h1>
-    <p>Chat with the top AI models — Claude, ChatGPT and Grok — search the live web with sources,
+    <h1>What do you want to accomplish?</h1>
+    <p class="mission-intro">Give SwoleMind an objective. It plans the work, runs the right tools — web search, token and on-chain checks, infrastructure recon — and shows every step it really ran, with what each one cost.</p>
+    <div class="suggestions" id="suggestionsMission">
+      <button class="suggestion" type="button" data-sugg="m_jeton"><span class="ic">&#127919;</span>Analyze a token</button>
+      <button class="suggestion" type="button" data-sugg="m_projet"><span class="ic">&#127919;</span>Research a project</button>
+      <button class="suggestion" type="button" data-sugg="m_site"><span class="ic">&#127919;</span>Check a website's infrastructure</button>
+      <button class="suggestion" type="button" data-sugg="m_lancements"><span class="ic">&#127919;</span>What launched on Base today?</button>
+    </div>
+    <p>Or chat with the top AI models — Claude, ChatGPT and Grok — search the live web with sources,
        create images with Grok Imagine or ChatGPT Image, and videos with Grok. You pay only for what each request actually costs: just sign it with your wallet in USDC (Base or Solana), no $SWOGE needed — or pay in $SWOGE.</p>
     <div class="suggestions" id="suggestions">
       <button class="suggestion" type="button" data-sugg="web"><span class="ic">&#127760;</span>Search the web</button>
@@ -1033,7 +1058,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       <button class="suggestion" type="button" data-sugg="video"><span class="ic">&#127916;</span>Make a video</button>
     </div>
     <div class="recents" id="recents" hidden>
-      <div class="recents-titre">Recent chats</div>
+      <div class="recents-titre">Recent missions &amp; chats</div>
       <div id="recentsListe"></div>
       <button class="tout" id="recentsTout" type="button">See all chats &#8594;</button>
     </div>
@@ -1066,6 +1091,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
         <input type="file" id="fichier" accept="image/png,image/jpeg,image/webp" hidden>
         <input type="file" id="fichierChat" accept="image/png,image/jpeg,image/webp,application/pdf" multiple hidden>
         <div class="modes" role="group" aria-label="What to make">
+          <button class="mode" type="button" data-mode="mission" aria-pressed="false" title="Give an objective: SwoleMind plans it and runs the tools">&#127919; Mission</button>
           <button class="mode" type="button" data-mode="chat" aria-pressed="true">&#128172; Chat</button>
           <button class="mode" type="button" data-mode="image" aria-pressed="false">&#128444;&#65039; Image</button>
           <button class="mode" type="button" data-mode="video" aria-pressed="false">&#127916; Video</button>
@@ -1173,9 +1199,13 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     code: { texte: "Help me with this code:\n", web: false },
     jeton: { texte: "Check this token: ", web: false, place: "Paste a token address (0x\u2026)" },
     image: { texte: "", mode: "image" },
+    m_jeton: { texte: "Analyze this token and tell me the risks: ", mode: "mission", place: "Paste a token address (0x\u2026)" },
+    m_projet: { texte: "Research this project on the web, summarise what it does and flag anything suspicious, with sources: ", mode: "mission" },
+    m_site: { texte: "Check the public infrastructure of this website (DNS, hosting, certificates) and flag anything unusual: ", mode: "mission" },
+    m_lancements: { texte: "What launched on Base today (Clanker, Zora), and what do we know about the launchers?", mode: "mission" },
     video: { texte: "", mode: "video" }
   };
-  var PLACE = { chat: "Ask SwoleMind", image: "Describe the image to create", video: "Describe the video \u2014 or attach a photo to animate" };
+  var PLACE = { mission: "What do you want to accomplish? e.g. Analyze this token 0x\u2026", chat: "Ask SwoleMind", image: "Describe the image to create", video: "Describe the video \u2014 or attach a photo to animate" };
   var FORMAT_NOM = { auto: "Auto" };
   function lisLocal(k, d){ try { var v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } }
   function ecrisLocal(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
@@ -1186,7 +1216,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     cat: null, modele: lisLocal("swogeChatModele", null), effort: lisLocal("swogeChatEffort", null),
     web: false, occupe: false, enVol: {}, conv: null, convs: lisLocal("swogeChats", []),
     /* Studio facon Grok : le mode du composeur et ses reglages, retenus. */
-    media: null, mode: lisLocal("swogeStudioMode", "chat"), jointe: null, pieces: [],
+    media: null, mode: lisLocal("swogeStudioMode", "mission"), catAgent: null, jointe: null, pieces: [],
     /* Comparer : 2 ou 3 modeles choisis dans la feuille, retenus. */
     compare: lisLocal("swogeCompare", false) === true, choix: lisLocal("swogeCompareChoix", []),
     /* Le credit en dollars (29/09) : le solde, et le payeur choisi par le joueur. */
@@ -1194,7 +1224,8 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     reg: Object.assign({ fournisseur: "grok", vitesse: "qualite", nombre: 1, formatI: "auto", formatV: "auto", duree: 6, resolution: "480p" },
                        lisLocal("swogeStudioReglages", {}))
   };
-  if (["chat", "image", "video"].indexOf(etat.mode) < 0) etat.mode = "chat";
+  /* La mission est le mode par defaut d'un nouveau visiteur (29/09) ; un choix garde reste le sien. */
+  if (["mission", "chat", "image", "video"].indexOf(etat.mode) < 0) etat.mode = "mission";
 
   /* ---- le rendu Markdown, SUR : tout est echappe AVANT d'etre mis en forme ----
      Le texte vient d'un modele : il ne doit jamais pouvoir injecter de HTML. */
@@ -1267,6 +1298,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     return null;
   }
   function peintPrix(){
+    if (etat.mode === "mission") return peintPrixMission();
     if (etat.mode !== "chat") {
       var mm = modeleMedia(), p = $("prixq");
       if (!etat.media) { p.textContent = "Loading\u2026"; return; }
@@ -1329,6 +1361,9 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   /* ---- le mode et ses reglages ---- */
   function peintMode(){
     var m = etat.mode;
+    document.body.classList.toggle("en-mission", m === "mission");
+    /* L'accueil reste simple : les suggestions du mode choisi seulement. */
+    $("suggestionsMission").hidden = m !== "mission"; $("suggestions").hidden = m === "mission";
     $("comparer").hidden = m !== "chat";
     $("comparer").setAttribute("aria-pressed", String(!!etat.compare));
     if (m === "chat" && etat.compare) {
@@ -1339,10 +1374,10 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     $("modeleBtn").hidden = m !== "chat";
     $("web").hidden = m !== "chat" || !(etat.compare ? modelesCompares().some(function(x){ return x.recherche; }) : (modeleCourant() || {}).recherche);
     /* « + » partout : en Chat il joint une photo ou un PDF a la question. */
-    $("joindre").hidden = false;
+    $("joindre").hidden = m === "mission";
     $("joindre").title = m === "chat" ? "Attach a photo or a PDF" : "Attach a photo";
     $("pieces").hidden = m !== "chat" || !etat.pieces.length;
-    $("reglages").hidden = m === "chat";
+    $("reglages").hidden = m === "chat" || m === "mission";
     $("fournisseur").hidden = m !== "image";
     Array.prototype.forEach.call(document.querySelectorAll("#fournisseur button"), function(b){ b.setAttribute("aria-pressed", String(b.getAttribute("data-f") === etat.reg.fournisseur)); });
     $("nombre").hidden = m !== "image";
@@ -1439,6 +1474,9 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       idGroupe = null;
       var d = ajouteMsg(m.role, m.content); d.setAttribute("data-i", i);
       if (m.role === "user") montrePieces(d, m.pieces);
+      if (m.role === "assistant" && m.mission && Array.isArray(m.mission.pas)) {
+        var cm = carteMission(String(m.mission.modele || "Claude")); d.insertBefore(cm, d.querySelector(".corps")); bilanMission(cm, m.mission);
+      }
       if (m.role === "assistant") {
         d.querySelector(".corps").innerHTML = markdown(m.content);
         ajouteCartes(d, m.jetons);
@@ -1798,7 +1836,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     box.hidden = !cs.length;
     cs.slice(0, 5).forEach(function(c){
       var b = document.createElement("button"); b.type = "button"; b.className = "recent";
-      var ic = document.createElement("span"); ic.textContent = "\uD83D\uDCAC";
+      var ic = document.createElement("span"); ic.textContent = estMission(c) ? "\ud83c\udfaf" : "\uD83D\uDCAC";
       var t = document.createElement("span"); t.className = "t"; t.textContent = c.titre || "Chat";
       var q = document.createElement("span"); q.className = "quand"; q.textContent = quand(c.maj);
       b.appendChild(ic); b.appendChild(t); b.appendChild(q);
@@ -1806,6 +1844,17 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       l.appendChild(b);
     });
     $("recentsTout").hidden = cs.length <= 5;
+  }
+  /* Une discussion qui porte au moins une mission ; son bilan : nombre, cout, duree. */
+  function estMission(c){ return (c.messages || []).some(function(x){ return x.mission; }); }
+  function resumeMissions(c){
+    var ms = (c.messages || []).filter(function(x){ return x.role === "assistant" && x.mission && Array.isArray(x.mission.pas); });
+    if (!ms.length) return "";
+    var usd = 0, sw = 0, ms0 = 0, pas = 0;
+    ms.forEach(function(x){ if (x.mission.payeur === "credit") usd += Number(x.mission.total) || 0; else sw += Number(x.mission.total) || 0; ms0 += Number(x.mission.dureeMs) || 0;
+      pas += x.mission.pas.filter(function(p){ return p.genre === "outil"; }).length; });
+    return ms.length + " mission" + (ms.length > 1 ? "s" : "") + " \u00b7 " + pas + " tool" + (pas > 1 ? "s" : "") + " \u00b7 " + duree(ms0)
+      + (usd ? " \u00b7 " + dollars(usd) : "") + (sw ? " \u00b7 " + nombre(sw) + " $SWOGE" : "");
   }
   function peintHisto(){
     var h = $("histo"); h.innerHTML = "";
@@ -1817,7 +1866,9 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     if (!etat.convs.length) { var v = document.createElement("div"); v.className = "vide"; v.textContent = TXT.vide; h.appendChild(v); return; }
     etat.convs.forEach(function(c){
       var l = document.createElement("div"); l.className = "ligne";
-      var b = document.createElement("button"); b.type = "button"; b.className = "ouvre"; b.textContent = c.titre || "Chat";
+      var b = document.createElement("button"); b.type = "button"; b.className = "ouvre"; b.textContent = (estMission(c) ? "\ud83c\udfaf " : "") + (c.titre || "Chat");
+      var rm = resumeMissions(c);
+      if (rm) { var sm = document.createElement("span"); sm.className = "resume-mission"; sm.textContent = rm; b.appendChild(sm); }
       b.addEventListener("click", function(){ ouvreConv(c); });
       var q = document.createElement("span"); q.className = "quand"; q.textContent = quand(c.maj);
       var x = document.createElement("button"); x.type = "button"; x.className = "efface"; x.textContent = "\u2715";
@@ -2063,10 +2114,235 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
              etat.occupe = false; peintBoutons();
              /* Aucune colonne servie : la question ne reste pas dans le fil. */
              if (!servies) { var i = etat.conv.messages.findIndex(function(x){ return x.comparaison === idc && x.role === "user"; }); if (i >= 0) etat.conv.messages.splice(i, 1); sauveConv(); }
+             if (servies >= 2) boutonConseil(g, idc);
            } });
     });
   }
+  /* ==================== LES MISSIONS (29/09/2026) ====================
+   * Analyse « Agent OS » (ChatGPT/Grok), etape 1 retenue par le proprietaire : on donne
+   * un OBJECTIF, pas un modele. La mission passe par le moteur de SwogeAgentic
+   * (/studio/agent : Claude decoupe, appelle les outils de SWOGE, conclut), et la carte
+   * de mission montre ce qui a VRAIMENT ete execute : chaque appel au modele (son cout
+   * reel, evenement « cout »), chaque outil (reussi ou rate, la recherche web a son
+   * prix), la duree, et la facture repartie au prorata des couts reels. Rien n'est
+   * simule : une etape n'apparait que quand le serveur l'a faite. */
+  var OUTIL_NOM = {
+    scan_token: "🔍 Reading the token", can_i_sell: "🧪 Simulating a sale", colony_activity: "🤖 Reading the SWOGE AI colony",
+    swoge_economy: "🔥 Reading the $SWOGE economy", web_search: "🌐 Searching the web", new_launches: "🚀 Reading new launches",
+    wallet_intel: "👛 Reading a wallet", osint_lookup: "🔎 Passive infrastructure recon", find_paid_services: "🛒 Looking for a paid service",
+    hire_paid_service: "💳 Hiring a paid service", find_esim_plans: "📶 Looking for eSIM plans", propose_esim_purchase: "📶 Preparing an eSIM offer",
+    stock_token_check: "🏦 Checking a stock token", base_launches: "🔵 Reading Base launches", base_deployer: "🔵 Reading a Base launcher's record"
+  };
+  function modeleMission(){
+    var c = etat.catAgent; if (!c || !c.modeles) return null;
+    return c.modeles.filter(function(x){ return x.id === c.defaut; })[0] || c.modeles[0];
+  }
+  function peintPrixMission(){
+    var m = modeleMission(), p = $("prixq");
+    if (!m) { p.textContent = etat.catAgent === false ? "Missions are not available right now." : "Loading…"; return; }
+    var prix = payeur() !== "swoge" && m.typiqueUsd != null ? "~" + dollars(m.typiqueUsd) + " per mission (max " + dollars(m.maxUsd) + ")" : "~" + nombre(m.typiqueSwoge) + " $SWOGE per mission (max " + nombre(m.maxSwoge) + ")";
+    p.textContent = "Mission · " + m.nom + " plans it and runs the tools · " + prix + " · every step and its cost shown" + commentPayer();
+  }
+  function duree(ms){ var s = Math.max(0, Math.round(ms / 1000)); return s < 60 ? s + " s" : Math.floor(s / 60) + " min " + (s % 60) + " s"; }
+  function carteMission(nomModele){
+    var c = document.createElement("div"); c.className = "mission";
+    var t = document.createElement("div"); t.className = "mission-tete";
+    var a = document.createElement("span"); a.textContent = "🎯 Mission · " + nomModele;
+    var e = document.createElement("span"); e.className = "mission-etat"; e.textContent = "running…";
+    t.appendChild(a); t.appendChild(e); c.appendChild(t);
+    var l = document.createElement("ol"); l.className = "mission-pas"; c.appendChild(l);
+    return c;
+  }
+  function lignePas(ic, txt){
+    var li = document.createElement("li");
+    var s = document.createElement("span"); s.className = "pas-ic"; s.textContent = ic;
+    var x = document.createElement("span"); x.className = "pas-txt"; x.textContent = txt;
+    var p = document.createElement("span"); p.className = "pas-prix";
+    li.appendChild(s); li.appendChild(x); li.appendChild(p);
+    return li;
+  }
+  /* Le bilan : la facture REELLE (ce que le serveur a debite) repartie au prorata du cout
+     reel de chaque etape. Montre aussi a la relecture d'une mission (peintConv). */
+  function bilanMission(carte, mi){
+    carte.querySelector(".mission-etat").textContent = "done in " + duree(mi.dureeMs);
+    var l = carte.querySelector(".mission-pas"); l.innerHTML = "";
+    mi.pas.forEach(function(p){
+      var li = lignePas(p.genre === "modele" ? "🧠" : (p.ok ? "✓" : "✗"), p.genre === "modele" ? p.nom + " · step " + p.etape
+        : (OUTIL_NOM[p.nom] || p.nom) + (p.ok || !p.raison ? "" : " — " + p.raison));
+      if (p.genre !== "modele") li.className = p.ok ? "ok" : "rate";
+      if (p.part != null) li.querySelector(".pas-prix").textContent = mi.payeur === "credit" ? dollars(p.part) : nombre(p.part) + " $SWOGE";
+      l.appendChild(li);
+    });
+    var b = document.createElement("div"); b.className = "mission-bilan";
+    var nOutils = mi.pas.filter(function(p){ return p.genre === "outil"; }).length, nAppels = mi.pas.filter(function(p){ return p.genre === "modele"; }).length;
+    b.textContent = "Total " + (mi.payeur === "credit" ? dollars(mi.total) : nombre(mi.total) + " $SWOGE") + " · " + nAppels + " model call" + (nAppels > 1 ? "s" : "") + " · "
+      + nOutils + " tool" + (nOutils > 1 ? "s" : "") + " · " + duree(mi.dureeMs) + ". Each line is its share of the bill, from its real cost.";
+    var ancien = carte.querySelector(".mission-bilan"); if (ancien) ancien.remove();
+    carte.appendChild(b);
+  }
+  /* L'historique envoye a l'agent : le texte de ce fil (missions et chat), sans medias ni arrets. */
+  function historiqueMission(){
+    return etat.conv.messages.filter(function(x){ return !x.genre && !x.interrompu && !x.comparaison && !x.council; })
+      .map(function(x){ return { role: x.role, content: String(x.content || "") }; });
+  }
+  function envoyerMission(){
+    var q = $("question").value.trim();
+    if (!q || etat.occupe) return;
+    var j = jeton();
+    if (!j) { dit(TXT.signin); return; }
+    var m = modeleMission();
+    if (!m || !etat.catAgent.ouvert) { dit((etat.catAgent && etat.catAgent.note) || "Missions are warming up."); return; }
+    if (!etat.conv) nouvelleConv();
+    var rid = nouveauRid(), t0 = Date.now();
+    etat.conv.messages.push({ role: "user", content: q, rid: rid, mission: true });
+    sauveConv();
+    ajouteMsg("user", q);
+    $("question").value = ""; dimensionne();
+    etat.occupe = true; peintBoutons(); dit("");
+    var d = ajouteMsg("assistant", ""), corps = d.querySelector(".corps"), texte = "", fini = false;
+    var carte = carteMission(m.nom); d.insertBefore(carte, corps);
+    var liste = carte.querySelector(".mission-pas"), pas = [], parId = {};
+    var ctl = new AbortController(); etat.enVol[rid] = ctl; peintBoutons();
+    function termine(){ delete etat.enVol[rid]; etat.occupe = false; peintBoutons(); }
+    fetch(serveur() + "/studio/agent", { method: "POST", signal: ctl.signal, headers: { "content-type": "application/json", authorization: "Bearer " + j },
+      body: JSON.stringify({ rid: rid, modele: m.id, messages: historiqueMission(), payeur: payeurServeur() }) })
+      .then(function(rep){
+        if (!rep.ok || !rep.body) return rep.json().then(function(e){ throw { code: rep.status, raison: e && e.raison }; }, function(){ throw { code: rep.status }; });
+        var lecteur = rep.body.getReader(), dec = new TextDecoder(), tampon = "";
+        function evenement(type, data){
+          if (type === "texte") { texte += data.t; corps.innerHTML = markdown(texte); }
+          else if (type === "cout") {
+            var p = { genre: "modele", nom: m.nom, etape: Number(data.etape) || pas.length + 1, cout: Number(data.coutUsd) || 0 };
+            pas.push(p); liste.appendChild(lignePas("🧠", p.nom + " · step " + p.etape));
+          }
+          else if (type === "outil") {
+            var po = { genre: "outil", nom: String(data.nom || "tool"), ok: null, cout: 0 };
+            pas.push(po); parId[data.id] = { p: po, li: lignePas("⏳", OUTIL_NOM[po.nom] || po.nom) };
+            liste.appendChild(parId[data.id].li);
+          }
+          else if (type === "resultat") {
+            var x = parId[data.id]; if (!x) return;
+            x.p.ok = !!data.ok; x.p.cout = Number(data.coutUsd) || 0;
+            if (!data.ok && data.resume) x.p.raison = String(data.resume).slice(0, 120);
+            x.li.className = data.ok ? "ok" : "rate";
+            x.li.querySelector(".pas-ic").textContent = data.ok ? "✓" : "✗";
+            if (!data.ok && data.resume) x.li.querySelector(".pas-txt").textContent += " — " + String(data.resume).slice(0, 120);
+            if (data.achat) d.appendChild(offreEsim(data.achat));
+          }
+          else if (type === "fin") {
+            fini = true;
+            var dureeMs = Date.now() - t0, credit = data.payeur === "credit";
+            var total = credit ? Number(data.factureUsd) || 0 : Number(data.factureSwoge) || 0;
+            var brut = pas.reduce(function(s, p){ return s + (p.cout || 0); }, 0);
+            var mi = { objectif: q, modele: m.nom, dureeMs: dureeMs, payeur: credit ? "credit" : "swoge", total: total, t: Date.now(),
+              pas: pas.map(function(p){ return { genre: p.genre, nom: p.nom, etape: p.etape, ok: p.ok !== false, raison: p.raison || undefined,
+                part: brut > 0 && p.cout > 0 ? Math.round(total * p.cout / brut * 1e6) / 1e6 : null }; }) };
+            var t = data.texte || texte || (data.stop === "refusal" ? TXT.refus : "");
+            corps.innerHTML = markdown(t);
+            ajouteCartes(d, data.jetons);
+            if (data.sources && data.sources.length) d.appendChild(sourcesEl(data.sources));
+            bilanMission(carte, mi);
+            var meta = "🎯 Mission · " + m.nom + " · " + (credit ? dollars(total) : nombre(total) + " $SWOGE") + " · " + duree(dureeMs)
+              + (data.stop === "max_steps" ? " (step limit reached)" : "");
+            var mt = document.createElement("div"); mt.className = "meta"; mt.textContent = meta; d.appendChild(mt);
+            d.appendChild(actionsEl(t));
+            etat.conv.messages.push({ role: "assistant", content: t, sources: data.sources || [], jetons: data.jetons || [], meta: meta, mission: mi });
+            sauveConv();
+            if (credit) poseCredit(data.creditUsd); else if (data.solde) $("solde").innerHTML = "Balance <b>" + nombre(data.solde) + " $SWOGE</b>";
+          }
+          else if (type === "erreur") { fini = true; throw data; }
+        }
+        function lit(){
+          return lecteur.read().then(function(r){
+            if (r.done) return;
+            tampon += dec.decode(r.value, { stream: true });
+            var blocs = tampon.split("\n\n"); tampon = blocs.pop();
+            blocs.forEach(function(b){
+              var ty = (b.match(/^event: (.+)$/m) || [])[1], x = (b.match(/^data: (.+)$/m) || [])[1];
+              if (ty && x) { try { evenement(ty, JSON.parse(x)); } catch (e) { if (e && (e.code || e.raison)) throw e; } }
+            });
+            return lit();
+          });
+        }
+        return lit();
+      })
+      .then(function(){ if (!fini) throw { raison: TXT.erreurReseau }; termine(); })
+      ["catch"](function(e){
+        if (etat.quitte) return;
+        termine();
+        if (ctl.arretDemande || (e && e.arrete)) {
+          var dq = etat.conv.messages[etat.conv.messages.length - 1];
+          if (dq && dq.rid === rid) { dq.interrompu = true; sauveConv(); }
+          carte.querySelector(".mission-etat").textContent = "stopped";
+          montreArret(d, texte);
+          return;
+        }
+        etat.conv.messages.pop(); sauveConv();
+        carte.querySelector(".mission-etat").textContent = "not run";
+        if (e && e.code === 402 && e.requisUsd != null) return uneSignature(d, corps, q, e, "run");
+        d.classList.add("err");
+        var raison = (e && e.raison) || TXT.erreurReseau;
+        if (e && e.code === 402) raison += " — top up your balance in the Wallet (needs ~" + nombre(e.requisSwoge) + " $SWOGE), or pay with your wallet (Pay with: Sign with my wallet).";
+        if (e && e.code === 401) raison = TXT.signin;
+        corps.textContent = raison;
+      });
+  }
+  /* Une offre d'eSIM preparee par la mission : le joueur la confirme ICI (le serveur revérifie
+     tout : propriétaire de l'offre, prix, expiration) ; rien n'est achete sans ce clic. */
+  function offreEsim(o){
+    var c = document.createElement("div"); c.className = "mission-offre";
+    var t = document.createElement("div"); t.textContent = "📶 " + String(o.nom || "eSIM") + (o.go ? " · " + o.go + " GB" : "") + (o.jours ? " · " + o.jours + " days" : "") + " · $" + o.factureUsd;
+    var b = document.createElement("button"); b.type = "button"; b.className = "rc-action"; b.textContent = "Buy this eSIM for $" + o.factureUsd;
+    var s = document.createElement("div"); s.className = "rc-statut"; s.setAttribute("role", "status");
+    b.addEventListener("click", function(){
+      var j = jeton(); if (!j) { s.textContent = TXT.signin; return; }
+      b.disabled = true; s.textContent = "Buying…";
+      fetch(serveur() + "/studio/agent/achats", { method: "POST", cache: "no-store", headers: { authorization: "Bearer " + j, "content-type": "application/json" },
+        body: JSON.stringify({ action: "confirme", id: o.id, payeur: payeurServeur() }) }).then(function(r){ return r.json(); }).then(function(d){
+          if (d && d.ok) { s.textContent = d.livree ? "Bought. Your activation code is under “Your eSIMs” on SwogeAgentic." : "Paid: your eSIM is being prepared (see SwogeAgentic)."; chargeSolde(); }
+          else { b.disabled = false; s.textContent = (d && d.raison) || "Not bought - you were not charged."; }
+        })["catch"](function(){ b.disabled = false; s.textContent = "The server did not answer - check before trying again."; });
+    });
+    c.appendChild(t); c.appendChild(b); c.appendChild(s);
+    return c;
+  }
+
+  /* ==================== LE CONSEIL (29/09/2026) ====================
+   * Apres une comparaison, un agent de synthese lit les reponses et dit ou elles
+   * s'accordent, ou elles divergent (qui dit quoi), ce qui manque. Une vraie reponse,
+   * payee comme une question (son prix sur le bouton), jamais lancee sans clic. */
+  function modeleConseil(){
+    var c = etat.cat; if (!c) return null;
+    var l = c.modeles.filter(function(m){ return m.actif !== false; });
+    return l.filter(function(m){ return m.id === "sonnet-5"; })[0] || l.filter(function(m){ return m.fournisseur === "anthropic"; })[0] || l[0] || null;
+  }
+  function boutonConseil(g, idc){
+    var m = modeleConseil(); if (!m) return;
+    var p = document.createElement("div"); p.className = "conseil";
+    var b = document.createElement("button"); b.type = "button"; b.className = "rc-action";
+    b.textContent = "🏛️ Council verdict: where these answers agree and disagree (" + (enDollars() ? "~" + dollars(m.typiqueUsd) : "~" + nombre(m.typiqueSwoge) + " $SWOGE") + ")";
+    b.addEventListener("click", function(){ if (etat.occupe) return; p.remove(); conseil(idc, m); });
+    p.appendChild(b); g.parentNode.insertBefore(p, g.nextSibling);
+  }
+  function conseil(idc, m){
+    var j = jeton(); if (!j) { dit(TXT.signin); return; }
+    var qm = etat.conv.messages.filter(function(x){ return x.comparaison === idc && x.role === "user"; })[0];
+    var reps = etat.conv.messages.filter(function(x){ return x.comparaison === idc && x.role === "assistant" && !x.interrompu && x.content; });
+    if (!qm || reps.length < 2) return;
+    var consigne = "You are the synthesis agent of an AI council. The same question was answered independently by " + reps.length + " models.\n\nQuestion:\n" + String(qm.content).slice(0, 4000) + "\n\n"
+      + reps.map(function(r, i){ return "Answer " + (i + 1) + " (" + (r.nomModele || "model") + "):\n" + String(r.content).slice(0, 6000); }).join("\n\n")
+      + "\n\nCompare them. Give: 1) where they agree; 2) where they disagree, saying which model says what; 3) what is missing or uncertain in all of them; 4) the most reliable combined answer. "
+      + "Use only what the answers say: do not add new facts, and flag any claim that should be checked.";
+    etat.conv.messages.push({ role: "user", content: "🏛️ Council verdict on the answers above", council: idc });
+    sauveConv();
+    ajouteMsg("user", "🏛️ Council verdict on the answers above");
+    etat.occupe = true; peintBoutons();
+    var d = ajouteMsg("assistant", "");
+    flux(j, { rid: nouveauRid(), modele: m.id, messages: [{ role: "user", content: consigne }], payeur: payeurServeur() }, d, m, { council: idc, nomModele: m.nom },
+      function(){ etat.occupe = false; peintBoutons(); });
+  }
   function envoyer(){
+    if (etat.mode === "mission") return envoyerMission();
     if (etat.mode !== "chat") return envoyerMedia();
     if (etat.compare) return envoyerComparaison();
     var q = $("question").value.trim();
@@ -2967,8 +3243,9 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   Array.prototype.forEach.call(document.querySelectorAll(".suggestion"), function(b){
     b.addEventListener("click", function(){
       var s = SUGG[b.getAttribute("data-sugg")]; if (!s) return;
-      if (s.mode) { changeMode(s.mode); return; }
-      if (etat.mode !== "chat") changeMode("chat");
+      /* Une mission : le mode ET le debut de l'objectif (le joueur complete). */
+      if (s.mode && !s.texte) { changeMode(s.mode); return; }
+      if (s.mode) changeMode(s.mode); else if (etat.mode !== "chat") changeMode("chat");
       if (s.web) { etat.web = true; $("web").setAttribute("aria-pressed", "true"); }
       var t = $("question"); t.value = s.texte; if (s.place) t.placeholder = s.place; t.focus(); dimensionne();
     });
@@ -2983,6 +3260,10 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       if (!c.ouvert) dit(c.note || TXT.ferme);
       peintPrix(); peintBoutons();
     })["catch"](function(){ $("prixq").textContent = TXT.ferme; });
+  /* Les missions : le catalogue de l'agent (modele par defaut, prix d'une mission en dollars et en $SWOGE). */
+  fetch(serveur() + "/studio/agent/catalogue", { cache: "no-store" })
+    .then(function(r){ return r.json(); })
+    .then(function(c){ etat.catAgent = c && c.modeles ? c : false; peintPrix(); peintBoutons(); })["catch"](function(){ etat.catAgent = false; peintPrix(); });
   fetch(serveur() + "/studio/media/catalogue", { cache: "no-store" })
     .then(function(r){ return r.json(); })
     .then(function(c){ etat.media = c; peintMode(); })["catch"](function(){ peintMode(); });

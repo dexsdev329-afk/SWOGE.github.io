@@ -151,7 +151,12 @@ const PEPE = { adresse:'0x6982508145454ce325ddbe47a25d4ec3d2311933', trouve:true
     ok(!/sk-ant-|ANTHROPIC_API_KEY\s*=|api\.anthropic\.com/.test(html), 'aucune cle, et la page ne parle jamais au fournisseur');
     ok(/<a href="swogeagentic\.html" class="on" aria-current="page">/.test(html) && /<a href="swolemind\.html">/.test(html), 'dans le menu, a cote de SwoleMind');
     const sm = fs.readFileSync(path.join(SITE, 'swolemind.html'), 'utf8');
-    ok(/<title>SwoleMind/.test(sm) && !/\/studio\/agent/.test(sm), 'SwoleMind reste une page a part, inchangee dans ce qu elle fait');
+    /* 29/09 : le proprietaire a voulu les missions dans SwoleMind (etape 1 « Agent OS ») : seul le mode
+       Mission y parle a l'agent ; son chat reste le chat (/studio/chat), et la page reste a part. */
+    const iMission = sm.indexOf('function envoyerMission('), fMission = sm.indexOf('function offreEsim(');
+    const horsMission = sm.slice(0, iMission) + sm.slice(fMission);
+    ok(/<title>SwoleMind/.test(sm) && /\/studio\/chat"/.test(sm) && iMission > 0 && /\/studio\/agent"/.test(sm.slice(iMission, fMission)) && !/"\/studio\/agent"/.test(horsMission.replace('"/studio/agent/catalogue"', '').replace('"/studio/agent/achats"', '')),
+       'SwoleMind reste une page a part : son chat passe par /studio/chat, seul le mode Mission appelle l agent');
   }
 
   console.log('\n-- 2. le catalogue, et sans session rien ne part --');

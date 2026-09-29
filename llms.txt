@@ -43,6 +43,8 @@ Travel eSIM, no account: `GET https://web-production-220a3.up.railway.app/esim/p
 
 Pay other x402 services with your key: `POST https://web-production-220a3.up.railway.app/agentic/pay` with `{"url": "...", "query": {...}, "max_usd": 0.01}` and an `Idempotency-Key` header. The key owner turns payments on for that key first (per-call cap up to $0.10, optional allowed sites); SWOGE pays, only if the service answers 200, and bills the owner (dollar credit or $SWOGE). The same Idempotency-Key never pays twice. Every attempt is on a hash-chained audit: `GET https://web-production-220a3.up.railway.app/agentic/audit`.
 
+Agent passport: `GET https://web-production-220a3.up.railway.app/agentic/passport` with your key returns your agent's passport (owner wallet, what it pays from, daily cap, permissions, measured history), signed in Ed25519 by SWOGE. Show it to another agent; anyone verifies it with the public key at `https://web-production-220a3.up.railway.app/.well-known/swoge-passport.json`. A published passport is public at `https://web-production-220a3.up.railway.app/agentic/passport/<id>`.
+
 Dollar credit: a key can be set to pay from its owner's dollar credit instead of $SWOGE. Read it with `GET https://web-production-220a3.up.railway.app/credit` and top it up with one x402 payment (USDC on Base or Solana): `POST https://web-production-220a3.up.railway.app/credit/topup` with `{"usd": 5}` and your key; credited once the payment settles.
 
 ## Docs

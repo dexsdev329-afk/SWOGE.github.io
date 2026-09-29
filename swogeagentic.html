@@ -1391,6 +1391,9 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
             fetch(serveur() + "/agentic/cles/" + encodeURIComponent(c.id), { method: "DELETE", headers: { authorization: "Bearer " + j } })
               .then(function(){ chargeDev(); })["catch"](function(){});
           });
+          /* Le passeport de la cle (29/09) : son identite signee, a montrer aux autres agents. */
+          var pa = document.createElement("a"); pa.className = "dev-passeport"; pa.href = "agent_passport.html?id=" + encodeURIComponent(c.id); pa.textContent = "\ud83e\udeaa Passport" + (c.passeportPublic ? " (public)" : "");
+          l.appendChild(pa);
           l.appendChild(x); z.appendChild(l);
           z.appendChild(lignePayeur(c, j));
           z.appendChild(lignePaiements(c, j));

@@ -376,6 +376,7 @@ const PEPE = { adresse:'0x6982508145454ce325ddbe47a25d4ec3d2311933', trouve:true
     await page.waitForSelector('#devCles .dev-cle');
     ok(/my-bot/.test(await page.textContent('#devCles')) && /0 \/ 5,000 \$SWOGE today/.test(await page.textContent('#devCles')), 'la liste : nom, depense du jour sur le plafond');
     ok(/scan_token · 357\.01535 \$SWOGE · receipt r1e2c3u4/.test(await page.textContent('#devRecus')), 'les derniers appels, avec leur recu');
+    ok(await page.getAttribute('#devCles a.dev-passeport', 'href') === 'agent_passport.html?id=abc123def456', 'chaque cle mene a son passeport (29/09)');
     /* La passerelle (28/09 au soir) : les paiements d'une cle, eteints par defaut, allumes par la session. */
     ok(/Payments OFF: this key can only read/.test(await page.textContent('#devCles')), 'une cle neuve : paiements eteints, la page le dit');
     await page.click('.dev-paie:not(.dev-payeur) button');

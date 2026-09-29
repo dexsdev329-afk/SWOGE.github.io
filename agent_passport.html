@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>SWOGE Agent Passport — a verifiable identity for AI agents</title>
+<meta name="description" content="The passport of an AI agent's API key: its owner wallet, what it pays from, its limits, its permissions and its measured history, signed by SWOGE and verifiable by anyone.">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/img/site/icone-32.png">
+<link rel="apple-touch-icon" href="/img/site/icone-180.png">
+<!-- ==================================================================
+ * L'AGENT PASSPORT (29 septembre 2026)
+ *
+ * Etape 3 de l'analyse « Agent OS », retenue par le proprietaire. Le passeport
+ * d'une cle swg_ (passeport.js du serveur) : proprietaire, payeur, plafond,
+ * permissions, historique MESURE — signe en Ed25519 par une cle dediee de SWOGE.
+ * La page VERIFIE la signature dans le navigateur (WebCrypto, cle publique de
+ * /.well-known/swoge-passport.json, JSON canonique : cles triees) ; si le
+ * navigateur ne sait pas l'Ed25519, elle demande au serveur ET le dit.
+ * Prive par defaut : le proprietaire (sa session) le lit et peut le publier ;
+ * le serveur revérifie tout, la page ne fait que montrer.
+ * Tout ce qui vient du serveur est pose en textContent, jamais en HTML.
+ * ================================================================== -->
+<style>
+:root{ --fond:#EEF3FB; --carte:#fff; --encre:#0B1B36; --pale:#5a6b85; --bleu:#1652f0; --violet:#5b3df5; --ligne:#E1E9F6; --ok:#0a7d3e; --err:#b3261e; }
+*{ box-sizing:border-box; }
+html{ -webkit-text-size-adjust:100%; }
+body{ margin:0; background:linear-gradient(180deg,#e9efff 0,var(--fond) 280px); color:var(--encre); font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; min-height:100vh; }
+a{ color:var(--bleu); }
+.haut{ display:flex; gap:14px; align-items:center; flex-wrap:wrap; max-width:760px; margin:0 auto; padding:14px 16px 0; font-size:14px; }
+.haut .logo{ font-weight:800; color:var(--encre); text-decoration:none; margin-right:auto; }
+.haut a{ text-decoration:none; font-weight:600; }
+main{ max-width:760px; margin:0 auto; padding:18px 16px 48px; }
+h1{ font-size:28px; margin:6px 0 6px; }
+h1 em{ font-style:normal; background:linear-gradient(90deg,var(--bleu),var(--violet)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+.intro{ color:var(--pale); margin:0 0 14px; }
+.carte{ background:var(--carte); border:1px solid var(--ligne); border-radius:16px; padding:16px; margin:12px 0; box-shadow:0 8px 26px rgba(11,27,54,.06); }
+.passeport-tete{ display:flex; justify-content:space-between; gap:10px; align-items:flex-start; flex-wrap:wrap; }
+.passeport-tete .nom{ font-size:20px; font-weight:800; overflow-wrap:anywhere; }
+.badge{ font-size:12px; font-weight:700; border-radius:999px; padding:3px 10px; background:#f1f4fb; color:var(--pale); white-space:nowrap; }
+.badge.ok{ background:#e7f6ee; color:var(--ok); }
+.badge.err{ background:#fdecea; color:var(--err); }
+h2{ font-size:14px; text-transform:uppercase; letter-spacing:.06em; color:var(--pale); margin:16px 0 6px; }
+dl{ margin:0; display:grid; grid-template-columns:minmax(120px,auto) 1fr; gap:6px 12px; font-size:14px; }
+dt{ color:var(--pale); }
+dd{ margin:0; overflow-wrap:anywhere; }
+code,.mono{ font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12.5px; overflow-wrap:anywhere; }
+.btn{ font:inherit; font-size:14px; font-weight:700; border:0; border-radius:999px; padding:9px 16px; background:var(--bleu); color:#fff; cursor:pointer; min-height:38px; }
+.btn.clair{ background:#eaf1ff; color:var(--bleu); }
+.btn[disabled]{ opacity:.5; cursor:default; }
+.actions{ display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
+.statut{ min-height:20px; font-size:13.5px; color:var(--pale); margin:8px 0 0; }
+.statut.ok{ color:var(--ok); font-weight:600; }
+.statut.err{ color:var(--err); }
+.cherche{ display:flex; gap:8px; }
+.cherche input{ flex:1; min-width:0; font:inherit; border:1px solid var(--ligne); border-radius:10px; padding:10px 12px; font-family:ui-monospace,monospace; }
+.oui{ color:var(--ok); font-weight:700; } .non{ color:var(--err); font-weight:700; }
+[hidden]{ display:none !important; }
+</style>
+</head>
+<body>
+<nav class="haut" aria-label="SWOGE">
+  <a class="logo" href="index.html">SWOGE</a>
+  <a href="agent_store.html">Agent Store</a>
+  <a href="swogeagentic.html">SwogeAgentic</a>
+  <a href="swogeagentic_api.html">API docs</a>
+</nav>
+<main>
+  <h1>Agent <em>Passport</em></h1>
+  <p class="intro">Who an AI agent is, who it acts for, what it may do and what it has already done &mdash; signed by SWOGE, so another agent can check it before paying it or being paid by it, without trusting us.</p>
+  <div class="carte" id="carteCherche">
+    <label for="idPasseport"><b>Passport id</b> (12 characters, from the agent or its owner)</label>
+    <div class="cherche" style="margin-top:6px"><input type="text" id="idPasseport" maxlength="12" placeholder="e.g. 3f9a0c1b2d4e" autocomplete="off"><button type="button" class="btn" id="voir">Show</button></div>
+    <p class="statut" id="statutCherche" role="status"></p>
+  </div>
+
+  <div class="carte" id="cartePasseport" hidden>
+    <div class="passeport-tete">
+      <div><div class="nom" id="pNom"></div><div class="mono" id="pId"></div></div>
+      <div><span class="badge" id="pEtat"></span> <span class="badge" id="pVisibilite"></span></div>
+    </div>
+    <h2>Owner</h2>
+    <dl id="dProprietaire"></dl>
+    <h2>Wallet</h2>
+    <dl id="dPortefeuille"></dl>
+    <h2>Permissions</h2>
+    <dl id="dPermissions"></dl>
+    <h2>Measured history</h2>
+    <dl id="dHistoire"></dl>
+    <h2>Signature</h2>
+    <dl id="dSignature"></dl>
+    <p class="statut" id="statutVerif" role="status"></p>
+    <div class="actions">
+      <button type="button" class="btn" id="verifier">Verify the signature</button>
+      <button type="button" class="btn clair" id="copierJson">Copy the signed passport (JSON)</button>
+      <button type="button" class="btn clair" id="copierLien">Copy the link</button>
+    </div>
+    <div id="blocProprio" hidden>
+      <h2>You own this agent</h2>
+      <p class="intro" id="proprioTexte"></p>
+      <div class="actions"><button type="button" class="btn" id="basculer"></button></div>
+      <p class="statut" id="statutProprio" role="status"></p>
+    </div>
+  </div>
+</main>
+<script>
+(function(){
+  "use strict";
+  var $ = function(id){ return document.getElementById(id); };
+  function serveur(){
+    try { var q = new URLSearchParams(location.search).get("server"); if (q) return String(q).replace(/^ws/, "http").replace(/\/$/, ""); } catch (e) {}
+    return "https://web-production-220a3.up.railway.app";
+  }
+  function jeton(){ try { return localStorage.getItem("swogeSession"); } catch (e) { return null; } }
+  function statut(id, t, genre){ var s = $(id); s.textContent = t || ""; s.className = "statut" + (genre ? " " + genre : ""); }
+  function usd(x){ var n = Number(x); return isFinite(n) ? "$" + (n >= 1 || n === 0 ? n.toFixed(2) : n.toLocaleString("en-US", { maximumFractionDigits: 4 })) : "—"; }
+  function date(s){ return s ? String(s).slice(0, 16).replace("T", " ") + " UTC" : "—"; }
+  function copie(t, b){ var v = b.textContent; try { navigator.clipboard.writeText(t).then(function(){ b.textContent = "Copied"; setTimeout(function(){ b.textContent = v; }, 1500); }, function(){ b.textContent = "Copy failed"; }); } catch (e) { b.textContent = "Copy failed"; } }
+  function remplit(id, lignes){
+    var dl = $(id); dl.textContent = "";
+    lignes.forEach(function(l){
+      var dt = document.createElement("dt"); dt.textContent = l[0];
+      var dd = document.createElement("dd");
+      if (l[2]) { var s = document.createElement("span"); s.className = l[2]; s.textContent = l[1]; dd.appendChild(s); } else dd.textContent = l[1];
+      dl.appendChild(dt); dl.appendChild(dd);
+    });
+  }
+  /* Le JSON canonique : le MEME que passeport.js (cles triees a tous les niveaux, sans espaces). */
+  function canonique(v){
+    if (Array.isArray(v)) return "[" + v.map(canonique).join(",") + "]";
+    if (v && typeof v === "object") return "{" + Object.keys(v).filter(function(k){ return v[k] !== undefined; }).sort().map(function(k){ return JSON.stringify(k) + ":" + canonique(v[k]); }).join(",") + "}";
+    return JSON.stringify(v === undefined ? null : v);
+  }
+  function b64url(s){ s = String(s).replace(/-/g, "+").replace(/_/g, "/"); while (s.length % 4) s += "="; var b = atob(s), u = new Uint8Array(b.length); for (var i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return u; }
+
+  var etat = { env: null, id: null, owned: false };
+  function montre(d){
+    var p = d.passport, s = d.signature;
+    etat.env = { passport: p, signature: s }; etat.owned = !!d.owned;
+    $("cartePasseport").hidden = false;
+    $("pNom").textContent = "🪪 " + String(p.agent.name || "agent");
+    $("pId").textContent = "id " + p.agent.id + " · key " + String(p.agent.keyPrefix || "swg_") + "…";
+    $("pEtat").textContent = p.agent.active ? "active" : "revoked"; $("pEtat").className = "badge " + (p.agent.active ? "ok" : "err");
+    $("pVisibilite").textContent = p.public ? "public" : "private";
+    remplit("dProprietaire", [["Wallet", p.owner.wallet], ["Proof", p.owner.proof], ["Created", date(p.agent.createdAt)]]);
+    var cap = p.wallet.dailyCap || {}, dep = p.wallet.spentToday || {};
+    remplit("dPortefeuille", [["Pays from", p.wallet.paysFrom], ["Daily cap", cap.usd != null ? usd(cap.usd) : Number(cap.swoge || 0).toLocaleString("en-US") + " $SWOGE"],
+      ["Spent today", dep.usd != null ? usd(dep.usd) : Number(dep.swoge || 0).toLocaleString("en-US") + " $SWOGE"]]);
+    var po = p.permissions.payOtherServices || {};
+    remplit("dPermissions", [["Read tools", p.permissions.readTools ? "yes" : "no", p.permissions.readTools ? "oui" : "non"],
+      ["Buy, sell or sign", p.permissions.buysSellsOrSigns ? "yes" : "never", p.permissions.buysSellsOrSigns ? "non" : "oui"],
+      ["Manage keys", p.permissions.manageKeys ? "yes" : "never", p.permissions.manageKeys ? "non" : "oui"],
+      ["Pay other services", po.enabled ? "yes, up to " + usd(po.maxPerCallUsd) + " a call" + (po.allowedSites && po.allowedSites.length ? ", only " + po.allowedSites.join(", ") : ", any service of the public x402 catalogue") : "no"]]);
+    var h = p.history || {}, g = h.gateway || {};
+    remplit("dHistoire", [["Counted since", date(h.since)], ["Paid tool calls", String(h.toolCalls || 0) + " (" + usd(h.billedUsd || 0) + " billed)"], ["Last used", date(h.lastUsedAt)],
+      ["Paid services", (g.paid || 0) + " paid, " + (g.free || 0) + " free, " + (g.refused || 0) + " refused, " + (g.lost || 0) + " lost"],
+      ["Audit chain", g.head ? "line " + g.head.seq + ", " + String(g.head.h).slice(0, 16) + "… · " + (g.chainIntact ? "intact" : "BROKEN") : "no payment yet"]]);
+    remplit("dSignature", [["Issued", date(p.issuedAt)], ["Expires", date(p.expiresAt)], ["Algorithm", s.alg + ", key " + s.keyId], ["Value", String(s.value).slice(0, 32) + "…"]]);
+    statut("statutVerif", "");
+    $("blocProprio").hidden = !etat.owned;
+    if (etat.owned) peintProprio(p.public);
+  }
+  function peintProprio(pub){
+    $("proprioTexte").textContent = pub ? "This passport is public: anyone with the link or the id can read it, including your wallet address. Make it private at any time."
+      : "This passport is private: only you and the agent's own key can read it. Publishing it lets other agents check your agent before they pay it or accept its payments — your wallet address becomes visible to anyone with the link.";
+    $("basculer").textContent = pub ? "Make it private" : "Make it public";
+  }
+  function charge(id){
+    id = String(id || "").trim().toLowerCase();
+    if (!/^[0-9a-f]{12}$/.test(id)) { statut("statutCherche", "A passport id is 12 characters: 0-9 and a-f.", "err"); return; }
+    etat.id = id; statut("statutCherche", "Reading the passport…");
+    var h = {}, j = jeton(); if (j) h.authorization = "Bearer " + j;
+    fetch(serveur() + "/agentic/passport/" + id, { headers: h, cache: "no-store" }).then(function(r){ return r.json(); }).then(function(d){
+      if (!d || !d.ok || !d.passport) { $("cartePasseport").hidden = true; statut("statutCherche", (d && d.raison) || "No public passport with this id.", "err"); return; }
+      statut("statutCherche", ""); montre(d);
+      try { history.replaceState(null, "", location.pathname + "?id=" + id + (location.search.indexOf("server=") >= 0 ? "&server=" + encodeURIComponent(serveur()) : "")); } catch (e) {}
+    })["catch"](function(){ statut("statutCherche", "The server did not answer - try again.", "err"); });
+  }
+  $("voir").addEventListener("click", function(){ charge($("idPasseport").value); });
+  $("idPasseport").addEventListener("keydown", function(e){ if (e.key === "Enter") charge($("idPasseport").value); });
+
+  /* Verifier : d'abord ICI, avec la cle publique de SWOGE (WebCrypto Ed25519) ; sinon le serveur, et on le dit. */
+  function parServeur(env){
+    return fetch(serveur() + "/agentic/passport/verify", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(env) }).then(function(r){ return r.json(); })
+      .then(function(v){ return { ok: !!(v && v.ok), expired: !!(v && v.expired), raison: v && v.raison, ou: "server" }; });
+  }
+  function ici(env){
+    if (!(window.crypto && crypto.subtle)) return Promise.reject(new Error("no WebCrypto"));
+    return fetch(serveur() + "/.well-known/swoge-passport.json", { cache: "no-store" }).then(function(r){ return r.json(); }).then(function(k){
+      if (!k || k.keyId !== env.signature.keyId || !k.publicKeyJwk) return { ok: false, raison: "not signed with the current SWOGE passport key", ou: "browser" };
+      return crypto.subtle.importKey("jwk", k.publicKeyJwk, { name: "Ed25519" }, false, ["verify"]).then(function(cle){
+        return crypto.subtle.verify({ name: "Ed25519" }, cle, b64url(env.signature.value), new TextEncoder().encode(canonique(env.passport)));
+      }).then(function(bon){ return { ok: bon, expired: !(Date.parse(env.passport.expiresAt) > Date.now()), raison: bon ? null : "the signature does not match: this passport was changed after SWOGE signed it", ou: "browser" }; });
+    });
+  }
+  $("verifier").addEventListener("click", function(){
+    if (!etat.env) return;
+    var b = $("verifier"); b.disabled = true; statut("statutVerif", "Checking…");
+    ici(etat.env)["catch"](function(){ return parServeur(etat.env); }).then(function(v){
+      b.disabled = false;
+      if (!v.ok) { statut("statutVerif", "Not valid: " + (v.raison || "unknown reason"), "err"); return; }
+      statut("statutVerif", (v.ou === "browser" ? "✓ Valid — checked in your browser with SWOGE’s public Ed25519 key." : "✓ Valid — checked by the SWOGE server (your browser cannot check Ed25519 itself).")
+        + (v.expired ? " This snapshot has expired: ask for a fresh one." : ""), v.expired ? "" : "ok");
+    })["catch"](function(){ b.disabled = false; statut("statutVerif", "Could not check the signature right now.", "err"); });
+  });
+  $("copierJson").addEventListener("click", function(){ if (etat.env) copie(JSON.stringify(etat.env), $("copierJson")); });
+  $("copierLien").addEventListener("click", function(){ if (etat.id) copie(location.origin + location.pathname + "?id=" + etat.id, $("copierLien")); });
+  $("basculer").addEventListener("click", function(){
+    var j = jeton(); if (!j || !etat.env) return;
+    var pub = !etat.env.passport.public, b = $("basculer"); b.disabled = true;
+    fetch(serveur() + "/agentic/cles/" + encodeURIComponent(etat.id) + "/passeport", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + j }, body: JSON.stringify({ public: pub }) })
+      .then(function(r){ return r.json(); }).then(function(d){
+        b.disabled = false;
+        if (!d || !d.ok) { statut("statutProprio", (d && d.raison) || "Not changed.", "err"); return; }
+        statut("statutProprio", pub ? "Published." : "Now private."); charge(etat.id);
+      })["catch"](function(){ b.disabled = false; statut("statutProprio", "The server did not answer.", "err"); });
+  });
+  try { var id0 = new URLSearchParams(location.search).get("id"); if (id0) { $("idPasseport").value = id0; charge(id0); } } catch (e) {}
+})();
+</script>
+</body>
+</html>

@@ -50,6 +50,7 @@ Pay other x402 services with your key: `POST https://web-production-220a3.up.rai
 - [OpenAPI 3.1](https://web-production-220a3.up.railway.app/openapi.json): every tool as an operation, with x-payment-info on those payable without a key
 - [Live llms.txt](https://web-production-220a3.up.railway.app/llms.txt): this file, generated from the live catalogue
 - [Travel eSIM plans (JSON, free)](https://web-production-220a3.up.railway.app/esim/plans?country=France): search, then buy with x402 at /esim/buy
+- [x402 services measured by SWOGE (JSON, free)](https://web-production-220a3.up.railway.app/agentic/services?q=price): the public catalogue with probes, latency and real paid calls; no verdict under 3 probes
 - [x402 discovery manifest](https://web-production-220a3.up.railway.app/.well-known/x402): the resources payable per call
 
 ## Optional

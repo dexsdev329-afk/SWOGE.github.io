@@ -119,12 +119,12 @@ video{ max-width:100%; }
      versions se font concurrence et aucune ne gagne.
      ================================================================= -->
 <link rel="canonical" href="https://swoleeswoge.dog/swolemind.html">
-<meta name="description" content="SwoleMind: chat with Claude, ChatGPT and Grok, search the web with sources, create images and videos. No subscription — each request is billed from your $SWOGE balance at its actual cost.">
+<meta name="description" content="SwoleMind: chat with Claude, ChatGPT and Grok, search the web with sources, create images and videos. No subscription — each request is billed at its actual cost, from a dollar credit topped up with USDC or from your $SWOGE balance.">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="SWOGE WORLD">
 <meta property="og:locale" content="en_US">
 <meta property="og:title" content="SwoleMind · AI chat with Claude, ChatGPT and Grok">
-<meta property="og:description" content="SwoleMind: chat with Claude, ChatGPT and Grok, search the web with sources, create images and videos. No subscription — each request is billed from your $SWOGE balance at its actual cost.">
+<meta property="og:description" content="SwoleMind: chat with Claude, ChatGPT and Grok, search the web with sources, create images and videos. No subscription — each request is billed at its actual cost, from a dollar credit topped up with USDC or from your $SWOGE balance.">
 <meta property="og:url" content="https://swoleeswoge.dog/swolemind.html">
 <meta property="og:image" content="https://swoleeswoge.dog/img/site/partage.jpg">
 <meta property="og:image:width" content="1200">
@@ -132,7 +132,7 @@ video{ max-width:100%; }
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:site" content="@SwoleDogeSwoge">
 <meta name="twitter:title" content="SwoleMind · AI chat with Claude, ChatGPT and Grok">
-<meta name="twitter:description" content="SwoleMind: chat with Claude, ChatGPT and Grok, search the web with sources, create images and videos. No subscription — each request is billed from your $SWOGE balance at its actual cost.">
+<meta name="twitter:description" content="SwoleMind: chat with Claude, ChatGPT and Grok, search the web with sources, create images and videos. No subscription — each request is billed at its actual cost, from a dollar credit topped up with USDC or from your $SWOGE balance.">
 <meta name="twitter:image" content="https://swoleeswoge.dog/img/site/partage.jpg">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="/img/site/icone-32.png">
@@ -713,6 +713,17 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 .btn-fin{font-family:'Space Mono',monospace;font-size:11.5px;background:var(--panel);border:1px solid var(--line);
   border-radius:999px;padding:6px 12px;cursor:pointer;color:var(--paper)}
 .btn-fin:hover{border-color:var(--pool)}
+/* ---- le credit en dollars (29/09/2026) : une signature USDC le recharge, le $SWOGE en option ---- */
+.recharge{border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin:10px 0;background:var(--panel)}
+.recharge[hidden]{display:none}
+.recharge p{margin:4px 0;font-size:12.5px;color:var(--dim)}
+.recharge .rc-ligne{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0}
+.recharge .rc-ligne label{font-size:12.5px;display:flex;gap:4px;align-items:center}
+.recharge .btn-fin.choisi{border-color:var(--pool);color:var(--pool)}
+.rc-signer,.rc-action{border:0;background:var(--pool);color:#fff;border-radius:999px;padding:9px 16px;font:700 13px/1 inherit;font-family:inherit;cursor:pointer;text-transform:none;letter-spacing:0}
+.rc-signer[disabled],.rc-action[disabled]{opacity:.55;cursor:default}
+.rc-statut.err{color:var(--serpent)}
+.rc-histo{font-family:'Space Mono',monospace;font-size:11px;color:var(--dim);margin-top:6px}
 .etat{margin-top:12px;border-left:3px solid var(--neutral);background:rgba(150,101,15,.06);padding:10px 14px;
   border-radius:0 var(--r) var(--r) 0;font-size:13px}
 .etat[hidden]{display:none}
@@ -982,10 +993,28 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   <div class="chat-tete">
     <div class="titre">Swole<em>Mind</em></div>
     <div class="droite">
+      <span class="pastille" id="credit" title="Your dollar credit: topped up with one wallet signature (USDC on Base or Solana), spent at real cost">Credit <b>—</b></span>
       <span class="pastille" id="solde" title="Your SWOGE gaming balance">Balance <b>—</b></span>
+      <select class="btn-fin" id="payeur" aria-label="Pay with"><option value="credit">Pay with dollar credit</option><option value="swoge">Pay with $SWOGE</option></select>
+      <button class="btn-fin" id="recharger" type="button" aria-expanded="false">&#43; Top up</button>
       <button class="btn-fin" id="histoBtn" type="button" aria-expanded="false" title="Your past chats">&#128339; History</button>
       <button class="btn-fin" id="nouveau" type="button">&#10133; New chat</button>
     </div>
+  </div>
+  <div class="recharge" id="rechargeBox" hidden>
+    <p><b>Top up your dollar credit with one wallet signature.</b> No $SWOGE and no deposit needed: USDC goes straight from your wallet, then every answer and image is paid from the credit at real cost, with no new signature. Videos are paid in $SWOGE for now. The credit stays on this wallet's sign-in and is not withdrawable.</p>
+    <div class="rc-ligne" id="rcMontants">
+      <button type="button" class="btn-fin" data-usd="1">$1</button>
+      <button type="button" class="btn-fin choisi" data-usd="5">$5</button>
+      <button type="button" class="btn-fin" data-usd="20">$20</button>
+    </div>
+    <div class="rc-ligne">
+      <label><input type="radio" name="rcReseau" value="base" checked> USDC on Base</label>
+      <label><input type="radio" name="rcReseau" value="solana"> USDC on Solana</label>
+    </div>
+    <button type="button" class="rc-signer" id="rcSigner">Sign a $5 top-up</button>
+    <p class="rc-statut" id="rcStatut" role="status"></p>
+    <div class="rc-histo" id="rcHisto"></div>
   </div>
   <div class="histo" id="histo" hidden></div>
   <div class="etat" id="etat" hidden></div>
@@ -993,7 +1022,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   <section class="accueil" id="accueil">
     <h1>What can I help with?</h1>
     <p>Chat with the top AI models — Claude, ChatGPT and Grok — search the live web with sources,
-       create images with Grok Imagine or ChatGPT Image, and videos with Grok. You pay in $SWOGE, only for what each request actually costs.</p>
+       create images with Grok Imagine or ChatGPT Image, and videos with Grok. You pay only for what each request actually costs: with a dollar credit topped up by one wallet signature (USDC on Base or Solana), or in $SWOGE.</p>
     <div class="suggestions" id="suggestions">
       <button class="suggestion" type="button" data-sugg="web"><span class="ic">&#127760;</span>Search the web</button>
       <button class="suggestion" type="button" data-sugg="ecrire"><span class="ic">&#9998;&#65039;</span>Write or edit</button>
@@ -1160,6 +1189,8 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     media: null, mode: lisLocal("swogeStudioMode", "chat"), jointe: null, pieces: [],
     /* Comparer : 2 ou 3 modeles choisis dans la feuille, retenus. */
     compare: lisLocal("swogeCompare", false) === true, choix: lisLocal("swogeCompareChoix", []),
+    /* Le credit en dollars (29/09) : le solde, et le payeur choisi par le joueur. */
+    credit: null, swoge: null, rcUsd: 5, payeurChoisi: lisLocal("swogeChatPayeur", null),
     reg: Object.assign({ fournisseur: "grok", vitesse: "qualite", nombre: 1, formatI: "auto", formatV: "auto", duree: 6, resolution: "480p" },
                        lisLocal("swogeStudioReglages", {}))
   };
@@ -1244,7 +1275,8 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       if (!mm) return;
       if (etat.mode === "image") {
         var n = etat.jointe ? etat.reg.nombre + 1 : etat.reg.nombre;
-        p.textContent = nomMedia(mm) + " \u00b7 ~" + nombre(mm.parImageSwoge) + " $SWOGE per image" + (mm.estime ? " (estimate)" : "") + (n > 1 ? " \u00b7 \u2248 " + nombre(mm.parImageSwoge * n) + " in all" : "") + " \u00b7 you pay the real cost";
+        if (payeur() === "credit" && mm.parImageUsd != null) p.textContent = nomMedia(mm) + " \u00b7 ~" + dollars(mm.parImageUsd) + " per image" + (mm.estime ? " (estimate)" : "") + (n > 1 ? " \u00b7 \u2248 " + dollars(mm.parImageUsd * n) + " in all" : "") + " \u00b7 you pay the real cost";
+        else p.textContent = nomMedia(mm) + " \u00b7 ~" + nombre(mm.parImageSwoge) + " $SWOGE per image" + (mm.estime ? " (estimate)" : "") + (n > 1 ? " \u00b7 \u2248 " + nombre(mm.parImageSwoge * n) + " in all" : "") + " \u00b7 you pay the real cost";
       } else {
         p.textContent = mm.nom + " \u00b7 ~" + nombre(mm.parSecondeSwoge * etat.reg.duree) + " $SWOGE for " + etat.reg.duree + " s at 480p" + (etat.reg.resolution !== "480p" ? " (" + etat.reg.resolution + " costs more)" : "") + " \u00b7 you pay the real cost";
       }
@@ -1256,13 +1288,13 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       $("modeleNom").textContent = mcs.length ? mcs.map(function(x){ return x.nom; }).join(" \u00b7 ") : "Pick models";
       $("web").hidden = !mcs.some(function(x){ return x.recherche; });
       $("prixq").textContent = mcs.length < 2 ? "Compare: pick 2 or 3 models"
-        : "Compare " + mcs.length + " models \u00b7 ~" + nombre(mcs.reduce(function(t, x){ return t + (x.typiqueSwoge || 0); }, 0)) + " $SWOGE per question \u00b7 each answer billed on its own";
+        : "Compare " + mcs.length + " models \u00b7 ~" + (enDollars() ? dollars(mcs.reduce(function(t, x){ return t + (x.typiqueUsd || 0); }, 0)) : nombre(mcs.reduce(function(t, x){ return t + (x.typiqueSwoge || 0); }, 0)) + " $SWOGE") + " per question \u00b7 each answer billed on its own";
       return;
     }
     $("modeleNom").textContent = m ? m.nom : "Model";
     $("web").hidden = !(m && m.recherche);
     if (!m) return;
-    $("prixq").textContent = m.nom + " · ~" + nombre(m.typiqueSwoge) + " $SWOGE per question (max " + nombre(m.maxSwoge) + ") · you pay only what the answer uses";
+    $("prixq").textContent = m.nom + " · ~" + (enDollars() ? dollars(m.typiqueUsd) + " per question (max " + dollars(m.maxUsd) + ")" : nombre(m.typiqueSwoge) + " $SWOGE per question (max " + nombre(m.maxSwoge) + ")") + " · you pay only what the answer uses";
   }
   function peintBoutons(){
     var vide = !$("question").value.trim() && !(etat.mode === "video" && etat.jointe) && !(etat.mode === "chat" && etat.pieces.length);
@@ -1352,7 +1384,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       var coche = etat.compare ? etat.choix.indexOf(m.id) >= 0 : m.id === (modeleCourant() || {}).id;
       b.innerHTML = '<span class="coche">' + (coche ? "&#10003;" : "") + '</span>'
         + '<span><div class="nom">' + echappe(m.nom) + '</div><div class="desc">' + echappe(m.actif === false ? "Not switched on yet" : m.note) + '</div></span>'
-        + '<span class="prix">~' + nombre(m.typiqueSwoge) + ' $SWOGE<br>per question</span>';
+        + '<span class="prix">~' + (enDollars() ? echappe(dollars(m.typiqueUsd)) : nombre(m.typiqueSwoge) + ' $SWOGE') + '<br>per question</span>';
       b.addEventListener("click", function(){
         if (m.actif === false) return;
         if (etat.compare) {
@@ -1457,12 +1489,13 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     ajouteCartes(d, data.jetons);
     if (data.sources && data.sources.length) d.appendChild(sourcesEl(data.sources));
     var nom = nomModele || ((etat.cat && etat.cat.modeles.filter(function(x){ return x.id === data.modele; })[0]) || {}).nom || "AI";
-    var meta = nom + " \u00b7 " + nombre(data.factureSwoge) + " $SWOGE" + (data.usage && data.usage.recherches ? " \u00b7 " + data.usage.recherches + " web search" + (data.usage.recherches > 1 ? "es" : "") : "");
+    var meta = nom + " \u00b7 " + (data.payeur === "credit" ? dollars(data.factureUsd) : nombre(data.factureSwoge) + " $SWOGE") + (data.usage && data.usage.recherches ? " \u00b7 " + data.usage.recherches + " web search" + (data.usage.recherches > 1 ? "es" : "") : "");
     var mt = document.createElement("div"); mt.className = "meta"; mt.textContent = meta; d.appendChild(mt);
     d.appendChild(actionsEl(texte));
     etat.conv.messages.push(Object.assign({ role: "assistant", content: texte, sources: data.sources || [], meta: meta }, data.jetons && data.jetons.length ? { jetons: data.jetons } : {}, extra || {}));
     sauveConv();
-    if (data.solde) $("solde").innerHTML = "Balance <b>" + nombre(data.solde) + " $SWOGE</b>";
+    if (data.payeur === "credit") poseCredit(data.creditUsd);
+    else if (data.solde) $("solde").innerHTML = "Balance <b>" + nombre(data.solde) + " $SWOGE</b>";
   }
   /* ---- COPIER : le presse-papiers, et un repli pour les navigateurs qui le refusent ---- */
   function copie(texte, bouton){
@@ -1801,14 +1834,106 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   /* ---- le solde ---- */
   function chargeSolde(){
     var j = jeton();
+    chargeCredit();
     if (!j) { $("solde").innerHTML = "Balance <b>sign in</b>"; return; }
     fetch(serveur() + "/studio/chat/solde", { headers: { authorization: "Bearer " + j }, cache: "no-store" })
       .then(function(r){ return r.json(); })
       .then(function(d){
-        if (d && d.ok) { $("solde").innerHTML = "Balance <b>" + nombre(d.solde) + " $SWOGE</b>"; syncHisto(d.adresse); }
+        if (d && d.ok) { $("solde").innerHTML = "Balance <b>" + nombre(d.solde) + " $SWOGE</b>"; syncHisto(d.adresse); etat.swoge = Number(d.solde) || 0; payeurParDefaut(); }
         else $("solde").innerHTML = "Balance <b>sign in</b>";
       })
       ["catch"](function(){});
+  }
+
+  /* ---- LE CREDIT EN DOLLARS (29/09/2026) — le meme bloc que swogeagentic.html ----
+   * « Le $SWOGE devrait etre une option » (proprietaire) : une signature USDC (Base ou
+   * Solana, x402_paie.js) recharge un credit en dollars ; chaque reponse et chaque image
+   * s'y paient au cout reel. Quand il manque, UNE signature du montant qui manque, et la
+   * question repart. Le serveur credite l'adresse de SESSION et revérifie tout. */
+  function payeur(){ return $("payeur").value === "swoge" ? "swoge" : "credit"; }
+  /* Les prix en dollars seulement si le serveur les donne (un serveur plus ancien : $SWOGE). */
+  function enDollars(){ var m = etat.cat && etat.cat.modeles && etat.cat.modeles[0]; return payeur() === "credit" && !!m && m.typiqueUsd != null; }
+  function dollars(x){ var n = Number(x); if (!isFinite(n)) return "\u2014"; return "$" + (n >= 1 || n === 0 ? n.toFixed(2) : n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 })); }
+  /* Chaque solde recu du serveur (fin de tache, recharge) avance ce compteur : une relecture de
+     /credit partie AVANT est perimee et ignoree (sinon elle ecrase un solde plus recent). */
+  function poseCredit(v){ etat.creditMaj = (etat.creditMaj || 0) + 1; etat.credit = Number(v) || 0; peintCredit(); }
+  function peintCredit(){ $("credit").innerHTML = etat.credit == null ? "Credit <b>sign in</b>" : "Credit <b>" + dollars(etat.credit) + "</b>"; }
+  function payeurParDefaut(){
+    var v = etat.payeurChoisi || (etat.credit > 0 ? "credit" : etat.swoge > 0 ? "swoge" : "credit");
+    if ($("payeur").value !== v) { $("payeur").value = v; if (etat.cat) peintPrix(); }
+  }
+  function chargeCredit(){
+    var j = jeton();
+    if (!j) { etat.credit = null; peintCredit(); return; }
+    var maj = etat.creditMaj || 0;
+    fetch(serveur() + "/credit", { headers: { authorization: "Bearer " + j }, cache: "no-store" })
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if (!d || !d.ok) return;
+        if ((etat.creditMaj || 0) === maj) { etat.credit = Number(d.balanceUsd) || 0; peintCredit(); }
+        payeurParDefaut();
+        var h = $("rcHisto"); h.textContent = "";
+        (d.history || []).slice(0, 6).forEach(function(x){
+          var l = document.createElement("div");
+          l.textContent = x.at.slice(5, 16).replace("T", " ") + " \u00b7 " + x.kind + " " + dollars(x.usd) + (x.what ? " \u00b7 " + x.what : "");
+          h.appendChild(l);
+        });
+      })["catch"](function(){});
+  }
+  function reseauRecharge(){ var r = document.querySelector('input[name="rcReseau"]:checked'); return r ? r.value : "base"; }
+  function recharge(montant, statut){
+    var j = jeton();
+    if (!j) return Promise.reject(new Error(TXT.signin));
+    if (!window.SwogePaie) return Promise.reject(new Error("wallet payments are still loading - try again in a second"));
+    return window.SwogePaie.paie({ reseau: reseauRecharge(), serveur: serveur(), statut: statut, appel: function(h){
+      return fetch(serveur() + "/credit/topup", { method: "POST", cache: "no-store", headers: Object.assign({ "content-type": "application/json", authorization: "Bearer " + j }, h || {}),
+        body: JSON.stringify({ usd: montant }) });
+    } }).then(window.SwogePaie.lit).then(function(r){
+      if (!r.ok) throw new Error(r.raison);
+      poseCredit(r.corps.balanceUsd);
+      if (!etat.payeurChoisi) { $("payeur").value = "credit"; if (etat.cat) peintPrix(); }
+      chargeCredit();
+      return r;
+    });
+  }
+  function rcStatut(t, err){ var s = $("rcStatut"); s.textContent = t || ""; s.className = "rc-statut" + (err ? " err" : ""); }
+  $("recharger").addEventListener("click", function(){
+    var b = $("rechargeBox"); b.hidden = !b.hidden; this.setAttribute("aria-expanded", String(!b.hidden));
+    if (!b.hidden) chargeCredit();
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("#rcMontants [data-usd]"), function(b){
+    b.addEventListener("click", function(){
+      etat.rcUsd = Number(b.getAttribute("data-usd"));
+      Array.prototype.forEach.call(document.querySelectorAll("#rcMontants [data-usd]"), function(x){ x.classList.toggle("choisi", x === b); });
+      $("rcSigner").textContent = "Sign a " + dollars(etat.rcUsd) + " top-up";
+    });
+  });
+  $("rcSigner").addEventListener("click", function(){
+    var b = this; b.disabled = true;
+    recharge(etat.rcUsd || 5, rcStatut).then(function(r){
+      b.disabled = false;
+      rcStatut(r.corps.alreadyCredited ? "This payment was already credited." : "Done: " + dollars(r.corps.creditedUsd) + " added. Your credit: " + dollars(r.corps.balanceUsd) + ".");
+    })["catch"](function(e){ b.disabled = false; rcStatut("Not topped up, not charged: " + String(e && (e.message || e.code) || e).slice(0, 200), true); });
+  });
+  $("payeur").addEventListener("change", function(){ etat.payeurChoisi = payeur(); ecrisLocal("swogeChatPayeur", etat.payeurChoisi); if (etat.cat) { peintPrix(); if (typeof peintFeuille === "function") peintFeuille(); } });
+  /* Le credit ne suffit pas : UNE signature du montant qui manque (0,10 $ au moins), puis la
+     MEME question repart. Ce que la reponse n'utilise pas reste au credit. */
+  function uneSignature(d, corps, q, e){
+    var manque = Math.max(0.1, Math.ceil((Number(e.requisUsd) - (Number(e.creditUsd) || 0)) * 100) / 100);
+    d.classList.add("err");
+    corps.textContent = "Your dollar credit is too low for this question: " + dollars(e.requisUsd) + " is reserved while it runs (you have " + dollars(e.creditUsd || 0) + "), and you pay only what the answer uses.";
+    var b = document.createElement("button"); b.type = "button"; b.className = "rc-action"; b.textContent = "Sign " + dollars(manque) + " with your wallet and ask";
+    var p = document.createElement("p"); p.className = "rc-statut"; p.setAttribute("role", "status");
+    p.textContent = "USDC on " + (reseauRecharge() === "solana" ? "Solana" : "Base") + " (change it under Top up). What this answer does not use stays in your credit.";
+    b.addEventListener("click", function(){
+      b.disabled = true;
+      recharge(manque, function(t){ p.className = "rc-statut"; p.textContent = t; }).then(function(){
+        var u = d.previousElementSibling;
+        if (u && u.classList.contains("moi")) u.remove();
+        d.remove(); $("question").value = q; dimensionne(); envoyer();
+      })["catch"](function(x){ b.disabled = false; p.className = "rc-statut err"; p.textContent = "Not charged: " + String(x && (x.message || x.code) || x).slice(0, 200); });
+    });
+    d.appendChild(b); d.appendChild(p);
   }
 
   /* ---- envoyer : un flux SSE lu a la main (EventSource ne sait pas POSTer) ---- */
@@ -1876,7 +2001,8 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
         if (ctl.arretDemande || (e && e.arrete)) { montreArret(d, texte); return fin(false); }
         d.classList.add("err");
         var raison = (e && e.raison) || TXT.erreurReseau;
-        if (e && e.code === 402) raison += " \u2014 top up your balance in the Wallet (needs ~" + nombre(e.requisSwoge) + " $SWOGE for this model).";
+        if (e && e.code === 402 && e.requisUsd != null) raison += " \u2014 top up your dollar credit (Top up, one wallet signature).";
+        else if (e && e.code === 402) raison += " \u2014 top up your balance in the Wallet (needs ~" + nombre(e.requisSwoge) + " $SWOGE for this model), or pay with a dollar credit (Top up).";
         if (e && e.code === 401) raison = TXT.signin;
         corps.textContent = raison;
         fin(false);
@@ -1910,7 +2036,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     ms.forEach(function(m, k){
       var d = colonneCmp(g, m.nom);
       flux(j, { rid: rids[k].rid, modele: m.id, messages: historiques[k], recherche: etat.web && m.recherche,
-                effort: m.effort ? (etat.effort || "medium") : undefined },
+                effort: m.effort ? (etat.effort || "medium") : undefined, payeur: payeur() },
            d, m, { modele: m.id, nomModele: m.nom, comparaison: idc },
            function(ok){ if (ok) servies++; else { rids[k].interrompu = true; sauveConv(); } if (--restant === 0) {
              etat.occupe = false; peintBoutons();
@@ -1949,7 +2075,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     fetch(serveur() + "/studio/chat", {
       method: "POST", signal: ctl.signal,
       headers: { "content-type": "application/json", authorization: "Bearer " + j },
-      body: JSON.stringify({ rid: rid, modele: m.id, messages: historique, recherche: etat.web && m.recherche, effort: m.effort ? (etat.effort || "medium") : undefined })
+      body: JSON.stringify({ rid: rid, modele: m.id, messages: historique, recherche: etat.web && m.recherche, effort: m.effort ? (etat.effort || "medium") : undefined, payeur: payeur() })
     }).then(function(rep){
       if (!rep.ok || !rep.body) {
         return rep.json().then(function(e){ throw { code: rep.status, raison: e && e.raison }; }, function(){ throw { code: rep.status }; });
@@ -2003,7 +2129,8 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       if (pj.length) { delete MEM_PIECES[rid]; etat.pieces = pj.concat(etat.pieces); peintPieces(); peintBoutons(); }
       d.classList.add("err");
       var raison = (e && e.raison) || TXT.erreurReseau;
-      if (e && e.code === 402) raison += " — top up your balance in the Wallet (needs ~" + nombre(e.requisSwoge) + " $SWOGE for this model).";
+      if (e && e.code === 402 && e.requisUsd != null) return uneSignature(d, corps, q, e);
+      if (e && e.code === 402) raison += " — top up your balance in the Wallet (needs ~" + nombre(e.requisSwoge) + " $SWOGE for this model), or pay with a dollar credit (Top up).";
       if (e && e.code === 401) raison = TXT.signin;
       corps.textContent = raison;
     });
@@ -2014,7 +2141,8 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   function erreurMedia(d, e){
     d.classList.add("err");
     var raison = (e && e.raison) || TXT.erreurReseau;
-    if (e && e.code === 402) raison += " \u2014 top up your balance in the Wallet (needs ~" + nombre(e.requisSwoge) + " $SWOGE).";
+    if (e && e.code === 402 && e.requisUsd != null) raison += " \u2014 top up your dollar credit (Top up, one wallet signature).";
+    else if (e && e.code === 402) raison += " \u2014 top up your balance in the Wallet (needs ~" + nombre(e.requisSwoge) + " $SWOGE), or pay with a dollar credit (Top up).";
     if (e && e.code === 401) raison = TXT.signin;
     d.querySelector(".corps").textContent = raison;
   }
@@ -2046,7 +2174,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     etape.textContent = mode === "image" ? (jointe ? "Editing your photo\u2026" : "Creating " + (reg.nombre > 1 ? reg.nombre + " images" : "the image") + "\u2026") : "Starting the video\u2026";
     d.insertBefore(etape, corps);
     var corpsReq = { rid: rid, modele: reg.vitesse, prompt: q, format: fmt, image: jointe || undefined };
-    if (mode === "image") { corpsReq.n = reg.nombre; corpsReq.fournisseur = (fournisseurImage() || {}).id || "grok"; if (contexte.length) corpsReq.contexte = contexte; }
+    if (mode === "image") { corpsReq.payeur = payeur(); corpsReq.n = reg.nombre; corpsReq.fournisseur = (fournisseurImage() || {}).id || "grok"; if (contexte.length) corpsReq.contexte = contexte; }
     else { corpsReq.duree = reg.duree; corpsReq.resolution = reg.resolution; }
     function fin(){ etat.occupe = false; peintBoutons(); if (etape.parentNode) etape.remove(); }
     /* La demande non servie ne reste pas dans le fil enregistre. */
@@ -2071,7 +2199,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
      `place` : le message d'attente d'une video, complete sur place. */
   function finMedia(d, mode, res, nomModele, fmt, place){
     var meta = nomModele + (mode === "image" ? " \u00b7 \u00d7" + (res.urls || []).length : " \u00b7 " + res.duree + " s \u00b7 " + res.resolution)
-      + (fmt && fmt !== "auto" ? " \u00b7 " + fmt : "") + " \u00b7 " + nombre(res.factureSwoge) + " $SWOGE";
+      + (fmt && fmt !== "auto" ? " \u00b7 " + fmt : "") + " \u00b7 " + (res.payeur === "credit" ? dollars(res.factureUsd) : nombre(res.factureSwoge) + " $SWOGE");
     var m = place || { role: "assistant", genre: mode };
     m.content = mode === "image" ? "[image]" : "[video]"; m.urls = res.urls; m.url = res.url; m.meta = meta; delete m.enCours;
     if (res.compris) m.compris = String(res.compris).slice(0, 1500);
@@ -2079,7 +2207,8 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     peintMedia(d, m);
     if (!place) etat.conv.messages.push(m);
     sauveConv();
-    if (res.solde) $("solde").innerHTML = "Balance <b>" + nombre(res.solde) + " $SWOGE</b>";
+    if (res.payeur === "credit") poseCredit(res.creditUsd);
+    else if (res.solde) $("solde").innerHTML = "Balance <b>" + nombre(res.solde) + " $SWOGE</b>";
   }
   /* Suit une video sur le SERVEUR (jamais chez le fournisseur) jusqu'a son arrivee. */
   function suisVideo(d, attente){
@@ -2887,6 +3016,8 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
      `swoge_predict.html`. -->
 <script>window.SWOGE_SOCKET = 'aucune';</script>
 <script src="stakebubble.min.js?v=c324151c"></script>
+<script src="x402_solana.js?v=1d86ed41"></script>
+<script src="x402_paie.js?v=6f6b9006"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
 
 </body>

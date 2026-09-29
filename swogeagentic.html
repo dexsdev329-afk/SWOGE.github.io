@@ -781,6 +781,17 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 .btn-fin{font-family:'Space Mono',monospace;font-size:11.5px;background:var(--panel);border:1px solid var(--line);
   border-radius:999px;padding:6px 12px;cursor:pointer;color:var(--paper)}
 .btn-fin:hover{border-color:var(--pool)}
+/* ---- le credit en dollars (29/09/2026) : une signature USDC le recharge, le $SWOGE en option ---- */
+.recharge{border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin:10px 0;background:var(--panel)}
+.recharge[hidden]{display:none}
+.recharge p{margin:4px 0;font-size:12.5px;color:var(--dim)}
+.recharge .rc-ligne{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0}
+.recharge .rc-ligne label{font-size:12.5px;display:flex;gap:4px;align-items:center}
+.recharge .btn-fin.choisi{border-color:var(--pool);color:var(--pool)}
+.rc-signer,.rc-action{border:0;background:var(--pool);color:#fff;border-radius:999px;padding:9px 16px;font:700 13px/1 inherit;font-family:inherit;cursor:pointer;text-transform:none;letter-spacing:0}
+.rc-signer[disabled],.rc-action[disabled]{opacity:.55;cursor:default}
+.rc-statut.err{color:var(--serpent)}
+.rc-histo{font-family:'Space Mono',monospace;font-size:11px;color:var(--dim);margin-top:6px}
 .etat{margin-top:12px;border-left:3px solid var(--neutral);background:rgba(150,101,15,.06);padding:10px 14px;
   border-radius:0 var(--r) var(--r) 0;font-size:13px}
 .etat[hidden]{display:none}
@@ -1040,8 +1051,26 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     <div id="devRecus"><p>No calls yet.</p></div>
   </details>
   <div class="barre-fin">
+    <span class="pastille" id="credit" title="Your dollar credit: topped up with one wallet signature (USDC on Base or Solana), spent at real cost">Credit <b>&mdash;</b></span>
     <span class="pastille" id="solde" title="Your SWOGE gaming balance">Balance <b>&mdash;</b></span>
+    <select class="btn-fin" id="payeur" aria-label="Pay with"><option value="credit">Pay with dollar credit</option><option value="swoge">Pay with $SWOGE</option></select>
+    <button class="btn-fin" id="recharger" type="button" aria-expanded="false">&#43; Top up</button>
     <button class="btn-fin" id="nouveau" type="button">&#10133; New task</button>
+  </div>
+  <div class="recharge" id="rechargeBox" hidden>
+    <p><b>Top up your dollar credit with one wallet signature.</b> No $SWOGE and no deposit needed: USDC goes straight from your wallet, then every task is paid from the credit at real cost, with no new signature. The credit stays on this wallet's sign-in and is not withdrawable.</p>
+    <div class="rc-ligne" id="rcMontants">
+      <button type="button" class="btn-fin" data-usd="1">$1</button>
+      <button type="button" class="btn-fin choisi" data-usd="5">$5</button>
+      <button type="button" class="btn-fin" data-usd="20">$20</button>
+    </div>
+    <div class="rc-ligne">
+      <label><input type="radio" name="rcReseau" value="base" checked> USDC on Base</label>
+      <label><input type="radio" name="rcReseau" value="solana"> USDC on Solana</label>
+    </div>
+    <button type="button" class="rc-signer" id="rcSigner">Sign a $5 top-up</button>
+    <p class="rc-statut" id="rcStatut" role="status"></p>
+    <div class="rc-histo" id="rcHisto"></div>
   </div>
   <div class="accueil" id="accueil">
     <div class="suggestions" id="suggestions">
@@ -1230,7 +1259,8 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     return s;
   }
   function nouveauRid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2, 10); }
-  var etat = { cat: null, modele: lisLocal("swogeAgentModele", null), occupe: false, enVol: null, fil: lisLocal("swogeAgentFil", []), quitte: false };
+  var etat = { cat: null, modele: lisLocal("swogeAgentModele", null), occupe: false, enVol: null, fil: lisLocal("swogeAgentFil", []), quitte: false,
+               credit: null, swoge: null, rcUsd: 5, payeurChoisi: lisLocal("swogeAgentPayeur", null) };
 
   function dit(t){ var e = $("etat"); e.textContent = t || ""; e.hidden = !t; }
   function modeleCourant(){
@@ -1239,7 +1269,8 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   }
   function peintPrix(){
     var m = modeleCourant(); if (!m) return;
-    $("prixq").textContent = m.nom + " · ~" + nombre(m.typiqueSwoge) + " $SWOGE per task (max " + nombre(m.maxSwoge) + ") · up to " + etat.cat.etapesMax + " steps · you pay only what the agent uses";
+    var prix = payeur() === "credit" && m.typiqueUsd != null ? "~" + usd(m.typiqueUsd) + " per task (max " + usd(m.maxUsd) + ")" : "~" + nombre(m.typiqueSwoge) + " $SWOGE per task (max " + nombre(m.maxSwoge) + ")";
+    $("prixq").textContent = m.nom + " · " + prix + " · up to " + etat.cat.etapesMax + " steps · you pay only what the agent uses";
   }
   function peintBoutons(){
     /* Une tache en vol : le bouton devient STOP (demande du proprietaire, 26 septembre 2026). */
@@ -1724,7 +1755,8 @@ function qrMatrice(txt){
     var t = document.createElement("h4"); t.textContent = "\ud83d\udcf6 " + o.nom; c.appendChild(t);
     var p1 = document.createElement("p"); p1.textContent = (o.go ? o.go + " GB" : "") + (o.jours ? " \u00b7 " + o.jours + " days" : "") + " \u00b7 " + (o.destination || "") + " \u00b7 data only, no phone number"; c.appendChild(p1);
     var cours = etat.cat && etat.cat.coursUsd, swoge = cours > 0 ? Math.ceil(o.factureUsd / cours) : null;
-    var p2 = document.createElement("p"); p2.textContent = "Price: $" + o.factureUsd + (swoge ? " \u2248 " + nombre(swoge) + " $SWOGE" : "") + " from your balance. Offer valid until "
+    if (payeur() === "credit") swoge = null;
+    var p2 = document.createElement("p"); p2.textContent = "Price: $" + o.factureUsd + (swoge ? " \u2248 " + nombre(swoge) + " $SWOGE" : "") + (payeur() === "credit" ? " from your dollar credit" : " from your balance") + ". Offer valid until "
       + new Date(o.expire).toTimeString().slice(0, 5) + "."; c.appendChild(p2);
     var p3 = document.createElement("p"); p3.appendChild(document.createTextNode("Seller: CHIPS. By buying you accept its "));
     p3.appendChild(lien("terms", o.conditions || "https://vamoschips.com/legal/terms")); p3.appendChild(document.createTextNode(" and "));
@@ -1736,7 +1768,7 @@ function qrMatrice(txt){
     b.addEventListener("click", function(){
       var j = jeton(); if (!j) { msg.textContent = TXT.signin; return; }
       b.disabled = true; msg.textContent = "Buying\u2026 this takes a few seconds.";
-      actionAchat({ action: "confirme", id: o.id }).then(function(d){
+      actionAchat({ action: "confirme", id: o.id, payeur: payeur() }).then(function(d){
         if (d && d.ok) {
           b.textContent = "Bought"; msg.textContent = d.livree ? "Done. Your eSIM:" : "Paid. Your eSIM is being prepared: find it in \u201cYour eSIMs\u201d below in a minute.";
           if (d.achat && d.achat.activation) c.appendChild(peintActivation(d.achat.activation));
@@ -1781,12 +1813,84 @@ function qrMatrice(txt){
   }
   function chargeSolde(){
     var j = jeton();
-    chargeEmbauches(); chargeAchats();
+    chargeEmbauches(); chargeAchats(); chargeCredit();
     if (!j) { $("solde").innerHTML = "Balance <b>sign in</b>"; return; }
     fetch(serveur() + "/studio/chat/solde", { headers: { authorization: "Bearer " + j }, cache: "no-store" })
       .then(function(r){ return r.json(); })
-      .then(function(d){ $("solde").innerHTML = d && d.ok ? "Balance <b>" + nombre(d.solde) + " $SWOGE</b>" : "Balance <b>sign in</b>"; })["catch"](function(){});
+      .then(function(d){ $("solde").innerHTML = d && d.ok ? "Balance <b>" + nombre(d.solde) + " $SWOGE</b>" : "Balance <b>sign in</b>"; if (d && d.ok) { etat.swoge = Number(d.solde) || 0; payeurParDefaut(); } })["catch"](function(){});
   }
+
+  /* ---- LE CREDIT EN DOLLARS (29/09/2026) ----
+   * « Le $SWOGE devrait etre une option » (proprietaire) : une signature USDC (Base ou
+   * Solana, x402_paie.js) recharge un credit en dollars ; chaque tache s'y paie au cout
+   * reel. Quand il manque, UNE signature du montant qui manque, et la tache repart. Le
+   * serveur credite l'adresse de SESSION et revérifie tout ; la page ne fait que montrer. */
+  function payeur(){ return $("payeur").value === "swoge" ? "swoge" : "credit"; }
+  function usd(x){ var n = Number(x); if (!isFinite(n)) return "\u2014"; return "$" + (n >= 1 || n === 0 ? n.toFixed(2) : n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 })); }
+  /* Chaque solde recu du serveur (fin de tache, recharge) avance ce compteur : une relecture de
+     /credit partie AVANT est perimee et ignoree (sinon elle ecrase un solde plus recent). */
+  function poseCredit(v){ etat.creditMaj = (etat.creditMaj || 0) + 1; etat.credit = Number(v) || 0; peintCredit(); }
+  function peintCredit(){ $("credit").innerHTML = etat.credit == null ? "Credit <b>sign in</b>" : "Credit <b>" + usd(etat.credit) + "</b>"; }
+  /* Le choix du joueur est garde ; sans choix : le credit s'il en a, le $SWOGE s'il n'a que ca, sinon le credit. */
+  function payeurParDefaut(){
+    var v = etat.payeurChoisi || (etat.credit > 0 ? "credit" : etat.swoge > 0 ? "swoge" : "credit");
+    if ($("payeur").value !== v) { $("payeur").value = v; if (etat.cat) peintPrix(); }
+  }
+  function chargeCredit(){
+    var j = jeton();
+    if (!j) { etat.credit = null; peintCredit(); return; }
+    var maj = etat.creditMaj || 0;
+    fetch(serveur() + "/credit", { headers: { authorization: "Bearer " + j }, cache: "no-store" })
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if (!d || !d.ok) return;
+        if ((etat.creditMaj || 0) === maj) { etat.credit = Number(d.balanceUsd) || 0; peintCredit(); }
+        payeurParDefaut();
+        var h = $("rcHisto"); h.textContent = "";
+        (d.history || []).slice(0, 6).forEach(function(x){
+          var l = document.createElement("div");
+          l.textContent = x.at.slice(5, 16).replace("T", " ") + " \u00b7 " + x.kind + " " + usd(x.usd) + (x.what ? " \u00b7 " + x.what : "");
+          h.appendChild(l);
+        });
+      })["catch"](function(){});
+  }
+  function reseauRecharge(){ var r = document.querySelector('input[name="rcReseau"]:checked'); return r ? r.value : "base"; }
+  /* Recharger `montant` dollars : le 402 du serveur, la signature du portefeuille, le credit a jour. */
+  function recharge(montant, statut){
+    var j = jeton();
+    if (!j) return Promise.reject(new Error(TXT.signin));
+    if (!window.SwogePaie) return Promise.reject(new Error("wallet payments are still loading - try again in a second"));
+    return window.SwogePaie.paie({ reseau: reseauRecharge(), serveur: serveur(), statut: statut, appel: function(h){
+      return fetch(serveur() + "/credit/topup", { method: "POST", cache: "no-store", headers: Object.assign({ "content-type": "application/json", authorization: "Bearer " + j }, h || {}),
+        body: JSON.stringify({ usd: montant }) });
+    } }).then(window.SwogePaie.lit).then(function(r){
+      if (!r.ok) throw new Error(r.raison);
+      poseCredit(r.corps.balanceUsd);
+      if (!etat.payeurChoisi) { $("payeur").value = "credit"; if (etat.cat) peintPrix(); }
+      chargeCredit();
+      return r;
+    });
+  }
+  function rcStatut(t, err){ var s = $("rcStatut"); s.textContent = t || ""; s.className = "rc-statut" + (err ? " err" : ""); }
+  $("recharger").addEventListener("click", function(){
+    var b = $("rechargeBox"); b.hidden = !b.hidden; this.setAttribute("aria-expanded", String(!b.hidden));
+    if (!b.hidden) chargeCredit();
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("#rcMontants [data-usd]"), function(b){
+    b.addEventListener("click", function(){
+      etat.rcUsd = Number(b.getAttribute("data-usd"));
+      Array.prototype.forEach.call(document.querySelectorAll("#rcMontants [data-usd]"), function(x){ x.classList.toggle("choisi", x === b); });
+      $("rcSigner").textContent = "Sign a " + usd(etat.rcUsd) + " top-up";
+    });
+  });
+  $("rcSigner").addEventListener("click", function(){
+    var b = this; b.disabled = true;
+    recharge(etat.rcUsd || 5, rcStatut).then(function(r){
+      b.disabled = false;
+      rcStatut(r.corps.alreadyCredited ? "This payment was already credited." : "Done: " + usd(r.corps.creditedUsd) + " added. Your credit: " + usd(r.corps.balanceUsd) + ".");
+    })["catch"](function(e){ b.disabled = false; rcStatut("Not topped up, not charged: " + String(e && (e.message || e.code) || e).slice(0, 200), true); });
+  });
+  $("payeur").addEventListener("change", function(){ etat.payeurChoisi = payeur(); ecrisLocal("swogeAgentPayeur", etat.payeurChoisi); if (etat.cat) peintPrix(); });
 
   function envoyer(){
     var q = $("question").value.trim();
@@ -1806,7 +1910,7 @@ function qrMatrice(txt){
     var ctl = new AbortController(); etat.enVol = { rid: rid, ctl: ctl }; peintBoutons();
     function termine(){ etat.enVol = null; etat.occupe = false; peintBoutons(); if (attente.parentNode) attente.remove(); }
     fetch(serveur() + "/studio/agent", { method: "POST", signal: ctl.signal, headers: { "content-type": "application/json", authorization: "Bearer " + j },
-      body: JSON.stringify({ rid: rid, modele: m.id, messages: historique }) })
+      body: JSON.stringify({ rid: rid, modele: m.id, messages: historique, payeur: payeur() }) })
       .then(function(rep){
         if (!rep.ok || !rep.body) return rep.json().then(function(e){ throw { code: rep.status, raison: e && e.raison, requisSwoge: e && e.requisSwoge }; }, function(){ throw { code: rep.status }; });
         var lecteur = rep.body.getReader(), dec = new TextDecoder(), tampon = "";
@@ -1822,13 +1926,15 @@ function qrMatrice(txt){
           else if (type === "fin") {
             fini = true; if (attente.parentNode) attente.remove();
             var t = data.texte || texte || (data.stop === "refusal" ? TXT.refus : "");
-            var meta = m.nom + " · " + nombre(data.factureSwoge) + " $SWOGE · " + (data.etapes || 1) + " step" + ((data.etapes || 1) > 1 ? "s" : "")
+            var meta = m.nom + " · " + (data.payeur === "credit" ? usd(data.factureUsd) : nombre(data.factureSwoge) + " $SWOGE") + " · " + (data.etapes || 1) + " step" + ((data.etapes || 1) > 1 ? "s" : "")
               + (data.stop === "max_steps" ? " (step limit reached)" : "");
             var rep2 = { role: "assistant", content: t, sources: data.sources || [], jetons: data.jetons || [], etapes: etapes, meta: meta, modele: m.id };
             d.querySelector(".etapes").innerHTML = ""; corps.innerHTML = "";
             peintReponse(d, rep2);
             etat.fil.push(rep2); sauve();
-            if (data.solde) $("solde").innerHTML = "Balance <b>" + nombre(data.solde) + " $SWOGE</b>"; chargeEmbauches();
+            if (data.payeur === "credit") poseCredit(data.creditUsd);
+            else if (data.solde) $("solde").innerHTML = "Balance <b>" + nombre(data.solde) + " $SWOGE</b>";
+            chargeEmbauches();
           }
           else if (type === "erreur") { fini = true; throw data; }
         }
@@ -1866,10 +1972,27 @@ function qrMatrice(txt){
         etat.fil.pop(); sauve();
         d.classList.add("err");
         var raison = (e && e.raison) || TXT.erreurReseau;
-        if (e && e.code === 402) raison += " — top up your balance in the Wallet (this model needs ~" + nombre(e.requisSwoge) + " $SWOGE reserved; you pay only what the agent uses).";
+        if (e && e.code === 402 && e.requisUsd != null) return uneSignature(d, corps, q, e);
+        if (e && e.code === 402) raison += " — top up your balance in the Wallet (this model needs ~" + nombre(e.requisSwoge) + " $SWOGE reserved; you pay only what the agent uses), or pay with a dollar credit (Top up).";
         if (e && e.code === 401) raison = TXT.signin;
         corps.textContent = raison;
       });
+  }
+  /* Le credit ne suffit pas : UNE signature du montant qui manque (0,10 $ au moins), puis la
+     MEME tache repart. Ce que la tache n'utilise pas reste au credit. */
+  function uneSignature(d, corps, q, e){
+    var manque = Math.max(0.1, Math.ceil((Number(e.requisUsd) - (Number(e.creditUsd) || 0)) * 100) / 100);
+    corps.textContent = "Your dollar credit is too low for this task: " + usd(e.requisUsd) + " is reserved while it runs (you have " + usd(e.creditUsd || 0) + "), and you pay only what the agent uses.";
+    var b = document.createElement("button"); b.type = "button"; b.className = "rc-action"; b.textContent = "Sign " + usd(manque) + " with your wallet and run";
+    var p = document.createElement("p"); p.className = "rc-statut"; p.setAttribute("role", "status");
+    p.textContent = "USDC on " + (reseauRecharge() === "solana" ? "Solana" : "Base") + " (change it under Top up). What this task does not use stays in your credit.";
+    b.addEventListener("click", function(){
+      b.disabled = true;
+      recharge(manque, function(t){ p.className = "rc-statut"; p.textContent = t; }).then(function(){
+        peintFil(); $("question").value = q; dimensionne(); envoyer();
+      })["catch"](function(x){ b.disabled = false; p.className = "rc-statut err"; p.textContent = "Not charged: " + String(x && (x.message || x.code) || x).slice(0, 200); });
+    });
+    d.appendChild(b); d.appendChild(p);
   }
   /* Rechargee pendant une tache : la reponse est retrouvee sur le serveur, par son rid. */
   function reprend(){
@@ -1887,7 +2010,7 @@ function qrMatrice(txt){
           if (v.status === "done") {
             var m = (etat.cat && etat.cat.modeles.filter(function(x){ return x.id === v.modele; })[0]) || { nom: "Claude" };
             var rep2 = { role: "assistant", content: v.texte || "", sources: v.sources || [], jetons: v.jetons || [], etapes: [],
-              meta: m.nom + " · " + nombre(v.factureSwoge) + " $SWOGE · " + (v.etapes || 1) + " step" + ((v.etapes || 1) > 1 ? "s" : "") };
+              meta: m.nom + " · " + (v.payeur === "credit" ? usd(v.factureUsd) : nombre(v.factureSwoge) + " $SWOGE") + " · " + (v.etapes || 1) + " step" + ((v.etapes || 1) > 1 ? "s" : "") };
             corps.innerHTML = ""; peintReponse(d, rep2); etat.fil.push(rep2); sauve(); return;
           }
           der.interrompu = true; sauve(); d.classList.add("err");
@@ -2027,6 +2150,8 @@ function qrMatrice(txt){
      `swoge_predict.html`. -->
 <script>window.SWOGE_SOCKET = 'aucune';</script>
 <script src="stakebubble.min.js?v=c324151c"></script>
+<script src="x402_solana.js?v=1d86ed41"></script>
+<script src="x402_paie.js?v=6f6b9006"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
 
 </body>

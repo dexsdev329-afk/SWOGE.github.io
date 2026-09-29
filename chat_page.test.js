@@ -43,6 +43,9 @@ const CAT = { ouvert:true, note:null, monnaie:'$SWOGE', coursUsd:0.00002801, mar
     { id:'sonnet-5', nom:'Sonnet 5', note:'Fast and capable', fournisseur:'Anthropic', effort:true, recherche:true, typiqueSwoge:590, maxSwoge:7000 },
     { id:'haiku-4-5', nom:'Haiku 4.5', note:'Fastest for quick answers', fournisseur:'Anthropic', effort:false, recherche:true, typiqueSwoge:295, maxSwoge:3400 },
   ] };
+/* Le credit en dollars (29/09) : un faux /credit qui se souvient ; null = route absente (les anciens scenarios). */
+const CRED = { solde: null, topups: [] };
+const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64');
 const sse = (evs) => evs.map(([t, d]) => 'event: ' + t + '\ndata: ' + JSON.stringify(d) + '\n\n').join('');
 
 (async () => {
@@ -59,15 +62,37 @@ const sse = (evs) => evs.map(([t, d]) => 'event: ' + t + '\ndata: ' + JSON.strin
   /* `rep(corps)` rend le flux SSE d'une question ; `envois` garde ce que la
      page a POSTe. Tout ce qui sort de la machine est coupe : l'essai ne
      depend ni du reseau ni du vrai serveur. */
-  const ouvre = async ({ session, cat, rep, largeur, reprise, adresses, histo, journal, requete } = {}) => {
+  const ouvre = async ({ session, cat, rep, largeur, reprise, adresses, histo, journal, requete, portefeuille } = {}) => {
     const ctx = await nav.newContext({ viewport: { width: largeur || 1200, height: 900 } });
     await ctx.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: 'http://127.0.0.1:' + port });
     if (session) await ctx.addInitScript((j) => { try { localStorage.setItem('swogeSession', j); } catch (e) {} }, session);
     const page = await ctx.newPage();
+    const signes = [];
+    if (portefeuille) {
+      await page.exposeFunction('__portefeuille', async (methode, params) => {
+        if (methode === 'eth_requestAccounts') return ['0x' + '5'.repeat(40)];
+        if (methode === 'wallet_switchEthereumChain') return null;
+        if (methode === 'eth_signTypedData_v4') { signes.push(JSON.parse(params[1])); return '0x' + 'ab'.repeat(65); }
+        throw new Error('unsupported ' + methode);
+      });
+      await page.addInitScript(() => { window.ethereum = { request: ({ method, params }) => window.__portefeuille(method, params || []) }; });
+    }
     const envois = [], soldes = [], stops = [];
     await page.route((u) => !u.href.startsWith('http://127.0.0.1:' + port), async (r) => {
       const u = r.request().url();
       if (/\/studio\/chat\/catalogue/.test(u)) return r.fulfill({ status:200, contentType:'application/json', body: JSON.stringify(cat || CAT) });
+      if (/\/credit(\/topup)?$/.test(u) && CRED.solde !== null) {
+        const H = { 'access-control-allow-origin': '*', 'access-control-expose-headers': 'payment-required, payment-response' };
+        const q = r.request();
+        if (/\/credit$/.test(u)) return r.fulfill({ status:200, headers: H, contentType:'application/json', body: JSON.stringify({ ok: true, balanceUsd: CRED.solde, history: [] }) });
+        const corps = JSON.parse(q.postData() || '{}'), sig = q.headers()['payment-signature'] || null;
+        CRED.topups.push({ corps, sig, auth: q.headers().authorization || null });
+        if (!sig) return r.fulfill({ status: 402, headers: Object.assign({ 'payment-required': b64({ x402Version: 2, resource: { url: 'https://srv/credit/topup' },
+          accepts: [{ scheme: 'exact', network: 'eip155:8453', asset: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', payTo: '0x' + '1'.repeat(40), amount: String(Math.round(corps.usd * 1e6) + 1000), maxTimeoutSeconds: 120, extra: { name: 'USD Coin', version: '2' } }] }) }, H),
+          contentType:'application/json', body: '{}' });
+        CRED.solde = Math.round((CRED.solde + corps.usd) * 1e6) / 1e6;
+        return r.fulfill({ status: 200, headers: H, contentType:'application/json', body: JSON.stringify({ ok: true, creditedUsd: corps.usd, balanceUsd: CRED.solde, alreadyCredited: false }) });
+      }
       if (/\/studio\/chat\/solde/.test(u)) {
         soldes.push(r.request().headers().authorization || null);
         const jt = String(r.request().headers().authorization || '').replace(/^Bearer /, '');
@@ -104,8 +129,8 @@ const sse = (evs) => evs.map(([t, d]) => 'event: ' + t + '\ndata: ' + JSON.strin
       return r.abort();
     });
     await page.goto('http://127.0.0.1:' + port + '/swolemind.html' + (requete || ''), { waitUntil:'domcontentloaded' });
-    await page.waitForFunction(() => /\$SWOGE per question/.test(document.getElementById('prixq').textContent));
-    return { page, ctx, envois, soldes, stops };
+    await page.waitForFunction(() => /per question/.test(document.getElementById('prixq').textContent));
+    return { page, ctx, envois, soldes, stops, signes };
   };
   const pose = async (page, q) => { await page.fill('#question', q); await page.click('#envoyer'); };
 
@@ -690,6 +715,33 @@ const sse = (evs) => evs.map(([t, d]) => 'event: ' + t + '\ndata: ' + JSON.strin
     const larg = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     ok(larg <= 1, 'a 390 px, rien ne deborde [' + larg + ']');
     await ctx.close();
+  }
+
+  console.log('\n-- 12. payer sans $SWOGE : le credit en dollars, une signature par question (29/09) --');
+  {
+    CRED.solde = 0.02; CRED.topups = [];
+    const CATU = Object.assign({}, CAT, { modeles: CAT.modeles.map((m) => Object.assign({}, m, { typiqueUsd: 0.0081, maxUsd: 0.21 })) });
+    let tour = 0;
+    const rep = () => (++tour === 1 ? sse([['erreur', { ok: false, code: 402, payeur: 'credit', requisUsd: 0.21, creditUsd: 0.02, raison: 'your dollar credit is too low for this' }]])
+      : sse([['texte', { t: 'Bonjour.' }], ['fin', { ok: true, texte: 'Bonjour.', payeur: 'credit', factureUsd: 0.0081, creditUsd: 0.2019, modele: 'opus-5-5' }]]));
+    const { page, ctx, envois, signes } = await ouvre({ session: 'j.credit', cat: CATU, rep, portefeuille: true });
+    await page.waitForFunction(() => /\$0\.02/.test(document.getElementById('credit').textContent));
+    eq(await page.$eval('#payeur', (x) => x.value), 'credit', 'avec un credit, la page paie au credit par defaut');
+    ok(/~\$0\.0081 per question \(max \$0\.21\)/.test(await page.textContent('#prixq')), 'le prix d une question se lit en dollars');
+    await pose(page, 'hello');
+    await page.waitForFunction(() => document.querySelector('.rc-action'));
+    ok(/Sign \$0\.19 with your wallet and ask/.test(await page.textContent('.rc-action')), 'credit trop court : UNE signature du montant qui manque (0,21 $ - 0,02 $)');
+    await page.click('.rc-action');
+    /* La meta de la REPONSE (le prix sous le composeur dit deja 0,0081 $ : ne pas l attendre lui). */
+    await page.waitForFunction(() => Array.prototype.some.call(document.querySelectorAll('.msg.ia .meta'), (m) => /\$0\.0081/.test(m.textContent)));
+    ok(CRED.topups.length === 2 && !CRED.topups[0].sig && CRED.topups[1].sig && CRED.topups[1].corps.usd === 0.19 && CRED.topups.every((t) => t.auth === 'Bearer j.credit' && Object.keys(t.corps).join() === 'usd')
+       && signes.length === 1 && signes[0].domain.chainId === 8453, 'la recharge : le 402, une signature USDC sur Base, par la session, le montant seul');
+    ok(envois.length === 2 && envois.every((e) => e.corps.payeur === 'credit' && !('addr' in e.corps)) && envois[1].corps.messages.slice(-1)[0].content === 'hello', 'puis la MEME question repart, payee au credit');
+    ok(/\$0\.2019/.test(await page.textContent('#credit')) && (await page.$$('.msg.moi')).length === 1 && !(await page.$('.msg.err')), 'le credit se met a jour ; une seule question, plus d erreur');
+    await page.selectOption('#payeur', 'swoge');
+    ok(/\$SWOGE per question/.test(await page.textContent('#prixq')) && (await page.evaluate(() => localStorage.getItem('swogeChatPayeur'))) === '"swoge"', 'le $SWOGE reste possible, et le choix est garde');
+    await ctx.close();
+    CRED.solde = null;
   }
 
   await nav.close(); srv.close();

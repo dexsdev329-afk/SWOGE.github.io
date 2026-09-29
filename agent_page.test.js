@@ -35,6 +35,9 @@ const EMB = { vus: [], poste: [], refuse: null, rep: { ok: true, actif: true, bu
 const ACT = { uri: 'LPA:1$smdp.example.net$ACT-0101', code: 'ACT-0101', smdp: 'smdp.example.net', iccid4: '4242' };
 const ACH = { poste: [], vus: [], liste: [] };
 const DEV = { cles: [], appels: [], recus: [{ id: 'r1e2c3u4', outil: 'scan_token', swoge: '357.01535', t: Date.UTC(2026, 8, 26, 13, 5) }] };
+/* Le credit en dollars (29/09) : un faux /credit qui se souvient ; null = route absente (les anciens scenarios). */
+const CRED = { solde: null, topups: [] };
+const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64');
 const sse = (evs) => evs.map(([t, d]) => 'event: ' + t + '\ndata: ' + JSON.stringify(d) + '\n\n').join('');
 const PEPE = { adresse:'0x6982508145454ce325ddbe47a25d4ec3d2311933', trouve:true, sym:'PEPE', nom:'Pepe', chaine:'ethereum', prixUsd:0.0000044, liqUsd:25000000, mcUsd:1.8e9,
   vol24Usd:1e6, var24h:3.2, url:'https://dexscreener.com/ethereum/0xp', securite:'read', alertes:['Pausable'], taxeAchat:0, taxeVente:0, porteurs:593837, premierPorteur:8.8, dixPremiers:35.2, colonie:null };
@@ -48,16 +51,40 @@ const PEPE = { adresse:'0x6982508145454ce325ddbe47a25d4ec3d2311933', trouve:true
   await new Promise((s) => srv.listen(0, '127.0.0.1', s));
   const port = srv.address().port;
   const nav = await chromium.launch();
-  const ouvre = async ({ session, rep, largeur, reprise } = {}) => {
+  const ouvre = async ({ session, rep, largeur, reprise, portefeuille, cat } = {}) => {
     const ctx = await nav.newContext({ viewport: { width: largeur || 1200, height: 900 } });
     if (session) await ctx.addInitScript((j) => { try { localStorage.setItem('swogeSession', j); } catch (e) {} }, session);
     const page = await ctx.newPage();
+    const signes = [];
+    if (portefeuille) {
+      await page.exposeFunction('__portefeuille', async (methode, params) => {
+        if (methode === 'eth_requestAccounts') return ['0x' + '5'.repeat(40)];
+        if (methode === 'wallet_switchEthereumChain') return null;
+        if (methode === 'eth_signTypedData_v4') { signes.push(JSON.parse(params[1])); return '0x' + 'ab'.repeat(65); }
+        throw new Error('unsupported ' + methode);
+      });
+      await page.addInitScript(() => { window.ethereum = { request: ({ method, params }) => window.__portefeuille(method, params || []) }; });
+    }
     const envois = [], stops = [];
     await page.route((u) => !u.href.startsWith('http://127.0.0.1:' + port), async (r) => {
       const u = r.request().url();
       if (/\/studio\/chat\/stop$/.test(u)) { stops.push({ auth: r.request().headers().authorization || null, corps: JSON.parse(r.request().postData() || '{}') });
         return r.fulfill({ status:200, contentType:'application/json', body:'{"ok":true,"arretes":1}' }); }
-      if (/\/studio\/agent\/catalogue/.test(u)) return r.fulfill({ status:200, contentType:'application/json', body: JSON.stringify(CAT) });
+      if (/\/studio\/agent\/catalogue/.test(u)) return r.fulfill({ status:200, contentType:'application/json', body: JSON.stringify(cat || CAT) });
+      if (/\/credit(\/topup)?$/.test(u) && CRED.solde !== null) {
+        const H = { 'access-control-allow-origin': '*', 'access-control-expose-headers': 'payment-required, payment-response' };
+        const q = r.request();
+        if (/\/credit$/.test(u)) return r.fulfill({ status:200, headers: H, contentType:'application/json', body: JSON.stringify({ ok: true, balanceUsd: CRED.solde,
+          history: CRED.topups.filter((t) => t.sig).map((t) => ({ at: '2026-09-29T10:00:00.000Z', kind: 'top-up', usd: t.corps.usd, what: null })) }) });
+        const corps = JSON.parse(q.postData() || '{}'), sig = q.headers()['payment-signature'] || null;
+        CRED.topups.push({ corps, sig, auth: q.headers().authorization || null });
+        if (!sig) return r.fulfill({ status: 402, headers: Object.assign({ 'payment-required': b64({ x402Version: 2, resource: { url: 'https://srv/credit/topup' },
+          accepts: [{ scheme: 'exact', network: 'eip155:8453', asset: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', payTo: '0x' + '1'.repeat(40), amount: String(Math.round(corps.usd * 1e6) + 1000), maxTimeoutSeconds: 120, extra: { name: 'USD Coin', version: '2' } }] }) }, H),
+          contentType:'application/json', body: '{}' });
+        CRED.solde = Math.round((CRED.solde + corps.usd) * 1e6) / 1e6;
+        return r.fulfill({ status: 200, headers: Object.assign({ 'payment-response': b64({ success: true, transaction: '0x' + 'cd'.repeat(32) }) }, H), contentType:'application/json',
+          body: JSON.stringify({ ok: true, creditedUsd: corps.usd, balanceUsd: CRED.solde, alreadyCredited: false }) });
+      }
       if (/\/studio\/chat\/solde/.test(u)) return r.fulfill({ status:200, contentType:'application/json', body: JSON.stringify({ ok:true, adresse:'0xabc', solde:'200000.0' }) });
       if (/\/studio\/agent$/.test(u) && r.request().method() === 'POST') {
         envois.push({ auth: r.request().headers().authorization || null, corps: JSON.parse(r.request().postData() || '{}') });
@@ -107,8 +134,8 @@ const PEPE = { adresse:'0x6982508145454ce325ddbe47a25d4ec3d2311933', trouve:true
       return r.abort();
     });
     await page.goto('http://127.0.0.1:' + port + '/swogeagentic.html', { waitUntil:'domcontentloaded' });
-    await page.waitForFunction(() => /\$SWOGE per task/.test(document.getElementById('prixq').textContent));
-    return { page, ctx, envois, stops };
+    await page.waitForFunction(() => /per task/.test(document.getElementById('prixq').textContent));
+    return { page, ctx, envois, stops, signes };
   };
   const pose = async (page, q) => { await page.fill('#question', q); await page.click('#envoyer'); };
 
@@ -439,6 +466,45 @@ const PEPE = { adresse:'0x6982508145454ce325ddbe47a25d4ec3d2311933', trouve:true
     await page.waitForFunction(() => document.querySelectorAll('.msg.moi').length === 2);
     ok(envois.length === 2 && envois[1].corps.messages.every((m) => m.content !== 'une tache mal posee'), 'une NOUVELLE tache part tout de suite, sans l arretee dans l historique');
     await ctx.close();
+  }
+
+  console.log('\n-- 9. payer sans $SWOGE : le credit en dollars, et une signature par tache (29/09) --');
+  {
+    CRED.solde = 0; CRED.topups = [];
+    const CATU = Object.assign({}, CAT, { modeles: CAT.modeles.map((m) => Object.assign({}, m, { typiqueUsd: 0.0126, maxUsd: 0.35 })) });
+    let tour = 0;
+    const rep = () => (++tour === 1 ? sse([['erreur', { ok: false, code: 402, payeur: 'credit', requisUsd: 0.35, creditUsd: 0.01, raison: 'your credit is too low for this model' }]])
+      : sse([['texte', { t: 'Done.' }], ['fin', { ok: true, texte: 'Done.', payeur: 'credit', factureUsd: 0.0126, creditUsd: 0.3474, etapes: 1, modele: 'sonnet-5' }]]));
+    const { page, ctx, envois, signes } = await ouvre({ session: 'j.credit', rep, portefeuille: true, cat: CATU });
+    await page.waitForFunction(() => /\$0\.00/.test(document.getElementById('credit').textContent));
+    eq(await page.$eval('#payeur', (s) => s.value), 'swoge', 'credit vide et $SWOGE en jeu : la page propose le $SWOGE par defaut');
+    await page.selectOption('#payeur', 'credit');
+    ok(/~\$0\.0126 per task \(max \$0\.35\)/.test(await page.textContent('#prixq')), 'au credit, le prix d une tache se lit en dollars');
+    eq(await page.evaluate(() => localStorage.getItem('swogeAgentPayeur')), '"credit"', 'le choix du joueur est garde');
+    await page.click('#recharger');
+    await page.click('#rcMontants [data-usd="20"]');
+    ok(/Sign a \$20\.00 top-up/.test(await page.textContent('#rcSigner')), 'le bouton dit le montant choisi');
+    await page.click('#rcSigner');
+    await page.waitForFunction(() => /Done: \$20\.00 added/.test(document.getElementById('rcStatut').textContent));
+    ok(CRED.topups.length === 2 && !CRED.topups[0].sig && CRED.topups[1].sig && CRED.topups.every((t) => t.auth === 'Bearer j.credit' && t.corps.usd === 20 && Object.keys(t.corps).join() === 'usd'),
+       'recharge : le 402, puis la MEME requete signee, par la session, le montant seul (jamais une adresse)');
+    ok(signes.length === 1 && signes[0].primaryType === 'TransferWithAuthorization' && signes[0].domain.chainId === 8453 && signes[0].message.value === '20001000',
+       'une signature USDC sur Base, du montant du 402');
+    ok(/\$20\.00/.test(await page.textContent('#credit')), 'le credit affiche est celui que le serveur rend');
+    CRED.solde = 0.01; CRED.topups = [];
+    await pose(page, 'check this token');
+    await page.waitForFunction(() => document.querySelector('.rc-action'));
+    ok(/Sign \$0\.34 with your wallet and run/.test(await page.textContent('.rc-action')) && /\$0\.35 is reserved/.test(await page.textContent('.msg.err')),
+       'credit trop court : UNE signature du montant qui manque (0,35 $ reserves, 0,01 $ en credit)');
+    await page.click('.rc-action');
+    /* La meta de la REPONSE (le prix sous le composeur dit deja 0,0126 $ : ne pas l attendre lui). */
+    await page.waitForFunction(() => Array.prototype.some.call(document.querySelectorAll('.msg .meta'), (m) => /\$0\.0126/.test(m.textContent)));
+    ok(CRED.topups.length === 2 && CRED.topups[1].corps.usd === 0.34 && signes.length === 2, 'la signature recharge exactement ce qui manque');
+    ok(envois.length === 2 && envois.every((e) => e.corps.payeur === 'credit' && e.auth === 'Bearer j.credit' && !('addr' in e.corps) && !('adresse' in e.corps))
+       && envois[1].corps.messages[envois[1].corps.messages.length - 1].content === 'check this token', 'puis la MEME tache repart, payee au credit, sans adresse');
+    ok(/\$0\.3474/.test(await page.textContent('#credit')) && (await page.$$('.msg.moi')).length === 1, 'le credit se met a jour, et la question n apparait qu une fois');
+    await ctx.close();
+    CRED.solde = null;
   }
 
   await nav.close(); srv.close();

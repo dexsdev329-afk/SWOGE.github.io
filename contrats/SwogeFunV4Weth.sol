@@ -7,7 +7,7 @@ pragma solidity ^0.8.26;
    Le jumeau de SwogeFunV4.sol, demande du proprietaire : « une deuxieme
    solution, un deuxieme contrat, comme ca l'utilisateur a le choix entre
    pool $SWOGE ou WETH normal ». Tout est repris du V4 deploye le 29/09
-   (0x6532C42a..., source verifiee exact_match sur Sourcify) ; trois choses
+   (0x6532C42a..., source verifiee exact_match sur Sourcify) ; quatre choses
    changent, et seulement elles :
 
    1. LE POOL EST APPARIE AU WETH (0x0Bd7D308..., le WETH que launchpad.html
@@ -22,14 +22,24 @@ pragma solidity ^0.8.26;
       par `transfer` ERC-20 (aucun envoi d'ETH natif, aucun appel a une
       adresse arbitraire). La part en jeton reste BRULEE.
 
-   CE QUI NE CHANGE PAS : le frais de lancement se paie en $SWOGE (10 000,
-   BRULE) — chaque lancement, quelle que soit la paire, consomme du $SWOGE ;
-   le jeton est le MEME ERC-20 nu (aucun appel externe, owner() = 0) ; NFT de
+   4. LE FRAIS DE LANCEMENT SE PAIE EN ETH et va au TRESOR (precise par le
+      proprietaire le 29/09 a 19:23 UTC : « normalement ca devrait etre sur ETH
+      Robinhood, donc on en a en possession »). Montant fige au deploiement,
+      egal a `msg.value` exactement (pas de rendu de monnaie, donc aucun
+      envoi vers l'appelant). Parite choisie : 10 000 $SWOGE = 0,000098 ETH le
+      29/09 (paire v2 $SWOGE/WETH), d'ou 0,0001 ETH — le choix de la paire ne
+      change pas le prix d'un lancement. Le seul envoi d'ETH natif du contrat
+      va au tresor, adresse `immutable` fixee au deploiement. Plus aucun lien
+      au $SWOGE dans ce contrat.
+
+   CE QUI NE CHANGE PAS : le jeton est le MEME ERC-20 nu (aucun appel externe, owner() = 0) ; NFT de
    liquidite garde ici pour toujours ; CREATE2 avec sel ; controle de slot0 ;
    aucun proprietaire, aucun setter.
 
-   Banc sur fork : banc_fork_v4weth.js, 29/09 : 41 verifications, 0 echec —
-   deploiement 1,88 M gaz, lancement 5,82 M ; 0,3 WETH achetent 228,2 M jetons
+   Banc sur fork : banc_fork_v4weth.js, 29/09 (bloc 75 906 071) : 43 verifications,
+   0 echec — frais : un wei de moins OU de plus refuse, le tresor recoit
+   exactement 0,0001 ETH, le launchpad ne garde rien, aucun $SWOGE touche ;
+   deploiement 1,90 M gaz, lancement 5,83 M ; 0,3 WETH achetent 228,2 M jetons
    dans les DEUX sens du pool (jeton token1, ~95 % des cas vu l'adresse basse
    du WETH, et jeton token0, force par un sel choisi) ; revente, recolte 50/50
    en WETH a 1 wei pres, jeton nu (aucun opcode d'appel, owner() = 0).
@@ -143,9 +153,8 @@ contract SwogeFunV4Weth {
        brulee (les detenteurs en profitent par la rarete). */
     uint16 public constant CREATOR_SHARE_BPS = 5000;   // 50 % du frais de pool en WETH -> createur
 
-    uint256 public immutable creationFee;               // en $SWOGE, BRULE
+    uint256 public immutable creationFee;               // en ETH (wei), au tresor
     address public immutable positionManager;
-    address public immutable swoge;                     // le frais de lancement, brule
     address public immutable weth;                      // l'actif du pool
     address public immutable swogeTreasury;
 
@@ -168,11 +177,9 @@ contract SwogeFunV4Weth {
     bool private _locked;
     modifier nonReentrant() { require(!_locked, "reentrant"); _locked = true; _; _locked = false; }
 
-    constructor(address _positionManager, address _swoge, address _weth, address _treasury, uint256 _creationFee) {
-        require(_positionManager != address(0) && _swoge != address(0) && _weth != address(0) && _treasury != address(0), "zero");
-        require(_weth != _swoge, "weth");
+    constructor(address _positionManager, address _weth, address _treasury, uint256 _creationFee) {
+        require(_positionManager != address(0) && _weth != address(0) && _treasury != address(0), "zero");
         positionManager = _positionManager;
-        swoge = _swoge;
         weth = _weth;
         swogeTreasury = _treasury;
         creationFee = _creationFee;
@@ -205,13 +212,16 @@ contract SwogeFunV4Weth {
     }
 
     /* ---------- lancer ----------
-       N'est PAS `payable` : le frais se paie en $SWOGE, donc le lanceur doit
-       d'abord autoriser ce contrat (`approve`) — une transaction de plus
-       avant le lancement, c'est le prix de payer dans le jeton du projet. */
-    function createToken(LaunchParams calldata p) external nonReentrant returns (address t) {
+       `payable` : le frais se paie en ETH, EXACTEMENT `creationFee` — ni plus
+       (pas de monnaie a rendre, donc aucun envoi vers l'appelant), ni moins.
+       Une seule transaction, sans `approve`. L'ETH part tout de suite au
+       tresor : le launchpad ne garde jamais d'ETH. */
+    function createToken(LaunchParams calldata p) external payable nonReentrant returns (address t) {
         require(bytes(p.name).length > 0 && bytes(p.symbol).length > 0, "name");
-        if (creationFee > 0) {
-            require(IERC20(swoge).transferFrom(msg.sender, DEAD, creationFee), "creation fee");
+        require(msg.value == creationFee, "creation fee");
+        if (msg.value > 0) {
+            (bool ok, ) = swogeTreasury.call{value: msg.value}("");
+            require(ok, "treasury");
         }
         t = _launchInstant(p);
         allTokens.push(t);

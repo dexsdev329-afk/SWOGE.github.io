@@ -36,10 +36,17 @@ const artefact = {
   jeton: { abi: c.SwogeTokenV4.abi, deployedBytecode: '0x' + c.SwogeTokenV4.evm.deployedBytecode.object },
   /* Les parametres decides pour le V3, repris tels quels (SwogeFunV3-LISEZ-MOI.md,
      « A poser au deploiement ») : sommes EIP-55 verifiees, tresor = portefeuille. */
-  constructeur: {
+  /* Le jumeau WETH (29/09) : plus de $SWOGE dans le contrat ; le frais est en ETH, 0,0001 ETH
+     (parite : 10 000 $SWOGE = 0,000098 ETH dans la paire v2 ce jour-la), paye au tresor. */
+  constructeur: WETH ? {
+    positionManager: '0x73991a25C818Bf1f1128dEAaB1492D45638DE0D3',
+    weth: '0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73',                          /* WETH9 relu le 29/09 : symbol WETH, deposit() */
+    treasury: '0x6229DDF7c8Ed3A194819aF2e68f5de2Dc31e7F30',
+    creationFeeWei: '100000000000000',
+    fraisEnEth: true,
+  } : {
     positionManager: '0x73991a25C818Bf1f1128dEAaB1492D45638DE0D3',
     swoge: '0x8a166Fb41Cd659a0a43396272FF73973Ce29F817',
-    ...(WETH ? { weth: '0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73' } : {}),   /* WETH9 relu le 29/09 : symbol WETH, deposit() */
     treasury: '0x6229DDF7c8Ed3A194819aF2e68f5de2Dc31e7F30',
     creationFeeWei: '10000000000000000000000',
   },

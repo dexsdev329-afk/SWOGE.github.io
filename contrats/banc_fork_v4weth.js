@@ -3,8 +3,8 @@
  * LE BANC D'ESSAI SUR FORK — SwogeFunV4Weth (copie de banc_fork_v4.js, 29/09/2026)
  *
  * Le jumeau WETH du V4 : memes preuves, avec un pool apparie au WETH. Le frais
- * de lancement reste 10 000 $SWOGE brules ; l'acheteur paie en WETH, la
- * recolte partage le WETH 50/50 entre createur et tresor.
+ * de lancement se paie en ETH, montant EXACT, et part au tresor ; l'acheteur
+ * paie en WETH, la recolte partage le WETH 50/50 entre createur et tresor.
  *
  * (En-tete du V4 :)
  *
@@ -134,7 +134,7 @@ const TRESOR   = '0x6229DDF7c8Ed3A194819aF2e68f5de2Dc31e7F30';
 const ROUTER   = '0xcaf681a66d020601342297493863e78c959e5cb2';
 const WETH     = '0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73';   // WETH9 (symbol WETH, deposit()) relu le 29/09
 const DEAD     = '0x000000000000000000000000000000000000dEaD';
-const FRAIS    = ethers.utils.parseEther('10000');                // frais de lancement, tranche avant deploiement
+const FRAIS    = ethers.utils.parseEther('0.0001');               // frais de lancement EN ETH (parite 10 000 $SWOGE, 29/09)
 const SLOT_SOLDES = 0;                                            // `_balances` du $SWOGE, trouve par recoupement
 
 let n = 0, echecs = 0, gazLancement = 0n;
@@ -270,7 +270,7 @@ function motif(r) {
   /* ---- 1. DEPLOIEMENT ---- */
   console.log('\n-- 1. deploiement --');
   const args = ethers.utils.defaultAbiCoder.encode(
-    ['address', 'address', 'address', 'address', 'uint256'], [PM, SWOGE, WETH, TRESOR, FRAIS]).slice(2);
+    ['address', 'address', 'address', 'uint256'], [PM, WETH, TRESOR, FRAIS]).slice(2);
   const dep = await appel(vm, { de: MOI, a: null, data: '0x' + bin + args });
   const FUN = dep.createdAddress ? '0x' + dep.createdAddress.toString().slice(2) : null;
   ok(!dep.execResult.exceptionError && FUN, 'le launchpad se deploie' + (dep.execResult.exceptionError ? ' — ' + motif(dep) : ''));
@@ -280,8 +280,13 @@ function motif(r) {
 
   /* ---- 2. AUTORISATION + LANCEMENT ---- */
   console.log('\n-- 2. le lancement, chemin complet --');
-  const ap = await appel(vm, { de: MOI, a: SWOGE, data: ierc.encodeFunctionData('approve', [FUN, FRAIS]) });
-  ok(!ap.execResult.exceptionError, 'l autorisation du frais passe');
+  const ethTresor0 = await sm.getAccount(adr(TRESOR)).then((a) => (a ? a.balance : 0n));
+  const selX = ethers.utils.hexlify(ethers.utils.randomBytes(32));
+  const creer = (salt, nom) => iface.encodeFunctionData('createToken', [{ name: nom, symbol: nom.toUpperCase().slice(0, 6), salt, telegram: '', twitter: '', website: '', logo: '' }]);
+  const moins = await appel(vm, { de: MOI, a: FUN, data: creer(selX, 'Moins'), valeur: FRAIS.toBigInt() - 1n });
+  ok(!!moins.execResult.exceptionError && /creation fee/.test(motif(moins)), 'un wei de MOINS que le frais : refuse (« creation fee »)');
+  const plus = await appel(vm, { de: MOI, a: FUN, data: creer(selX, 'Plus'), valeur: FRAIS.toBigInt() + 1n });
+  ok(!!plus.execResult.exceptionError && /creation fee/.test(motif(plus)), 'un wei de PLUS : refuse aussi — aucune monnaie a rendre, donc aucun envoi vers l appelant');
 
   const sel = ethers.utils.hexlify(ethers.utils.randomBytes(32));
   const dataCreate = iface.encodeFunctionData('createToken', [{
@@ -305,7 +310,7 @@ function motif(r) {
   };
   vm.evm.events && vm.evm.events.on('beforeMessage', espion);
   vm.evm.events && vm.evm.events.on('afterMessage', espion2);
-  const cr = await appel(vm, { de: MOI, a: FUN, data: dataCreate });
+  const cr = await appel(vm, { de: MOI, a: FUN, data: dataCreate, valeur: FRAIS.toBigInt() });
   vm.evm.events && vm.evm.events.removeListener('beforeMessage', espion);
   vm.evm.events && vm.evm.events.removeListener('afterMessage', espion2);
   const raison = motif(cr);
@@ -349,10 +354,12 @@ function motif(r) {
   const resteLance = BigInt(await lire(JETON, ierc.encodeFunctionData('balanceOf', [FUN])));
   ok(resteLance === 0n, 'le launchpad ne garde aucun jeton apres le lancement (le reste d arrondi du mint est brule)');
 
-  const brule = BigInt(await lire(SWOGE, ierc.encodeFunctionData('balanceOf', [DEAD])));
+  const ethTresor1 = await sm.getAccount(adr(TRESOR)).then((a) => (a ? a.balance : 0n));
+  const ethFun = await sm.getAccount(adr(FUN)).then((a) => (a ? a.balance : 0n));
+  ok(ethTresor1 - ethTresor0 === FRAIS.toBigInt(), 'le tresor a recu EXACTEMENT le frais : 0,0001 ETH');
+  ok(ethFun === 0n, 'le launchpad ne garde aucun ETH');
   const resteMoi = BigInt(await lire(SWOGE, ierc.encodeFunctionData('balanceOf', [MOI])));
-  ok(resteMoi === dot - FRAIS.toBigInt(), 'le frais de 10 000 $SWOGE a bien ete preleve');
-  ok(brule > 0n, 'le frais est parti vers DEAD (brule), pas dans une poche');
+  ok(resteMoi === dot, 'aucun $SWOGE n est touche : ce contrat ne connait plus le $SWOGE');
 
   /* ---- 4. LE JETON EST NU ----
      Ce qu'un scanner lit : le bytecode deploye et les fonctions exposees. On
@@ -361,13 +368,18 @@ function motif(r) {
      constante n'est pas un CALL. */
   console.log('\n-- 4. le jeton lance est un ERC-20 nu --');
   const code = await sm.getCode(adr(JETON));
+  /* Les METADONNEES de solc (CBOR, hash de la source) terminent le bytecode ; leur longueur est
+     ecrite dans les deux derniers octets. Elles ne s'executent jamais (le code s'arrete avant, sur
+     INVALID) mais contiennent des octets quelconques : le 29/09, un 0xf5 au rang 1515 du jumeau WETH,
+     DANS les 53 octets de metadonnees, faisait croire a un CREATE2. On ne lit que le code executable. */
+  const finCode = code.length - 2 - ((code[code.length - 2] << 8) | code[code.length - 1]);
   const ops = {};
-  for (let k = 0; k < code.length; k++) {
+  for (let k = 0; k < finCode; k++) {
     const op = code[k];
     if (op >= 0x60 && op <= 0x7f) { k += op - 0x5f; continue; }
     if ([0xf0, 0xf1, 0xf2, 0xf4, 0xf5, 0xfa, 0xff].includes(op)) ops[op.toString(16)] = (ops[op.toString(16)] || 0) + 1;
   }
-  ok(code.length > 0 && Object.keys(ops).length === 0,
+  ok(code.length > 0 && finCode > 0 && finCode < code.length && Object.keys(ops).length === 0,
      'aucun CALL, DELEGATECALL, STATICCALL, CREATE ni SELFDESTRUCT dans le jeton deploye (' + code.length + ' octets)');
   const itok = new ethers.utils.Interface(tokAbi);
   const fonctions = Object.values(itok.functions).map((f) => f.name).sort();
@@ -448,8 +460,7 @@ function motif(r) {
   const recharger = async () => sm.putStorage(adr(SWOGE), cle, setLengthLeft(bigIntToBytes(dot), 32));
   await recharger();
   const lancer = async (salt) => {
-    await appel(vm, { de: MOI, a: SWOGE, data: ierc.encodeFunctionData('approve', [FUN, FRAIS]) });
-    const r = await appel(vm, { de: MOI, a: FUN, data: iface.encodeFunctionData('createToken', [{
+    const r = await appel(vm, { de: MOI, a: FUN, valeur: FRAIS.toBigInt(), data: iface.encodeFunctionData('createToken', [{
       name: 'Deux', symbol: 'DEUX', salt, telegram: '', twitter: '', website: '', logo: '' }]) });
     return r.execResult.exceptionError
       ? { err: motif(r) }
@@ -496,8 +507,7 @@ function motif(r) {
   }
   ok(!!selBas, 'un sel donnant une adresse sous le WETH est trouve : ' + predit);
   await recharger();
-  await appel(vm, { de: MOI, a: SWOGE, data: ierc.encodeFunctionData('approve', [FUN, FRAIS]) });
-  const rb = await appel(vm, { de: MOI, a: FUN, data: iface.encodeFunctionData('createToken', [{
+  const rb = await appel(vm, { de: MOI, a: FUN, valeur: FRAIS.toBigInt(), data: iface.encodeFunctionData('createToken', [{
     name: 'Bas', symbol: 'BAS', salt: selBas, telegram: '', twitter: '', website: '', logo: '' }]) });
   const JB = rb.execResult.exceptionError ? null : ethers.utils.getAddress('0x' + bytesToHex(rb.execResult.returnValue).slice(-40));
   ok(JB && JB === predit, 'le lancement passe, a l adresse predite (jeton token0)' + (motif(rb) ? ' — ' + motif(rb) : ''));

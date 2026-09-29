@@ -354,13 +354,18 @@ function motif(r) {
      constante n'est pas un CALL. */
   console.log('\n-- 4. le jeton lance est un ERC-20 nu --');
   const code = await sm.getCode(adr(JETON));
+  /* Les METADONNEES de solc (CBOR, hash de la source) terminent le bytecode ; leur longueur est
+     ecrite dans les deux derniers octets. Elles ne s'executent jamais (le code s'arrete avant, sur
+     INVALID) mais contiennent des octets quelconques : le 29/09, un 0xf5 au rang 1515 du jumeau WETH,
+     DANS les 53 octets de metadonnees, faisait croire a un CREATE2. On ne lit que le code executable. */
+  const finCode = code.length - 2 - ((code[code.length - 2] << 8) | code[code.length - 1]);
   const ops = {};
-  for (let k = 0; k < code.length; k++) {
+  for (let k = 0; k < finCode; k++) {
     const op = code[k];
     if (op >= 0x60 && op <= 0x7f) { k += op - 0x5f; continue; }
     if ([0xf0, 0xf1, 0xf2, 0xf4, 0xf5, 0xfa, 0xff].includes(op)) ops[op.toString(16)] = (ops[op.toString(16)] || 0) + 1;
   }
-  ok(code.length > 0 && Object.keys(ops).length === 0,
+  ok(code.length > 0 && finCode > 0 && finCode < code.length && Object.keys(ops).length === 0,
      'aucun CALL, DELEGATECALL, STATICCALL, CREATE ni SELFDESTRUCT dans le jeton deploye (' + code.length + ' octets)');
   const itok = new ethers.utils.Interface(tokAbi);
   const fonctions = Object.values(itok.functions).map((f) => f.name).sort();

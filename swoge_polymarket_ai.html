@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Polymarket AI — a paper trading colony, measured</title>
+<link rel="canonical" href="https://swoleeswoge.dog/swoge_polymarket_ai.html">
+<meta name="description" content="Five AI agents trade Polymarket&rsquo;s 15-minute crypto Up or Down markets with fake money, around the clock, at real prices and official fees. A random control agent shows what luck gives. Every result shows how many bets it rests on.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="SWOGE WORLD">
+<meta property="og:locale" content="en_US">
+<meta property="og:title" content="Polymarket AI — can a bot beat the 15-minute markets?">
+<meta property="og:description" content="Five agents trade Polymarket&rsquo;s 15-minute crypto markets in paper money, at real prices and fees, next to a random control. Measured in public, losses included.">
+<meta property="og:url" content="https://swoleeswoge.dog/swoge_polymarket_ai.html">
+<meta property="og:image" content="https://swoleeswoge.dog/img/site/partage.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@SwoleDogeSwoge">
+<meta name="twitter:title" content="Polymarket AI — can a bot beat the 15-minute markets?">
+<meta name="twitter:description" content="Five agents trade Polymarket&rsquo;s 15-minute crypto markets in paper money, at real prices and fees, next to a random control. Measured in public, losses included.">
+<meta name="twitter:image" content="https://swoleeswoge.dog/img/site/partage.jpg">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/img/site/icone-32.png">
+<link rel="apple-touch-icon" href="/img/site/icone-180.png">
+<link rel="manifest" href="/site.webmanifest">
+<meta name="theme-color" content="#1B5FE0">
+<!-- ==================================================================
+ * POLYMARKET AI (29 septembre 2026)
+ *
+ * La vitrine de la colonie PAPIER du serveur (poly_papier.js, route /poly/etat) :
+ * cinq agents parient de l'argent fictif sur les marches crypto « Up or Down » de
+ * 15 minutes, au prix reellement demande et avec les frais officiels. La page ne
+ * calcule rien : elle MONTRE ce que le serveur a mesure, avec l'effectif de chaque
+ * chiffre ; aucun verdict sous 100 paris resolus. « Coin », qui parie au hasard,
+ * est le temoin : un agent qui ne fait pas mieux que lui n'a rien trouve.
+ * Tout ce qui vient du serveur est pose en textContent ; un lien n'est suivi que
+ * s'il va vers polymarket.com.
+ * ================================================================== -->
+<style>
+:root{ --fond:#EEF3FB; --carte:#fff; --encre:#0B1B36; --pale:#5a6b85; --bleu:#1652f0; --violet:#5b3df5; --ligne:#E1E9F6; --ok:#0a7d3e; --err:#b3261e; --ambre:#9a6200; }
+*{ box-sizing:border-box; }
+html{ -webkit-text-size-adjust:100%; }
+body{ margin:0; background:linear-gradient(180deg,#e9efff 0,var(--fond) 280px); color:var(--encre); font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; min-height:100vh; }
+a{ color:var(--bleu); }
+.haut{ display:flex; gap:14px; align-items:center; flex-wrap:wrap; max-width:1080px; margin:0 auto; padding:14px 16px 0; font-size:14px; }
+.haut .logo{ font-weight:800; color:var(--encre); text-decoration:none; margin-right:auto; }
+.haut a{ text-decoration:none; font-weight:600; }
+main{ max-width:1080px; margin:0 auto; padding:18px 16px 48px; }
+h1{ font-size:30px; margin:6px 0 6px; letter-spacing:-.01em; }
+h1 em{ font-style:normal; background:linear-gradient(90deg,var(--bleu),var(--violet)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+h2{ font-size:19px; margin:0 0 8px; }
+.intro{ color:var(--pale); max-width:760px; margin:0 0 12px; }
+.bloc{ background:var(--carte); border:1px solid var(--ligne); border-radius:14px; padding:16px; margin-top:16px; box-shadow:0 6px 22px rgba(11,27,54,.05); min-width:0; }
+.recherche{ display:flex; gap:8px; flex-wrap:wrap; }
+.recherche input{ flex:1 1 240px; min-width:0; font:inherit; border:1px solid var(--ligne); border-radius:10px; padding:10px 12px; }
+.recherche select{ font:inherit; border:1px solid var(--ligne); border-radius:10px; padding:9px 8px; background:#fff; }
+.btn{ font:inherit; font-size:13.5px; font-weight:700; border:0; border-radius:999px; padding:9px 16px; background:var(--bleu); color:#fff; cursor:pointer; min-height:38px; }
+.btn.clair{ background:#eaf1ff; color:var(--bleu); }
+.btn:disabled{ opacity:.55; cursor:default; }
+.statut{ min-height:20px; color:var(--pale); font-size:13.5px; margin:8px 0; }
+.statut.err{ color:var(--err); }
+.verdict{ border-radius:12px; padding:12px 14px; font-weight:600; margin:10px 0; border:1px solid var(--ligne); background:#f6f8fd; }
+.verdict.ok{ background:#e9f8ef; border-color:#b9e6c9; color:var(--ok); }
+.verdict.non{ background:#fdf0ef; border-color:#f3c9c5; color:var(--err); }
+.verdict.peu{ background:#fff6e5; border-color:#f2dcae; color:var(--ambre); }
+.verdict small{ display:block; font-weight:500; color:var(--pale); margin-top:4px; }
+.tuiles{ display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:10px; margin-top:10px; }
+.tuile{ border:1px solid var(--ligne); border-radius:12px; padding:10px 12px; min-width:0; }
+.tuile .k{ font-size:12.5px; color:var(--pale); }
+.tuile .v{ font-size:20px; font-weight:800; overflow-wrap:anywhere; }
+.tuile .s{ font-size:12px; color:var(--pale); }
+.pos{ color:var(--ok); } .neg{ color:var(--err); }
+.defile{ overflow-x:auto; }
+table{ width:100%; border-collapse:collapse; font-size:13.5px; }
+th, td{ text-align:left; padding:6px 8px; border-top:1px solid var(--ligne); white-space:nowrap; }
+th{ color:var(--pale); font-weight:600; border-top:0; }
+.puces{ display:flex; flex-wrap:wrap; gap:6px; margin:6px 0 10px; }
+.puce{ font:inherit; font-size:13px; font-weight:600; border:1px solid var(--ligne); background:#fff; color:var(--encre); border-radius:999px; padding:6px 12px; cursor:pointer; min-height:34px; }
+.puce[aria-pressed="true"]{ border-color:var(--bleu); background:#eaf1ff; color:var(--bleu); }
+.marches{ display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:10px; }
+.marche{ border:1px solid var(--ligne); border-radius:12px; padding:10px 12px; min-width:0; }
+.marche .t{ font-weight:700; }
+.marche .barre{ display:flex; height:10px; border-radius:6px; overflow:hidden; margin:8px 0 4px; background:#f1d6d4; }
+.marche .barre span{ background:#9fd9b4; }
+.marche .p{ display:flex; justify-content:space-between; font-size:13px; }
+.lecture li{ margin:6px 0; }
+.note{ font-size:12.5px; color:var(--pale); margin-top:12px; }
+[hidden]{ display:none !important; }
+@media (max-width:420px){ h1{ font-size:25px; } .tuile .v{ font-size:18px; } }
+.agents{ display:grid; grid-template-columns:repeat(auto-fill,minmax(290px,1fr)); gap:12px; margin-top:10px; }
+.agent{ border:1px solid var(--ligne); border-radius:12px; padding:12px; min-width:0; }
+.agent .tete{ display:flex; justify-content:space-between; gap:8px; align-items:baseline; }
+.agent .nom{ font-weight:800; }
+.agent .role{ font-size:13px; color:var(--pale); margin:4px 0 8px; }
+.agent dl{ margin:0; display:grid; grid-template-columns:auto 1fr; gap:3px 10px; font-size:13.5px; }
+.agent dt{ color:var(--pale); } .agent dd{ margin:0; overflow-wrap:anywhere; }
+.agent .v{ margin-top:8px; font-size:13px; font-weight:600; }
+.temoin{ font-size:11.5px; font-weight:700; color:var(--violet); background:#efeaff; border-radius:999px; padding:2px 8px; }
+</style>
+</head>
+<body>
+<nav class="haut" aria-label="SWOGE">
+  <a class="logo" href="index.html">SWOGE</a>
+  <a href="swoge_polymarket.html">Edge Check</a>
+  <a href="swoge_ai.html">SWOGE AI</a>
+  <a href="swolemind.html">SwoleMind</a>
+  <a href="agent_store.html">Agent Store</a>
+</nav>
+<main>
+  <h1>Polymarket <em>AI</em></h1>
+  <p class="intro">Five AI agents trade Polymarket&rsquo;s 15-minute crypto markets &mdash; will Bitcoin, Ethereum, Solana or XRP end the next 15 minutes higher? &mdash; with <b>paper money</b>, around the clock. They buy at the prices really on offer, and pay the official fees. <b>Coin</b> picks at random: it shows what luck, the spread and the fees give on their own. An agent that does no better than Coin has found nothing.</p>
+  <p class="statut" id="statut" role="status">Loading the colony&hellip;</p>
+
+  <section class="bloc" aria-labelledby="t-agents">
+    <h2 id="t-agents">The agents</h2>
+    <p class="intro" id="depuis"></p>
+    <div class="agents" id="agents"></div>
+  </section>
+
+  <section class="bloc" aria-labelledby="t-calib">
+    <h2 id="t-calib">Model against market</h2>
+    <p class="intro">With 5 minutes left in every window, without betting, SWOGE writes down its model&rsquo;s probability of &ldquo;Up&rdquo; and the market&rsquo;s price. Once resolved, both are scored (Brier score: lower is better). If the market scores better, no agent trading on the model has an edge, whatever it shows over an hour.</p>
+    <div class="verdict" id="calibVerdict"></div>
+    <div class="defile"><table>
+      <thead><tr><th>Model said</th><th>Windows</th><th>Up happened</th><th>Model average</th><th>Market average</th></tr></thead>
+      <tbody id="seaux"></tbody>
+    </table></div>
+  </section>
+
+  <section class="bloc" aria-labelledby="t-ouverts">
+    <h2 id="t-ouverts">Open paper bets</h2>
+    <div class="defile"><table>
+      <thead><tr><th>Window (UTC)</th><th>Agent</th><th>Market</th><th>Side</th><th>Price</th><th>Fee</th><th>Model</th></tr></thead>
+      <tbody id="ouverts"></tbody>
+    </table></div>
+  </section>
+
+  <section class="bloc" aria-labelledby="t-recents">
+    <h2 id="t-recents">Settled paper bets</h2>
+    <div class="defile"><table>
+      <thead><tr><th>Window (UTC)</th><th>Agent</th><th>Market</th><th>Side</th><th>Price</th><th>Fee</th><th>Result</th><th>P&amp;L</th></tr></thead>
+      <tbody id="recents"></tbody>
+    </table></div>
+  </section>
+
+  <section class="bloc" aria-labelledby="t-comment">
+    <h2 id="t-comment">How it works</h2>
+    <ol class="lecture">
+      <li><b>The markets.</b> Each window resolves &ldquo;Up&rdquo; if Chainlink&rsquo;s 60-second average price at the end is at or above the one at the start. SWOGE reads the real order book every 15 seconds.</li>
+      <li><b>The bets.</b> $10 of paper money per bet, one bet per agent per window, bought at the ask like a taker, walking up the book. No maker orders: whether they would fill cannot be known without really placing them.</li>
+      <li><b>The fees.</b> Polymarket&rsquo;s published formula: shares &times; rate &times; p &times; (1 &minus; p), with the rate read on each market (7% on the day this started).</li>
+      <li><b>The model.</b> The price move since the window opened, against the volatility of the last 90 minutes, gives a probability of &ldquo;Up&rdquo;. Prices come from Hyperliquid, not Chainlink: the gap between the two is part of what is measured.</li>
+      <li><b>The verdicts.</b> No verdict under 100 settled bets. The skill score compares each result with the price paid: around 0 is luck, 2 or more starts to be unusual.</li>
+    </ol>
+    <p class="note">Paper money only: no key, no order, no wallet. Polymarket is not available in every country (France included). Nothing here is investment advice. Check any real trader with the <a href="swoge_polymarket.html">Polymarket Edge Check</a>.</p>
+  </section>
+</main>
+<script>
+(function(){
+  "use strict";
+  function serveur(){
+    try { var q = new URLSearchParams(location.search).get("server"); if (q) return String(q).replace(/^ws/, "http").replace(/\/$/, ""); } catch (e) {}
+    return "https://web-production-220a3.up.railway.app";
+  }
+  function $(id){ return document.getElementById(id); }
+  function el(tag, cls, txt){ var e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; }
+  function usd(x){ var n = Number(x); if (!isFinite(n)) return "\u2014"; var a = Math.abs(n); return (n < 0 ? "\u2212$" : "$") + (a >= 1000 ? Math.round(a).toLocaleString("en-US") : a.toFixed(2)); }
+  function signe(x){ var n = Number(x); return (n > 0 ? "+" : "") + usd(n); }
+  function pct(x){ return Math.round(Number(x) * 1000) / 10 + "%"; }
+  function cents(x){ return x == null ? "\u2014" : Math.round(Number(x) * 1000) / 10 + "\u00a2"; }
+  function heure(s){ return String(s || "").slice(5, 16).replace("T", " "); }
+  function statut(t, err){ var s = $("statut"); s.textContent = t || ""; s.className = "statut" + (err ? " err" : ""); }
+  var NOMS = {};
+
+  function carte(a){
+    var c = el("div", "agent"), t = el("div", "tete");
+    var nom = el("span", "nom", a.name); t.appendChild(nom);
+    if (a.id === "coin") t.appendChild(el("span", "temoin", "control"));
+    t.appendChild(el("span", Number(a.pnl) >= 0 ? "pos" : "neg", signe(a.pnl)));
+    c.appendChild(t); c.appendChild(el("p", "role", a.role));
+    var dl = el("dl");
+    function ligne(k, v){ dl.appendChild(el("dt", null, k)); dl.appendChild(el("dd", null, v)); }
+    ligne("Paper bank", usd(a.bank) + " (from $1,000)");
+    ligne("Bets", a.bets + " \u00b7 " + a.resolved + " settled \u00b7 " + a.open + " open");
+    ligne("Won", a.winRate ? a.won + " (" + pct(a.winRate.p) + ", 95% range " + pct(a.winRate.low) + "\u2013" + pct(a.winRate.high) + ")" : "\u2014");
+    ligne("Avg price paid", cents(a.avgPricePaid));
+    ligne("Skill score", a.skill == null ? "\u2014" : String(a.skill));
+    ligne("Fees paid", usd(a.fees));
+    ligne("Worst drawdown", a.drawdown ? "\u2212" + usd(a.drawdown) : "$0.00");
+    c.appendChild(dl); c.appendChild(el("div", "v", a.verdict));
+    return c;
+  }
+  function lienMarche(p){
+    var td = el("td"), u = String(p.url || "");
+    if (/^https:\/\/polymarket\.com\/event\/[a-z0-9-]+$/.test(u)) { var a = el("a", null, p.asset); a.href = u; a.target = "_blank"; a.rel = "noopener"; td.appendChild(a); }
+    else td.textContent = p.asset || "";
+    return td;
+  }
+  function lignes(id, l, regle){
+    var tb = $(id); tb.textContent = "";
+    if (!l.length) { var tr = el("tr"), td = el("td", null, regle ? "No settled bet yet." : "No open bet right now."); td.colSpan = 8; tr.appendChild(td); tb.appendChild(tr); return; }
+    l.forEach(function(p){
+      var tr = el("tr");
+      tr.appendChild(el("td", null, heure(p.window)));
+      tr.appendChild(el("td", null, NOMS[p.agent] || p.agent));
+      tr.appendChild(lienMarche(p));
+      tr.appendChild(el("td", null, p.side));
+      tr.appendChild(el("td", null, cents(p.price)));
+      tr.appendChild(el("td", null, usd(p.fee)));
+      if (regle) { tr.appendChild(el("td", null, p.result === "void" ? "void (refunded)" : (p.result === p.side ? "won" : "lost") + " (" + p.result + ")")); tr.appendChild(el("td", Number(p.pnl) >= 0 ? "pos" : "neg", p.pnl == null ? "\u2014" : signe(p.pnl))); }
+      else tr.appendChild(el("td", null, p.model == null ? "\u2014" : "Up " + pct(p.model)));
+      tb.appendChild(tr);
+    });
+  }
+  function peint(d){
+    (d.agents || []).forEach(function(a){ NOMS[a.id] = a.name; });
+    $("depuis").textContent = "Running since " + String(d.depuis || "").slice(0, 16).replace("T", " ") + " UTC \u00b7 $" + d.stakeUsd + " per bet \u00b7 no verdict under " + d.minResolved + " settled bets.";
+    var g = $("agents"); g.textContent = ""; (d.agents || []).forEach(function(a){ g.appendChild(carte(a)); });
+    var c = d.calibration || {}, v = $("calibVerdict");
+    if (!c.n) { v.className = "verdict peu"; v.textContent = "No window scored yet (" + (c.pending || 0) + " waiting for their result)."; }
+    else if (!c.enough) { v.className = "verdict peu"; v.textContent = "Too few windows to compare (" + c.n + "/" + c.minN + "). So far: model " + c.brierModel + ", market " + c.brierMarket + " (lower is better)."; }
+    else { var mieux = c.brierModel < c.brierMarket; v.className = "verdict " + (mieux ? "ok" : "non");
+      v.textContent = (mieux ? "The model has been better calibrated than the market" : "The market has been better calibrated than the model") + " over " + c.n + " windows: model " + c.brierModel + ", market " + c.brierMarket + " (lower is better)."; }
+    var tb = $("seaux"); tb.textContent = "";
+    (c.buckets || []).forEach(function(b){ var tr = el("tr"); [b.range, String(b.n), pct(b.upRate), pct(b.model), pct(b.market)].forEach(function(x){ tr.appendChild(el("td", null, x)); }); tb.appendChild(tr); });
+    lignes("ouverts", d.open || [], false);
+    lignes("recents", d.recent || [], true);
+  }
+  function charge(){
+    fetch(serveur() + "/poly/etat", { cache: "no-store" }).then(function(r){ return r.json(); }).then(function(d){
+      if (!d || !d.ok || !Array.isArray(d.agents)) throw new Error("x");
+      peint(d); statut("Updated " + new Date().toISOString().slice(11, 19) + " UTC \u2014 refreshed every 30 seconds.");
+    })["catch"](function(){ statut("The colony is not reachable right now \u2014 try again in a minute.", true); });
+  }
+  charge(); setInterval(charge, 30000);
+})();
+</script>
+</body>
+</html>

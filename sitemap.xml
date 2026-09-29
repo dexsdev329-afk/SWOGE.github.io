@@ -191,6 +191,12 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://swoleeswoge.dog/swoge_polymarket_ai.html</loc>
+    <lastmod>2026-09-29</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://swoleeswoge.dog/swoge_osint.html</loc>
     <lastmod>2026-09-21</lastmod>
     <changefreq>weekly</changefreq>

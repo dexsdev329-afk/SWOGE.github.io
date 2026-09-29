@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Polymarket Edge Check — luck or skill? · SWOGE</title>
+<link rel="canonical" href="https://swoleeswoge.dog/swoge_polymarket.html">
+<meta name="description" content="Paste a Polymarket trader or bot and see what its public history can really prove: win rate with its margin of error, a skill score against the prices it paid, how much of the profit is a few lucky bets, and the worst drawdown. Read-only, no wallet.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="SWOGE WORLD">
+<meta property="og:locale" content="en_US">
+<meta property="og:title" content="Polymarket Edge Check — luck or skill?">
+<meta property="og:description" content="A bot screenshot shows $2,000 in an hour. Edge or luck? Paste the trader: SWOGE reads the public history and says what the numbers can and cannot prove.">
+<meta property="og:url" content="https://swoleeswoge.dog/swoge_polymarket.html">
+<meta property="og:image" content="https://swoleeswoge.dog/img/site/partage.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@SwoleDogeSwoge">
+<meta name="twitter:title" content="Polymarket Edge Check — luck or skill?">
+<meta name="twitter:description" content="A bot screenshot shows $2,000 in an hour. Edge or luck? Paste the trader: SWOGE reads the public history and says what the numbers can and cannot prove.">
+<meta name="twitter:image" content="https://swoleeswoge.dog/img/site/partage.jpg">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/img/site/icone-32.png">
+<link rel="apple-touch-icon" href="/img/site/icone-180.png">
+<link rel="manifest" href="/site.webmanifest">
+<meta name="theme-color" content="#1B5FE0">
+<!-- ==================================================================
+ * POLYMARKET EDGE CHECK (29 septembre 2026)
+ *
+ * Demande du proprietaire, apres une capture d'ecran virale : un bot « +2 324 $ en
+ * une heure, 18 gagnes sur 27 ». Edge ou chance ? Cette page repond avec les
+ * donnees PUBLIQUES de Polymarket, lues directement par le navigateur (CORS
+ * ouvert, verifie le 29/09) : aucun serveur SWOGE, aucune cle, aucun pari.
+ *
+ *   data-api.polymarket.com/closed-positions?user=&sortBy=TIMESTAMP&sortDirection=DESC
+ *     — 50 par page au plus. PIEGE MESURE le 29/09 : sans sortBy, l'ordre par
+ *     defaut est « plus gros gain d'abord » ; les 50 premieres positions de
+ *     Bonereaper etaient 50 gains sur 50, les 50 plus RECENTES 27 sur 50. Lire
+ *     l'ordre par defaut aurait fabrique un 100 % de reussite.
+ *     Champs relus : totalBought = parts achetees, avgPrice = prix moyen paye,
+ *     realizedPnl, curPrice = 1 ou 0 une fois le marche resolu
+ *     (48 217 parts a 0,4264 → gain 27 657 = 48 217 − 20 560 : verifie).
+ *   data-api.polymarket.com/positions?user=&sizeThreshold=0&sortBy=RESOLVING&sortDirection=DESC
+ *     — SECOND PIEGE, mesure le 29/09 : une part perdante vaut 0, personne ne
+ *     l'« encaisse », et elle reste dans les positions OUVERTES (redeemable,
+ *     curPrice 0) au lieu des positions closes. BreakTheBank : 467 positions
+ *     closes a 87,5 % de reussite… et 495 pertes non encaissees (−38,99 M$)
+ *     absentes des positions closes. On les ajoute donc, sur la MEME periode
+ *     (date de fin du marche ≥ la plus ancienne de l'echantillon clos), sans
+ *     doublon (meme asset). 500 par page, 10 pages au plus : au-dela, la lecture
+ *     est dite incomplete et aucun verdict n'est rendu.
+ *   data-api.polymarket.com/v1/leaderboard?timePeriod=DAY|WEEK|MONTH|ALL&orderBy=PNL&category=CRYPTO
+ *   data-api.polymarket.com/traded?user=      — le nombre de marches trades
+ *   gamma-api.polymarket.com/public-search?q=&search_profiles=true — pseudo → portefeuille
+ *   gamma-api.polymarket.com/events?slug=btc-updown-15m-<debut unix> — les marches de 15 min
+ *
+ * LE SCORE DE COMPETENCE. Sur un marche binaire, acheter a 0,40 $ une issue qui
+ * gagne 40 % du temps ne rapporte rien : le taux de reussite seul ne dit rien sans
+ * le prix paye. Sous l'hypothese « aucun edge » (les prix payes sont justes),
+ * chaque position resolue vaut y − p en moyenne 0, de variance p(1 − p) :
+ *   z = Σ(y − p) / √Σ p(1 − p)
+ * Sous |z| < 2, les resultats sont compatibles avec la chance. Et un trader choisi
+ * DANS un classement a ete choisi parce qu'il avait gagne : la page le rappelle a
+ * chaque verdict. Aucun verdict sous RESOLUS_ASSEZ positions resolues (convention
+ * du projet : un chiffre dit sur combien d'observations il porte).
+ * Un teneur de marche gagne sur l'ecart et les remises, pas en choisissant le
+ * gagnant : quand il detient les deux issues d'un meme marche, le score ne le juge
+ * pas — la part « couverte » est montree pour le dire.
+ *
+ * Tout ce qui vient de Polymarket est pose en textContent ; un lien n'est construit
+ * que vers polymarket.com, avec une adresse 0x verifiee.
+ * ================================================================== -->
+<style>
+:root{ --fond:#EEF3FB; --carte:#fff; --encre:#0B1B36; --pale:#5a6b85; --bleu:#1652f0; --violet:#5b3df5; --ligne:#E1E9F6; --ok:#0a7d3e; --err:#b3261e; --ambre:#9a6200; }
+*{ box-sizing:border-box; }
+html{ -webkit-text-size-adjust:100%; }
+body{ margin:0; background:linear-gradient(180deg,#e9efff 0,var(--fond) 280px); color:var(--encre); font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; min-height:100vh; }
+a{ color:var(--bleu); }
+.haut{ display:flex; gap:14px; align-items:center; flex-wrap:wrap; max-width:1080px; margin:0 auto; padding:14px 16px 0; font-size:14px; }
+.haut .logo{ font-weight:800; color:var(--encre); text-decoration:none; margin-right:auto; }
+.haut a{ text-decoration:none; font-weight:600; }
+main{ max-width:1080px; margin:0 auto; padding:18px 16px 48px; }
+h1{ font-size:30px; margin:6px 0 6px; letter-spacing:-.01em; }
+h1 em{ font-style:normal; background:linear-gradient(90deg,var(--bleu),var(--violet)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+h2{ font-size:19px; margin:0 0 8px; }
+.intro{ color:var(--pale); max-width:760px; margin:0 0 12px; }
+.bloc{ background:var(--carte); border:1px solid var(--ligne); border-radius:14px; padding:16px; margin-top:16px; box-shadow:0 6px 22px rgba(11,27,54,.05); min-width:0; }
+.recherche{ display:flex; gap:8px; flex-wrap:wrap; }
+.recherche input{ flex:1 1 240px; min-width:0; font:inherit; border:1px solid var(--ligne); border-radius:10px; padding:10px 12px; }
+.recherche select{ font:inherit; border:1px solid var(--ligne); border-radius:10px; padding:9px 8px; background:#fff; }
+.btn{ font:inherit; font-size:13.5px; font-weight:700; border:0; border-radius:999px; padding:9px 16px; background:var(--bleu); color:#fff; cursor:pointer; min-height:38px; }
+.btn.clair{ background:#eaf1ff; color:var(--bleu); }
+.btn:disabled{ opacity:.55; cursor:default; }
+.statut{ min-height:20px; color:var(--pale); font-size:13.5px; margin:8px 0; }
+.statut.err{ color:var(--err); }
+.verdict{ border-radius:12px; padding:12px 14px; font-weight:600; margin:10px 0; border:1px solid var(--ligne); background:#f6f8fd; }
+.verdict.ok{ background:#e9f8ef; border-color:#b9e6c9; color:var(--ok); }
+.verdict.non{ background:#fdf0ef; border-color:#f3c9c5; color:var(--err); }
+.verdict.peu{ background:#fff6e5; border-color:#f2dcae; color:var(--ambre); }
+.verdict small{ display:block; font-weight:500; color:var(--pale); margin-top:4px; }
+.tuiles{ display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:10px; margin-top:10px; }
+.tuile{ border:1px solid var(--ligne); border-radius:12px; padding:10px 12px; min-width:0; }
+.tuile .k{ font-size:12.5px; color:var(--pale); }
+.tuile .v{ font-size:20px; font-weight:800; overflow-wrap:anywhere; }
+.tuile .s{ font-size:12px; color:var(--pale); }
+.pos{ color:var(--ok); } .neg{ color:var(--err); }
+.defile{ overflow-x:auto; }
+table{ width:100%; border-collapse:collapse; font-size:13.5px; }
+th, td{ text-align:left; padding:6px 8px; border-top:1px solid var(--ligne); white-space:nowrap; }
+th{ color:var(--pale); font-weight:600; border-top:0; }
+.puces{ display:flex; flex-wrap:wrap; gap:6px; margin:6px 0 10px; }
+.puce{ font:inherit; font-size:13px; font-weight:600; border:1px solid var(--ligne); background:#fff; color:var(--encre); border-radius:999px; padding:6px 12px; cursor:pointer; min-height:34px; }
+.puce[aria-pressed="true"]{ border-color:var(--bleu); background:#eaf1ff; color:var(--bleu); }
+.marches{ display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:10px; }
+.marche{ border:1px solid var(--ligne); border-radius:12px; padding:10px 12px; min-width:0; }
+.marche .t{ font-weight:700; }
+.marche .barre{ display:flex; height:10px; border-radius:6px; overflow:hidden; margin:8px 0 4px; background:#f1d6d4; }
+.marche .barre span{ background:#9fd9b4; }
+.marche .p{ display:flex; justify-content:space-between; font-size:13px; }
+.lecture li{ margin:6px 0; }
+.note{ font-size:12.5px; color:var(--pale); margin-top:12px; }
+[hidden]{ display:none !important; }
+@media (max-width:420px){ h1{ font-size:25px; } .tuile .v{ font-size:18px; } }
+</style>
+</head>
+<body>
+<nav class="haut" aria-label="SWOGE">
+  <a class="logo" href="index.html">SWOGE</a>
+  <a href="swolemind.html">SwoleMind</a>
+  <a href="swoge_scan.html">Token scan</a>
+  <a href="agent_store.html">Agent Store</a>
+  <a href="swoge_predict.html">Predict</a>
+</nav>
+<main>
+  <h1>Polymarket <em>Edge Check</em></h1>
+  <p class="intro">A screenshot shows a bot making $2,000 in an hour. Edge, or luck? Paste a Polymarket trader and SWOGE reads their public history to show what the numbers can prove &mdash; and what they cannot. Read-only: nothing is bet, no wallet, no sign-in.</p>
+
+  <section class="bloc" aria-labelledby="t-check">
+    <h2 id="t-check">Check a trader</h2>
+    <div class="recherche">
+      <input type="text" id="qui" maxlength="120" placeholder="Username, 0x wallet, or polymarket.com profile link" aria-label="Polymarket trader">
+      <select id="taille" aria-label="How many recent positions to read">
+        <option value="200">Last 200 positions</option>
+        <option value="500" selected>Last 500 positions</option>
+        <option value="1000">Last 1,000 positions</option>
+      </select>
+      <button type="button" class="btn" id="verifier">Check</button>
+    </div>
+    <p class="statut" id="statut" role="status"></p>
+    <div class="puces" id="autres" hidden></div>
+    <div id="resultat" hidden>
+      <p id="profil"></p>
+      <div class="verdict" id="verdict"></div>
+      <div class="tuiles" id="tuiles"></div>
+      <h2 style="margin-top:16px">By kind of market</h2>
+      <div class="defile"><table>
+        <thead><tr><th>Markets</th><th>Positions</th><th>Resolved</th><th>Realized P&amp;L</th><th>Skill score</th></tr></thead>
+        <tbody id="parSorte"></tbody>
+      </table></div>
+      <p class="note" id="noteEchantillon"></p>
+    </div>
+  </section>
+
+  <section class="bloc" aria-labelledby="t-classement">
+    <h2 id="t-classement">Leaderboard &mdash; then check them</h2>
+    <p class="intro">The top of a leaderboard is, by construction, the people who won. Some are skilled, some were lucky: check each one before you believe a screenshot.</p>
+    <div class="puces" id="periodes"></div>
+    <div class="puces" id="categories"></div>
+    <div class="defile"><table>
+      <thead><tr><th>#</th><th>Trader</th><th>P&amp;L</th><th>Volume</th><th></th></tr></thead>
+      <tbody id="classement"></tbody>
+    </table></div>
+    <p class="statut" id="statutClassement" role="status"></p>
+  </section>
+
+  <section class="bloc" aria-labelledby="t-marches">
+    <h2 id="t-marches">Crypto Up or Down, right now (15 minutes)</h2>
+    <p class="intro">The markets most short-term bots trade: will BTC, ETH, SOL or XRP end the next 15 minutes higher or lower, settled by Chainlink. The price of &ldquo;Up&rdquo; is the crowd&rsquo;s probability.</p>
+    <div class="marches" id="marches"></div>
+    <p class="statut" id="statutMarches" role="status"></p>
+  </section>
+
+  <section class="bloc" aria-labelledby="t-lire">
+    <h2 id="t-lire">How to read a trading screenshot</h2>
+    <ol class="lecture">
+      <li><b>Count the bets.</b> 18 wins out of 27 sounds strong, but a coin toss does that about 6% of the time. Under a hundred resolved bets, luck and skill look the same.</li>
+      <li><b>Count the traders.</b> A board of 17 bots will almost always show one on a hot streak. Showing the best one, at its best hour, proves nothing.</li>
+      <li><b>A win rate means nothing without the price paid.</b> Buying at 80&cent; and winning 67% of the time loses money. The skill score above compares what won with what was paid.</li>
+      <li><b>Look at the worst stretch, not the best hour.</b> Bots that provide liquidity get hit when the price jumps; losses come in bursts.</li>
+      <li><b>Ask for the wallet.</b> Every Polymarket trade is public. A trader who has an edge can show it here.</li>
+    </ol>
+    <p class="note">Data: Polymarket public APIs, read by your browser. Polymarket is not available in every country (France included) &mdash; this page places no bet and gives no advice. Nothing here is investment advice.</p>
+  </section>
+</main>
+<script>
+(function(){
+  "use strict";
+  var DATA = "https://data-api.polymarket.com", GAMMA = "https://gamma-api.polymarket.com";
+  /* Sous 100 positions resolues, aucun verdict : a 50 %, l'intervalle a 95 % d'un taux sur
+     100 paris fait encore ±10 points — assez pour cacher n'importe quel edge realiste. */
+  var RESOLUS_ASSEZ = 100, PAR_PAGE = 50, PAR_PAGE_OUVERTES = 500, PAGES_OUVERTES_MAX = 10;
+  function $(id){ return document.getElementById(id); }
+  function el(tag, cls, txt){ var e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; }
+  function usd(x){ var n = Number(x); if (!isFinite(n)) return "—"; var a = Math.abs(n); return (n < 0 ? "−$" : "$") + (a >= 1000 ? Math.round(a).toLocaleString("en-US") : a.toFixed(2)); }
+  function signe(x){ var n = Number(x); return (n > 0 ? "+" : "") + usd(n); }
+  function pct(x, d){ return (Math.round(x * Math.pow(10, 2 + (d || 0))) / Math.pow(10, d || 0)) + "%"; }
+  function court(a){ a = String(a || ""); return a.length > 12 ? a.slice(0, 6) + "…" + a.slice(-4) : a; }
+  function statut(id, t, err){ var s = $(id); s.textContent = t || ""; s.className = "statut" + (err ? " err" : ""); }
+  function json(u){ return fetch(u, { cache: "no-store" }).then(function(r){ if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); }); }
+
+  /* ---------------- les calculs (purs : l'essai les appelle directement) ---------------- */
+  /* Intervalle de Wilson a 95 % : juste meme pres de 0 ou de 100 %, contrairement a p ± 1,96·√(p(1−p)/n). */
+  function wilson(k, n){
+    if (!n) return null;
+    var z = 1.96, p = k / n, d = 1 + z * z / n, c = (p + z * z / (2 * n)) / d, m = z * Math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / d;
+    return { p: p, bas: Math.max(0, c - m), haut: Math.min(1, c + m) };
+  }
+  /* La forme commune : { y (1/0 si resolu), p (prix moyen paye), pnl, cout, t (secondes), marche, issue, titre, asset }. */
+  function depuisClose(x){ return { y: Number(x.curPrice), p: Number(x.avgPrice), pnl: Number(x.realizedPnl), cout: (Number(x.totalBought) || 0) * (Number(x.avgPrice) || 0),
+    t: Number(x.timestamp), fin: Date.parse(x.endDate), marche: x.conditionId, issue: x.outcomeIndex, titre: x.title, asset: String(x.asset || ""), source: "closed" }; }
+  function depuisOuverte(x){ var fin = Date.parse(x.endDate); return { y: Number(x.curPrice), p: Number(x.avgPrice), pnl: Number(x.cashPnl), cout: Number(x.initialValue) || 0,
+    t: isFinite(fin) && fin > 0 ? Math.min(fin, Date.now()) / 1000 : NaN, fin: fin, marche: x.conditionId, issue: x.outcomeIndex, titre: x.title, asset: String(x.asset || ""), source: "unredeemed" }; }
+  /* Les pertes (et gains) resolus mais jamais encaisses, sur la periode de l'echantillon clos, sans doublon.
+     `tronque` : l'echantillon clos s'arrete aux N plus recentes. La periode commence alors a la plus
+     ANCIENNE activite de l'echantillon (un gain encaisse apres cette date y est forcement, puisque
+     l'encaissement est une activite) ; une position non encaissee sans date lisible est ecartee.
+     Echantillon complet : TOUTES les non encaissees comptent, puisque toutes les closes sont la. */
+  function fusionne(closes, ouvertes, tronque){
+    var c = closes.map(depuisClose), vus = {};
+    c.forEach(function(x){ vus[x.asset] = true; });
+    var ts = c.map(function(x){ return x.t; }).filter(function(t){ return isFinite(t) && t > 0; });
+    var debut = tronque ? (ts.length ? Math.min.apply(null, ts) * 1000 : Infinity) : -Infinity;
+    var o = ouvertes.filter(function(x){ var y = Number(x.curPrice), f = Date.parse(x.endDate);
+      return x.redeemable === true && (y === 0 || y === 1) && (!tronque || (isFinite(f) && f > 0 && f >= debut)) && !vus[String(x.asset || "")]; }).map(depuisOuverte);
+    return { liste: c.concat(o), debut: debut, ajoutees: o.length };
+  }
+  function sorteDe(t){ return /up or down/i.test(String(t || "")) ? "Crypto Up or Down" : "Everything else"; }
+  function score(list){
+    var sy = 0, sp = 0, v = 0, m = 0;
+    list.forEach(function(x){
+      var y = x.y, p = x.p;
+      if ((y === 1 || y === 0) && p > 0 && p < 1){ sy += y; sp += p; v += p * (1 - p); m++; }
+    });
+    return { resolus: m, z: v > 0 ? (sy - sp) / Math.sqrt(v) : null, ecartPts: m ? (sy - sp) / m : null };
+  }
+  function analyse(pos){
+    var l = (pos || []).filter(function(x){ return x && isFinite(x.pnl); });
+    var s = score(l);
+    var gains = l.filter(function(x){ return x.pnl > 0; }).length, pertes = l.filter(function(x){ return x.pnl < 0; }).length;
+    var pnl = 0, mise = 0;
+    l.forEach(function(x){ pnl += x.pnl; mise += x.cout || 0; });
+    /* La part du gain faite par les 5 plus gros coups : un « edge » qui tient a 5 paris n'en est pas un. */
+    var tries = l.map(function(x){ return x.pnl; }).sort(function(a, b){ return b - a; });
+    var top5 = tries.slice(0, 5).filter(function(v){ return v > 0; }).reduce(function(a, b){ return a + b; }, 0);
+    /* Le pire creux, dans l'ordre du temps. */
+    var cum = 0, pic = 0, creux = 0;
+    l.filter(function(x){ return isFinite(x.t); }).sort(function(a, b){ return a.t - b.t; }).forEach(function(x){ cum += x.pnl; if (cum > pic) pic = cum; if (pic - cum > creux) creux = pic - cum; });
+    /* Les marches ou il detient LES DEUX issues : la tenue de marche, que le score ne juge pas. */
+    var parMarche = {};
+    l.forEach(function(x){ var k = String(x.marche || ""); if (!k) return; (parMarche[k] = parMarche[k] || {})[String(x.issue)] = true; });
+    var marches = Object.keys(parMarche), couverts = marches.filter(function(k){ return parMarche[k]["0"] && parMarche[k]["1"]; }).length;
+    var ts = l.map(function(x){ return x.t; }).filter(function(t){ return isFinite(t) && t > 0; });
+    var sortes = {};
+    l.forEach(function(x){ var k = sorteDe(x.titre); (sortes[k] = sortes[k] || []).push(x); });
+    var parSorte = Object.keys(sortes).map(function(k){ var q = sortes[k], sc = score(q);
+      return { sorte: k, n: q.length, resolus: sc.resolus, z: sc.z, pnl: q.reduce(function(a, x){ return a + x.pnl; }, 0) }; });
+    return { n: l.length, nonEncaissees: l.filter(function(x){ return x.source === "unredeemed"; }).length, gains: gains, pertes: pertes, taux: wilson(gains, gains + pertes), pnl: pnl, mise: mise, roi: mise > 0 ? pnl / mise : null,
+      top5: top5, sansTop5: pnl - top5, creux: creux, resolus: s.resolus, z: s.z, ecartPts: s.ecartPts,
+      marches: marches.length, couverts: couverts, partCouverte: marches.length ? couverts / marches.length : null,
+      depuis: ts.length ? Math.min.apply(null, ts) : null, jusqua: ts.length ? Math.max.apply(null, ts) : null, parSorte: parSorte };
+  }
+  function verdict(a){
+    if (a.incomplet) return { code: "peu", titre: "Too many unredeemed positions to read them all: no verdict.", note: "Losing shares nobody redeems stay in open positions; this trader has more than " + (PAR_PAGE_OUVERTES * PAGES_OUVERTES_MAX).toLocaleString("en-US") + " of them. Without all of them the win rate would be inflated, so SWOGE gives no verdict. Try a smaller sample." };
+    var rappel = "If you found this trader on a leaderboard or a screenshot, they were picked because they won: a borderline score is weaker than it looks.";
+    if (a.resolus < RESOLUS_ASSEZ) return { code: "peu", titre: "Not enough resolved positions to judge (" + a.resolus + "/" + RESOLUS_ASSEZ + ").", note: "Below " + RESOLUS_ASSEZ + " resolved bets, luck and skill look the same. Read more positions, or wait." };
+    if (a.partCouverte != null && a.partCouverte >= 0.5) return { code: "peu", titre: "Mostly market making: holds both sides in " + pct(a.partCouverte) + " of markets.", note: "A market maker earns from the spread and rebates, not by picking winners, so the skill score does not apply. Judge it by realized P&L over time and its worst drawdown." };
+    if (a.z >= 3 && a.pnl > 0) return { code: "ok", titre: "Consistent evidence of an edge in this sample (skill score " + a.z.toFixed(1) + ").", note: "Bought outcomes that won more often than their price implied, over " + a.resolus + " resolved bets. Past results only. " + rappel };
+    if (a.z >= 2) return { code: "peu", titre: "Some evidence of an edge, but it could still be luck (skill score " + a.z.toFixed(1) + ").", note: rappel };
+    if (a.z <= -2) return { code: "non", titre: "Negative: bought outcomes that won less often than their price implied (skill score " + a.z.toFixed(1) + ").", note: "Any profit shown comes from sizing or timing, not from picking winners." };
+    return { code: "non", titre: "No evidence of an edge: results are compatible with luck (skill score " + (a.z == null ? "—" : a.z.toFixed(1)) + ").", note: "Winning or losing here does not show skill either way. " + rappel };
+  }
+  window.PolyEdge = { wilson: wilson, analyse: analyse, verdict: verdict, fusionne: fusionne, depuisClose: depuisClose, RESOLUS_ASSEZ: RESOLUS_ASSEZ };
+
+  /* ---------------- la lecture ---------------- */
+  function adresseDe(t){ var m = String(t || "").match(/0x[0-9a-fA-F]{40}/); return m ? m[0].toLowerCase() : null; }
+  function nomDe(t){
+    t = String(t || "").trim();
+    var m = t.match(/polymarket\.com\/(?:@|profile\/)([A-Za-z0-9_.\-]{1,60})/);
+    if (m) return m[1];
+    return t.replace(/^@/, "").slice(0, 60);
+  }
+  function trouve(saisie){
+    var a = adresseDe(saisie);
+    if (a) return Promise.resolve({ wallet: a, nom: null, autres: [] });
+    var nom = nomDe(saisie);
+    if (!nom) return Promise.reject(new Error("Type a username, a 0x wallet or a profile link."));
+    return json(GAMMA + "/public-search?q=" + encodeURIComponent(nom) + "&search_profiles=true&limit_per_type=5").then(function(r){
+      var ps = (r && r.profiles || []).filter(function(p){ return adresseDe(p.proxyWallet); });
+      if (!ps.length) throw new Error("No Polymarket profile named “" + nom + "”.");
+      var exact = ps.filter(function(p){ return String(p.name || "").toLowerCase() === nom.toLowerCase(); })[0] || ps[0];
+      return { wallet: adresseDe(exact.proxyWallet), nom: exact.name || exact.pseudonym || null, autres: ps.filter(function(p){ return p !== exact; }) };
+    });
+  }
+  /* Les positions closes les plus RECENTES (tri par date, jamais l'ordre par defaut : voir l'en-tete), 4 pages a la fois. */
+  function positions(wallet, combien, progres){
+    var pages = Math.ceil(combien / PAR_PAGE), toutes = [], fini = false;
+    function page(i){ return json(DATA + "/closed-positions?user=" + wallet + "&limit=" + PAR_PAGE + "&offset=" + (i * PAR_PAGE) + "&sortBy=TIMESTAMP&sortDirection=DESC"); }
+    function lot(i){
+      if (fini || i >= pages) return Promise.resolve(toutes);
+      var idx = []; for (var k = i; k < Math.min(pages, i + 4); k++) idx.push(k);
+      return Promise.all(idx.map(page)).then(function(rs){
+        rs.forEach(function(r){ if (!Array.isArray(r)) return; toutes = toutes.concat(r); if (r.length < PAR_PAGE) fini = true; });
+        progres(toutes.length);
+        return lot(i + 4);
+      });
+    }
+    return lot(0).then(function(l){ return l.slice(0, combien); });
+  }
+
+  /* Les positions ouvertes, les plus proches de leur fin d'abord, jusqu'a sortir de la periode. */
+  function ouvertes(wallet, debut, progres){
+    var toutes = [];
+    function page(i){
+      if (i >= PAGES_OUVERTES_MAX) return Promise.resolve({ l: toutes, incomplet: true });
+      return json(DATA + "/positions?user=" + wallet + "&sizeThreshold=0&limit=" + PAR_PAGE_OUVERTES + "&offset=" + (i * PAR_PAGE_OUVERTES) + "&sortBy=RESOLVING&sortDirection=DESC").then(function(r){
+        var l = Array.isArray(r) ? r : []; toutes = toutes.concat(l); progres(toutes.length);
+        var der = l.length ? Date.parse(l[l.length - 1].endDate) : NaN;
+        if (l.length < PAR_PAGE_OUVERTES || (isFinite(der) && der > 0 && der < debut)) return { l: toutes, incomplet: false };
+        return page(i + 1);
+      });
+    }
+    return page(0);
+  }
+
+  /* ---------------- le rendu ---------------- */
+  function tuile(k, v, s, cls){ var t = el("div", "tuile"); t.appendChild(el("div", "k", k)); t.appendChild(el("div", "v" + (cls ? " " + cls : ""), v)); if (s) t.appendChild(el("div", "s", s)); return t; }
+  function jour(ts){ return ts ? new Date(ts * 1000).toISOString().slice(0, 10) : "—"; }
+  function peint(p, a, total){
+    var pr = $("profil"); pr.textContent = "";
+    pr.appendChild(document.createTextNode("Checked: " + (p.nom ? p.nom + " " : "") + "(" + court(p.wallet) + ") — "));
+    var lien = el("a", null, "open on Polymarket"); lien.href = "https://polymarket.com/profile/" + p.wallet; lien.target = "_blank"; lien.rel = "noopener"; pr.appendChild(lien);
+    var v = verdict(a), vd = $("verdict"); vd.className = "verdict " + v.code; vd.textContent = v.titre; vd.appendChild(el("small", null, v.note));
+    var T = $("tuiles"); T.textContent = "";
+    T.appendChild(tuile("Realized P&L", signe(a.pnl), a.roi != null ? pct(a.roi, 1) + " of " + usd(a.mise) + " bought" : null, a.pnl >= 0 ? "pos" : "neg"));
+    T.appendChild(tuile("Win rate", a.taux ? pct(a.taux.p, 1) : "—", a.taux ? a.gains + " won / " + a.pertes + " lost · 95% range " + pct(a.taux.bas) + "–" + pct(a.taux.haut) : null));
+    T.appendChild(tuile("Skill score", a.z == null ? "—" : a.z.toFixed(1), a.resolus + " resolved · " + (a.ecartPts == null ? "" : (a.ecartPts >= 0 ? "+" : "") + (Math.round(a.ecartPts * 1000) / 10) + " pts vs price paid")));
+    T.appendChild(tuile("P&L without the top 5 bets", signe(a.sansTop5), "the 5 biggest wins made " + usd(a.top5), a.sansTop5 >= 0 ? "pos" : "neg"));
+    T.appendChild(tuile("Worst drawdown", a.creux ? "−" + usd(a.creux) : "$0.00", "largest fall from a peak, in time order"));
+    T.appendChild(tuile("Both sides held", a.partCouverte == null ? "—" : pct(a.partCouverte), a.couverts + " of " + a.marches + " markets (market making)"));
+    var tb = $("parSorte"); tb.textContent = "";
+    a.parSorte.forEach(function(x){
+      var tr = el("tr");
+      [x.sorte, String(x.n), String(x.resolus), signe(x.pnl), x.resolus < RESOLUS_ASSEZ ? "too few (" + x.resolus + "/" + RESOLUS_ASSEZ + ")" : (x.z == null ? "—" : x.z.toFixed(1))].forEach(function(c){ tr.appendChild(el("td", null, c)); });
+      tb.appendChild(tr);
+    });
+    $("noteEchantillon").textContent = "Sample: the " + (a.closes || a.n) + " most recent closed positions" + (total ? " (of " + Number(total).toLocaleString("en-US") + " markets traded)" : "")
+      + ", plus " + a.nonEncaissees + " resolved positions never redeemed over the same period — losing shares are worth $0, nobody redeems them, and leaving them out would inflate the win rate"
+      + ", from " + jour(a.depuis) + " to " + jour(a.jusqua) + " (UTC). Positions still open are not counted. The skill score compares, on each resolved bet, the outcome with the price paid: around 0 is what luck gives, 2 or more starts to be unusual.";
+    $("resultat").hidden = false;
+  }
+  function autres(l){
+    var b = $("autres"); b.textContent = "";
+    if (!l.length) { b.hidden = true; return; }
+    b.appendChild(el("span", "note", "Not this one? "));
+    l.forEach(function(p){ var x = el("button", "puce", (p.name || p.pseudonym || "?") + " (" + court(p.proxyWallet) + ")"); x.type = "button";
+      x.addEventListener("click", function(){ $("qui").value = p.proxyWallet; verifie(); }); b.appendChild(x); });
+    b.hidden = false;
+  }
+  var enCours = 0;
+  function verifie(){
+    var saisie = $("qui").value, combien = Number($("taille").value) || 500, id = ++enCours;
+    $("resultat").hidden = true; $("verifier").disabled = true; statut("statut", "Looking for the trader…");
+    trouve(saisie).then(function(p){
+      if (id !== enCours) return;
+      autres(p.autres);
+      statut("statut", "Reading the most recent closed positions…");
+      return Promise.all([positions(p.wallet, combien, function(n){ if (id === enCours) statut("statut", "Reading the most recent closed positions… " + n); }),
+        json(DATA + "/traded?user=" + p.wallet).then(function(t){ return t && t.traded; })["catch"](function(){ return null; })]).then(function(v){
+        if (id !== enCours) return;
+        if (!v[0].length) { statut("statut", "No closed position for this trader yet.", true); return; }
+        var tronque = v[0].length >= combien, debut = fusionne(v[0], [], tronque).debut;
+        return ouvertes(p.wallet, debut, function(n){ if (id === enCours) statut("statut", "Reading unredeemed positions (losing shares stay there)… " + n); }).then(function(o){
+          if (id !== enCours) return;
+          var f = fusionne(v[0], o.l, tronque), a = analyse(f.liste); a.incomplet = o.incomplet; a.closes = v[0].length;
+          peint(p, a, v[1]); statut("statut", "");
+        });
+      });
+    })["catch"](function(e){ if (id === enCours) statut("statut", (e && e.message && !/^HTTP/.test(e.message)) ? e.message : "Polymarket did not answer — try again in a minute.", true); })
+      .then(function(){ if (id === enCours) $("verifier").disabled = false; });
+  }
+  $("verifier").addEventListener("click", verifie);
+  $("qui").addEventListener("keydown", function(e){ if (e.key === "Enter") verifie(); });
+
+  /* ---------------- le classement ---------------- */
+  var cl = { periode: "WEEK", categorie: "" };
+  function puces(conteneur, liste, cle){
+    var c = $(conteneur); c.textContent = "";
+    liste.forEach(function(x){ var b = el("button", "puce", x[1]); b.type = "button"; b.setAttribute("aria-pressed", String(cl[cle] === x[0]));
+      b.addEventListener("click", function(){ cl[cle] = x[0]; puces(conteneur, liste, cle); classement(); }); c.appendChild(b); });
+  }
+  var PERIODES = [["DAY", "Today"], ["WEEK", "This week"], ["MONTH", "This month"], ["ALL", "All time"]], CATS = [["", "All markets"], ["CRYPTO", "Crypto"]];
+  function classement(){
+    statut("statutClassement", "Loading…");
+    json(DATA + "/v1/leaderboard?timePeriod=" + cl.periode + "&orderBy=PNL&limit=15" + (cl.categorie ? "&category=" + cl.categorie : "")).then(function(l){
+      var tb = $("classement"); tb.textContent = "";
+      (Array.isArray(l) ? l : []).forEach(function(x){
+        var w = adresseDe(x.proxyWallet); if (!w) return;
+        var tr = el("tr");
+        tr.appendChild(el("td", null, String(x.rank || "")));
+        tr.appendChild(el("td", null, String(x.userName || court(w)).slice(0, 40)));
+        tr.appendChild(el("td", Number(x.pnl) >= 0 ? "pos" : "neg", signe(x.pnl)));
+        tr.appendChild(el("td", null, usd(x.vol)));
+        var td = el("td"), b = el("button", "btn clair", "Check"); b.type = "button";
+        b.addEventListener("click", function(){ $("qui").value = w; verifie(); $("t-check").scrollIntoView({ behavior: "smooth" }); });
+        td.appendChild(b); tr.appendChild(td); tb.appendChild(tr);
+      });
+      statut("statutClassement", "Profit and loss as reported by Polymarket for the period.");
+    })["catch"](function(){ statut("statutClassement", "The leaderboard is not available right now.", true); });
+  }
+  puces("periodes", PERIODES, "periode"); puces("categories", CATS, "categorie"); classement();
+
+  /* ---------------- les marches de 15 minutes ---------------- */
+  var ACTIFS = [["btc", "Bitcoin"], ["eth", "Ethereum"], ["sol", "Solana"], ["xrp", "XRP"]];
+  function marches(){
+    var debut = Math.floor(Date.now() / 1000 / 900) * 900;
+    Promise.all(ACTIFS.map(function(a){ return json(GAMMA + "/events?slug=" + a[0] + "-updown-15m-" + debut).then(function(r){ return { a: a, e: Array.isArray(r) ? r[0] : null }; })["catch"](function(){ return { a: a, e: null }; }); }))
+      .then(function(l){
+        var g = $("marches"); g.textContent = ""; var vus = 0;
+        l.forEach(function(x){
+          var m = x.e && x.e.markets && x.e.markets[0]; if (!m) return;
+          var prix; try { prix = JSON.parse(m.outcomePrices).map(Number); } catch (e) { return; }
+          var up = prix[0], down = prix[1]; if (!(up >= 0 && up <= 1)) return;
+          vus++;
+          var c = el("div", "marche");
+          c.appendChild(el("div", "t", x.a[1]));
+          var reste = Math.max(0, Math.round((Date.parse(m.endDate) - Date.now()) / 60000));
+          c.appendChild(el("div", "note", "Closes in " + reste + " min"));
+          var b = el("div", "barre"), s = el("span"); s.style.width = Math.round(up * 100) + "%"; b.appendChild(s); c.appendChild(b);
+          var p = el("div", "p"); p.appendChild(el("span", "pos", "Up " + Math.round(up * 1000) / 10 + "¢")); p.appendChild(el("span", "neg", "Down " + Math.round(down * 1000) / 10 + "¢")); c.appendChild(p);
+          g.appendChild(c);
+        });
+        statut("statutMarches", vus ? "Refreshed every 30 seconds." : "No 15-minute market found for this window.", !vus);
+      });
+  }
+  marches(); setInterval(marches, 30000);
+
+  /* ?trader=<nom ou 0x> : un lien partage ouvre directement la verification. */
+  (function(){ var q = null; try { q = new URLSearchParams(location.search).get("trader"); } catch (e) {} if (q) { $("qui").value = String(q).slice(0, 120); verifie(); } })();
+})();
+</script>
+</body>
+</html>

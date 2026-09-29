@@ -69,6 +69,14 @@ h1 em{ font-style:normal; background:linear-gradient(90deg,var(--bleu),var(--vio
 .statut.err{ color:var(--err); }
 .note{ font-size:12.5px; color:var(--pale); margin-top:14px; }
 [hidden]{ display:none !important; }
+/* Les paiements verifiables (29/09) : chaque ligne renvoie a sa transaction. */
+.preuves{ margin-top:22px; background:var(--carte); border:1px solid var(--ligne); border-radius:14px; padding:14px; }
+.preuves h2{ font-size:18px; margin:0 0 6px; }
+.preuves .defile{ overflow-x:auto; }
+.preuves table{ width:100%; border-collapse:collapse; font-size:13.5px; }
+.preuves th, .preuves td{ text-align:left; padding:6px 8px; border-top:1px solid var(--ligne); white-space:nowrap; }
+.preuves th{ color:var(--pale); font-weight:600; border-top:0; }
+.preuves td.tx a{ font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12.5px; }
 @media (max-width:420px){ h1{ font-size:25px; } .grille{ grid-template-columns:1fr; } }
 </style>
 </head>
@@ -94,6 +102,14 @@ h1 em{ font-style:normal; background:linear-gradient(90deg,var(--bleu),var(--vio
     <p class="statut" id="statutSwoge" role="status">Loading the agents&hellip;</p>
     <div class="grille" id="grilleSwoge"></div>
     <p class="note" id="noteSwoge"></p>
+    <div class="preuves" id="preuves" hidden>
+      <h2>Verifiable payments</h2>
+      <p class="intro" id="preuvesResume"></p>
+      <div class="defile"><table>
+        <thead><tr><th>When (UTC)</th><th>Tool</th><th>Paid</th><th>Network</th><th>Payer</th><th>Transaction</th></tr></thead>
+        <tbody id="preuvesLignes"></tbody>
+      </table></div>
+    </div>
   </section>
 
   <section id="rayonX402" role="tabpanel" aria-labelledby="ongletX402" hidden>
@@ -197,6 +213,33 @@ h1 em{ font-style:normal; background:linear-gradient(90deg,var(--bleu),var(--vio
     etat.agents.filter(function(a){ return etat.famille === "All" || (a.capabilities || []).indexOf(etat.famille) >= 0; })
       .forEach(function(a){ g.appendChild(carteAgent(a)); });
   }
+  /* Les paiements verifiables (preuves_x402.js, 29/09) : chaque paiement regle d'un agent
+     exterieur, avec le lien de sa transaction. Le serveur ecarte nos propres adresses et
+     tronque le payeur ; la page ne pose que du texte, et un lien seulement s'il est https. */
+  function peintPreuves(p){
+    if (!p || !p.total) return;
+    var t = p.total;
+    $("preuvesResume").textContent = t.payments
+      ? nombre(t.payments) + " payment" + (t.payments > 1 ? "s" : "") + " settled on-chain by outside agents since " + String(t.since || "").slice(0, 10)
+        + ": " + usd(t.usd) + " in USDC or USDG from " + nombre(t.payers) + " distinct payer" + (t.payers > 1 ? "s" : "")
+        + (t.inSwoge ? ", plus " + nombre(t.inSwoge) + " paid in $SWOGE" : "") + ". Each one links to its transaction: check it on the explorer."
+        + " Calls paid with an API key are billed from a balance, not on-chain, and are not listed here."
+      : "No payment from an outside agent has been settled on-chain yet. When one is, it appears here with its transaction.";
+    var tb = $("preuvesLignes"); tb.textContent = "";
+    (p.recent || []).forEach(function(x){
+      var tr = el("tr");
+      tr.appendChild(el("td", null, String(x.at || "").slice(0, 16).replace("T", " ")));
+      tr.appendChild(el("td", null, x.tool || ""));
+      tr.appendChild(el("td", null, (x.usd != null ? usd(x.usd) + " " : nombre(x.amount) + " ") + (x.asset || "")));
+      tr.appendChild(el("td", null, x.network || ""));
+      tr.appendChild(el("td", null, x.payer || ""));
+      var td = el("td", "tx"), tx = String(x.tx || "");
+      if (httpsOk(x.txUrl)) { var a = el("a", null, tx.length > 14 ? tx.slice(0, 8) + "\u2026" + tx.slice(-4) : tx); a.href = x.txUrl; a.target = "_blank"; a.rel = "noopener"; td.appendChild(a); }
+      else td.textContent = tx;
+      tr.appendChild(td); tb.appendChild(tr);
+    });
+    $("preuves").hidden = false;
+  }
   /* Les outils que l'agent des missions sait utiliser (catalogue de /studio/agent). */
   var missionsLues = fetch(serveur() + "/studio/agent/catalogue", { cache: "no-store" }).then(function(r){ return r.json(); })
     .then(function(c){ (c && c.outils || []).forEach(function(o){ etat.mission[o.nom] = true; }); })["catch"](function(){});
@@ -206,6 +249,7 @@ h1 em{ font-style:normal; background:linear-gradient(90deg,var(--bleu),var(--vio
     etat.agents = d.agents;
     statut("statutSwoge", "");
     peintFiltres(); peintAgents();
+    peintPreuves(d.payments);
     $("noteSwoge").textContent = (d.window ? "Usage window: " + d.window.from + " to " + d.window.to + " (UTC). " : "") + (d.note || "");
     if (d.catalogue) $("resumeCatalogue").textContent = "The public x402 catalogue lists " + nombre(d.catalogue.catalogue) + " services. SWOGE has probed " + nombre(d.catalogue.probed)
       + " of them without paying, and judged " + nombre(d.catalogue.judged) + " (a verdict needs 3 probes, one every 20 hours at most)"

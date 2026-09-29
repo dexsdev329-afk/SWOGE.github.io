@@ -27,6 +27,11 @@ const STORE = { ok: true, window: { from: '2026-08-31', to: '2026-09-29' }, note
       usage: { paidCalls: 0, priceQuotes: 5, attemptsWithoutResult: 0, verdict: 'not enough paid calls yet (0/10)' } },
     { id: 'swoge:web_search', name: 'web_search', owner: { name: 'SWOGE' }, summary: 'Search the web.', capabilities: ['Research'], price: { usd: 0.01 }, input: [], permissions: [], payment: [],
       endpoints: { rest: 'https://api/agentic/call/web_search' }, usage: { paidCalls: 1, priceQuotes: 9, attemptsWithoutResult: 0, verdict: 'not enough paid calls yet (1/10)' } }] };
+/* Les paiements verifiables (29/09) : ce que rend preuves_x402.js — dont un lien qui n'est pas https. */
+STORE.payments = { total: { payments: 3, usd: 0.018, inSwoge: 1, payers: 2, since: '2026-09-27T10:00:00.000Z' }, recent: [
+  { at: '2026-09-28T09:00:00.000Z', tool: 'token_verdict', network: 'Robinhood Chain', asset: 'SWOGE', amount: 397.41, usd: null, payer: '0x21c3\u20263633', tx: '0xcc', txUrl: 'javascript:alert(1)' },
+  { at: '2026-09-27T12:00:00.000Z', tool: 'can_i_sell <img src=x onerror=window.pirate2=1>', network: 'Solana', asset: 'USDC', amount: 0.008, usd: 0.008, payer: 'Fq9x2W\u2026vW3x', tx: '5hSigAbCdEfGhIjKlMn', txUrl: 'https://solscan.io/tx/5hSigAbCdEfGhIjKlMn' },
+  { at: '2026-09-27T10:00:00.000Z', tool: 'scan_token', network: 'Base', asset: 'USDC', amount: 0.01, usd: 0.01, payer: '0x21c3\u20263633', tx: '0xaa', txUrl: 'https://basescan.org/tx/0xaa' }] };
 const SERVICES = { ok: true, query: 'weather', note: 'x', summary: {}, services: [
   { url: 'https://weather.example/v1/now', description: 'Current <b>weather</b>.', method: 'GET', priceUsd: 0.001, networks: ['eip155:8453'], probes: { n: 4, answeredPct: 100, medianMs: 180 }, paidCalls: { n: 0 }, verdict: 'answered every probe' },
   { url: 'javascript:alert(1)', description: 'Bad.', method: 'POST', priceUsd: null, networks: [], probes: { n: 0 }, paidCalls: { n: 0 }, verdict: 'not enough probes yet (0/3)' }] };
@@ -75,7 +80,23 @@ const SERVICES = { ok: true, query: 'weather', note: 'x', summary: {}, services:
     ok(/Agent ID/.test(d) && /swoge:scan_token/.test(d) && /Owner/.test(d) && /address \(required\)/.test(d) && /read-only: never buys, sells or signs/.test(d) && /USDC on Base or Solana/.test(d),
        'le detail : identifiant, proprietaire, entree, permissions, facons de payer');
     ok(/Usage window: 2026-08-31 to 2026-09-29/.test(await page.textContent('#noteSwoge')), 'la fenetre de mesure est dite');
+    /* Les paiements verifiables (29/09) : chaque ligne renvoie a sa transaction, un lien seulement s'il est https. */
+    ok(!(await page.$eval('#preuves', (x) => x.hidden)) && /3 payments settled on-chain by outside agents since 2026-09-27: \$0\.018 in USDC or USDG from 2 distinct payers, plus 1 paid in \$SWOGE/.test(await page.textContent('#preuvesResume'))
+       && /API key are billed from a balance, not on-chain/.test(await page.textContent('#preuvesResume')), 'le resume des paiements : combien, depuis quand, en dollars et en $SWOGE, et ce qui n y est pas');
+    const px = await page.$$eval('#preuvesLignes tr', (l) => l.map((tr) => { const a = tr.querySelector('a'); return [tr.textContent, a ? a.getAttribute('href') : null]; }));
+    ok(px.length === 3 && px[2][1] === 'https://basescan.org/tx/0xaa' && px[1][1] === 'https://solscan.io/tx/5hSigAbCdEfGhIjKlMn' && px[0][1] === null && /397\.41 SWOGE/.test(px[0][0]) && /\$0\.01 USDC/.test(px[2][0]),
+       'chaque paiement, son montant dans sa monnaie, le lien de sa transaction ; une adresse javascript: n est jamais un lien');
+    ok((await page.$('#preuvesLignes img')) === null && !(await page.evaluate(() => window.pirate2)) && /5hSigAbC\u2026JKlMn|5hSigAbC…KlMn/.test(px[1][0]), 'le nom d outil est du texte ; une longue transaction est abregee');
     ok(!/rating|stars|reputation score/i.test(await page.textContent('body')), 'aucune note inventee');
+    await ctx.close();
+  }
+
+  console.log('\n-- 1b. les paiements a 360 px --');
+  {
+    const { page, ctx } = await ouvre(360);
+    await page.waitForFunction(() => !document.getElementById('preuves').hidden);
+    const larg = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    ok(larg <= 1, 'a 360 px, le tableau des paiements defile dans son cadre, la page ne deborde pas [' + larg + ']');
     await ctx.close();
   }
 

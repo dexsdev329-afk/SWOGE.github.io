@@ -63,8 +63,9 @@ Une section neuve, **44 SwogeAgentic** (l'orchestrateur, les 26 outils avec leur
 et une phrase au résumé. Les liens vers les pages du site sont **absolus**
 (`https://swoleeswoge.dog/...`) : `artifact.html` est hébergé ailleurs.
 
-Chiffres relus le 29/09 : `/agentic/store` (26 outils, 24 appels payés extérieurs
-en 30 jours pour 1,45 $, 12 039 devis), `/agentic/x402` (trésorerie de Base et
+Chiffres relus le 29/09 : `/agentic/store` (26 outils, 12 039 devis ; les « 24 appels
+payés extérieurs » d'abord écrits étaient notre portefeuille d'inscription — corrigé le
+même jour après relecture du journal x402, voir EXPLOITATION.md du serveur), `/agentic/x402` (trésorerie de Base et
 Solana), `server.js` (caisse éteinte sans `X402_CAISSE=1`), `caisse.js` (5 % de
 l'USDG, $SWOGE racheté gardé à la trésorerie), `boutique_esim.js` (marge 1,25).
 Vérifié après coup : aucune ancre morte, aucun identifiant en double, balises

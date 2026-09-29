@@ -134,6 +134,8 @@ const PEPE = { adresse:'0x6982508145454ce325ddbe47a25d4ec3d2311933', trouve:true
         if (r.request().method() === 'POST') { const q = JSON.parse(r.request().postData() || '{}'); EMB.poste.push({ q, auth: r.request().headers().authorization || null });
           if (EMB.refuse) return r.fulfill({ status:200, contentType:'application/json', body: JSON.stringify({ ok: false, raison: EMB.refuse }) });
           EMB.rep.budget.jourUsd = q.plafondUsd; }
+        /* EMB.lentMs : la relecture traine (serveur charge) — c'est l'intervalle ou la page montrait le choix refuse. */
+        if (EMB.lentMs) { const corps = JSON.stringify(EMB.rep); return new Promise((ok2) => setTimeout(ok2, EMB.lentMs)).then(() => r.fulfill({ status:200, contentType:'application/json', body: corps })); }
         return r.fulfill({ status:200, contentType:'application/json', body: JSON.stringify(EMB.rep) }); }
       if (/\/agentic\/x402$/.test(u)) return X402 ? r.fulfill({ status:200, contentType:'application/json', body: JSON.stringify(X402) }) : r.abort();
       return r.abort();
@@ -206,10 +208,11 @@ const PEPE = { adresse:'0x6982508145454ce325ddbe47a25d4ec3d2311933', trouve:true
     ok(EMB.poste.length === 1 && EMB.poste[0].q.plafondUsd === 0 && EMB.poste[0].auth === 'Bearer jeton-emb' && /Saved/.test(await s.page.textContent('#embPlafMsg')),
        'choisir « Off » : POST { plafondUsd: 0 } avec le jeton de session, le resume dit « switched off »');
     EMB.refuse = 'the daily budget cannot be above 1 $';
+    EMB.lentMs = 1000;   /* 29/09 : l'essai tombait sous charge ; avec une relecture lente, il tombait a chaque fois */
     await s.page.selectOption('#embPlaf', '0.5');
     await s.page.waitForFunction(() => /cannot be above/.test(document.getElementById('embPlafMsg').textContent));
     ok(await s.page.$eval('#embPlaf', (e) => e.value === '0' && !e.disabled), 'un refus du serveur : sa raison est dite, et la page revient a ce que le serveur a retenu (Off)');
-    EMB.refuse = null; EMB.rep.budget.jourUsd = 1;
+    EMB.refuse = null; EMB.lentMs = 0; EMB.rep.budget.jourUsd = 1;
     delete CAT.embauche; await s.ctx.close();
   }
 

@@ -1493,6 +1493,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     if (v.indexOf(cur) < 0) v.push(cur);
     v.sort(function(a, c){ return a - c; });
     sel.innerHTML = "";
+    sel.setAttribute("data-retenu", String(cur));
     v.forEach(function(x){
       var o = document.createElement("option"); o.value = String(x);
       o.textContent = x === 0 ? "Off (no paid hires)" : "$" + x.toFixed(2) + " a day" + (x === max ? " (maximum)" : "");
@@ -1537,7 +1538,11 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       .then(function(d){
         sel.disabled = false;
         if (d && d.ok) { msg.textContent = "Saved."; peintEmbauches(d); }
-        else { msg.textContent = (d && d.raison) || "Not saved."; chargeEmbauches(); }
+        /* Refuse : on remet TOUT DE SUITE ce que le serveur a retenu. Attendre la relecture
+           laissait le choix refuse a l'ecran pendant un aller-retour — la page affichait une
+           valeur que le serveur n'a pas (vu le 29/09 : agent_page.test.js tombait sous charge
+           exactement dans cet intervalle). La relecture suit, pour le reste. */
+        else { msg.textContent = (d && d.raison) || "Not saved."; if (sel.getAttribute("data-retenu") != null) sel.value = sel.getAttribute("data-retenu"); chargeEmbauches(); }
       })["catch"](function(){ sel.disabled = false; msg.textContent = "Not saved: the server did not answer."; });
   }
   $("embPlaf").addEventListener("change", fixePlafond);

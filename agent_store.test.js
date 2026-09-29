@@ -68,7 +68,7 @@ const SERVICES = { ok: true, query: 'weather', note: 'x', summary: {}, services:
     ok((await page.$$('#grilleSwoge .agent')).length === 1 && /web_search/.test(await page.textContent('#grilleSwoge')), 'un filtre ne garde que ses agents');
     await page.click('#filtres .puce:has-text("All")');
     const liens = await page.$$eval('#grilleSwoge .agent', (l) => l.map((a) => { const b = a.querySelector('a.btn'); return b ? b.getAttribute('href') : null; }));
-    ok(liens[0] === 'swolemind.html?mission=' + encodeURIComponent('Analyze this token and tell me the risks: ') && liens[1] === null && liens[2] !== null,
+    ok(liens[0] === 'swolemind.html?mission=' + encodeURIComponent('Run a due diligence on this token before I buy it: ') && liens[1] === null && liens[2] !== null,
        '« Use in a mission » seulement pour ce que l agent des missions sait faire, l objectif prerempli');
     await page.click('#grilleSwoge .agent:first-child summary');
     const d = await page.textContent('#grilleSwoge .agent:first-child details');
@@ -104,9 +104,9 @@ const SERVICES = { ok: true, query: 'weather', note: 'x', summary: {}, services:
 
   console.log('\n-- 3. SwoleMind ouvre la mission preremplie --');
   {
-    const { page, ctx } = await ouvre(1100, '/swolemind.html?mission=' + encodeURIComponent('Analyze this token and tell me the risks: '));
+    const { page, ctx } = await ouvre(1100, '/swolemind.html?mission=' + encodeURIComponent('Run a due diligence on this token before I buy it: '));
     await page.waitForFunction(() => document.getElementById('question').value.length > 0);
-    ok(await page.getAttribute('.mode[data-mode="mission"]', 'aria-pressed') === 'true' && (await page.inputValue('#question')) === 'Analyze this token and tell me the risks: ',
+    ok(await page.getAttribute('.mode[data-mode="mission"]', 'aria-pressed') === 'true' && (await page.inputValue('#question')) === 'Run a due diligence on this token before I buy it: ',
        'le mode Mission, l objectif prerempli');
     ok((await page.$$('.msg')).length === 0, 'rien n est envoye tant que le joueur n envoie pas');
     await ctx.close();

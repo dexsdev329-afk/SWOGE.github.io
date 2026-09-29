@@ -798,7 +798,7 @@ const sse = (evs) => evs.map(([t, d]) => 'event: ' + t + '\ndata: ' + JSON.strin
     ok(/Mission · Sonnet 5 plans it and runs the tools/.test(await page.textContent('#prixq')) && /every step and its cost shown/.test(await page.textContent('#prixq')), 'la ligne des prix dit ce que fait une mission, et son prix');
     ok(await page.isHidden('#comparer') && await page.isHidden('#joindre') && await page.isHidden('#modeleBtn'), 'en mission : ni comparaison, ni piece jointe, ni choix de modele (le planificateur est Claude)');
     await page.click('.suggestion[data-sugg="m_jeton"]');
-    ok(/^Analyze this token and tell me the risks: $/.test(await page.inputValue('#question')), 'une suggestion de mission pose le debut de l objectif');
+    ok(/^Run a due diligence on this token before I buy it: $/.test(await page.inputValue('#question')), 'une suggestion de mission pose le debut de l objectif');
     await page.fill('#question', 'Analyze PEPE 0x6982508145454ce325ddbe47a25d4ec3d2311933');
     await page.click('#envoyer');
     await page.waitForSelector('.mission-bilan');

@@ -139,6 +139,7 @@ video{ max-width:100%; }
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+<script src="lance_v4.js?v=f745e1a0"></script>
 <script src="https://cdn.jsdelivr.net/npm/@walletconnect/ethereum-provider@2.13.3/dist/index.umd.js"></script>
 <style>
 /* ==================== LA PALETTE PASSE AU CLAIR ====================
@@ -871,6 +872,23 @@ function rpcProvider(){ return new ethers.providers.StaticJsonRpcProvider(CHAIN.
 var _lecteur=null;
 function lecteur(){ return _lecteur || (_lecteur = rpcProvider()); }
 function readFun(v){ var V=venue(v); return new ethers.Contract(V.addr, V.abi, lecteur()); }
+/* ---------- LE NOEUD NE LIT PLUS L'HISTORIQUE D'UN SEUL COUP (mesure du 30/09/2026) ----------
+   « query spans 76531054 blocks (0 to 76531053), but only 10000000 are allowed » : toute
+   lecture de journaux depuis le bloc 0 etait refusee. La page affichait « aucun jeton »,
+   « You haven't launched any token yet », « Could not load burns » — sans erreur visible,
+   chaque lecture etant dans un try. On lit par tranches de 9 M blocs, en parallele, depuis
+   la naissance du plus ancien contrat lu (premier evenement releve sur la chaine le 30/09 :
+   V2 au bloc 22 399 649, V3 au bloc 48 657 238, $SWOGE au bloc 3 747 598, V4 apres 76 M). */
+var PLAGE_MAX=9000000, NAISSANCE_LANCEUR=22390000, NAISSANCE_SWOGE=3740000, NAISSANCE_V4=76000000;
+async function parTranches(lire, depuis){
+  var fin=await lecteur().getBlockNumber(), plages=[];
+  for(var de=depuis; de<=fin; de+=PLAGE_MAX) plages.push([de, Math.min(fin, de+PLAGE_MAX-1)]);
+  var parts=await Promise.all(plages.map(function(p){ return lire(p[0], p[1]); }));
+  return [].concat.apply([], parts);
+}
+function journaux(c, filtre, depuis){
+  return parTranches(function(de, a){ return c.queryFilter(filtre, de, a); }, depuis==null ? NAISSANCE_LANCEUR : depuis);
+}
 function writeFun(v){ var V=venue(v); return new ethers.Contract(V.addr, V.abi, signer); }
 
 /* ---- multi-wallet discovery (EIP-6963): MetaMask, Rabby, Uniswap, … ---- */
@@ -1207,14 +1225,14 @@ loadLogos();
 /* ---------- explore / list ---------- */
 var allCache=[], metaMap={};
 async function loadMetaAll(fun){
-  try{ var evs=await fun.queryFilter(fun.filters.Meta());
+  try{ var evs=await journaux(fun, fun.filters.Meta());
     evs.forEach(function(e){ metaMap[e.args.token.toLowerCase()]={tg:e.args.telegram,tw:e.args.twitter,web:e.args.website,logo:e.args.logo}; });
   }catch(e){}
 }
 async function fetchMeta(fun,addr){
   var key=addr.toLowerCase();
   if(metaMap[key]) return metaMap[key];
-  try{ var evs=await fun.queryFilter(fun.filters.Meta(addr)); if(evs.length){ var a=evs[evs.length-1].args; metaMap[key]={tg:a.telegram,tw:a.twitter,web:a.website,logo:a.logo}; } }catch(e){}
+  try{ var evs=await journaux(fun, fun.filters.Meta(addr)); if(evs.length){ var a=evs[evs.length-1].args; metaMap[key]={tg:a.telegram,tw:a.twitter,web:a.website,logo:a.logo}; } }catch(e){}
   return metaMap[key]||{};
 }
 function socialsHTML(m){
@@ -1391,9 +1409,9 @@ async function readVenue(v){
   try{
     var fun=readFun(v);
     var res=await Promise.all([
-      fun.queryFilter(fun.filters.Created()),
-      fun.queryFilter(fun.filters.LaunchedInstant()),
-      fun.queryFilter(fun.filters.Meta())
+      journaux(fun, fun.filters.Created()),
+      journaux(fun, fun.filters.LaunchedInstant()),
+      journaux(fun, fun.filters.Meta())
     ]);
     var created=res[0], launched=res[1], metaEvs=res[2];
     var poolMap={}; launched.forEach(function(e){ poolMap[e.args.token.toLowerCase()]=e.args.pool; });
@@ -1473,6 +1491,25 @@ document.querySelectorAll("#sortSeg button").forEach(function(b){
 $("#search").addEventListener("input",renderList);
 $("#reload").onclick=loadList;
 
+/* ---------- LES LAUNCHPADS V4 : LEURS CREATEURS RECOLTENT ICI (30/09/2026) ----------
+   Un jeton V4 se lance depuis une carte d'agent (lance_v4.js) ; ses frais de pool se
+   recoltent ici. Les adresses viennent de lance_v4.js (SwogeLance.LAUNCHPADS), pas d'une
+   copie : la liste qui accepte de signer un lancement est celle qui recolte.
+   collectFees(jeton) est OUVERT A TOUS dans le contrat : qui l'appelle paie le gaz, mais
+   la part du createur (50 %) part TOUJOURS a l'adresse inscrite a la creation, le reste
+   au tresor, et la part en jeton est brulee. La page n'a rien a verifier, elle propose. */
+var V4_ABI=["event Created(address indexed token, address indexed creator, string name, string symbol)",
+  "event LaunchedInstant(address indexed token, address indexed creator, address pool, uint256 lpTokenId)",
+  "function instant(address) view returns (address token, address creator, address pool, uint256 lpTokenId, bool exists)",
+  "function collectFees(address token)"];
+function lanceursV4(){
+  var L=(window.SwogeLance&&window.SwogeLance.LAUNCHPADS)||{};
+  return [ L.swoge&&{ cle:"v4s", adresse:L.swoge.adresse, quote:SWOGE_TOKEN, sym:"SWOGE", part:"50% creator / 50% SWOGE treasury" },
+           L.eth&&{ cle:"v4e", adresse:L.eth.adresse, quote:WETH, sym:"ETH (RH)", part:"50% creator / 50% SWOGE treasury" } ].filter(Boolean);
+}
+function contratFrais(r){ return r.c4 ? new ethers.Contract(r.c4.adresse, V4_ABI, signer) : writeFun(r.v); }
+function partFrais(r){ return r.c4 ? r.c4.part : venue(r.v).part; }
+
 /* ---------- my tokens & fees ---------- */
 var MAXU128 = ethers.BigNumber.from("0xffffffffffffffffffffffffffffffff");
 // simulate the LP fee collection to preview claimable ETH (creator's 70% share)
@@ -1509,7 +1546,7 @@ async function loadMine(){
       try{
         var f=readFun(vid);
         await loadMetaAll(f);
-        var r2=await Promise.all([ f.queryFilter(f.filters.Created()), f.queryFilter(f.filters.LaunchedInstant()) ]);
+        var r2=await Promise.all([ journaux(f, f.filters.Created()), journaux(f, f.filters.LaunchedInstant()) ]);
         var pm={}; r2[1].forEach(function(e){ pm[e.args.token.toLowerCase()]=e.args.pool; });
         var seenv={};
         r2[0].forEach(function(e){
@@ -1583,6 +1620,27 @@ async function loadMine(){
       var r=rate(t.v); if(r!=null) totalYoursUsd+=t.yours*r;
       madeRows.push(t);
     });
+    /* Les V4 : filtre sur le createur (indexe) — on ne lit que SES jetons. */
+    await runPool(lanceursV4(), 2, async function(c4){
+      try{
+        var f4=new ethers.Contract(c4.adresse, V4_ABI, lecteur());
+        var crees=await journaux(f4, f4.filters.Created(null, account), NAISSANCE_V4);
+        await runPool(crees, 4, async function(e){
+          var t={ addr:e.args.token, name:e.args.name, sym:e.args.symbol, creator:account, c4:c4, v:c4.cle, pool:null, pending:0 };
+          try{
+            var inst=await f4.instant(t.addr);
+            if(inst.exists){
+              t.pool=inst.pool;
+              var pf=await previewFees(inst.lpTokenId, c4.adresse);
+              if(pf){ var q=(c4.quote.toLowerCase()<t.addr.toLowerCase())?pf.a0:pf.a1; t.pending=+ethers.utils.formatEther(q); }
+            }
+          }catch(x){}
+          t.yours=t.pending*0.5;
+          var r4=c4.quote===SWOGE_TOKEN?su:eu; if(r4!=null) totalYoursUsd+=t.yours*r4;
+          madeRows.push(t);
+        });
+      }catch(x){}
+    });
     var totalYours=madeRows.reduce(function(a,t){ return a+t.yours; },0);
     var totalTxt = totalYoursUsd>0 ? fmtUsd(totalYoursUsd) : (totalYours>0? fmtQty(totalYours)+" (quote)" : "—");
     var madeHtml='<div class="panel" style="margin:0 0 12px;background:var(--void)"><h2 style="margin:0 0 10px">⚡ Tokens you created <span class="count">'+madeRows.length+'</span></h2>';
@@ -1595,14 +1653,14 @@ async function loadMine(){
       madeHtml+='<button class="btn primary full" id="claimAllBtn" style="margin:8px 0"'+(totalYours<=1e-9?' disabled':'')+'>💰 Claim all my fees</button>'
         +'<div class="note" id="claimAllNote" style="margin-top:0">One wallet confirmation per token that has fees.</div>';
       madeRows.forEach(function(r){
-        var rr=rate(r.v), QS=venue(r.v).sym;
+        var rr=r.c4?(r.c4.quote===SWOGE_TOKEN?su:eu):rate(r.v), QS=r.c4?r.c4.sym:venue(r.v).sym;
         var claimHtml = r.v===3
           ? (r.pending>0 ? '<div class="kv"><span class="k">Uncollected pool fees</span><span class="v">'+fmtQty(r.pending)+' '+QS+' <small>→ 70% holders / 30% treasury</small></span></div>' : '')
-          : (r.yours>0 ? '<div class="kv"><span class="k">Claimable (70%)</span><span class="v">'+(rr!=null?fmtUsd(r.yours*rr):fmtQty(r.yours)+" "+QS)+'</span></div>' : '');
+          : (r.yours>0 ? '<div class="kv"><span class="k">Claimable ('+(r.c4?'50':'70')+'%)</span><span class="v">'+(rr!=null?fmtUsd(r.yours*rr):fmtQty(r.yours)+" "+QS)+'</span></div>' : '');
         var dexUrl = r.pool ? ("https://dexscreener.com/robinhood/"+r.pool) : ("https://dexscreener.com/search?q="+r.addr);
         madeHtml+='<div class="card" style="cursor:default;margin-top:8px"><div class="top"><div style="display:flex;align-items:center;gap:10px">'+logoImg(r.addr)+'<div><span class="nm">'+esc(r.name||"?")+'</span> <span class="sy">$'+esc(r.sym||"?")+'</span></div></div>'+lockChip()+'</div>'
           +claimHtml
-          +'<div class="btnrow" style="margin-top:8px"><button class="btn" data-open="'+r.addr+'" style="padding:5px 10px;font-size:12px">📈 Open</button>'
+          +'<div class="btnrow" style="margin-top:8px">'+(r.c4?'':'<button class="btn" data-open="'+r.addr+'" style="padding:5px 10px;font-size:12px">📈 Open</button>')
           +'<a class="btn dexlink" href="'+dexUrl+'" target="_blank" style="padding:5px 10px;font-size:12px">📊 Dex</a>'
           +'<button class="btn primary" data-collect="'+r.addr+'" style="padding:5px 10px;font-size:12px">💰 Collect</button></div>'
           +'<div class="note" data-cnote="'+r.addr+'" style="margin-top:6px"></div></div>';
@@ -1614,7 +1672,7 @@ async function loadMine(){
     var burnHtml='<div class="panel" style="margin:0;background:var(--void)"><h2 style="margin:0 0 10px">🔥 Your $SWOGE burns</h2>';
     try{
       var padMe="0x"+account.slice(2).toLowerCase().padStart(64,"0"), padDead="0x"+DEAD.slice(2).toLowerCase().padStart(64,"0");
-      var blogs=await prov.getLogs({address:SWOGE_TOKEN, topics:[TRANSFER_TOPIC, padMe, padDead], fromBlock:0, toBlock:"latest"});
+      var blogs=await parTranches(function(de, a){ return prov.getLogs({address:SWOGE_TOKEN, topics:[TRANSFER_TOPIC, padMe, padDead], fromBlock:de, toBlock:a}); }, NAISSANCE_SWOGE);
       var totalBurn=blogs.reduce(function(s,l){ return s+(+ethers.utils.formatEther(ethers.BigNumber.from(l.data))); },0);
       burnHtml+='<div class="kv" style="border:0"><span class="k">You burned</span><span class="v" style="color:#C2410C;font-size:15px">'+fmtNum(totalBurn)+' SWOGE</span></div>'
         +'<div class="note">'+blogs.length+' burn'+(blogs.length===1?"":"s")+' · <a href="swoge_wallet.html#ecBruler">Burn more 🔥</a></div>';
@@ -1636,7 +1694,7 @@ async function loadMine(){
       var note=$("#claimAllNote"); cab.disabled=true; var done=0;
       for(var i=0;i<list.length;i++){
         note.className="note"; note.textContent="Claiming "+(i+1)+"/"+list.length+" — confirm in your wallet…";
-        try{ var tx=await writeFun(list[i].v).collectFees(list[i].addr); await tx.wait(); done++; }catch(e){}
+        try{ var tx=await contratFrais(list[i]).collectFees(list[i].addr); await tx.wait(); done++; }catch(e){}
       }
       note.className="note ok"; note.textContent="Claimed "+done+"/"+list.length+" 💰"; loadMine();
     };
@@ -1659,8 +1717,8 @@ async function loadMine(){
         var addr=b.getAttribute("data-collect"), note=host.querySelector('[data-cnote="'+addr+'"]');
         note.className="note"; note.textContent="Collecting…"; b.disabled=true;
         var row=madeRows.filter(function(x){ return x.addr===addr; })[0];
-        try{ var tx=await writeFun(row?row.v:2).collectFees(addr); note.innerHTML='Collecting… <a href="'+CHAIN.scan+'/tx/'+tx.hash+'" target="_blank">↗</a>'; await tx.wait();
-          note.className="note ok"; note.textContent="Fees sent — "+venue(row?row.v:2).part+" 💰"; loadMine();
+        try{ var tx=await contratFrais(row||{v:2}).collectFees(addr); note.innerHTML='Collecting… <a href="'+CHAIN.scan+'/tx/'+tx.hash+'" target="_blank">↗</a>'; await tx.wait();
+          note.className="note ok"; note.textContent="Fees sent — "+partFrais(row||{v:2})+" 💰"; loadMine();
         }catch(e){ note.className="note err"; note.textContent="Failed · "+String(e.reason||e.message||e).slice(0,120); }
         finally{ b.disabled=false; }
       };
@@ -1786,8 +1844,8 @@ async function fetchTrades(token){
      (fetchTradesInstant). */
   var fun=readFun(2);
   var res=await Promise.all([
-    fun.queryFilter(fun.filters.Buy(token),0,"latest"),
-    fun.queryFilter(fun.filters.Sell(token),0,"latest")
+    journaux(fun, fun.filters.Buy(token)),
+    journaux(fun, fun.filters.Sell(token))
   ]);
   var evs=[];
   res[0].forEach(function(l){ evs.push({bn:l.blockNumber,li:l.logIndex,tx:l.transactionHash,who:l.args.buyer,type:"buy",tokens:+ethers.utils.formatEther(l.args.tokensOut),eth:+ethers.utils.formatEther(l.args.ethIn)}); });
@@ -1813,7 +1871,7 @@ async function fetchTrades(token){
 async function fetchTradesInstant(){
   if(!curPool) return [];
   var pc=poolC();
-  var logs=await pc.queryFilter(pc.filters.Swap(),0,"latest");
+  var logs=await journaux(pc, pc.filters.Swap());
   if(!logs.length) return [];
   var evs=logs.map(function(l){
     var aW=curT0IsQuote?l.args.amount0:l.args.amount1;

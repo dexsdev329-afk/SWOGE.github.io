@@ -61,7 +61,10 @@ const servir = async () => {
  * on fait suivre les appels RPC par Node vers le VRAI noeud : la page lit les
  * vrais contrats, les vrais 23 jetons, les vrais prix. Ce qui reste hors de
  * portee, ce sont les ecritures — il n'y a pas de portefeuille ici. */
-const ETHERS = path.join('/tmp/claude-0/-home-user/5dffd995-dd9a-578f-a1f3-991ca6e1904d/scratchpad', 'ethers.umd.min.js');
+/* 30/09 : le chemin pointait vers le dossier temporaire d'une ancienne session — l'essai ne
+   pouvait plus tourner nulle part. ethers v5 vient du depot du serveur (ou de NODE_PATH). */
+const ETHERS = [path.join(__dirname, '..', 'swoge-pusher-server.github.io', 'node_modules', 'ethers', 'dist', 'ethers.umd.min.js')]
+  .concat((process.env.NODE_PATH || '').split(':').map((d) => path.join(d, 'ethers', 'dist', 'ethers.umd.min.js'))).find((f) => fs.existsSync(f)) || '';
 const RPC = 'https://rpc.mainnet.chain.robinhood.com';
 
 (async () => {
@@ -159,7 +162,17 @@ const RPC = 'https://rpc.mainnet.chain.robinhood.com';
    * C'est la regression la plus probable : servir deux contrats et coter
    * par erreur tous les jetons dans la meme unite. */
   console.log('\n-- un jeton V2 s ouvre, et se cote en ETH --');
-  await pg.click('#list .tcard');
+  /* 30/09 : l'essai ouvrait la PREMIERE carte en la supposant V2 ; la grille est triee du plus
+     recent au plus ancien, et le plus recent est desormais un jeton V3 (cote en $SWOGE). On
+     ouvre donc une carte dont le jeton est ne sur le contrat V2, lu sur la chaine. */
+  const { ethers } = require(path.join(path.dirname(ETHERS), '..', 'lib', 'index.js'));
+  const lecteur = new ethers.providers.StaticJsonRpcProvider(RPC, 4663);
+  const v2 = new ethers.Contract('0x4De26D120A4fF2d7c1875E6C7D611262b9cA426d', ['event Created(address indexed token, address indexed creator, string name, string symbol, uint8 feeMode, address devWallet, uint16 creatorFeeBps, uint16 maxWalletBps)'], lecteur);
+  const fin = await lecteur.getBlockNumber(), jetonsV2 = new Set();
+  for (let de = 22390000; de <= fin; de += 9000000) (await v2.queryFilter(v2.filters.Created(), de, Math.min(fin, de + 8999999))).forEach((e) => jetonsV2.add(e.args.token.toLowerCase()));
+  const carteV2 = await pg.$$eval('#list .tcard', (cs, v2s) => { const i = cs.findIndex((c) => v2s.includes((c.getAttribute('data-addr') || '').toLowerCase())); return i; }, [...jetonsV2]);
+  ok(jetonsV2.size > 0 && carteV2 >= 0, jetonsV2.size + ' jetons nes sur le V2, dont un dans la grille (carte ' + carteV2 + ')');
+  await pg.click('#list .tcard >> nth=' + Math.max(0, carteV2));
   await pg.waitForTimeout(4000);
   const vue = await pg.$eval('#tradeView', (e) => !e.classList.contains('hidden'));
   ok(vue, 'la vue d echange s ouvre');

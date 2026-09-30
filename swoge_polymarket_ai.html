@@ -299,6 +299,16 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 .sw-corps main{ max-width:none; }
 @media (max-width:420px){ h1{ font-size:25px; } .tuile .v{ font-size:18px; } }
 .agents{ display:grid; grid-template-columns:repeat(auto-fill,minmax(290px,1fr)); gap:12px; margin-top:10px; }
+/* Le classement complet (30/09) : toutes les strategies, du plus gagnant au plus perdant.
+   Sous 100 paris regles, le rang est grise : il dit la chance autant que l adresse. */
+.classement{ margin-top:18px; }
+.classement h3{ font-size:15px; margin:0 0 6px; }
+.classement .boite{ max-height:520px; overflow:auto; border:1px solid var(--ligne); border-radius:10px; background:var(--carte); }
+.classement th{ position:sticky; top:0; background:var(--carte); }
+.classement td.num, .classement th.num{ text-align:right; font-variant-numeric:tabular-nums; }
+.classement tr.peu td{ color:var(--pale); }
+.classement tr.peu td.pos, .classement tr.peu td.neg{ opacity:.75; }
+.classement td.nom{ white-space:normal; min-width:180px; }
 .agent{ border:1px solid var(--ligne); border-radius:12px; padding:12px; min-width:0; }
 .agent .tete{ display:flex; justify-content:space-between; gap:8px; align-items:baseline; }
 .agent .nom{ font-weight:800; }
@@ -407,6 +417,14 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     <p class="intro" id="depuis"></p>
     <p class="intro" id="effectif" hidden></p>
     <div class="agents" id="agents"></div>
+    <div class="classement" id="classement" hidden>
+      <h3>All strategies, from most to least profitable</h3>
+      <p class="intro" id="clResume"></p>
+      <div class="boite"><table>
+        <thead><tr><th class="num">#</th><th>Strategy</th><th class="num">Settled</th><th class="num">Won</th><th class="num">P&amp;L</th></tr></thead>
+        <tbody id="clLignes"></tbody>
+      </table></div>
+    </div>
   </section>
 
   <section class="bloc" aria-labelledby="t-calib">
@@ -500,6 +518,28 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     c.appendChild(dl); c.appendChild(el("div", "v", a.verdict));
     return c;
   }
+  /* Le classement complet : chaque strategie, ecrite en texte, jamais en HTML. */
+  function peintClassement(d){
+    var bloc = $("classement"), l = Array.isArray(d.ranking) ? d.ranking.slice() : null;
+    if (!l || !l.length) { bloc.hidden = true; return; }
+    l.sort(function(x, y){ return (Number(y.pnl) || 0) - (Number(x.pnl) || 0) || (y.resolved || 0) - (x.resolved || 0); });
+    var s = d.summary || {}, min = Number(d.minResolved) || 100;
+    $("clResume").textContent = (s.total || l.length) + " strategies: " + (s.inProfit || 0) + " in profit, " + (s.inLoss || 0) + " at a loss, " +
+      (s.noSettledBet || 0) + " with no settled bet yet \u00b7 combined P&L " + signe(s.totalPnl || 0) + ". " +
+      (s.judgeable ? s.judgeable + " have " + min + "+ settled bets." : "None has " + min + " settled bets yet:") +
+      " below " + min + ", a rank says as much about luck as about skill, and grey rows are not a verdict.";
+    var tb = $("clLignes"); tb.textContent = "";
+    l.forEach(function(c, i){
+      var tr = el("tr", (c.resolved || 0) < min ? "peu" : null);
+      tr.appendChild(el("td", "num", String(i + 1)));
+      tr.appendChild(el("td", "nom", c.name + (c.id === "coin" ? " (control)" : "")));
+      tr.appendChild(el("td", "num", (c.resolved || 0) < min ? c.resolved + "/" + min : String(c.resolved)));
+      tr.appendChild(el("td", "num", c.resolved ? pct(c.won / c.resolved) : "\u2014"));
+      tr.appendChild(el("td", "num " + (Number(c.pnl) > 0 ? "pos" : Number(c.pnl) < 0 ? "neg" : ""), c.resolved ? signe(c.pnl) : "\u2014"));
+      tb.appendChild(tr);
+    });
+    bloc.hidden = false;
+  }
   function lienMarche(p){
     var td = el("td"), u = String(p.url || "");
     if (/^https:\/\/polymarket\.com\/event\/[a-z0-9-]+$/.test(u)) { var a = el("a", null, p.asset); a.href = u; a.target = "_blank"; a.rel = "noopener"; td.appendChild(a); }
@@ -529,10 +569,13 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     var ef = $("effectif"), pa = d.parametric;
     if (d.totalStrategies) {
       ef.textContent = d.totalStrategies + " strategies running" + (pa ? ", including " + pa.running + " parametric ones picked from " + Number(pa.distinct).toLocaleString("en-US") + " distinct behaviours" : "") +
-        ". Showing the 5 original agents and the " + Math.max(0, (d.agents || []).length - 5) + " others ranked best once they have 10 settled bets." + (pa && pa.note ? " " + pa.note : "");
+        ". Cards: the 5 original agents, the 10 best and the 10 worst, from most to least profitable; every strategy is ranked in the table below." + (pa && pa.note ? " " + pa.note : "");
       ef.hidden = false;
     } else ef.hidden = true;
-    var g = $("agents"); g.textContent = ""; (d.agents || []).forEach(function(a){ g.appendChild(carte(a)); });
+    /* Du plus gagnant au plus perdant (30/09) : l ordre est garanti ici aussi, pas seulement par le serveur. */
+    var g = $("agents"); g.textContent = "";
+    (d.agents || []).slice().sort(function(x, y){ return (Number(y.pnl) || 0) - (Number(x.pnl) || 0); }).forEach(function(a){ g.appendChild(carte(a)); });
+    peintClassement(d);
     var c = d.calibration || {}, v = $("calibVerdict");
     if (!c.n) { v.className = "verdict peu"; v.textContent = "No window scored yet (" + (c.pending || 0) + " waiting for their result)."; }
     else if (!c.enough) { v.className = "verdict peu"; v.textContent = "Too few windows to compare (" + c.n + "/" + c.minN + "). So far: model " + c.brierModel + ", market " + c.brierMarket + " (lower is better)."; }

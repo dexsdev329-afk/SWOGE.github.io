@@ -20,6 +20,11 @@ const agent = (id, name, o) => Object.assign({ id, name, role: 'Role of ' + name
   pnl: 0, fees: 0, drawdown: 0, open: 0, verdict: 'Too few resolved bets to judge (0/100).' }, o || {});
 const ETAT = (calib) => ({ ok: true, depuis: '2026-09-29T14:00:00.000Z', stakeUsd: 10, bankUsd: 1000, minResolved: 100,
   totalStrategies: 200, parametric: { running: 100, distinct: 2460, combinations: 110700, note: '<img src=x onerror=window.pirate=9> not simulated.' },
+  /* Le classement, volontairement MELANGE : la page doit le trier elle-meme. */
+  ranking: [{ id: 'p_a', name: 'P·FV 1.5pt', resolved: 74, won: 41, pnl: 352.99 }, { id: 'fade', name: 'Longshot', resolved: 224, won: 8, pnl: -1224.77 },
+    { id: 'p_b', name: '<img src=x onerror=window.pirate=8>', resolved: 12, won: 3, pnl: -80.1 }, { id: 'coin', name: 'Coin', resolved: 365, won: 195, pnl: -393.75 },
+    { id: 'crowd', name: 'Crowd', resolved: 366, won: 313, pnl: 30.14 }, { id: 'p_c', name: 'P·Crowd>55¢', resolved: 0, won: 0, pnl: 0 }],
+  summary: { total: 6, inProfit: 2, inLoss: 3, noSettledBet: 1, totalPnl: -1315.49, judgeable: 3 },
   agents: [agent('coin', 'Coin', { bets: 120, resolved: 118, won: 57, winRate: { p: 0.483, low: 0.395, high: 0.572 }, skill: -0.4, avgPricePaid: 0.51, pnl: -41.2, fees: 20.3, drawdown: 55.1, verdict: 'No edge: loses after the spread and fees (skill score -0.4).' }),
     agent('crowd', 'Crowd'), agent('fair', 'Fair Value', { role: 'Model <img src=x onerror=window.pirate=1>', pnl: 12.5 }), agent('late', 'Last Minute'), agent('fade', 'Longshot')],
   calibration: calib, open: [{ agent: 'fair', asset: 'BTC', window: '2026-09-29T14:15:00.000Z', side: 'Up', price: 0.55, fee: 0.315, model: 0.716, url: 'https://polymarket.com/event/btc-updown-15m-1790691300' }],
@@ -62,6 +67,16 @@ const CALIBS = {
     const ef = await page.textContent('#effectif');
     ok(/^200 strategies running, including 100 parametric ones picked from 2,460 distinct behaviours\./.test(ef) && /not simulated/.test(ef)
        && await page.evaluate(() => !document.querySelector('#effectif img') && window.pirate === undefined), 'l effectif reel est dit en tete, en texte seulement [' + ef.slice(0, 60) + ']');
+    /* 30/09 : « classe du plus gagnant au plus perdant ». */
+    const cl = await page.evaluate(() => [...document.querySelectorAll('#clLignes tr')].map((tr) => ({ nom: tr.children[1].textContent, pnl: tr.children[4].textContent, gris: tr.classList.contains('peu') })));
+    ok(cl.map((c) => c.nom).join('|') === 'P·FV 1.5pt|Crowd|P·Crowd>55¢|<img src=x onerror=window.pirate=8>|Coin (control)|Longshot',
+       'le tableau classe les strategies du plus gagnant au plus perdant, meme si le serveur les envoie en desordre [' + cl.map((c) => c.pnl).join(' ') + ']');
+    ok(cl[0].gris && !cl[1].gris && cl[4].gris === false, 'sous 100 paris regles, la ligne est grisee (pas un verdict) ; au-dela, non');
+    ok(await page.evaluate(() => !document.querySelector('#clLignes img') && window.pirate === undefined), 'un nom de strategie est ecrit en texte, jamais en HTML');
+    ok(/2 in profit, 3 at a loss, 1 with no settled bet yet/.test(await page.textContent('#clResume')), 'le resume dit combien gagnent et combien perdent');
+    const cartes = await page.evaluate(() => [...document.querySelectorAll('#agents .agent .tete .nom')].map((e) => e.textContent));
+    const pnlCartes = await page.evaluate(() => [...document.querySelectorAll('#agents .agent .tete .pos, #agents .agent .tete .neg')].map((e) => parseFloat(e.textContent.replace(/[^0-9.\-−+]/g, '').replace('−', '-'))));
+    ok(pnlCartes.every((x, i) => i === 0 || pnlCartes[i - 1] >= x), 'les cartes aussi, du plus gagnant au plus perdant [' + cartes.join(', ') + ']');
     await ctx.close();
   }
 

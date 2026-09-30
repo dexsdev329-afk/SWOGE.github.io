@@ -77,6 +77,11 @@ var T={'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'ap
                { id:'outsider', nom:'Visible underdog', texte:'the smaller visible pool', n:118, gagnes:55, taux:46.6, wilson:[37.9,55.5], ev:0.8, se:9.1, t:0.09, moitie1:2.0, moitie2:-0.4, verdict:{conclut:false,texte:'not judgeable yet (118/500)'} },
                { id:'bull', nom:'Always BULL', texte:'control: no signal at all', n:120, gagnes:60, taux:50, wilson:[41.2,58.8], ev:-3.0, se:8.9, t:-0.34, moitie1:-2.2, moitie2:-3.8, verdict:{conclut:false,texte:'not judgeable yet (120/500)'} } ] }
   };
+  /* Le tournoi (30/09) : un survivant au nom piege, un temoin. */
+  pancakeEtat.tournament = { threshold:500, roundsRead:30783, testedHere:299, tested:344, bar:3.62, retired:241, running:55, proven:0, liveJudgeable:0, liveSinceEpoch:520260,
+    rule:'An edge needs 500+ LIVE rounds.',
+    survivors:[ { id:'serie:3:contre', name:'<img src=x onerror=window.pirate=1>', history:{ n:4120, winRate:52.4, ev:1.2, t:1.9 }, live:{ n:12, ev:-3.1, t:-0.4 }, nextJudgedAt:4500, proven:false } ],
+    controls:[ { id:'bull', name:'Always BULL (control)', control:true, history:{ n:30500, winRate:50.2, ev:-2.8, t:-4.1 }, live:{ n:14, ev:5.5, t:0.6 }, nextJudgedAt:null } ] };
   await page.route(/\/predict\/pancake/, function(r){ r.fulfill({status:200,contentType:'application/json',body:JSON.stringify(pancakeEtat)}); });
   /* Étage 2 (vrais BNB) : on STUB la pile partagée (stakebubble/ethers/swogebuy)
      par un faux `window.swogeFil` qu'on pilote — swogepancake.js ne dépend que
@@ -285,6 +290,13 @@ var T={'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'ap
     ok(/not judgeable yet \(120\/500\)/.test(om),'le verdict refuse de conclure sous 500');
     ok(/4 candidates watched at once/.test(om),'le nombre de candidats est dit');
     ok(/0 bets on purpose/.test(om),'et la caisse papier reste à 0 exprès');
+    /* 30/09 : « sur Predict, on ne peut pas faire pareil ? » — le tournoi. */
+    var to=await page.textContent('#pkTournoi');
+    ok(/299 strategies replayed on 30,783 real PancakeSwap rounds: 241 retired \(still in the red after 500 bets\), 55 still running/.test(to),'le tournoi : combien essayées, sur combien de vrais rounds, retirées, en course');
+    ok(/None proven yet — the past rounds only explore; 0 running strategies have 500\+ live rounds so far \(bar: t ≥ 3\.62\)/.test(to),'aucune prouvée, et pourquoi : le passé explore, le direct juge, la barre');
+    ok(/4,120/.test(to) && /\+1\.20%/.test(to) && /next check at 4,500/.test(to) && /Always BULL \(control\)/.test(to),'un survivant (paris passés, EV, prochain palier) et le témoin');
+    ok(await page.evaluate(function(){ return !document.querySelector('#pkTournoi img') && window.pirate===undefined; }),'un nom venu du serveur est du texte, jamais du HTML');
+    ok(/from round 520,260/.test(to) && /500\+ LIVE rounds/.test(to),'depuis quel round le direct juge, et la règle');
     /* 320 px : le tableau défile dans sa boîte, pas la page. */
     await page.setViewportSize({width:320,height:900});
     var deborde=await page.evaluate(function(){ return document.documentElement.scrollWidth>document.documentElement.clientWidth+1; });

@@ -801,6 +801,10 @@ table.pr-h td:first-child,table.pr-h th:first-child{text-align:left}
 .pk-ombres{overflow-x:auto;margin-top:10px}
 .pk-ombres table.pr-h{min-width:560px}
 .pk-ombres .pied{font-size:11px;color:var(--dim);margin-top:6px}
+/* Le tournoi des strategies sur les vrais rounds (30/09). */
+.pk-tournoi{overflow-x:auto;margin-top:12px;font-size:12.5px;line-height:1.5}
+.pk-tournoi table.pr-h{min-width:620px}
+.pk-tournoi .pied{font-size:11px;color:var(--dim);margin-top:6px}
 </style>
 
   <div class="top">
@@ -853,6 +857,7 @@ table.pr-h td:first-child,table.pr-h th:first-child{text-align:left}
     <div class="pr-stats" id="pkBank"></div>
     <div class="pr-mart" id="pkMart" style="display:none"></div>
     <div class="pk-ombres" id="pkOmbres" style="display:none"></div>
+    <div class="pk-tournoi" id="pkTournoi" style="display:none"></div>
     <div class="pr-note" id="pkMeta" style="margin-top:8px;font-size:11px;color:var(--dim)"></div>
   </div>
 
@@ -1055,7 +1060,7 @@ document.addEventListener("DOMContentLoaded", function(){
       }
     } else if(mt){ $("pkMart").style.display=""; $("pkMart").innerHTML='<span style="color:var(--dim)">Martingale off — flat stake.</span>'; }
     else { $("pkMart").style.display="none"; }
-    peintPorte(j); peintOmbres(j.ombres);
+    peintPorte(j); peintOmbres(j.ombres); peintTournoi(j.tournament);
     var maj=j.maj?new Date(j.maj):null;
     $("pkMeta").textContent = (j.marche||"BNB")+" · 5 min rounds · fee "+Math.round((j.fee||0.03)*100)+"% · base stake "+j.mise+" BNB · paper"+(j.inverse?(j.parie===false?" · INVERSE mode (set, not betting)":" · INVERSE (bets the opposite side)"):"")+(j.enPause?" · off":"")+(maj?(" · updated "+maj.toLocaleTimeString()):"");
   }
@@ -1087,6 +1092,27 @@ document.addEventListener("DOMContentLoaded", function(){
     });
     h+='</tbody></table><div class="pied">'+o.nCandidats+' candidates watched at once (incl. the always-BULL control) · '
       +(o.annules?o.annules+' cancelled round(s) refunded, not counted · ':'')+esc(o.regle)+'</div>';
+    el.innerHTML=h; el.style.display="";
+  }
+  /* Le tournoi (30/09) : les strategies passees sur les vrais rounds, la regle des 500,
+     et seuls les rounds du DIRECT pour juger. Tout vient du serveur ; texte echappe. */
+  function peintTournoi(t){
+    var el=$("pkTournoi"); if(!t||!t.threshold||!el){ if(el) el.style.display="none"; return; }
+    var sg=function(x,d){ return x==null?"—":((x>0?"+":"")+Number(x).toFixed(d==null?2:d)); };
+    var nb=function(x){ return Number(x||0).toLocaleString("en-US"); };
+    var h='<b>Strategy tournament on the real rounds.</b> '+nb(t.testedHere)+' strategies replayed on '+nb(t.roundsRead)+' real PancakeSwap rounds: <b>'+nb(t.retired)+'</b> retired (still in the red after '+t.threshold+' bets), <b>'+nb(t.running)+'</b> still running. '
+      +'<b>'+(t.proven?t.proven+' proven on live rounds.':'None proven yet')+'</b>'+(t.proven?'':' — the past rounds only explore; '+nb(t.liveJudgeable)+' running strateg'+(t.liveJudgeable===1?'y has':'ies have')+' '+t.threshold+'+ live rounds so far (bar: t ≥ '+Number(t.bar).toFixed(2)+').');
+    var ligne=function(c){
+      var H=c.history||{}, L=c.live||{};
+      return '<tr><td>'+esc(c.name)+'</td><td>'+nb(H.n)+'</td><td>'+(H.winRate==null?"—":Number(H.winRate).toFixed(1)+'%')+'</td>'
+        +'<td class="'+(H.ev==null?"":(H.ev>=0?"pos":"neg"))+'">'+(H.ev==null?"—":sg(H.ev)+'%')+'</td><td>'+(H.t==null?"—":Number(H.t).toFixed(2))+'</td>'
+        +'<td>'+nb(L.n)+'</td><td class="'+(L.ev==null?"":(L.ev>=0?"pos":"neg"))+'">'+(L.ev==null?"—":sg(L.ev)+'%')+'</td><td>'+(L.t==null?"—":Number(L.t).toFixed(2))+'</td>'
+        +'<td>'+(c.retired?'retired after '+nb(c.retired.bets):(c.control?'control':(c.proven?'<b class="pos">proven</b>':'next check at '+nb(c.nextJudgedAt))))+'</td></tr>';
+    };
+    h+='<table class="pr-h" style="margin-top:8px"><thead><tr><th>Strategy</th><th>Past bets</th><th>Won</th><th>EV / bet</th><th>t</th><th>Live bets</th><th>Live EV</th><th>Live t</th><th>Status</th></tr></thead><tbody>';
+    (t.survivors||[]).forEach(function(c){ h+=ligne(c); });
+    (t.controls||[]).forEach(function(c){ h+=ligne(c); });
+    h+='</tbody></table><div class="pied">Survivors ranked by their past t, then the controls. '+(t.liveSinceEpoch?'Live rounds: from round '+nb(t.liveSinceEpoch)+'. ':'')+esc(t.rule)+'</div>';
     el.innerHTML=h; el.style.display="";
   }
   chargePancake();

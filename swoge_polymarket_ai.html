@@ -316,6 +316,13 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 .tournoi th{ position:sticky; top:0; background:var(--carte); }
 .tournoi td.num, .tournoi th.num{ text-align:right; font-variant-numeric:tabular-nums; }
 .tournoi td.nom{ white-space:normal; min-width:160px; }
+/* La preuve (30/09) : ou en est-on d un resultat, par fenetre et contre la barre. */
+.preuve{ margin:14px 0 4px; padding:12px 14px; border:1px solid var(--ligne); border-radius:10px; background:var(--carte); }
+.preuve h3{ font-size:15px; margin:0 0 6px; }
+.preuve .gros{ font-weight:700; }
+.preuve .boite{ margin-top:6px; max-height:320px; overflow:auto; }
+.preuve td.num, .preuve th.num{ text-align:right; font-variant-numeric:tabular-nums; }
+.preuve td.nom{ white-space:normal; min-width:150px; }
 .agent{ border:1px solid var(--ligne); border-radius:12px; padding:12px; min-width:0; }
 .agent .tete{ display:flex; justify-content:space-between; gap:8px; align-items:baseline; }
 .agent .nom{ font-weight:800; }
@@ -421,12 +428,21 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     <h2 id="t-agents">The agents</h2>
     <p class="intro" id="depuis"></p>
     <p class="intro" id="effectif" hidden></p>
+    <div class="preuve" id="preuve" hidden>
+      <h3>Is there a real result yet?</h3>
+      <p class="intro gros" id="prVerdict"></p>
+      <p class="intro" id="prRegle"></p>
+      <div class="boite"><table>
+        <thead><tr><th>Strategy</th><th class="num">Windows</th><th class="num">Skill / window</th><th class="num">P&amp;L</th></tr></thead>
+        <tbody id="prLignes"></tbody>
+      </table></div>
+    </div>
     <div class="agents" id="agents"></div>
     <div class="classement" id="classement" hidden>
       <h3>All strategies, from most to least profitable</h3>
       <p class="intro" id="clResume"></p>
       <div class="boite"><table>
-        <thead><tr><th class="num">#</th><th>Strategy</th><th class="num">Settled</th><th class="num">Won</th><th class="num">P&amp;L</th><th class="num">Judged at</th></tr></thead>
+        <thead><tr><th class="num">#</th><th>Strategy</th><th class="num">Settled</th><th class="num">Won</th><th class="num">P&amp;L</th><th class="num">Skill / window</th><th class="num">Judged at</th></tr></thead>
         <tbody id="clLignes"></tbody>
       </table></div>
     </div>
@@ -526,7 +542,10 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     ligne("Bets", a.bets + " \u00b7 " + a.resolved + " settled \u00b7 " + a.open + " open");
     ligne("Won", a.winRate ? a.won + " (" + pct(a.winRate.p) + ", 95% range " + pct(a.winRate.low) + "\u2013" + pct(a.winRate.high) + ")" : "\u2014");
     ligne("Avg price paid", cents(a.avgPricePaid));
-    ligne("Skill score", a.skill == null ? "\u2014" : String(a.skill));
+    /* 30/09 : le score par fenetre fait foi ; le score par pari reste, en petit, pour comparer. */
+    if (a.windows != null) ligne("Skill per window", (a.skillPerWindow == null ? "\u2014" : String(a.skillPerWindow)) + " over " + a.windows + " window" + (a.windows === 1 ? "" : "s") +
+      " (per bet: " + (a.skill == null ? "\u2014" : String(a.skill)) + ")");
+    else ligne("Skill score", a.skill == null ? "\u2014" : String(a.skill));
     ligne("Fees paid", usd(a.fees));
     ligne("Worst drawdown", a.drawdown ? "\u2212" + usd(a.drawdown) : "$0.00");
     c.appendChild(dl); c.appendChild(el("div", "v", a.verdict));
@@ -550,6 +569,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       tr.appendChild(el("td", "num", (c.resolved || 0) < min ? c.resolved + "/" + min : String(c.resolved)));
       tr.appendChild(el("td", "num", c.resolved ? pct(c.won / c.resolved) : "\u2014"));
       tr.appendChild(el("td", "num " + (Number(c.pnl) > 0 ? "pos" : Number(c.pnl) < 0 ? "neg" : ""), c.resolved ? signe(c.pnl) : "\u2014"));
+      tr.appendChild(el("td", "num", c.windows == null ? "\u2014" : (c.skillPerWindow == null ? "\u2014" : String(c.skillPerWindow)) + " (" + c.windows + ")"));
       tr.appendChild(el("td", "num", c.nextJudgedAt ? String(c.nextJudgedAt) : (d.tournament && c.nextJudgedAt === null ? "never" : "\u2014")));
       tb.appendChild(tr);
     });
@@ -557,6 +577,29 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   }
   /* Le tournoi (30/09) : la regle telle que la dit le serveur, ce qui a ete essaye, et les
      derniers retires avec leur bilan. Tout en texte, jamais en HTML. */
+  /* Ou en est-on d un resultat (30/09) : tout vient du serveur (evidence), ecrit en texte. */
+  function peintPreuve(d){
+    var bloc = $("preuve"), e = d.evidence;
+    if (!e || !e.minWindows) { bloc.hidden = true; return; }
+    var v = $("prVerdict");
+    if (e.proven > 0) v.textContent = e.proven + " strateg" + (e.proven === 1 ? "y has" : "ies have") + " an edge above the " + e.bar + " bar, in profit after fees.";
+    else if (e.promising > 0) v.textContent = "Not yet. " + e.promising + " promising (skill 2+ per window), none above the " + e.bar + " bar that " + e.tested + " strategies tested require.";
+    else if (e.measured > 0) v.textContent = "Not yet. " + e.measured + " strateg" + (e.measured === 1 ? "y" : "ies") + " measured over " + e.minWindows + "+ windows, none promising.";
+    else v.textContent = "Not yet: no strategy has " + e.minWindows + " windows counted since " + String(e.since || "").slice(0, 10) + ".";
+    $("prRegle").textContent = String(e.rule || "");
+    var tb = $("prLignes"); tb.textContent = "";
+    var l = Array.isArray(e.leaders) && e.leaders.length ? e.leaders : (Array.isArray(e.closest) ? e.closest : []);
+    var mesure = Array.isArray(e.leaders) && e.leaders.length > 0;
+    l.forEach(function(c){
+      var tr = el("tr");
+      tr.appendChild(el("td", "nom", String(c.name || c.id)));
+      tr.appendChild(el("td", "num", mesure ? String(c.windows) : c.windows + "/" + e.minWindows));
+      tr.appendChild(el("td", "num", c.skillPerWindow == null ? "\u2014" : String(c.skillPerWindow)));
+      tr.appendChild(el("td", "num " + (Number(c.pnl) > 0 ? "pos" : Number(c.pnl) < 0 ? "neg" : ""), signe(c.pnl || 0)));
+      tb.appendChild(tr);
+    });
+    bloc.hidden = false;
+  }
   function peintTournoi(d){
     var bloc = $("tournoi"), t = d.tournament;
     if (!t || !t.threshold) { bloc.hidden = true; return; }
@@ -620,6 +663,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     (d.agents || []).slice().sort(function(x, y){ return (Number(y.pnl) || 0) - (Number(x.pnl) || 0); }).forEach(function(a){ g.appendChild(carte(a)); });
     peintClassement(d);
     peintTournoi(d);
+    peintPreuve(d);
     var c = d.calibration || {}, v = $("calibVerdict");
     if (!c.n) { v.className = "verdict peu"; v.textContent = "No window scored yet (" + (c.pending || 0) + " waiting for their result)."; }
     else if (!c.enough) { v.className = "verdict peu"; v.textContent = "Too few windows to compare (" + c.n + "/" + c.minN + "). So far: model " + c.brierModel + ", market " + c.brierMarket + " (lower is better)."; }

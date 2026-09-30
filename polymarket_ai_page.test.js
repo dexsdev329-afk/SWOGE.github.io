@@ -30,8 +30,13 @@ const ETAT = (calib) => ({ ok: true, depuis: '2026-09-29T14:00:00.000Z', stakeUs
     rule: 'A strategy still in the red after 500 settled bets is retired and replaced by a parameter set never tried before.',
     recentlyRetired: calib.n ? [{ id: 'p_x', name: '<img src=x onerror=window.pirate=7>', type: 'parametric', resolved: 500, won: 230, pnl: -61.4, retiredAt: '2026-10-02T08:15:00.000Z', final: false },
       { id: 'p_y', name: 'P·Fade>80¢ · 2:00–0:30 left', type: 'parametric', resolved: 503, won: 71, pnl: -12.05, retiredAt: '2026-10-01T22:40:00.000Z', final: true }] : [] },
+  /* La preuve (30/09) : sans calibration (« vide »), personne n a 50 fenetres ; sinon une prometteuse au nom piege. */
+  evidence: { since: '2026-09-30T19:00:00.000Z', minWindows: 50, tested: 405, bar: 3.67, measured: calib.n ? 2 : 0, proven: 0, promising: calib.n ? 1 : 0,
+    rule: 'Bets placed in the same 15 minutes count as one observation.',
+    leaders: calib.n ? [{ id: 'p_a', name: '<img src=x onerror=window.pirate=6>', windows: 61, skillPerWindow: 2.4, resolved: 150, pnl: 120.5 }, { id: 'crowd', name: 'Crowd', windows: 70, skillPerWindow: 0.3, resolved: 400, pnl: -3 }] : [],
+    closest: [{ id: 'p_a', name: 'P·FV 1.5pt', windows: 12, skillPerWindow: 1.1, pnl: 30 }] },
   summary: { total: 6, inProfit: 2, inLoss: 3, noSettledBet: 1, totalPnl: -1315.49, judgeable: 3 },
-  agents: [agent('coin', 'Coin', { bets: 120, resolved: 118, won: 57, winRate: { p: 0.483, low: 0.395, high: 0.572 }, skill: -0.4, avgPricePaid: 0.51, pnl: -41.2, fees: 20.3, drawdown: 55.1, verdict: 'No edge: loses after the spread and fees (skill score -0.4).' }),
+  agents: [agent('coin', 'Coin', { bets: 120, resolved: 118, won: 57, winRate: { p: 0.483, low: 0.395, high: 0.572 }, skill: -0.4, skillPerWindow: -0.3, windows: 42, avgPricePaid: 0.51, pnl: -41.2, fees: 20.3, drawdown: 55.1, verdict: 'No edge: loses after the spread and fees (skill score -0.4).' }),
     agent('crowd', 'Crowd'), agent('fair', 'Fair Value', { role: 'Model <img src=x onerror=window.pirate=1>', pnl: 12.5 }), agent('late', 'Last Minute'), agent('fade', 'Longshot')],
   calibration: calib, open: [{ agent: 'fair', asset: 'BTC', window: '2026-09-29T14:15:00.000Z', side: 'Up', price: 0.55, fee: 0.315, model: 0.716, url: 'https://polymarket.com/event/btc-updown-15m-1790691300' }],
   recent: [{ agent: 'coin', asset: 'ETH', window: '2026-09-29T14:00:00.000Z', side: 'Down', price: 0.47, fee: 0.37, result: 'Up', pnl: -10.37, url: 'javascript:alert(1)' },
@@ -80,7 +85,7 @@ const CALIBS = {
     ok(cl[0].gris && !cl[1].gris && cl[4].gris === false, 'sous 100 paris regles, la ligne est grisee (pas un verdict) ; au-dela, non');
     ok(await page.evaluate(() => !document.querySelector('#clLignes img') && window.pirate === undefined), 'un nom de strategie est ecrit en texte, jamais en HTML');
     ok(/2 in profit, 3 at a loss, 1 with no settled bet yet/.test(await page.textContent('#clResume')), 'le resume dit combien gagnent et combien perdent');
-    const juge = await page.evaluate(() => [...document.querySelectorAll('#clLignes tr')].map((tr) => tr.children[5].textContent));
+    const juge = await page.evaluate(() => [...document.querySelectorAll('#clLignes tr')].map((tr) => tr.children[6].textContent));
     ok(juge.join('|') === '500|never|500|500|never|never', 'chaque ligne dit a quel palier elle sera jugee ; un temoin, jamais [' + juge.join(' ') + ']');
     const cartes = await page.evaluate(() => [...document.querySelectorAll('#agents .agent .tete .nom')].map((e) => e.textContent));
     const pnlCartes = await page.evaluate(() => [...document.querySelectorAll('#agents .agent .tete .pos, #agents .agent .tete .neg')].map((e) => parseFloat(e.textContent.replace(/[^0-9.\-−+]/g, '').replace('−', '-'))));
@@ -118,7 +123,29 @@ const CALIBS = {
 
   /* 30/09 : « au bout de 500 bets, s il est toujours en negatif, l agent se supprime et un
      nouveau jamais essaye apparait ; retenir tous les agents et parametres essayes ». */
-  console.log('\n-- 3 bis. le tournoi --');
+  /* 30/09 : « il a un edge ? » — 3,15 sur 100 paris correles, meilleure de 405 : non prouve. */
+  console.log('\n-- 3 bis. y a-t-il un vrai resultat ? --');
+  {
+    let { page, ctx } = await ouvre('vide');
+    await page.waitForFunction(() => !document.getElementById('preuve').hidden);
+    ok(/^Not yet: no strategy has 50 windows counted since 2026-09-30\.$/.test(await page.textContent('#prVerdict')), 'personne n a 50 fenetres : « pas encore », et depuis quand on compte');
+    ok(/P·FV 1\.5pt/.test(await page.textContent('#prLignes')) && /12\/50/.test(await page.textContent('#prLignes')), 'on montre celles qui approchent (12/50 fenetres)');
+    const t = await page.textContent('#agents');
+    ok(/Skill per window-0\.3 over 42 windows \(per bet: -0\.4\)/.test(t), 'la carte : score par fenetre, sur combien de fenetres, et le score par pari pour comparer');
+    await ctx.close();
+    ({ page, ctx } = await ouvre('peu'));
+    await page.waitForFunction(() => /promising/.test(document.getElementById('prVerdict').textContent));
+    ok(/^Not yet\. 1 promising \(skill 2\+ per window\), none above the 3\.67 bar that 405 strategies tested require\.$/.test(await page.textContent('#prVerdict')),
+       'une prometteuse sous la barre : « pas encore », avec la barre et le nombre essaye');
+    const l = await page.evaluate(() => [...document.querySelectorAll('#prLignes tr')].map((tr) => [...tr.children].map((td) => td.textContent)));
+    ok(l[0][0] === '<img src=x onerror=window.pirate=6>' && l[0][1] === '61' && l[0][2] === '2.4' && await page.evaluate(() => !document.querySelector('#preuve img') && window.pirate === undefined),
+       'le meneur : nom en texte, fenetres, score par fenetre [' + l[0].join(' | ') + ']');
+    const cl = await page.evaluate(() => [...document.querySelectorAll('#clLignes tr')].map((tr) => tr.children[5].textContent));
+    ok(cl.every((x) => x === '\u2014'), 'le classement a sa colonne par fenetre (vide quand le serveur ne la donne pas)');
+    await ctx.close();
+  }
+
+  console.log('\n-- 3 ter. le tournoi --');
   {
     let { page, ctx } = await ouvre('vide');
     await page.waitForFunction(() => !document.getElementById('tournoi').hidden);

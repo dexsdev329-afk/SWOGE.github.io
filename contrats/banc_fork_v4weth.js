@@ -387,6 +387,16 @@ function motif(r) {
      'ses seules fonctions : l ERC-20 et owner() — ni setPool, ni fun, ni mint [' + fonctions.join(',') + ']');
   const own = await lire(JETON, itok.encodeFunctionData('owner', []));
   ok(own && BigInt(own) === 0n, 'owner() rend l adresse zero — « renounced » lisible par un scanner');
+  /* 30/09/2026 — GoPlus « hidden_owner: 1 » sur les deux jetons de test du 29/09 : leur owner()
+     etait une CONSTANTE (`pure`, return address(0)) sans variable derriere, le motif des faux
+     renoncements. Sur Robinhood Chain, les jetons que GoPlus note 0 n ont pas de owner() du tout,
+     ou une vraie variable (CATS, relu le 30/09). Le jeton porte maintenant une variable en
+     stockage, mise a zero et annoncee par l evenement standard des la creation. */
+  const fOwner = itok.getFunction('owner');
+  ok(fOwner.stateMutability === 'view', 'owner() lit une variable (view), ce n est plus une constante (pure) [' + fOwner.stateMutability + ']');
+  const topicOT = ethers.utils.id('OwnershipTransferred(address,address)');
+  const evOT = (cr.execResult.logs || []).filter((l) => ethers.utils.getAddress(bytesToHex(l[0])) === JETON && bytesToHex(l[1][0]) === topicOT);
+  ok(evOT.length === 1 && BigInt(bytesToHex(evOT[0][1][2])) === 0n, 'a la creation, le jeton emet OwnershipTransferred vers l adresse zero, comme un renoncement standard');
 
   /* ---- 5. UNE RECOLTE A VIDE NE DEPLACE RIEN ---- */
   console.log('\n-- 5. recolte a vide --');

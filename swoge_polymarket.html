@@ -300,8 +300,18 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 .sw-lat .salon:hover img,.sw-lat .salon:hover .film{transform:scale(1.03)}
 .sw-lat .salon img,.sw-lat .salon .film{transition:transform .2s}
 @media (max-width:1360px){
+  .sw-menubtn{ display:none }
   .sw-cote, .sw-lat{ display:none }
+  .sw-cote.sw-affiche, .sw-lat.sw-affiche{ display:flex !important }
   .sw-corps{ padding:0; display:block; max-width:none }
+}
+@media (max-width:1360px){
+  .sw-menubtn{ display:flex; align-items:center; justify-content:center; gap:6px; width:40px; height:40px;
+    background:0; border:0; cursor:pointer; padding:0; margin-left:auto; }
+  .sw-menubtn span{ display:block; width:20px; height:2px; background:var(--encre); border-radius:1px; transition:.2s }
+  .sw-menubtn[aria-expanded="true"] span:nth-child(1){ transform:translateY(8px) rotate(45deg) }
+  .sw-menubtn[aria-expanded="true"] span:nth-child(2){ opacity:0 }
+  .sw-menubtn[aria-expanded="true"] span:nth-child(3){ transform:translateY(-8px) rotate(-45deg) }
 }
 /* ---- LA COLONNE DE GAUCHE NE GONFLE PLUS (memes deux colonnes de bord que
    `swoge_poker.html`) ----
@@ -339,6 +349,9 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     <div class="sw-ch"><span class="ic">&#127918;</span><span><small>ROUNDS PLAYED</small><b data-n="manches">&mdash;</b></span></div>
     <div class="sw-ch"><span class="ic">&#127942;</span><span><small>WINNINGS PAID</small><b data-n="rendus">&mdash;</b></span></div>
   </div>
+  <button id="gxMenuBtn" class="sw-menubtn" aria-label="Menu" aria-expanded="false" hidden>
+    <span></span><span></span><span></span>
+  </button>
 </header>
 
 <!-- Les quatre chiffres de la vitrine, lus sur le serveur — meme script que
@@ -745,6 +758,45 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 
   /* ?trader=<nom ou 0x> : un lien partage ouvre directement la verification. */
   (function(){ var q = null; try { q = new URLSearchParams(location.search).get("trader"); } catch (e) {} if (q) { $("qui").value = String(q).slice(0, 120); verifie(); } })();
+})();
+</script>
+<script>
+(function(){
+  var btn = document.getElementById("gxMenuBtn");
+  var cote = document.querySelector(".sw-cote");
+  var lat = document.querySelector(".sw-lat");
+  if (!btn || !cote || !lat) return;
+
+  function montreMenuSurMobile(){
+    if (window.innerWidth <= 1360) {
+      btn.hidden = false;
+    } else {
+      btn.hidden = true;
+      btn.setAttribute("aria-expanded", "false");
+      cote.classList.remove("sw-affiche");
+      lat.classList.remove("sw-affiche");
+    }
+  }
+
+  montreMenuSurMobile();
+  window.addEventListener("resize", montreMenuSurMobile);
+
+  btn.addEventListener("click", function(){
+    var expanded = btn.getAttribute("aria-expanded") === "true";
+    btn.setAttribute("aria-expanded", !expanded);
+    cote.classList.toggle("sw-affiche");
+    lat.classList.toggle("sw-affiche");
+  });
+
+  document.addEventListener("click", function(e){
+    if (e.target !== btn && !btn.contains(e.target) && !cote.contains(e.target) && !lat.contains(e.target)) {
+      if (btn.getAttribute("aria-expanded") === "true") {
+        btn.setAttribute("aria-expanded", "false");
+        cote.classList.remove("sw-affiche");
+        lat.classList.remove("sw-affiche");
+      }
+    }
+  });
 })();
 </script>
 </body>

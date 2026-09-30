@@ -272,7 +272,8 @@ const CAT = { ouvert: true, note: null, monnaie: '$SWOGE', defaut: 'opus-5-5', e
     const plan = fs.readFileSync(path.join(SITE, 'sitemap.xml'), 'utf8');
     ok(/swolemind\.html/.test(plan) && !/swoge_chat\.html|swoge_studio\.html/.test(plan), 'le sitemap porte swolemind.html, plus les anciennes');
     const html = fs.readFileSync(path.join(SITE, 'swolemind.html'), 'utf8');
-    ok(/<title>SwoleMind/.test(html) && /class="on" aria-current="page"><span class="ic">&#129504;<\/span>SwoleMind</.test(html), 'le titre et le menu disent SwoleMind');
+    /* 30/09 : l entree de menu est commune avec SwogeAgentic (« Agents », swoge_agents.html). */
+    ok(/<title>SwoleMind/.test(html) && /<a href="swoge_agents\.html" class="on" aria-current="page"><span class="ic">&#129504;<\/span>Agents</.test(html), 'le titre dit SwoleMind, le menu montre son entree Agents active');
     const pages = fs.readdirSync(SITE).filter((f) => /\.html$/.test(f) && !['swoge_studio.html', 'swoge_chat.html'].includes(f));
     const vieux = pages.filter((f) => /href="swoge_studio\.html"/.test(fs.readFileSync(path.join(SITE, f), 'utf8')));
     ok(vieux.length === 0, 'aucun menu du site ne pointe encore vers l ancienne adresse' + (vieux.length ? ' : ' + vieux.join(', ') : ''));

@@ -151,7 +151,9 @@ const PEPE = { adresse:'0x6982508145454ce325ddbe47a25d4ec3d2311933', trouve:true
     const html = fs.readFileSync(path.join(SITE, 'swogeagentic.html'), 'utf8');
     ok(/<title>SwogeAgentic[^<]*<\/title>/.test(html) && /rel="canonical" href="https:\/\/swoleeswoge\.dog\/swogeagentic\.html"/.test(html), 'son titre et son adresse canonique');
     ok(!/sk-ant-|ANTHROPIC_API_KEY\s*=|api\.anthropic\.com/.test(html), 'aucune cle, et la page ne parle jamais au fournisseur');
-    ok(/<a href="swogeagentic\.html" class="on" aria-current="page">/.test(html) && /<a href="swolemind\.html">/.test(html), 'dans le menu, a cote de SwoleMind');
+    /* 30/09 : SwoleMind et SwogeAgentic partagent une entree de menu, « Agents », qui ouvre
+       swoge_agents.html (deux onglets, generee depuis les deux pages) ; l agent y est un onglet. */
+    ok(/<a href="swoge_agents\.html" class="on" aria-current="page">/.test(html) && !/<a href="swolemind\.html"/.test(html), 'dans le menu, sous l entree commune Agents');
     const sm = fs.readFileSync(path.join(SITE, 'swolemind.html'), 'utf8');
     /* 29/09 : le proprietaire a voulu les missions dans SwoleMind (etape 1 « Agent OS ») : seul le mode
        Mission y parle a l'agent ; son chat reste le chat (/studio/chat), et la page reste a part. */

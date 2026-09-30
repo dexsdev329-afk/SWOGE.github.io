@@ -1939,6 +1939,9 @@ function qrMatrice(txt){
   });
   $("payeur").addEventListener("change", function(){ etat.payeurChoisi = payeur(); ecrisLocal("swogeAgentPayeur", etat.payeurChoisi); if (etat.cat) peintPrix(); });
 
+  /* L'onglet Browse de la page Agents (30/09) pose data-agent-mode="browse" sur la page : la
+     tache part en mode browse (lire le web, citer, rien qui depense — voir navigue.js). */
+  function modeTache(){ return document.documentElement.getAttribute("data-agent-mode") === "browse" ? "browse" : undefined; }
   function envoyer(){
     var q = $("question").value.trim();
     if (!q || etat.occupe) return;
@@ -1957,7 +1960,7 @@ function qrMatrice(txt){
     var ctl = new AbortController(); etat.enVol = { rid: rid, ctl: ctl }; peintBoutons();
     function termine(){ etat.enVol = null; etat.occupe = false; peintBoutons(); if (attente.parentNode) attente.remove(); }
     fetch(serveur() + "/studio/agent", { method: "POST", signal: ctl.signal, headers: { "content-type": "application/json", authorization: "Bearer " + j },
-      body: JSON.stringify({ rid: rid, modele: m.id, messages: historique, payeur: payeurServeur() }) })
+      body: JSON.stringify({ rid: rid, modele: m.id, messages: historique, payeur: payeurServeur(), mode: modeTache() }) })
       .then(function(rep){
         if (!rep.ok || !rep.body) return rep.json().then(function(e){ throw { code: rep.status, raison: e && e.raison, requisSwoge: e && e.requisSwoge }; }, function(){ throw { code: rep.status }; });
         var lecteur = rep.body.getReader(), dec = new TextDecoder(), tampon = "";

@@ -190,7 +190,7 @@ const ONGLETS_CSS = `
  * qu il fait : le joueur choisit sans connaitre les anciens noms. Le bouton
  * general de la page (Anton, majuscules, fond bleu) est entierement repris. */
 .onglets-cadre{max-width:780px;margin:0 auto;padding:12px 16px 0}
-.onglets{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;padding:4px;background:var(--panel2);border-radius:16px}
+.onglets{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px;padding:4px;background:var(--panel2);border-radius:16px}
 @media (max-width:560px){ .onglets{grid-template-columns:1fr 1fr} }
 .onglets button{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;min-width:0;
   font:inherit;text-transform:none;letter-spacing:0;background:transparent;color:var(--dim);
@@ -216,6 +216,12 @@ const ONGLETS_CSS = `
 /* OSINT et eSIM (30/09) : l onglet les nomme, leurs grands titres restent ; eSIM garde sa
    typographie a lui, le bouton general de la page (Anton, majuscules) est repris. */
 #modeOsint .wrap{padding-top:14px}
+/* Browse (30/09) : la vue de l agent, en mode lecture du web ; une ligne dit ce qu il fait. */
+.browse-note{max-width:780px;margin:10px auto 0;padding:10px 14px;border:1px solid var(--line);border-radius:14px;background:var(--panel);font-size:13.5px;line-height:1.45;color:var(--dim)}
+.browse-note b{color:var(--paper)}
+.browse-note .choix{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.browse-note .choix button{font:inherit;font-size:12.5px;text-transform:none;letter-spacing:0;padding:6px 10px;border-radius:999px;border:1px solid var(--line);background:var(--panel2);color:var(--paper);cursor:pointer}
+.browse-note .choix button:hover{transform:none;filter:none}
 #modeEsim .es-cadre{font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:var(--encre)}
 #modeEsim h1{font-family:inherit;text-transform:none;letter-spacing:0}
 #modeEsim button{text-transform:none;letter-spacing:0}
@@ -228,10 +234,25 @@ const ONGLETS_HTML = `<div class="onglets-cadre">
       <b>&#128172; Chat &amp; create</b><small>Claude, ChatGPT, Grok &middot; images &middot; videos</small></button>
     <button type="button" role="tab" id="ongletAgent" aria-controls="modeAgent" aria-selected="false" tabindex="-1">
       <b>&#129302; Agent</b><small>Give it a task: tokens, the colony, the web</small></button>
+    <button type="button" role="tab" id="ongletBrowse" aria-controls="modeAgent" aria-selected="false" tabindex="-1">
+      <b>&#127760; Browse</b><small>Reads web pages for you, cites every source</small></button>
     <button type="button" role="tab" id="ongletOsint" aria-controls="modeOsint" aria-selected="false" tabindex="-1">
       <b>&#128269; OSINT</b><small>Domain, IP, site or address, from public sources</small></button>
     <button type="button" role="tab" id="ongletEsim" aria-controls="modeEsim" aria-selected="false" tabindex="-1">
       <b>&#128246; eSIM</b><small>Travel data, paid in USDC from your wallet</small></button>
+  </div>
+</div>
+`;
+
+/* Browse (30/09) : ce que fait le mode, en une ligne, et trois exemples. Le texte des pages
+   est lu comme une donnee ; aucun outil qui depense n est offert (navigue.js, studio_agent.js). */
+const BROWSE_NOTE = `<div class="browse-note" id="browseNote" hidden>
+  <b>Browse:</b> the agent reads web pages for you, follows their links and answers with every source cited. Paste a link or just ask.
+  Reading only: no clicks, no logins, and nothing is bought or paid in this mode except the answer itself, from your balance.
+  <div class="choix">
+    <button type="button" data-t="Read this page and summarise it in 5 bullet points, with the key numbers: ">Summarise a page</button>
+    <button type="button" data-t="Read this project's website and docs, follow the important links, and explain what it does and who is behind it: ">Explain a project</button>
+    <button type="button" data-t="Find the latest news about this, read the best 3 articles and compare what they say: ">Latest news, compared</button>
   </div>
 </div>
 `;
@@ -242,19 +263,29 @@ const ONGLETS_HTML = `<div class="onglets-cadre">
 const ONGLETS_JS = `<script>
 (function(){
   "use strict";
-  var ordre = ["chat", "agent", "osint", "esim"];
-  var onglets = { chat: document.getElementById("ongletChat"), agent: document.getElementById("ongletAgent"),
+  var ordre = ["chat", "agent", "browse", "osint", "esim"];
+  var onglets = { chat: document.getElementById("ongletChat"), agent: document.getElementById("ongletAgent"), browse: document.getElementById("ongletBrowse"),
                   osint: document.getElementById("ongletOsint"), esim: document.getElementById("ongletEsim") };
-  var vues = { chat: document.getElementById("modeChat"), agent: document.getElementById("modeAgent"),
+  /* Browse (30/09) : la MEME vue que l agent — son portefeuille, son credit, son fil — en mode lecture du web. */
+  var vues = { chat: document.getElementById("modeChat"), agent: document.getElementById("modeAgent"), browse: document.getElementById("modeAgent"),
                osint: document.getElementById("modeOsint"), esim: document.getElementById("modeEsim") };
-  var saisies = { chat: "question", agent: "ag-question" };
+  var saisies = { chat: "question", agent: "ag-question", browse: "ag-question" };
+  var note = document.getElementById("browseNote"), saisieAgent = document.getElementById("ag-question");
+  var invite = saisieAgent ? saisieAgent.getAttribute("placeholder") : "";
+  var courant = "chat";
   function montre(m, garde){
     if (!vues[m]) m = "chat";
+    courant = m;
     Object.keys(vues).forEach(function(k){
-      vues[k].hidden = k !== m;
       onglets[k].setAttribute("aria-selected", String(k === m));
       onglets[k].tabIndex = k === m ? 0 : -1;
     });
+    ["modeChat", "modeAgent", "modeOsint", "modeEsim"].forEach(function(id){ var v = document.getElementById(id); v.hidden = v !== vues[m]; });
+    var lecture = m === "browse";
+    if (lecture) document.documentElement.setAttribute("data-agent-mode", "browse"); else document.documentElement.removeAttribute("data-agent-mode");
+    if (note) note.hidden = !lecture;
+    if (saisieAgent) saisieAgent.setAttribute("placeholder", lecture ? "Paste a link, or ask the web something" : invite);
+    vues[m].setAttribute("aria-labelledby", onglets[m].id);
     var t = document.getElementById(saisies[m]);
     if (t) try { t.dispatchEvent(new Event("input")); } catch (e) {}
     if (!garde) return;
@@ -265,9 +296,13 @@ const ONGLETS_JS = `<script>
   /* Les liens des anciennes pages rouvrent leur onglet : ?q= (enquete OSINT partagee),
      ?order= (le lien de commande eSIM, seul moyen de revoir son code d activation). */
   try { var u0 = new URLSearchParams(location.search); depart = u0.get("mode") || (u0.get("order") ? "esim" : u0.get("q") ? "osint" : null); } catch (e) {}
-  if (!depart && /^#(agent|chat|osint|esim)$/.test(location.hash)) depart = location.hash.slice(1);
+  if (!depart && /^#(agent|browse|chat|osint|esim)$/.test(location.hash)) depart = location.hash.slice(1);
   if (!depart) try { depart = localStorage.getItem("swogeAgentsVue"); } catch (e) {}
   montre(depart || "chat", false);
+  /* Les exemples de Browse remplissent la saisie de l agent ; rien ne part sans le joueur. */
+  if (note) Array.prototype.forEach.call(note.querySelectorAll("[data-t]"), function(b){
+    b.addEventListener("click", function(){ if (!saisieAgent) return; saisieAgent.value = b.getAttribute("data-t"); saisieAgent.dispatchEvent(new Event("input")); saisieAgent.focus(); });
+  });
   Object.keys(onglets).forEach(function(k){
     onglets[k].addEventListener("click", function(){ montre(k, true); });
     onglets[k].addEventListener("keydown", function(e){
@@ -282,7 +317,7 @@ const ONGLETS_JS = `<script>
      le choix Chat/Agent invisible. Si elle est passee au-dessus, on remonte
      juste assez pour la montrer ; a 1280 elle reste visible et rien ne bouge. */
   document.addEventListener("DOMContentLoaded", function(){
-    montre(ordre.filter(function(k){ return !vues[k].hidden; })[0] || "chat", false);
+    montre(courant, false);
     var haut = document.querySelector(".onglets").getBoundingClientRect().top;
     if (!location.hash && haut < 0) window.scrollBy(0, haut - 8);
   });
@@ -330,7 +365,7 @@ function fusionne() {
     '<style>' + ONGLETS_CSS + '</style>\n' +
     ONGLETS_HTML +
     '<section class="ag-mode" id="modeChat" role="tabpanel" aria-labelledby="ongletChat">\n' + chat.html + '</section>\n' +
-    '<section class="ag-mode" id="modeAgent" role="tabpanel" aria-labelledby="ongletAgent" hidden>\n<div class="ag-cadre">\n' + html + '</div>\n</section>\n' +
+    '<section class="ag-mode" id="modeAgent" role="tabpanel" aria-labelledby="ongletAgent" hidden>\n' + BROWSE_NOTE + '<div class="ag-cadre">\n' + html + '</div>\n</section>\n' +
     '<section class="ag-mode" id="modeOsint" role="tabpanel" aria-labelledby="ongletOsint" hidden>\n' + os.html + '</section>\n' +
     '<section class="ag-mode" id="modeEsim" role="tabpanel" aria-labelledby="ongletEsim" hidden>\n' + es.html + '</section>\n' +
     ONGLETS_JS +

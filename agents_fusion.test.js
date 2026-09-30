@@ -87,7 +87,7 @@ let chromium = null; try { chromium = require('playwright').chromium; } catch (e
   /* 30/09 : OSINT et eSIM rejoignent la page (« une fusion pour gagner de la place »). */
   console.log('\n-- OSINT et eSIM, deux onglets de plus --');
   ({ p, ctx, erreurs } = await ouvre(''));
-  ok((await p.$$('.onglets [role="tab"]')).length === 4, 'quatre onglets : Chat, Agent, OSINT, eSIM');
+  ok((await p.$$('.onglets [role="tab"]')).length === 5, 'cinq onglets : Chat, Agent, Browse, OSINT, eSIM');
   await p.click('#ongletOsint');
   ok(await visible(p, 'os-q') && !(await visible(p, 'question')) && !(await visible(p, 'es-pays')), 'OSINT s affiche seul');
   await p.fill('#os-q', 'example.com');
@@ -107,7 +107,31 @@ let chromium = null; try { chromium = require('playwright').chromium; } catch (e
   ok(await visible(p, 'es-carteResultat'), 'un lien de commande eSIM (?order=) ouvre l onglet eSIM, sur la commande');
   await ctx.close();
 
-  for (const m of ['chat', 'agent', 'osint', 'esim']) {
+  /* 30/09 : « un navigateur AI », le leger — l agent lit le web, cite, et ne depense rien d autre. */
+  console.log('\n-- Browse : la vue de l agent, en mode lecture du web --');
+  ({ p, ctx, erreurs } = await ouvre(''));
+  await p.click('#ongletBrowse');
+  ok(await visible(p, 'ag-question') && await visible(p, 'browseNote') && !(await visible(p, 'question')), 'Browse montre la saisie de l agent et la ligne qui dit ce que fait le mode');
+  ok(await p.evaluate(() => document.documentElement.getAttribute('data-agent-mode')) === 'browse' && /[?&]mode=browse/.test(p.url())
+     && /Paste a link/.test(await p.$eval('#ag-question', (t) => t.placeholder)), 'la page passe en mode browse (attribut lu a l envoi), l adresse le garde, la saisie le dit');
+  await p.click('#browseNote [data-t]');
+  ok(/^Read this page and summarise it/.test(await p.$eval('#ag-question', (t) => t.value)), 'un exemple remplit la saisie ; rien ne part sans le joueur');
+  await p.click('#ongletAgent');
+  ok(await p.evaluate(() => document.documentElement.getAttribute('data-agent-mode')) === null && !(await visible(p, 'browseNote'))
+     && !/Paste a link/.test(await p.$eval('#ag-question', (t) => t.placeholder)), 'retour a Agent : le mode browse est retire, la ligne disparait');
+  ok(await p.$eval('#ongletBrowse', (b) => b.getAttribute('aria-selected')) === 'false' && await p.$eval('#modeAgent', (v) => v.getAttribute('aria-labelledby')) === 'ongletAgent',
+     'les lecteurs d ecran suivent : onglet actif, vue nommee par lui');
+  ok(erreurs.length === 0, erreurs.length ? 'erreurs : ' + erreurs.slice(0, 2).join(' | ') : 'aucune erreur de script');
+  await ctx.close();
+  ({ p, ctx, erreurs } = await ouvre('?mode=browse'));
+  await p.waitForTimeout(300);
+  ok(await visible(p, 'browseNote') && await p.evaluate(() => document.documentElement.getAttribute('data-agent-mode')) === 'browse', '?mode=browse ouvre directement Browse (et y reste apres le chargement)');
+  await ctx.close();
+  const agentJs = page.slice(page.indexOf('function modeTache()'), page.indexOf('function modeTache()') + 2600);
+  ok(/data-agent-mode"\) === "browse" \? "browse" : undefined/.test(agentJs) && /payeur: payeurServeur\(\), mode: modeTache\(\)/.test(agentJs),
+     'la tache envoyee porte mode: "browse" seulement quand la page est en mode browse');
+
+  for (const m of ['chat', 'agent', 'browse', 'osint', 'esim']) {
     ({ p, ctx, erreurs } = await ouvre('?mode=' + m, 360));
     const large = await p.evaluate(() => document.documentElement.scrollWidth);
     ok(large <= 360, 'onglet ' + m + ' a 360 px : rien ne deborde (' + large + ' px)');

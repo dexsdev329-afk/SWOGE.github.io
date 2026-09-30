@@ -309,6 +309,13 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 .classement tr.peu td{ color:var(--pale); }
 .classement tr.peu td.pos, .classement tr.peu td.neg{ opacity:.75; }
 .classement td.nom{ white-space:normal; min-width:180px; }
+/* Le tournoi (30/09) : la regle, les chiffres, les derniers retires. */
+.tournoi{ margin-top:18px; }
+.tournoi h3{ font-size:15px; margin:0 0 6px; }
+.tournoi .boite{ max-height:360px; overflow:auto; border:1px solid var(--ligne); border-radius:10px; background:var(--carte); }
+.tournoi th{ position:sticky; top:0; background:var(--carte); }
+.tournoi td.num, .tournoi th.num{ text-align:right; font-variant-numeric:tabular-nums; }
+.tournoi td.nom{ white-space:normal; min-width:160px; }
 .agent{ border:1px solid var(--ligne); border-radius:12px; padding:12px; min-width:0; }
 .agent .tete{ display:flex; justify-content:space-between; gap:8px; align-items:baseline; }
 .agent .nom{ font-weight:800; }
@@ -419,8 +426,17 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       <h3>All strategies, from most to least profitable</h3>
       <p class="intro" id="clResume"></p>
       <div class="boite"><table>
-        <thead><tr><th class="num">#</th><th>Strategy</th><th class="num">Settled</th><th class="num">Won</th><th class="num">P&amp;L</th></tr></thead>
+        <thead><tr><th class="num">#</th><th>Strategy</th><th class="num">Settled</th><th class="num">Won</th><th class="num">P&amp;L</th><th class="num">Judged at</th></tr></thead>
         <tbody id="clLignes"></tbody>
+      </table></div>
+    </div>
+    <div class="tournoi" id="tournoi" hidden>
+      <h3>The tournament: 500 settled bets to prove it</h3>
+      <p class="intro" id="toRegle"></p>
+      <p class="intro" id="toChiffres"></p>
+      <div class="boite"><table>
+        <thead><tr><th>Retired strategy</th><th class="num">Settled</th><th class="num">Won</th><th class="num">P&amp;L</th><th>Retired</th></tr></thead>
+        <tbody id="toLignes"></tbody>
       </table></div>
     </div>
   </section>
@@ -534,6 +550,35 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       tr.appendChild(el("td", "num", (c.resolved || 0) < min ? c.resolved + "/" + min : String(c.resolved)));
       tr.appendChild(el("td", "num", c.resolved ? pct(c.won / c.resolved) : "\u2014"));
       tr.appendChild(el("td", "num " + (Number(c.pnl) > 0 ? "pos" : Number(c.pnl) < 0 ? "neg" : ""), c.resolved ? signe(c.pnl) : "\u2014"));
+      tr.appendChild(el("td", "num", c.nextJudgedAt ? String(c.nextJudgedAt) : (d.tournament && c.nextJudgedAt === null ? "never" : "\u2014")));
+      tb.appendChild(tr);
+    });
+    bloc.hidden = false;
+  }
+  /* Le tournoi (30/09) : la regle telle que la dit le serveur, ce qui a ete essaye, et les
+     derniers retires avec leur bilan. Tout en texte, jamais en HTML. */
+  function peintTournoi(d){
+    var bloc = $("tournoi"), t = d.tournament;
+    if (!t || !t.threshold) { bloc.hidden = true; return; }
+    $("toRegle").textContent = String(t.rule || "");
+    var nombre = function(x){ return Number(x || 0).toLocaleString("en-US"); };
+    var pa = d.parametric || {}, total = Number(pa.distinct) || (Number(t.parametricTried || 0) + Number(t.parametricUntried || 0));
+    /* Le plus proche du jugement : lu dans le classement, pas estime. */
+    var proche = (d.ranking || []).filter(function(c){ return c.nextJudgedAt; })
+      .reduce(function(m, c){ return !m || (c.resolved || 0) / c.nextJudgedAt > (m.resolved || 0) / m.nextJudgedAt ? c : m; }, null);
+    $("toChiffres").textContent = nombre(t.running) + " running (" + nombre(t.controls) + " controls that are never retired) \u00b7 " +
+      nombre(t.retired) + " retired so far \u00b7 " + nombre(t.parametricTried) + " of " + nombre(total) + " distinct parameter sets tried, " +
+      nombre(t.parametricUntried) + " never tried yet." + (proche ? " Closest to its next judgement: " + proche.name + ", " + (proche.resolved || 0) + "/" + proche.nextJudgedAt + " settled bets." : "");
+    var tb = $("toLignes"); tb.textContent = "";
+    var l = Array.isArray(t.recentlyRetired) ? t.recentlyRetired : [];
+    if (!l.length) { var tr0 = el("tr"), td0 = el("td", null, "No strategy retired yet: none has reached " + t.threshold + " settled bets in the red."); td0.colSpan = 5; tr0.appendChild(td0); tb.appendChild(tr0); }
+    l.forEach(function(r){
+      var tr = el("tr");
+      tr.appendChild(el("td", "nom", String(r.name || r.id) + (r.final === false ? " (bets still settling)" : "")));
+      tr.appendChild(el("td", "num", String(r.resolved || 0)));
+      tr.appendChild(el("td", "num", r.resolved ? pct(r.won / r.resolved) : "\u2014"));
+      tr.appendChild(el("td", "num " + (Number(r.pnl) > 0 ? "pos" : Number(r.pnl) < 0 ? "neg" : ""), signe(r.pnl || 0)));
+      tr.appendChild(el("td", null, String(r.retiredAt || "").slice(0, 16).replace("T", " ")));
       tb.appendChild(tr);
     });
     bloc.hidden = false;
@@ -574,6 +619,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     var g = $("agents"); g.textContent = "";
     (d.agents || []).slice().sort(function(x, y){ return (Number(y.pnl) || 0) - (Number(x.pnl) || 0); }).forEach(function(a){ g.appendChild(carte(a)); });
     peintClassement(d);
+    peintTournoi(d);
     var c = d.calibration || {}, v = $("calibVerdict");
     if (!c.n) { v.className = "verdict peu"; v.textContent = "No window scored yet (" + (c.pending || 0) + " waiting for their result)."; }
     else if (!c.enough) { v.className = "verdict peu"; v.textContent = "Too few windows to compare (" + c.n + "/" + c.minN + "). So far: model " + c.brierModel + ", market " + c.brierMarket + " (lower is better)."; }

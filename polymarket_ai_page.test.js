@@ -21,9 +21,15 @@ const agent = (id, name, o) => Object.assign({ id, name, role: 'Role of ' + name
 const ETAT = (calib) => ({ ok: true, depuis: '2026-09-29T14:00:00.000Z', stakeUsd: 10, bankUsd: 1000, minResolved: 100,
   totalStrategies: 200, parametric: { running: 100, distinct: 2460, combinations: 110700, note: '<img src=x onerror=window.pirate=9> not simulated.' },
   /* Le classement, volontairement MELANGE : la page doit le trier elle-meme. */
-  ranking: [{ id: 'p_a', name: 'P·FV 1.5pt', resolved: 74, won: 41, pnl: 352.99 }, { id: 'fade', name: 'Longshot', resolved: 224, won: 8, pnl: -1224.77 },
-    { id: 'p_b', name: '<img src=x onerror=window.pirate=8>', resolved: 12, won: 3, pnl: -80.1 }, { id: 'coin', name: 'Coin', resolved: 365, won: 195, pnl: -393.75 },
-    { id: 'crowd', name: 'Crowd', resolved: 366, won: 313, pnl: 30.14 }, { id: 'p_c', name: 'P·Crowd>55¢', resolved: 0, won: 0, pnl: 0 }],
+  ranking: [{ id: 'p_a', name: 'P·FV 1.5pt', resolved: 74, won: 41, pnl: 352.99, nextJudgedAt: 500 }, { id: 'fade', name: 'Longshot', resolved: 224, won: 8, pnl: -1224.77, nextJudgedAt: null },
+    { id: 'p_b', name: '<img src=x onerror=window.pirate=8>', resolved: 12, won: 3, pnl: -80.1, nextJudgedAt: 500 }, { id: 'coin', name: 'Coin', resolved: 365, won: 195, pnl: -393.75, nextJudgedAt: null },
+    { id: 'crowd', name: 'Crowd', resolved: 366, won: 313, pnl: 30.14, nextJudgedAt: null }, { id: 'p_c', name: 'P·Crowd>55¢', resolved: 0, won: 0, pnl: 0, nextJudgedAt: 500 }],
+  /* Le tournoi (30/09) : un retire au nom piege, un autre dont les paris se reglent encore ;
+     sans aucune calibration (etat « vide »), aucun retire : la page doit le dire. */
+  tournament: { threshold: 500, slots: 400, controls: 5, running: 405, retired: calib.n ? 2 : 0, parametricTried: calib.n ? 307 : 305, parametricUntried: calib.n ? 2153 : 2155,
+    rule: 'A strategy still in the red after 500 settled bets is retired and replaced by a parameter set never tried before.',
+    recentlyRetired: calib.n ? [{ id: 'p_x', name: '<img src=x onerror=window.pirate=7>', type: 'parametric', resolved: 500, won: 230, pnl: -61.4, retiredAt: '2026-10-02T08:15:00.000Z', final: false },
+      { id: 'p_y', name: 'P·Fade>80¢ · 2:00–0:30 left', type: 'parametric', resolved: 503, won: 71, pnl: -12.05, retiredAt: '2026-10-01T22:40:00.000Z', final: true }] : [] },
   summary: { total: 6, inProfit: 2, inLoss: 3, noSettledBet: 1, totalPnl: -1315.49, judgeable: 3 },
   agents: [agent('coin', 'Coin', { bets: 120, resolved: 118, won: 57, winRate: { p: 0.483, low: 0.395, high: 0.572 }, skill: -0.4, avgPricePaid: 0.51, pnl: -41.2, fees: 20.3, drawdown: 55.1, verdict: 'No edge: loses after the spread and fees (skill score -0.4).' }),
     agent('crowd', 'Crowd'), agent('fair', 'Fair Value', { role: 'Model <img src=x onerror=window.pirate=1>', pnl: 12.5 }), agent('late', 'Last Minute'), agent('fade', 'Longshot')],
@@ -74,6 +80,8 @@ const CALIBS = {
     ok(cl[0].gris && !cl[1].gris && cl[4].gris === false, 'sous 100 paris regles, la ligne est grisee (pas un verdict) ; au-dela, non');
     ok(await page.evaluate(() => !document.querySelector('#clLignes img') && window.pirate === undefined), 'un nom de strategie est ecrit en texte, jamais en HTML');
     ok(/2 in profit, 3 at a loss, 1 with no settled bet yet/.test(await page.textContent('#clResume')), 'le resume dit combien gagnent et combien perdent');
+    const juge = await page.evaluate(() => [...document.querySelectorAll('#clLignes tr')].map((tr) => tr.children[5].textContent));
+    ok(juge.join('|') === '500|never|500|500|never|never', 'chaque ligne dit a quel palier elle sera jugee ; un temoin, jamais [' + juge.join(' ') + ']');
     const cartes = await page.evaluate(() => [...document.querySelectorAll('#agents .agent .tete .nom')].map((e) => e.textContent));
     const pnlCartes = await page.evaluate(() => [...document.querySelectorAll('#agents .agent .tete .pos, #agents .agent .tete .neg')].map((e) => parseFloat(e.textContent.replace(/[^0-9.\-−+]/g, '').replace('−', '-'))));
     ok(pnlCartes.every((x, i) => i === 0 || pnlCartes[i - 1] >= x), 'les cartes aussi, du plus gagnant au plus perdant [' + cartes.join(', ') + ']');
@@ -105,6 +113,29 @@ const CALIBS = {
     ok(/Fair Value/.test(o) && /55¢/.test(o) && /Up 71\.6%/.test(o), 'un pari ouvert : l agent, le prix paye, la probabilite du modele');
     ok(/lost \(Up\)/.test(r[0][0]) && /−\$10\.37/.test(r[0][0]) && r[0][1] === null, 'un pari perdu, son resultat ; un lien qui n est pas polymarket.com n est jamais un lien');
     ok(/won \(Up\)/.test(r[1][0]) && r[1][1] === 'https://polymarket.com/event/sol-updown-15m-1790690400', 'un pari gagne, et le lien vers son marche');
+    await ctx.close();
+  }
+
+  /* 30/09 : « au bout de 500 bets, s il est toujours en negatif, l agent se supprime et un
+     nouveau jamais essaye apparait ; retenir tous les agents et parametres essayes ». */
+  console.log('\n-- 3 bis. le tournoi --');
+  {
+    let { page, ctx } = await ouvre('vide');
+    await page.waitForFunction(() => !document.getElementById('tournoi').hidden);
+    const ch = await page.textContent('#toChiffres');
+    ok(/still in the red after 500 settled bets/.test(await page.textContent('#toRegle')), 'la regle est dite, telle que l ecrit le serveur');
+    ok(/405 running \(5 controls that are never retired\)/.test(ch) && /0 retired so far/.test(ch) && /305 of 2,460 distinct parameter sets tried, 2,155 never tried yet/.test(ch),
+       'combien tournent, combien de jeux de parametres essayes sur 2 460 [' + ch.slice(0, 90) + ']');
+    ok(/Closest to its next judgement: P·FV 1\.5pt, 74\/500 settled bets/.test(ch), 'le plus proche du jugement, lu dans le classement (74/500), pas estime');
+    ok(/No strategy retired yet: none has reached 500 settled bets in the red/.test(await page.textContent('#toLignes')), 'aucun retire : on le dit');
+    await ctx.close();
+    ({ page, ctx } = await ouvre('peu'));
+    await page.waitForFunction(() => document.querySelectorAll('#toLignes tr').length === 2 && /2 retired/.test(document.getElementById('toChiffres').textContent));
+    const r = await page.evaluate(() => [...document.querySelectorAll('#toLignes tr')].map((tr) => [...tr.children].map((td) => td.textContent)));
+    ok(r[0][0] === '<img src=x onerror=window.pirate=7> (bets still settling)' && await page.evaluate(() => !document.querySelector('#tournoi img') && window.pirate === undefined),
+       'le nom d un retire est du texte, jamais du HTML ; ses paris ouverts se reglent encore, on le dit');
+    ok(r[0][1] === '500' && r[0][2] === '46%' && /−\$61\.40/.test(r[0][3]) && r[0][4] === '2026-10-02 08:15', 'son bilan au retrait : 500 regles, 46 % gagnes, −61,40 $, et quand [' + r[0].join(' | ') + ']');
+    ok(r[1][0] === 'P·Fade>80¢ · 2:00–0:30 left' && /−\$12\.05/.test(r[1][3]), 'un retire dont tout est regle : son bilan definitif');
     await ctx.close();
   }
 

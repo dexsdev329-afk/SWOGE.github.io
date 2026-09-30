@@ -7,7 +7,7 @@
  * voit aucune cle. Le joueur paie le frais, devient le createur et touche 50 % des frais.
  *
  * La page ne croit pas l'offre sur parole : seules les DEUX adresses deployees et relues le
- * 29/09 et leurs frais EXACTS sont acceptees (LAUNCHPADS ci-dessous). Une offre qui viserait
+ * 30/09 et leurs frais EXACTS sont acceptees (LAUNCHPADS ci-dessous). Une offre qui viserait
  * un autre contrat, ou un autre montant, est refusee avant toute signature.
  *
  *   SwogeLance.carte(offre)             → l'element a inserer sous la reponse de l'agent
@@ -18,11 +18,13 @@
   "use strict";
   var CHAIN = { id: 4663, hex: "0x1237", name: "Robinhood Chain", rpc: "https://rpc.mainnet.chain.robinhood.com", scan: "https://robinhoodchain.blockscout.com" };
   var SWOGE = "0x8a166Fb41Cd659a0a43396272FF73973Ce29F817";
-  /* Deployes par le serveur le 29/09 (deploiement_v4.js), parametres relus sur la chaine,
-     source verifiee exact_match sur Sourcify. */
+  /* Redeployes par le serveur le 30/09 (deploiement_v4.js), parametres relus sur la chaine,
+     source verifiee exact_match sur Sourcify. Ceux du 29/09 (0x6532C42a…, 0xEfD0fd35…) creaient
+     des jetons au owner() constant, notes « hidden owner » par GoPlus : ils ne sont plus acceptes
+     ici. Ils ne portaient que nos deux jetons de test. */
   var LAUNCHPADS = {
-    swoge: { adresse: "0x6532C42aF1241cbbC14F00D2B7D531Aa61469392", feeWei: "10000000000000000000000", payable: false },
-    eth:   { adresse: "0xEfD0fd35c3d308713226E9366A96701B9F040c9e", feeWei: "100000000000000", payable: true }
+    swoge: { adresse: "0xF090C095ae6F1c75F382Ce1Feb07626460996549", feeWei: "10000000000000000000000", payable: false },
+    eth:   { adresse: "0xe3fB4f9790504D2F95D022d73993eb916f407759", feeWei: "100000000000000", payable: true }
   };
   var PARAMS = "(string name,string symbol,bytes32 salt,string telegram,string twitter,string website,string logo)";
   var EVT = "event LaunchedInstant(address indexed token, address indexed creator, address pool, uint256 lpTokenId)";

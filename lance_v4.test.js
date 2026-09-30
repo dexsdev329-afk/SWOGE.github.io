@@ -14,7 +14,9 @@ let chromium = null; try { chromium = require('playwright').chromium; } catch (e
 let n = 0, rates = 0;
 const ok = (c, m) => { n++; if (c) console.log('  ok   ' + m); else { rates++; console.log('  RATE ' + m); } };
 
-const SW = '0x6532C42aF1241cbbC14F00D2B7D531Aa61469392', ETHLP = '0xEfD0fd35c3d308713226E9366A96701B9F040c9e';
+/* Les launchpads redeployes le 30/09 ; ceux du 29/09 (owner() constant, « hidden owner » chez GoPlus) sont refuses. */
+const SW = '0xF090C095ae6F1c75F382Ce1Feb07626460996549', ETHLP = '0xe3fB4f9790504D2F95D022d73993eb916f407759';
+const ANCIEN_SW = '0x6532C42aF1241cbbC14F00D2B7D531Aa61469392', ANCIEN_ETH = '0xEfD0fd35c3d308713226E9366A96701B9F040c9e';
 const JETON = '0x' + '1'.repeat(40), POOL = '0x' + '2'.repeat(40);
 const offre = (o) => Object.assign({ id: 'a1', chainId: 4663, pool: 'swoge', launchpad: SW, name: 'Moon Dog', symbol: 'MDOG', salt: '0x' + 'ab'.repeat(32),
   website: 'https://moondog.xyz/', twitter: 'https://x.com/moondog', telegram: '', logo: '', feeWei: '10000000000000000000000', feeToken: 'SWOGE', fee: 10000,
@@ -55,6 +57,8 @@ const offre = (o) => Object.assign({ id: 'a1', chainId: 4663, pool: 'swoge', lau
   console.log('-- 1. les offres truquees sont refusees avant toute signature --');
   const refus = async (o, re, m) => { const r = await page.evaluate((o) => window.SwogeLance.verifie(o), o); ok(r && re.test(r), m + ' — « ' + r + ' »'); };
   await refus(offre({ launchpad: '0x' + '3'.repeat(40) }), /unknown contract/, 'un autre contrat que les deux launchpads relus');
+  await refus(offre({ launchpad: ANCIEN_SW }), /unknown contract/, 'l ancien launchpad $SWOGE du 29/09 (jetons notes « hidden owner »)');
+  await refus(offre({ pool: 'eth', launchpad: ANCIEN_ETH, feeWei: '100000000000000' }), /unknown contract/, 'l ancien launchpad WETH du 29/09');
   await refus(offre({ feeWei: '1' }), /unexpected fee/, 'un autre frais que 10 000 $SWOGE');
   await refus(offre({ pool: 'eth', launchpad: ETHLP, feeWei: '200000000000000' }), /unexpected fee/, 'un autre frais que 0,0001 ETH');
   await refus(offre({ pool: 'eth', feeWei: '100000000000000' }), /unknown contract/, 'le frais ETH envoye au launchpad $SWOGE');

@@ -40,7 +40,7 @@
  * une fois par session pour savoir si le serveur en a une plus recente.
  * Sans ca, un joueur garde des semaines une version corrigee depuis
  * longtemps — et ici, cela voudrait dire un agent qui a cesse d'apprendre. */
-var MARQUE_PAGE = '40bf320b';
+var MARQUE_PAGE = 'de9f5fac';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -1127,20 +1127,24 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 
       <div class="grp" data-grp="live">
         <div class="card" data-pan="positions">
-          <h2><span data-t="tPositions">Open positions</span> <span class="count" id="poscount">0</span></h2>
+          <h2><span data-t="tPositions">Paper · open positions</span> <span class="count" id="poscount">0</span></h2>
           <div id="positions"><div class="empty" data-t="vPositions">No open position.</div></div>
+        </div>
+        <div class="card" data-pan="fermees">
+          <h2><span data-t="tFermees">Paper · closed positions</span> <span class="count" id="fermN">—</span></h2>
+          <div class="feed" id="feed"><div class="empty" data-t="vFeed">No trade yet…</div></div>
+        </div>
+        <div class="card" data-pan="picks">
+          <h2><span data-t="tPicks">Top picks · to enter</span> <span class="count">score</span></h2>
+          <div id="picks"><div class="empty" data-t="vPicks">No valid signal right now…</div></div>
         </div>
         <div class="card" data-pan="pipeline">
           <h2><span data-t="tPipe">Tokens in flight</span> <span class="count" id="flowcount">0 tokens</span></h2>
           <div class="flow" id="flow"><div class="empty" data-t="vPipe">Waiting for new tokens…</div></div>
         </div>
         <div class="card" data-pan="courbe">
-          <h2><span data-t="tCourbe">Treasury over time</span> <span class="count" id="wr">win 0%</span></h2>
+          <h2><span data-t="tCourbe">Treasury curve</span> <span class="count" id="wr">win 0%</span></h2>
           <canvas id="spark"></canvas>
-        </div>
-        <div class="card" data-pan="picks">
-          <h2><span data-t="tPicks">Top picks</span> <span class="count">score</span></h2>
-          <div id="picks"><div class="empty" data-t="vPicks">No valid signal right now…</div></div>
         </div>
         <div class="card" data-pan="surveillance">
           <h2><span data-t="tSurv">Watchlist</span> <span class="count" id="survN">0</span></h2>
@@ -1149,10 +1153,6 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
         <div class="card" data-pan="telegram">
           <h2><span data-t="tTg">Telegram channels</span> <span class="count" id="tgN">—</span></h2>
           <div id="telegram"><div class="empty" data-t="vServeur">—</div></div>
-        </div>
-        <div class="card" data-pan="fermees">
-          <h2><span data-t="tFermees">Closed positions</span> <span class="count" id="fermN">—</span></h2>
-          <div class="feed" id="feed"><div class="empty" data-t="vFeed">No trade yet…</div></div>
         </div>
       </div>
 

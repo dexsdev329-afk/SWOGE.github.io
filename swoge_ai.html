@@ -40,7 +40,7 @@
  * une fois par session pour savoir si le serveur en a une plus recente.
  * Sans ca, un joueur garde des semaines une version corrigee depuis
  * longtemps — et ici, cela voudrait dire un agent qui a cesse d'apprendre. */
-var MARQUE_PAGE = '56cf5d22';
+var MARQUE_PAGE = '43a1c1aa';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -1184,6 +1184,13 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
              Le papier ne signe rien : il ne peut connaitre ni le gaz ni le
              glissement. Celui qui les paie les dit, et l'ecart des deux est le
              cout reel d'un aller-retour. -->
+        <!-- ---- LA COLONIE GAGNE-T-ELLE UNE FOIS L'ALLER-RETOUR PAYE ? (30/09) ----
+             Le carnet papier est brut : le prix relu contre le prix d'entree. Le
+             cout devise a l'achat est garde sur chaque position ; ici il est paye. -->
+        <div class="card" data-pan="net">
+          <h2><span data-t="tNet">Does the colony make money after costs?</span> <span class="count" id="netN">—</span></h2>
+          <div id="net"><div class="empty" data-t="vNet">Nothing yet. Every closed paper position with a round-trip quote is counted here after that cost.</div></div>
+        </div>
         <div class="card" data-pan="reel">
           <h2><span data-t="tReel">What a mirror actually got</span> <span class="count" id="reelN">—</span></h2>
           <div id="reel"><div class="empty" data-t="vReel">Nothing yet. The paper never signs anything, so it cannot know the gas or the slippage. Every real close on a mirror is reported here, next to what the paper counted for the same token.</div></div>
@@ -1934,6 +1941,24 @@ const PHRASES = {
   reelGliss:    [(g) => 'fill ' + g + '% off the quote, on average', (g) => 'prix obtenu a ' + g + ' % du devis, en moyenne'],
   reelLigne:    [(p) => 'the paper counted ' + p, (p) => 'le papier comptait ' + p],
   reelAssez:    ['Too few real closes to read the gap yet.', 'Trop peu de fermetures reelles pour lire l ecart.'],
+  /* Le carnet NET de l'aller-retour (30/09) : brut, cout, net, et ce que ca prouve. */
+  tNet:         ['Does the colony make money after costs?', 'La colonie gagne-t-elle une fois les frais payes ?'],
+  vNet:         ['Nothing yet. Every closed paper position with a round-trip quote is counted here after that cost.',
+                 'Rien encore. Chaque position papier fermee qui a un devis d aller-retour est comptee ici, ce cout paye.'],
+  netN:         [(n) => n + ' positions', (n) => n + ' positions'],
+  netTete:      [(n, b, c, x) => 'Over ' + n + ' paper positions with a round-trip quote: ' + b + '% before costs, ' + c + '% round trip, ' + x + '% after costs, per position.',
+                 (n, b, c, x) => 'Sur ' + n + ' positions papier avec un devis d aller-retour : ' + b + ' % avant frais, ' + c + ' % d aller-retour, ' + x + ' % apres frais, par position.'],
+  netAssez:     [(n, m) => 'Too few positions to conclude (' + n + '/' + m + ').', (n, m) => 'Trop peu de positions pour conclure (' + n + '/' + m + ').'],
+  netPerd:      [(t) => 'It loses after costs, and it is not luck: t ' + t + ', both halves of the period negative.',
+                 (t) => 'Elle perd une fois les frais payes, et ce n est pas le hasard : t ' + t + ', les deux moities de la periode negatives.'],
+  netGagne:     [(t) => 'It makes money after costs: t ' + t + ', both halves of the period positive.',
+                 (t) => 'Elle gagne une fois les frais payes : t ' + t + ', les deux moities de la periode positives.'],
+  netFlou:      [(t) => 'No clear result either way yet (t ' + t + ').', (t) => 'Aucun resultat net dans un sens ou dans l autre (t ' + t + ').'],
+  netCases:     [(j, m, p, b, k) => j + ' kinds of tokens judged (' + m + '+ positions each): ' + p + ' in profit after costs, ' + k + ' above the ' + b + ' bar that looking at ' + j + ' of them requires.',
+                 (j, m, p, b, k) => j + ' sortes de jetons jugees (' + m + ' positions et plus chacune) : ' + p + ' en gain apres frais, ' + k + ' au-dessus de la barre de ' + b + ' qu impose d en regarder ' + j + '.'],
+  netMeilleure: [(x, n, t) => 'Best kind: ' + x + '% after costs over ' + n + ' positions (t ' + t + ').', (x, n, t) => 'Meilleure sorte : ' + x + ' % apres frais sur ' + n + ' positions (t ' + t + ').'],
+  netSans:      [(n, b) => n + ' positions had no round-trip quote (' + b + '% before costs): their cost is unknown, not zero, so they are left out.',
+                 (n, b) => n + ' positions n avaient pas de devis d aller-retour (' + b + ' % avant frais) : leur cout est inconnu, pas nul, elles sont laissees a part.'],
   tBancs:       ['Rule sets running side by side', 'Jeux de regles qui courent en parallele'],
   vBancs:       ['Nothing yet. Every token followed to its deadline is replayed through several exit rules at once — none of them trades, they only count. The one that trades today is marked.',
                  'Rien encore. Chaque jeton suivi jusqu a son echeance est rejoue a travers plusieurs jeux de sorties a la fois — aucun ne trade, ils comptent. Celui qui trade aujourd hui est marque.'],
@@ -3033,6 +3058,33 @@ function ligneSuiviMiroir(){
     + (j.sansDevis ? '<span class="mini">' + echappe(ph("suiviSansDevis", j.sansDevis, j.envois)) + '</span>' : '')
     + '</span></div>';
 }
+/* ---- LA COLONIE GAGNE-T-ELLE UNE FOIS L'ALLER-RETOUR PAYE ? ----
+   Tout vient de `carnetNet` (serveur). Sous NET_ASSEZ positions, on donne les
+   chiffres et on refuse de conclure ; t exige les deux moities du meme signe. */
+const NET_ASSEZ = 50;
+function peintNet(){
+  const N = VUE && VUE.carnetNet;
+  $("netN").textContent = N ? ph("netN", N.n || 0) : "—";
+  if(!N || !N.n) return;
+  const sg = (x) => (x > 0 ? "+" : "") + x;
+  let h = '<div class="evt"><span class="pill ' + (N.net >= 0 ? "naissance" : "retrait") + '">' + echappe(sg(N.net)) + '%</span>'
+        + '<span><b>' + echappe(ph("netTete", N.n, sg(N.brut), N.cout, sg(N.net))) + '</b>';
+  if(N.n < NET_ASSEZ) h += '<span class="mini">' + echappe(ph("netAssez", N.n, NET_ASSEZ)) + '</span>';
+  else if(N.t !== null && N.t <= -2 && N.moitie1 < 0 && N.moitie2 < 0) h += '<span class="mini">' + echappe(ph("netPerd", N.t)) + '</span>';
+  else if(N.t !== null && N.t >= 2 && N.moitie1 > 0 && N.moitie2 > 0) h += '<span class="mini">' + echappe(ph("netGagne", N.t)) + '</span>';
+  else h += '<span class="mini">' + echappe(ph("netFlou", N.t === null ? "—" : N.t)) + '</span>';
+  h += '</span></div>';
+  const K = N.cases || {};
+  if(K.jugees){
+    h += '<div class="evt"><span class="pill ' + (K.prouvees ? "naissance" : "retrait") + '">' + echappe(K.prouvees + "/" + K.jugees) + '</span><span><b>'
+       + echappe(ph("netCases", K.jugees, K.min, K.positives, K.barre, K.prouvees)) + '</b>';
+    const m = (K.meilleures || [])[0];
+    if(m) h += '<span class="mini">' + echappe(ph("netMeilleure", sg(m.net), m.n, m.t === null ? "—" : m.t)) + '</span>';
+    h += '</span></div>';
+  }
+  if(N.sansDevis && N.sansDevis.n) h += '<div class="mini" style="padding:2px 0 6px">' + echappe(ph("netSans", N.sansDevis.n, sg(N.sansDevis.brut))) + '</div>';
+  $("net").innerHTML = h;
+}
 function peintReel(){
   const R = (VUE && VUE.reel) || { n:0 };
   $("reelN").textContent = VUE ? ph("reelN", R.n || 0) : "—";
@@ -3347,7 +3399,7 @@ async function demande(manuel){
     verseCandidats();
     peintStats(); peintPositions(); peintAppris(); peintFluxTrades();
     peintFlux(); peintBanque(); peintSurveillance(); peintTelegram(); peintStructure(); peintServices();
-    peintAlertes(); peintAudit(); peintReel(); peintBancs(); peintTraits();
+    peintAlertes(); peintAudit(); peintNet(); peintReel(); peintBancs(); peintTraits();
 
 /* ==========================================================================
  * LA MOLETTE AU-DESSUS DU VILLAGE
@@ -3617,10 +3669,10 @@ function poseLangue(l){
 /* Le miroir part OUVERT, comme les positions : c'est la seule carte qui demande
    quelque chose au lecteur, et une carte repliee ne se lit pas — elle se
    devine. Les autres racontent, celle-la propose. */
-const PANNEAUX_OUVERTS = ["miroir", "positions", "miroirPositions", "agents", "audit", "reel", "bancs"];
+const PANNEAUX_OUVERTS = ["miroir", "positions", "miroirPositions", "agents", "audit", "net", "reel", "bancs"];
 /* La cle change avec la liste : sans ca, un visiteur d'hier garde son etat
    d'hier, ou le miroir n'existait pas — donc replie, donc invisible. */
-const CLE_PANNEAUX = "swogeAiPanneaux4";
+const CLE_PANNEAUX = "swogeAiPanneaux5";
 
 function litPlis(){
   try{
@@ -3772,7 +3824,7 @@ setInterval(function(){ if(document.visibilityState !== "hidden"){ peintPosition
 poseLesBots();
 peintAgents(); peintStats(); peintPositions(); peintAppris(); peintFluxTrades();
 peintPicks(); peintFlux(); peintBanque(); peintSurveillance(); peintTelegram(); peintStructure(); peintServices();
-peintAlertes(); peintAudit(); peintReel(); peintBancs(); peintTraits();
+peintAlertes(); peintAudit(); peintNet(); peintReel(); peintBancs(); peintTraits();
 dessineCourbe(); pastille(); majPouls();
 $("stagetag").textContent = phraseFond();
 requestAnimationFrame(loop);

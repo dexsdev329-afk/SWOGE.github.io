@@ -238,6 +238,8 @@ function vueFausse(o) {
     ponts: { liste: ['USDG', 'NVDA'], vus: [{ adr: '0x' + 'd0'.repeat(20), sym: 'NVDA', ok: true, liq: 1184565, ver: 'v3', raison: null, t: now }] },
     /* Ce que le miroir a fait des achats envoyes (27/09) : absent par defaut. */
     suiviMiroir: o.suiviMiroir || null,
+    /* Le carnet net de l aller-retour (30/09) : absent par defaut. */
+    carnetNet: o.carnetNet || null,
     /* Ce que le miroir a vraiment touche, a cote de ce que le papier a compte. */
     reel: o.reel || { n: 9, moyenne: -6.4, ecart: 12.8, nEcart: 7, glissement: -1.6, lignes: [
       { sym: 'JACOB', adr: '0x1', r: -4.2, papier: 39.9, glissement: -1.8, pont: false, t: now },
@@ -1740,6 +1742,29 @@ async function auditDesVetos() {
        'sous cinq fermetures, l ecart n est pas annonce : « ' + plat.trim().slice(0, 80) + ' »');
     ok(!/points more than the wallet gets/.test(plat), 'et la moyenne n est pas affichee');
     ok(/\$A/.test(plat), 'mais les fermetures, elles, sont bien la : ce sont des faits');
+    await page.context().close();
+  }
+
+  /* 30/09 : « ameliore SWOGE AI » — le carnet brut se lisait en gain ; net de l aller-retour, il perd. */
+  console.log('\n-- la colonie gagne-t-elle une fois les frais payes ? --');
+  {
+    const NET = { n: 239, brut: 0.4, cout: 4.8, net: -4.4, t: -2.46, moitie1: -6.4, moitie2: -2.5, sansDevis: { n: 61, brut: 6.9 },
+      cases: { min: 50, jugees: 51, positives: 2, barre: 3.1, prouvees: 0, meilleures: [{ cle: '<img src=x onerror=window.pirate=3>', n: 75, net: 2.7, t: 0.63 }] } };
+    let { page } = await ouvre(nav, port, { vueOpts: { carnetNet: NET } });
+    await page.waitForTimeout(1200);
+    let plat = (await page.evaluate(() => (document.querySelector('.card[data-pan="net"]') || {}).textContent || '')).replace(/\s+/g, ' ');
+    ok(/Over 239 paper positions with a round-trip quote: \+0\.4% before costs, 4\.8% round trip, -4\.4% after costs, per position\./.test(plat),
+       'brut, cout, net, sur combien de positions : « ' + plat.trim().slice(0, 90) + ' »');
+    ok(/It loses after costs, and it is not luck: t -2\.46, both halves of the period negative/.test(plat), 't ≤ −2 et les deux moities negatives : elle perd, et on le dit');
+    ok(/51 kinds of tokens judged \(50\+ positions each\): 2 in profit after costs, 0 above the 3\.1 bar/.test(plat) && /Best kind: \+2\.7% after costs over 75 positions \(t 0\.63\)/.test(plat),
+       'les sortes de jetons jugees, la barre, la meilleure — sans son nom interne');
+    ok(/61 positions had no round-trip quote \(\+6\.9% before costs\): their cost is unknown, not zero/.test(plat), 'les positions sans devis restent a part');
+    ok(await page.evaluate(() => !document.querySelector('.card[data-pan="net"] img') && window.pirate === undefined), 'rien du serveur n est lu comme du HTML');
+    await page.context().close();
+    ({ page } = await ouvre(nav, port, { vueOpts: { carnetNet: Object.assign({}, NET, { n: 30, t: -3, cases: { jugees: 0 } }) } }));
+    await page.waitForTimeout(1200);
+    plat = (await page.evaluate(() => (document.querySelector('.card[data-pan="net"]') || {}).textContent || '')).replace(/\s+/g, ' ');
+    ok(/Too few positions to conclude \(30\/50\)/.test(plat) && !/not luck/.test(plat), 'sous 50 positions : les chiffres, et aucune conclusion');
     await page.context().close();
   }
 

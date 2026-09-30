@@ -35,8 +35,11 @@ const ETAT = (calib) => ({ ok: true, depuis: '2026-09-29T14:00:00.000Z', stakeUs
     rule: 'Bets placed in the same 15 minutes count as one observation.',
     leaders: calib.n ? [{ id: 'p_a', name: '<img src=x onerror=window.pirate=6>', windows: 61, skillPerWindow: 2.4, resolved: 150, pnl: 120.5 }, { id: 'crowd', name: 'Crowd', windows: 70, skillPerWindow: 0.3, resolved: 400, pnl: -3 }] : [],
     closest: [{ id: 'p_a', name: 'P·FV 1.5pt', windows: 12, skillPerWindow: 1.1, pnl: 30 }] },
+  reality: calib.n ? { marketsChecked: 8, betsChecked: 200, fillableAtOurPrice: 150, noTradeWithin: 10, withinSeconds: 15, nextTradeSeconds: 30, avgGapToNextRealPrice: 0.012,
+    paperPnl: -40.5, pnlAtNextRealPrice: -95.25, pricedBets: 190, medianMarketVolumeUsd: 16734, rule: 'Checked against <b>real</b> trades.' } : undefined,
   summary: { total: 6, inProfit: 2, inLoss: 3, noSettledBet: 1, totalPnl: -1315.49, judgeable: 3 },
-  agents: [agent('coin', 'Coin', { bets: 120, resolved: 118, won: 57, winRate: { p: 0.483, low: 0.395, high: 0.572 }, skill: -0.4, skillPerWindow: -0.3, windows: 42, avgPricePaid: 0.51, pnl: -41.2, fees: 20.3, drawdown: 55.1, verdict: 'No edge: loses after the spread and fees (skill score -0.4).' }),
+  agents: [agent('coin', 'Coin', { bets: 120, resolved: 118, won: 57, winRate: { p: 0.483, low: 0.395, high: 0.572 }, skill: -0.4, skillPerWindow: -0.3, windows: 42,
+    real: { checked: 30, fillable: 22, noTrade: 1, paperPnl: -5, realPnl: -9.5 }, avgPricePaid: 0.51, pnl: -41.2, fees: 20.3, drawdown: 55.1, verdict: 'No edge: loses after the spread and fees (skill score -0.4).' }),
     agent('crowd', 'Crowd'), agent('fair', 'Fair Value', { role: 'Model <img src=x onerror=window.pirate=1>', pnl: 12.5 }), agent('late', 'Last Minute'), agent('fade', 'Longshot')],
   calibration: calib, open: [{ agent: 'fair', asset: 'BTC', window: '2026-09-29T14:15:00.000Z', side: 'Up', price: 0.55, fee: 0.315, model: 0.716, url: 'https://polymarket.com/event/btc-updown-15m-1790691300' }],
   recent: [{ agent: 'coin', asset: 'ETH', window: '2026-09-29T14:00:00.000Z', side: 'Down', price: 0.47, fee: 0.37, result: 'Up', pnl: -10.37, url: 'javascript:alert(1)' },
@@ -140,6 +143,11 @@ const CALIBS = {
     const l = await page.evaluate(() => [...document.querySelectorAll('#prLignes tr')].map((tr) => [...tr.children].map((td) => td.textContent)));
     ok(l[0][0] === '<img src=x onerror=window.pirate=6>' && l[0][1] === '61' && l[0][2] === '2.4' && await page.evaluate(() => !document.querySelector('#preuve img') && window.pirate === undefined),
        'le meneur : nom en texte, fenetres, score par fenetre [' + l[0].join(' | ') + ']');
+    const pr = await page.textContent('#prReel');
+    ok(/^Could these bets really be placed\? 200 settled bets on 8 markets checked/.test(pr) && /150 \(75%\) traded at our price within 15 s, 10 with no trade on our side within 30 s/.test(pr)
+       && /−\$95\.25, against −\$40\.50 on paper \(190 bets, average gap \+1\.2¢\)/.test(pr) && /\$16,734/.test(pr) && /<b>real<\/b>/.test(pr),
+       'le controle contre les vrais echanges, chiffre et en texte [' + pr.slice(0, 80) + ']');
+    ok(/Vs real trades30 checked · 22 traded at our price · −\$9\.50 at the next real price \(paper −\$5\.00\)/.test(await page.textContent('#agents')), 'et sur la carte de l agent');
     const cl = await page.evaluate(() => [...document.querySelectorAll('#clLignes tr')].map((tr) => tr.children[5].textContent));
     ok(cl.every((x) => x === '\u2014'), 'le classement a sa colonne par fenetre (vide quand le serveur ne la donne pas)');
     await ctx.close();

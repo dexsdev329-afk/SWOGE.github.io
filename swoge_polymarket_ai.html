@@ -432,6 +432,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       <h3>Is there a real result yet?</h3>
       <p class="intro gros" id="prVerdict"></p>
       <p class="intro" id="prRegle"></p>
+      <p class="intro" id="prReel" hidden></p>
       <div class="boite"><table>
         <thead><tr><th>Strategy</th><th class="num">Windows</th><th class="num">Skill / window</th><th class="num">P&amp;L</th></tr></thead>
         <tbody id="prLignes"></tbody>
@@ -547,6 +548,9 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       " (per bet: " + (a.skill == null ? "\u2014" : String(a.skill)) + ")");
     else ligne("Skill score", a.skill == null ? "\u2014" : String(a.skill));
     ligne("Fees paid", usd(a.fees));
+    /* 30/09 : le pari compare aux echanges reellement faits sur Polymarket apres la decision. */
+    if (a.real && a.real.checked) ligne("Vs real trades", a.real.checked + " checked \u00b7 " + a.real.fillable + " traded at our price \u00b7 " +
+      signe(a.real.realPnl) + " at the next real price (paper " + signe(a.real.paperPnl) + ")");
     ligne("Worst drawdown", a.drawdown ? "\u2212" + usd(a.drawdown) : "$0.00");
     c.appendChild(dl); c.appendChild(el("div", "v", a.verdict));
     return c;
@@ -587,6 +591,16 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     else if (e.measured > 0) v.textContent = "Not yet. " + e.measured + " strateg" + (e.measured === 1 ? "y" : "ies") + " measured over " + e.minWindows + "+ windows, none promising.";
     else v.textContent = "Not yet: no strategy has " + e.minWindows + " windows counted since " + String(e.since || "").slice(0, 10) + ".";
     $("prRegle").textContent = String(e.rule || "");
+    var r = d.reality, pr = $("prReel");
+    if (r && r.betsChecked) {
+      pr.textContent = "Could these bets really be placed? " + r.betsChecked + " settled bets on " + r.marketsChecked + " markets checked against the trades really made on Polymarket: " +
+        r.fillableAtOurPrice + " (" + pct(r.fillableAtOurPrice / r.betsChecked) + ") traded at our price within " + r.withinSeconds + " s, " + r.noTradeWithin + " with no trade on our side within " + r.nextTradeSeconds + " s. " +
+        "At the first price really traded after each decision: " + signe(r.pnlAtNextRealPrice) + ", against " + signe(r.paperPnl) + " on paper (" + r.pricedBets + " bets" +
+        (r.avgGapToNextRealPrice == null ? "" : ", average gap " + (r.avgGapToNextRealPrice >= 0 ? "+" : "\u2212") + Math.abs(Math.round(r.avgGapToNextRealPrice * 1000) / 10) + "\u00a2") + ")." +
+        (r.medianMarketVolumeUsd != null ? " Median volume traded per market: " + usd(r.medianMarketVolumeUsd) + "." : "") + " " + String(r.rule || "");
+      pr.hidden = false;
+    } else if (r) { pr.textContent = "Real-trade check: no settled bet checked yet. " + String(r.rule || ""); pr.hidden = false; }
+    else pr.hidden = true;
     var tb = $("prLignes"); tb.textContent = "";
     var l = Array.isArray(e.leaders) && e.leaders.length ? e.leaders : (Array.isArray(e.closest) ? e.closest : []);
     var mesure = Array.isArray(e.leaders) && e.leaders.length > 0;

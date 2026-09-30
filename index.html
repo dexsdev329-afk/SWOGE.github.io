@@ -396,7 +396,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px}
 .uni i{display:block;font-style:normal;font:600 11px/1.4 'Inter',system-ui,sans-serif;
   color:rgba(255,255,255,.76);margin:5px 0 11px}
 .uni .sw-b{width:100%;background:rgba(255,255,255,.94);color:var(--nuit);
-  display:block;text-align:center;border-radius:10px}
+  display:block;text-align:center;border-radius:10px;padding-left:8px;padding-right:8px}
 /* Le bouton qui attend la connexion. Pale et non blanc : il doit se lire comme
    « pas encore » et non comme « clique ici ». */
 .uni .attente{background:rgba(255,255,255,.16);color:rgba(255,255,255,.72);
@@ -514,27 +514,40 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px}
 .bonus .dit > b{display:block;font:900 21px/1.2 'Inter',system-ui,sans-serif;color:#fff;
   margin-bottom:12px}
 
-.jeux{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px}
-.jeu{position:relative;border-radius:11px;overflow:hidden;aspect-ratio:1/1;background:var(--nuit)}
-.jeu img{width:100%;height:100%;object-fit:cover;transition:transform .18s}
-.jeu:hover img{transform:scale(1.06)}
-/* ---- CES JEUX N EXISTENT PAS ENCORE ----
-   Les montrer sans le dire ferait cliquer dessus, et un clic qui ne mene nulle
-   part se lit comme une panne. Le bandeau est POSE SUR l image et non a cote :
-   a cote, on le prend pour la legende d une vignette voisine. Et l image est
-   assombrie — un bandeau seul sur une vignette bien nette ne suffit pas a
-   arreter la main. */
-.jeu.bientot img{filter:saturate(.55) brightness(.62)}
-.jeu.bientot:hover img{transform:none}
-.jeu.bientot span{
-  position:absolute; inset:auto 0 0 0; padding:5px 0; text-align:center;
-  background:rgba(8,24,58,.86); color:#fff;
-  font:800 8.5px/1 'Inter',system-ui,sans-serif; letter-spacing:1.6px;
-}
-.bientot-t{
-  padding:5px 9px; border-radius:99px; background:var(--bleu-clair); color:var(--bleu);
-  font:800 9px/1 'Inter',system-ui,sans-serif; letter-spacing:1.2px;
-}
+/* ---- SWOGE AI, A COTE DU CASINO ET DU SPORT (30/09/2026) ----
+   Demande relayee par le proprietaire : « retirer le Coming Soon de l accueil,
+   et mettre SWOGE AI / Perps en section comme le Casino et les paris ». Le
+   bloc « Featured games » portait dix vignettes en `href="#"`, toutes
+   « SOON » : dix clics morts sur la page qu on voit en premier.
+   La carte n a pas de film : aucun visuel IA n existe dans le depot, et une
+   photo de casino sous « SWOGE AI » aurait menti sur ce qu il y a derriere.
+   Elle est dessinee — une courbe de marche sur une grille, en SVG, qui se
+   trace une fois et s arrete (rien ne bouge pour qui refuse le mouvement). */
+/* Une BANNIERE sous les quatre cartes, pas une cinquieme carte : mesure a
+   1440 px, cinq cartes faisaient 136 px chacune et trois boutons etaient
+   coupes (« SEE THE AGE », « ENTER THE A », « BUY ON DEX »). */
+.uni.ia{grid-column:1/-1;min-height:168px;justify-content:center;
+  background:radial-gradient(120% 140% at 90% 0%,#1B5FE0 0%,#123468 40%,#0A1F44 80%)}
+.uni.ia .voile{background:linear-gradient(90deg,rgba(8,24,58,.94) 0%,rgba(8,24,58,.7) 42%,rgba(8,24,58,0) 78%)}
+.uni.ia .dit{text-align:left;max-width:520px;padding:20px 22px}
+.uni.ia b{font-size:26px}
+.uni.ia i{font-size:12.5px;margin:7px 0 14px}
+.uni.ia .boutons{display:flex;gap:8px;flex-wrap:wrap}
+.uni.ia .sw-b{width:auto}
+.uni.ia .sw-b.second{background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.35)}
+.uni.ia svg{position:absolute;inset:0;width:100%;height:100%}
+.uni.ia .trace{stroke-dasharray:640;stroke-dashoffset:640;animation:iaTrace 2.4s .3s ease-out forwards}
+@keyframes iaTrace{to{stroke-dashoffset:0}}
+@media (prefers-reduced-motion:reduce){ .uni.ia .trace{animation:none;stroke-dashoffset:0} }
+
+.ia-liste{display:flex;flex-direction:column}
+.ia-l{display:flex;gap:11px;align-items:center;padding:10px 4px;border-top:1px solid var(--bord);color:var(--texte);text-decoration:none}
+.ia-l:first-child{border-top:0}
+.ia-l:hover{background:var(--bleu-clair)}
+.ia-l .ic{flex:0 0 auto;width:34px;height:34px;border-radius:10px;background:var(--bleu-clair);display:grid;place-items:center;font-size:16px}
+.ia-l b{display:block;font:800 13px/1.2 'Inter',system-ui,sans-serif}
+.ia-l small{display:block;font:500 11.5px/1.35 'Inter',system-ui,sans-serif;color:var(--gris);margin-top:2px}
+.ia-l .fl{margin-left:auto;color:var(--bleu);font-weight:800}
 
 /* ---- LES SPORTS ---- */
 .onglets{display:flex;gap:6px;overflow-x:auto;padding-bottom:9px;margin-bottom:9px;
@@ -675,7 +688,6 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px}
    gene. */
 @media (max-width:1240px){
   .sw-plat{grid-template-columns:minmax(0,1fr)}
-  .jeux{grid-template-columns:repeat(5,minmax(0,1fr))}
 }
 @media (max-width:980px){
   .sw-corps{flex-direction:column;padding:12px}
@@ -694,7 +706,6 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px}
   .sw-haut{flex-wrap:wrap}
   .sw-chiffres{order:3;flex:1 1 100%}
   nav.sb-ancre{order:4}
-  .jeux{grid-template-columns:repeat(3,minmax(0,1fr))}
   .univers{grid-template-columns:minmax(0,1fr)}
   .promesses{grid-template-columns:minmax(0,1fr)}
   /* `.eco` se repartit tout seul par `auto-fit` : une regle de plus ici
@@ -909,7 +920,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px}
                Connecte, on y arrive ; sinon, la porte de connexion s ouvre
                d abord, via `swogecx.js`. -->
           <div class="dit"><b>ARCADE</b><i>Play. Compete. Earn.</i>
-            <a class="sw-b vif" id="gxArcade" href="nexus.html?salle=arcade">ENTER THE ARCADE</a></div>
+            <a class="sw-b vif" id="gxArcade" href="nexus.html?salle=arcade">ENTER ARCADE</a></div>
         </article>
         <!-- ---- ACHETER LE JETON, DEPUIS L ACCUEIL ----
              Cette carte disait « REWARDS / VIEW REWARDS » avec un bouton qui ne
@@ -925,7 +936,26 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px}
                loading="lazy" decoding="async"><div class="voile"></div>
           <div class="dit"><b>BUY $SWOGE</b><i>Grab the token. Enter the world.</i>
             <a class="sw-b vif" href="https://dexscreener.com/robinhood/0x2dc0fb72d9284228046cc95910eeaabebfe48456"
-               target="_blank" rel="noopener">BUY ON DEXSCREENER &#8599;</a></div>
+               target="_blank" rel="noopener">BUY ON DEX &#8599;</a></div>
+        </article>
+        <article class="uni ia">
+          <svg viewBox="0 0 600 170" preserveAspectRatio="xMaxYMid slice" aria-hidden="true">
+            <g stroke="rgba(255,255,255,.07)" stroke-width="1">
+              <path d="M0 34H600M0 68H600M0 102H600M0 136H600"/>
+              <path d="M300 0V170M360 0V170M420 0V170M480 0V170M540 0V170"/>
+            </g>
+            <g fill="rgba(255,255,255,.18)">
+              <rect x="326" y="104" width="8" height="30" rx="1.5"/><rect x="376" y="92" width="8" height="26" rx="1.5"/>
+              <rect x="426" y="98" width="8" height="22" rx="1.5"/><rect x="476" y="70" width="8" height="30" rx="1.5"/>
+              <rect x="526" y="52" width="8" height="28" rx="1.5"/><rect x="566" y="34" width="8" height="26" rx="1.5"/>
+            </g>
+            <path class="trace" d="M280 132 L330 120 L380 106 L430 112 L480 86 L530 68 L570 50 L600 40" fill="none" stroke="#F5B301" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+            <circle cx="600" cy="40" r="5" fill="#F5B301"/>
+          </svg>
+          <div class="voile"></div>
+          <div class="dit"><b>SWOGE AI</b><i>AI agents trade crypto at real prices &mdash; measured in public, losses included.</i>
+            <span class="boutons"><a class="sw-b vif" href="swoge_ai.html">SWOGE AI &nbsp;&rarr;</a>
+            <a class="sw-b vif second" href="swoge_perp.html">AI PERPS &nbsp;&rarr;</a></span></div>
         </article>
       </section>
 
@@ -1083,20 +1113,22 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px}
         </div>
       </section>
 
+      <!-- ---- SWOGE AI : CE QUI TOURNE VRAIMENT (30/09/2026) ----
+           A la place de « Featured games / Coming soon » (dix vignettes sans
+           lien). Chaque ligne mene a une page qui existe et tourne ; le texte
+           dit ce qu elle fait, sans chiffre ecrit a la main — les chiffres
+           sont sur les pages, lus sur le serveur. -->
       <section class="carte carte-p">
-        <div class="tete"><h3>FEATURED GAMES</h3><span class="bientot-t">COMING SOON</span></div>
-        <div class="jeux">
-          <a class="jeu bientot" href="#"><img src="img/site/jeu_bonanza.webp" alt="Sweet Bonanza"><span>SOON</span></a>
-          <a class="jeu bientot" href="#"><img src="img/site/jeu_olympus.webp" alt="Gates of Olympus"><span>SOON</span></a>
-          <a class="jeu bientot" href="#"><img src="img/site/jeu_bigbass.webp" alt="Big Bass Bonanza"><span>SOON</span></a>
-          <a class="jeu bientot" href="#"><img src="img/site/jeu_wanted.webp" alt="Wanted"><span>SOON</span></a>
-          <a class="jeu bientot" href="#"><img src="img/site/jeu_sugarrush.webp" alt="Sugar Rush"><span>SOON</span></a>
-          <a class="jeu bientot" href="#"><img src="img/site/jeu_roulette.webp" alt="Roulette Live"><span>SOON</span></a>
-          <a class="jeu bientot" href="#"><img src="img/site/jeu_blackjack.webp" alt="Blackjack Live"><span>SOON</span></a>
-          <a class="jeu bientot" href="#"><img src="img/site/jeu_poker.webp" alt="Swoge Poker"><span>SOON</span></a>
-          <a class="jeu bientot" href="#"><img src="img/site/jeu_crazytime.webp" alt="Crazy Time"><span>SOON</span></a>
-          <a class="jeu bientot" href="#"><img src="img/site/doge_smoking.webp" alt="Plinko"><span>SOON</span></a>
-        </div>
+        <div class="tete"><h3>SWOGE AI</h3>
+          <a class="vif" href="swoge_ai.html">OPEN</a></div>
+        <p class="sous">AI agents trading at real prices &mdash; measured in public, losses included.</p>
+        <nav class="ia-liste" aria-label="SWOGE AI">
+          <a class="ia-l vif" href="swoge_ai.html"><span class="ic">&#129302;</span><span><b>AI Trading Colony</b><small>Agents read new Robinhood Chain tokens, score them and trade what they see.</small></span><span class="fl">&rarr;</span></a>
+          <a class="ia-l vif" href="swoge_perp.html"><span class="ic">&#128200;</span><span><b>AI Perps</b><small>Agents on BTC, ETH, SOL, XRP and DOGE perpetuals, funding included.</small></span><span class="fl">&rarr;</span></a>
+          <a class="ia-l vif" href="swoge_predict.html"><span class="ic">&#128302;</span><span><b>Predict</b><small>PancakeSwap Prediction rounds on BNB Chain, read live.</small></span><span class="fl">&rarr;</span></a>
+          <a class="ia-l vif" href="swoge_polymarket_ai.html"><span class="ic">&#127922;</span><span><b>Polymarket AI</b><small>A colony on Polymarket&rsquo;s 15-minute crypto markets.</small></span><span class="fl">&rarr;</span></a>
+          <a class="ia-l vif" href="swoge_agents.html"><span class="ic">&#129504;</span><span><b>Agents</b><small>Chat with Claude, ChatGPT and Grok &mdash; or give an agent a task.</small></span><span class="fl">&rarr;</span></a>
+        </nav>
       </section>
 
       <!-- ================== CE QU'ON PROPOSE VRAIMENT ==================

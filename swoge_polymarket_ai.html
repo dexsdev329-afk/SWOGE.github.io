@@ -493,7 +493,6 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     function ligne(k, v){ dl.appendChild(el("dt", null, k)); dl.appendChild(el("dd", null, v)); }
     ligne("Paper bank", usd(a.bank) + " (from $1,000)");
     ligne("Bets", a.bets + " \u00b7 " + a.resolved + " settled \u00b7 " + a.open + " open");
-    if (a.resolved >= 20 || a.type === "baseline") ligne("Edge", a.edge != null ? usd(a.edge) + " per bet" : "\u2014");
     ligne("Won", a.winRate ? a.won + " (" + pct(a.winRate.p) + ", 95% range " + pct(a.winRate.low) + "\u2013" + pct(a.winRate.high) + ")" : "\u2014");
     ligne("Avg price paid", cents(a.avgPricePaid));
     ligne("Skill score", a.skill == null ? "\u2014" : String(a.skill));

@@ -29,7 +29,10 @@ const ok = (c, m) => { n++; if (c) console.log('  ok   ' + m); else { rates++; c
     const menu = await p.$$eval('.sw-nav a[href]', (as) => as.map((a) => { a.scrollIntoView({ block: 'center', inline: 'center' }); const b = a.getBoundingClientRect(), e = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2);
       return { h: a.getAttribute('href'), ok: !!e && (e === a || a.contains(e)) }; }));
     const morts = menu.filter((x) => !x.ok).map((x) => x.h);
-    ok(menu.length >= 12 && !morts.length, f + ' a ' + w + ' px : les ' + menu.length + ' entrees du menu recoivent le clic' + (morts.length ? ' [mortes : ' + morts.join(', ') + ']' : ''));
+    /* 30/09 : « au moins 12 » gardait d un menu tronque ; OSINT et eSIM sont devenus des onglets
+       d Agents et le menu en compte 11. On exige la liste exacte, dans l ordre : plus strict qu un nombre. */
+    const MENU = 'index.html,games.html,swogebet.html,swoge_wallet.html,swoge_ai.html,swoge_perp.html,swoge_predict.html,swoge_agents.html,agent_store.html,swoge_polymarket_ai.html,whitepaper.html';
+    ok(menu.map((x) => x.h).join(',') === MENU && !morts.length, f + ' a ' + w + ' px : les ' + menu.length + ' entrees du menu commun, dans l ordre, recoivent le clic' + (morts.length ? ' [mortes : ' + morts.join(', ') + ']' : '') + (menu.map((x) => x.h).join(',') === MENU ? '' : ' [menu : ' + menu.map((x) => x.h).join(', ') + ']'));
     await ctx.close();
   }
   await nav.close(); srv.close();

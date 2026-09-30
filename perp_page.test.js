@@ -556,8 +556,11 @@ const txt = (page, sel) => page.$eval(sel, (e) => (e.textContent || '').trim()).
     /* Le menu du site fait foi partout : une entree qui n existe que sur
        certaines pages envoie les autres dans le vide. */
     const ailleurs = fs.readFileSync(path.join(SITE, 'index.html'), 'utf8');
-    ok((ailleurs.match(/swoge_perp/g) || []).length === 1,
-       'et l accueil ne porte qu elle aussi');
+    /* 30/09 : l accueil a maintenant une banniere SWOGE AI / AI Perps et un bloc SWOGE AI qui
+       menent aussi a la page : on compte dans le MENU, qui est ce que cette ligne gardait. */
+    const menuAccueil = (ailleurs.match(/<nav class="sw-nav">[\s\S]*?<\/nav>/) || [''])[0];
+    ok((menuAccueil.match(/swoge_perp/g) || []).length === 1,
+       'et le menu de l accueil ne porte qu elle aussi');
     await page.close();
   }
 

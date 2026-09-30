@@ -84,7 +84,30 @@ let chromium = null; try { chromium = require('playwright').chromium; } catch (e
   ok(await visible(p, 'ag-question') && !(await visible(p, 'question')), '?mode=agent ouvre directement l agent');
   await ctx.close();
 
-  for (const m of ['chat', 'agent']) {
+  /* 30/09 : OSINT et eSIM rejoignent la page (« une fusion pour gagner de la place »). */
+  console.log('\n-- OSINT et eSIM, deux onglets de plus --');
+  ({ p, ctx, erreurs } = await ouvre(''));
+  ok((await p.$$('.onglets [role="tab"]')).length === 4, 'quatre onglets : Chat, Agent, OSINT, eSIM');
+  await p.click('#ongletOsint');
+  ok(await visible(p, 'os-q') && !(await visible(p, 'question')) && !(await visible(p, 'es-pays')), 'OSINT s affiche seul');
+  await p.fill('#os-q', 'example.com');
+  ok((await p.$eval('#question', (t) => t.value)) === '', 'taper dans OSINT ne touche pas le chat');
+  await p.click('#ongletEsim');
+  ok(await visible(p, 'es-pays') && !(await visible(p, 'os-q')), 'eSIM s affiche seul');
+  /* La carte de paiement n apparait qu apres le choix d un forfait : on coche par le script. */
+  await p.evaluate(() => { const r = document.querySelector('#modeEsim input[name="esReseau"][value="solana"]'); r.checked = true; r.dispatchEvent(new Event('change', { bubbles: true })); });
+  ok(await p.evaluate(() => document.querySelector('#modeEsim input[name="esReseau"][value="solana"]').checked
+     && document.querySelector('input[name="rcReseau"][value="base"]').checked), 'choisir Solana dans eSIM ne change pas le reseau de recharge du chat');
+  ok(erreurs.length === 0, erreurs.length ? 'erreurs : ' + erreurs.slice(0, 2).join(' | ') : 'aucune erreur de script en passant par les quatre onglets');
+  await ctx.close();
+  ({ p, ctx, erreurs } = await ouvre('?q=example.com'));
+  ok(await visible(p, 'os-q') && (await p.$eval('#os-q', (t) => t.value)) === 'example.com', 'un lien OSINT partage (?q=) ouvre l onglet OSINT, la cible remplie');
+  await ctx.close();
+  ({ p, ctx, erreurs } = await ouvre('?order=' + 'a'.repeat(32)));
+  ok(await visible(p, 'es-carteResultat'), 'un lien de commande eSIM (?order=) ouvre l onglet eSIM, sur la commande');
+  await ctx.close();
+
+  for (const m of ['chat', 'agent', 'osint', 'esim']) {
     ({ p, ctx, erreurs } = await ouvre('?mode=' + m, 360));
     const large = await p.evaluate(() => document.documentElement.scrollWidth);
     ok(large <= 360, 'onglet ' + m + ' a 360 px : rien ne deborde (' + large + ' px)');

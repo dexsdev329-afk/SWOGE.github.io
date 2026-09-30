@@ -71,7 +71,8 @@ function decoupe(src, ouvreMain, quoi) {
 /* Borne chaque selecteur a `portee`. Les commentaires tombent (les sources
    les gardent) ; @media/@supports sont parcourus, les autres @-regles copiees ;
    `:root` reste global : c est la variable que stakebubble.js lit. */
-function borne(css, portee) {
+function borne(css, portee, opts) {
+  opts = opts || {};
   css = css.replace(/\/\*[\s\S]*?\*\//g, '');
   const selecteurs = (tete) => {
     const parts = []; let prof = 0, d = 0;
@@ -81,11 +82,14 @@ function borne(css, portee) {
       else if (c === ',' && !prof) { parts.push(tete.slice(d, i)); d = i + 1; }
     }
     parts.push(tete.slice(d));
-    return parts.map((p) => p.trim()).map((p) => {
-      if (p === ':root') return p;
-      if (/^(html|body|:root)\b/.test(p)) throw new Error('CSS agent : selecteur global a trancher a la main — ' + p);
+    const r = parts.map((p) => p.trim()).map((p) => {
+      if (p === ':root') return opts.racineVersPortee ? portee : p;
+      if (opts.retire && opts.retire.test(p)) return null;
+      if (opts.remplace && opts.remplace[p]) return opts.remplace[p];
+      if (/^(html|body|:root)\b/.test(p)) throw new Error('CSS : selecteur global a trancher a la main — ' + p);
       return portee + ' ' + p;
-    }).join(',');
+    }).filter(Boolean);
+    return r.length ? r.join(',') : null;
   };
   const bloc = (s) => {
     let res = '', k = 0;
@@ -106,12 +110,74 @@ function borne(css, portee) {
       const corps = s.slice(ouvre + 1, j - 1);
       if (/^@(media|supports|container)\b/i.test(tete)) res += tete + '{' + bloc(corps) + '}\n';
       else if (tete.startsWith('@')) res += tete + '{' + corps + '}\n';
-      else res += selecteurs(tete) + '{' + corps.trim() + '}\n';
+      else { const sel = selecteurs(tete); if (sel) res += sel + '{' + corps.trim() + '}\n'; }
       k = j;
     }
     return res;
   };
   return bloc(css);
+}
+
+function prefixeIds(html, p) {
+  return html.replace(/(\s)id="([^"]+)"/g, '$1id="' + p + '$2"')
+             .replace(/(\s)(for|aria-labelledby|aria-describedby|aria-controls)="([^"]+)"/g, '$1$2="' + p + '$3"');
+}
+function equilibre(html, quoi) {
+  const o = (html.match(/<div[\s>]/g) || []).length, f = (html.match(/<\/div>/g) || []).length;
+  if (o !== f) throw new Error(quoi + ' : ' + o + ' <div> ouverts pour ' + f + ' fermes');
+}
+function scripte(js) { return '<script>\n(function(){\n' + js + '\n})();\n</script>\n'; }
+
+/* ---- OSINT (30/09, « OSINT et eSIM devraient fonctionner avec Agents, une fusion pour
+   gagner de la place ») ----
+   Sa feuille d en-tete est celle de SwoleMind, a la ligne pres (compare le 30/09) : seules
+   ses regles de <main> sont ajoutees, bornees a #modeOsint. Son script n etait pas enferme
+   (« use strict » au niveau du fichier) : il l est, sinon $, etat, enquete deviendraient
+   globaux. Il n atteint le DOM que par `$(selecteur)` : les « #id » y prennent le prefixe. */
+function osint() {
+  const src = lis('swoge_osint.html');
+  const a = position(src, '\n<main>\n', 0, 'osint <main>') + '\n<main>\n'.length;
+  const b = position(src, '  <!-- LA COLONNE DE DROITE', a, 'osint colonne de droite');
+  let bloc = src.slice(a, b);
+  const css = [];
+  bloc = bloc.replace(/<style>([\s\S]*?)<\/style>/g, (m, c) => { css.push(c); return ''; });
+  if (!css.length) throw new Error('osint : aucun <style> dans <main>');
+  /* <main> n est jamais ferme dans la source, et le </div> de .sw-corps y est avant la colonne :
+     on retire le dernier </div> orphelin pour que le bloc soit equilibre. */
+  const k = bloc.lastIndexOf('</div>'); const essai = bloc.slice(0, k) + bloc.slice(k + 6);
+  const o = (bloc.match(/<div[\s>]/g) || []).length, f = (bloc.match(/<\/div>/g) || []).length;
+  if (f === o + 1) bloc = essai;
+  equilibre(bloc, 'osint');
+  const i = position(src, '<script>\n"use strict";', b, 'osint script');
+  let js = src.slice(i + '<script>\n'.length, position(src, '</script>', i, 'osint fin du script'));
+  js = remplace(js, 'const $ = s => document.querySelector(s);', 'const $ = s => document.querySelector(String(s).replace(/^#/, "#os-"));', 1, 'osint : $');
+  js = remplace(js, 'document.querySelectorAll(".calque")', 'document.querySelectorAll("#modeOsint .calque")', 2, 'osint : calques');
+  if (/getElementById\(/.test(js)) throw new Error('osint : un getElementById contourne $()');
+  return { html: prefixeIds(bloc, 'os-'), css: css.map((c) => borne(c, '#modeOsint')).join(''), js: scripte(js) };
+}
+
+/* ---- eSIM ----
+   Sa feuille propre (avant « LA NOUVELLE BARRE ») est bornee a #modeEsim, ses variables de
+   couleur aussi (:root -> #modeEsim), `main` devient son cadre, `html`/`body` tombent (le
+   decor est celui de la page). Son script — dont le generateur de QR, en fonctions
+   globales — est enferme ; il n atteint le DOM que par `$(id)` et les radios « reseau ».
+   Le lien de commande se construit sur l adresse de la page : `?order=` rouvre l onglet. */
+function esim() {
+  const src = lis('swoge_esim.html');
+  const s0 = position(src, '<style>\n:root{ --fond:', 0, 'esim styles');
+  const s1 = position(src, '/* ==================== LA NOUVELLE BARRE', s0, 'esim fin des styles propres');
+  const css = borne(src.slice(s0 + '<style>\n'.length, s1), '#modeEsim',
+    { racineVersPortee: true, retire: /^(html|body)\b/, remplace: { main: '#modeEsim .es-cadre' } });
+  const a = position(src, '\n<main>\n', 0, 'esim <main>') + '\n<main>\n'.length;
+  let html = src.slice(a, position(src, '\n</main>', a, 'esim </main>'));
+  equilibre(html, 'esim');
+  html = remplace(html, 'name="reseau"', 'name="esReseau"', 2, 'esim : radios');
+  const i = position(src, '<script>\n/* ---- LE QR DU CODE', 0, 'esim script');
+  let js = src.slice(i + '<script>\n'.length, position(src, '</script>', i, 'esim fin du script'));
+  js = remplace(js, 'var $ = function(id){ return document.getElementById(id); };', 'var $ = function(id){ return document.getElementById("es-" + id); };', 1, 'esim : $');
+  js = remplace(js, 'input[name="reseau"]', 'input[name="esReseau"]', 2, 'esim : radios');
+  if ((js.match(/getElementById\(/g) || []).length !== 1) throw new Error('esim : un getElementById contourne $()');
+  return { html: '<div class="es-cadre">\n' + prefixeIds(html, 'es-') + '</div>\n', css, js: scripte(js) };
 }
 
 const TITRE = 'SWOGE Agents · AI chat and AI agent tasks';
@@ -124,7 +190,8 @@ const ONGLETS_CSS = `
  * qu il fait : le joueur choisit sans connaitre les anciens noms. Le bouton
  * general de la page (Anton, majuscules, fond bleu) est entierement repris. */
 .onglets-cadre{max-width:780px;margin:0 auto;padding:12px 16px 0}
-.onglets{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;background:var(--panel2);border-radius:16px}
+.onglets{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;padding:4px;background:var(--panel2);border-radius:16px}
+@media (max-width:560px){ .onglets{grid-template-columns:1fr 1fr} }
 .onglets button{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;min-width:0;
   font:inherit;text-transform:none;letter-spacing:0;background:transparent;color:var(--dim);
   border:0;border-radius:12px;padding:7px 12px;min-height:44px;cursor:pointer}
@@ -146,6 +213,13 @@ const ONGLETS_CSS = `
 #modeChat .chat-tete .titre,#modeAgent .ag-tete h1{display:none}
 #modeChat .chat-tete .droite{margin-left:0}
 #modeChat .chat{padding-top:12px}
+/* OSINT et eSIM (30/09) : l onglet les nomme, leurs grands titres restent ; eSIM garde sa
+   typographie a lui, le bouton general de la page (Anton, majuscules) est repris. */
+#modeOsint .wrap{padding-top:14px}
+#modeEsim .es-cadre{font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:var(--encre)}
+#modeEsim h1{font-family:inherit;text-transform:none;letter-spacing:0}
+#modeEsim button{text-transform:none;letter-spacing:0}
+#modeEsim button:hover{transform:none;filter:none}
 `;
 
 const ONGLETS_HTML = `<div class="onglets-cadre">
@@ -154,6 +228,10 @@ const ONGLETS_HTML = `<div class="onglets-cadre">
       <b>&#128172; Chat &amp; create</b><small>Claude, ChatGPT, Grok &middot; images &middot; videos</small></button>
     <button type="button" role="tab" id="ongletAgent" aria-controls="modeAgent" aria-selected="false" tabindex="-1">
       <b>&#129302; Agent</b><small>Give it a task: tokens, the colony, the web</small></button>
+    <button type="button" role="tab" id="ongletOsint" aria-controls="modeOsint" aria-selected="false" tabindex="-1">
+      <b>&#128269; OSINT</b><small>Domain, IP, site or address, from public sources</small></button>
+    <button type="button" role="tab" id="ongletEsim" aria-controls="modeEsim" aria-selected="false" tabindex="-1">
+      <b>&#128246; eSIM</b><small>Travel data, paid in USDC from your wallet</small></button>
   </div>
 </div>
 `;
@@ -164,8 +242,11 @@ const ONGLETS_HTML = `<div class="onglets-cadre">
 const ONGLETS_JS = `<script>
 (function(){
   "use strict";
-  var onglets = { chat: document.getElementById("ongletChat"), agent: document.getElementById("ongletAgent") };
-  var vues = { chat: document.getElementById("modeChat"), agent: document.getElementById("modeAgent") };
+  var ordre = ["chat", "agent", "osint", "esim"];
+  var onglets = { chat: document.getElementById("ongletChat"), agent: document.getElementById("ongletAgent"),
+                  osint: document.getElementById("ongletOsint"), esim: document.getElementById("ongletEsim") };
+  var vues = { chat: document.getElementById("modeChat"), agent: document.getElementById("modeAgent"),
+               osint: document.getElementById("modeOsint"), esim: document.getElementById("modeEsim") };
   var saisies = { chat: "question", agent: "ag-question" };
   function montre(m, garde){
     if (!vues[m]) m = "chat";
@@ -181,15 +262,17 @@ const ONGLETS_JS = `<script>
     try { var u = new URL(location.href); u.searchParams.set("mode", m); history.replaceState(history.state, "", u); } catch (e) {}
   }
   var depart = null;
-  try { depart = new URLSearchParams(location.search).get("mode"); } catch (e) {}
-  if (!depart && /^#(agent|chat)$/.test(location.hash)) depart = location.hash.slice(1);
+  /* Les liens des anciennes pages rouvrent leur onglet : ?q= (enquete OSINT partagee),
+     ?order= (le lien de commande eSIM, seul moyen de revoir son code d activation). */
+  try { var u0 = new URLSearchParams(location.search); depart = u0.get("mode") || (u0.get("order") ? "esim" : u0.get("q") ? "osint" : null); } catch (e) {}
+  if (!depart && /^#(agent|chat|osint|esim)$/.test(location.hash)) depart = location.hash.slice(1);
   if (!depart) try { depart = localStorage.getItem("swogeAgentsVue"); } catch (e) {}
   montre(depart || "chat", false);
   Object.keys(onglets).forEach(function(k){
     onglets[k].addEventListener("click", function(){ montre(k, true); });
     onglets[k].addEventListener("keydown", function(e){
       if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
-      var autre = k === "chat" ? "agent" : "chat";
+      var autre = ordre[(ordre.indexOf(k) + (e.key === "ArrowRight" ? 1 : ordre.length - 1)) % ordre.length];
       montre(autre, true); onglets[autre].focus(); e.preventDefault();
     });
   });
@@ -199,7 +282,7 @@ const ONGLETS_JS = `<script>
      le choix Chat/Agent invisible. Si elle est passee au-dessus, on remonte
      juste assez pour la montrer ; a 1280 elle reste visible et rien ne bouge. */
   document.addEventListener("DOMContentLoaded", function(){
-    montre(vues.agent.hidden ? "chat" : "agent", false);
+    montre(ordre.filter(function(k){ return !vues[k].hidden; })[0] || "chat", false);
     var haut = document.querySelector(".onglets").getBoundingClientRect().top;
     if (!location.hash && haut < 0) window.scrollBy(0, haut - 8);
   });
@@ -234,6 +317,7 @@ function fusionne() {
   const cssAgent = ag.styles.map((s) => borne(s, '#modeAgent')).join('');
 
   /* ---- le chat : sa seule requete globale qui aurait pris les boutons de l agent ---- */
+  const os = osint(), es = esim();
   const jsChat = remplace(chat.script, 'document.querySelectorAll(".suggestion")', 'document.querySelectorAll("#accueil .suggestion")', 1, 'chat : suggestions');
 
   return tete +
@@ -241,13 +325,17 @@ function fusionne() {
     '<!-- GENERE par outils/fusionne_agents.js depuis swolemind.html et swogeagentic.html : ne pas editer ici. -->\n' +
     chat.styles.map((s) => '<style>' + s + '</style>\n').join('') +
     '<style>\n/* ==== SWOGEAGENTIC, borne a #modeAgent (genere) ==== */\n' + cssAgent + '</style>\n' +
+    '<style>\n/* ==== OSINT, borne a #modeOsint (genere) ==== */\n' + os.css + '</style>\n' +
+    '<style>\n/* ==== eSIM, borne a #modeEsim (genere) ==== */\n' + es.css + '</style>\n' +
     '<style>' + ONGLETS_CSS + '</style>\n' +
     ONGLETS_HTML +
     '<section class="ag-mode" id="modeChat" role="tabpanel" aria-labelledby="ongletChat">\n' + chat.html + '</section>\n' +
     '<section class="ag-mode" id="modeAgent" role="tabpanel" aria-labelledby="ongletAgent" hidden>\n<div class="ag-cadre">\n' + html + '</div>\n</section>\n' +
+    '<section class="ag-mode" id="modeOsint" role="tabpanel" aria-labelledby="ongletOsint" hidden>\n' + os.html + '</section>\n' +
+    '<section class="ag-mode" id="modeEsim" role="tabpanel" aria-labelledby="ongletEsim" hidden>\n' + es.html + '</section>\n' +
     ONGLETS_JS +
     jsChat + '\n' +
-    js + '\n' +
+    js + '\n' + os.js + es.js +
     '</main>' + chat.queue;
 }
 
@@ -255,5 +343,5 @@ module.exports = { fusionne, CIBLE };
 if (require.main === module) {
   const page = fusionne();
   fs.writeFileSync(path.join(SITE, CIBLE), page);
-  console.log(CIBLE + ' : ' + page.length + ' octets, genere depuis swolemind.html + swogeagentic.html');
+  console.log(CIBLE + ' : ' + page.length + ' octets, genere depuis swolemind.html, swogeagentic.html, swoge_osint.html et swoge_esim.html');
 }

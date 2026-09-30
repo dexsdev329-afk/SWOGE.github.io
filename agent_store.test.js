@@ -134,9 +134,9 @@ const SERVICES = { ok: true, query: 'weather', note: 'x', summary: {}, services:
   }
 
   const html = fs.readFileSync(path.join(SITE, 'agent_store.html'), 'utf8');
-  ok(/<meta name="robots" content="noindex">/.test(html) && fs.readdirSync(SITE).filter((f) => f.endsWith('.html')).filter((f) => fs.readFileSync(path.join(SITE, f), 'utf8').includes('href="swoge_esim.html"><span class="ic">'))
+  ok(/<meta name="robots" content="noindex">/.test(html) && fs.readdirSync(SITE).filter((f) => f.endsWith('.html')).filter((f) => fs.readFileSync(path.join(SITE, f), 'utf8').includes('href="swoge_agents.html"'))
     .every((f) => /<a href="agent_store\.html"( class="on" aria-current="page")?><span class="ic">&#129513;<\/span>Agent Store<\/a>/.test(fs.readFileSync(path.join(SITE, f), 'utf8'))),
-    'chaque menu qui mene a l eSIM mene aussi a l Agent Store (surligne quand c est la page courante)');
+    'chaque menu commun (celui qui mene a Agents, ou vivent maintenant OSINT et eSIM) mene aussi a l Agent Store');
 
   await nav.close(); srv.close();
   console.log('\n' + (rates ? 'RATES : ' + rates + '/' + n : 'VERIFICATIONS : ' + n + ' — tout passe'));

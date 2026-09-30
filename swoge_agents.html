@@ -670,9 +670,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       <a href="swoge_ai.html"><span class="ic">&#129302;</span>SWOGE AI</a>
       <a href="swoge_perp.html"><span class="ic">&#128200;</span>AI Perp</a>
       <a href="swoge_predict.html"><span class="ic">&#128302;</span>Predict</a>
-      <a href="swoge_osint.html"><span class="ic">&#128269;</span>OSINT</a>
       <a href="swoge_agents.html" class="on" aria-current="page"><span class="ic">&#129504;</span>Agents</a>
-      <a href="swoge_esim.html"><span class="ic">&#128246;</span>eSIM</a>
       <a href="agent_store.html"><span class="ic">&#129513;</span>Agent Store</a>
       <a href="swoge_polymarket_ai.html"><span class="ic">&#129302;</span>Polymarket AI</a>
       <a href="whitepaper.html"><span class="ic">&#128220;</span>Docs</a>
@@ -1252,12 +1250,141 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 #modeAgent .histo .ligne button.efface{width:auto;flex:0 0 auto;color:var(--dim);padding:8px 10px}
 </style>
 <style>
+/* ==== OSINT, borne a #modeOsint (genere) ==== */
+#modeOsint .garde{margin-top:12px;border-left:3px solid var(--pool);background:var(--goldlite);
+  padding:10px 13px;font-size:12.5px;color:var(--paper);border-radius:0 var(--r) var(--r) 0}
+#modeOsint .garde b{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--pool)}
+#modeOsint .calques{display:flex;gap:8px;flex-wrap:wrap;margin:22px 0 0}
+#modeOsint .calque{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);background:var(--panel);
+  border-radius:var(--r);padding:7px 11px;cursor:pointer;font-family:'Space Mono',monospace;font-size:11px;
+  letter-spacing:.06em;text-transform:uppercase;color:var(--dim);user-select:none}
+#modeOsint .calque[aria-pressed="true"]{color:var(--paper);border-color:var(--pool);background:var(--goldlite)}
+#modeOsint .calque .pastille{width:9px;height:9px;border-radius:50%;background:var(--dim)}
+#modeOsint .calque[data-c="infrastructure"][aria-pressed="true"] .pastille{background:var(--pool)}
+#modeOsint .calque[data-c="organization"][aria-pressed="true"] .pastille{background:var(--neutral)}
+#modeOsint .calque[data-c="contacts"][aria-pressed="true"] .pastille{background:var(--believer)}
+#modeOsint section.bloc{margin-top:26px;border-top:1px solid var(--line);padding-top:18px}
+#modeOsint section.bloc>h2{font-family:'Anton',sans-serif;font-size:17px;letter-spacing:.03em;text-transform:uppercase;margin:0 0 4px}
+#modeOsint section.bloc>.hint{color:var(--dim);font-size:12px;margin:0 0 12px;max-width:640px}
+#modeOsint .grille{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px}
+#modeOsint .cell{border:1px solid var(--line);background:var(--panel);border-radius:var(--r);padding:10px 12px;min-width:0}
+#modeOsint .cell .k{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
+#modeOsint .cell .v{font-family:'Space Mono',monospace;font-size:12.5px;margin-top:4px;word-break:break-word}
+#modeOsint .tag{display:inline-block;font-family:'Space Mono',monospace;font-size:9.5px;letter-spacing:.09em;
+  text-transform:uppercase;padding:2px 6px;border-radius:2px;border:1px solid;white-space:nowrap}
+#modeOsint .tag.ok{color:var(--believer);border-color:var(--believer);background:rgba(18,128,90,.07)}
+#modeOsint .tag.no{color:var(--neutral);border-color:var(--neutral);background:rgba(150,101,15,.07)}
+#modeOsint .tag.h{color:var(--believer);border-color:var(--believer)}
+#modeOsint .tag.m{color:var(--neutral);border-color:var(--neutral)}
+#modeOsint .tag.l{color:var(--dim);border-color:var(--line)}
+#modeOsint .tag.own{color:var(--serpent);border-color:var(--serpent);background:rgba(192,57,43,.07)}
+#modeOsint .tag.assoc{color:var(--dim);border-color:var(--line)}
+#modeOsint table.liste{width:100%;border-collapse:collapse;font-size:12.5px}
+#modeOsint table.liste th{text-align:left;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--dim);font-weight:400;padding:0 10px 7px 0;border-bottom:1px solid var(--line)}
+#modeOsint table.liste td{padding:9px 10px 9px 0;border-bottom:1px solid var(--line);vertical-align:top;word-break:break-word}
+#modeOsint table.liste td.val{font-family:'Space Mono',monospace}
+#modeOsint table.liste a{color:var(--pool)}
+#modeOsint .pourquoi{color:var(--dim);font-size:11px;margin-top:3px}
+#modeOsint .gens{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+#modeOsint .qui{border:1px solid var(--neutral);border-left:4px solid var(--neutral);background:#FFFBF2;
+  border-radius:var(--r);padding:12px 14px}
+#modeOsint .qui .nom{font-family:'Anton',sans-serif;font-size:18px;letter-spacing:.02em}
+#modeOsint .qui .fonction{font-size:12.5px;color:var(--paper);margin-top:2px}
+#modeOsint .qui .meta{margin-top:9px;display:flex;gap:6px;flex-wrap:wrap}
+#modeOsint .qui .src{margin-top:9px;font-size:11px}
+#modeOsint .qui .extrait{margin-top:8px;font-family:'Space Mono',monospace;font-size:10.5px;color:var(--dim);
+  border-left:2px solid var(--line);padding-left:8px}
+#modeOsint .toile{margin-top:12px;border:1px solid var(--line);background:var(--panel);border-radius:var(--r);overflow:hidden}
+#modeOsint .toile svg{display:block;width:100%;height:auto;touch-action:manipulation}
+#modeOsint .toile .arete{stroke:#C7D4E8;stroke-width:1}
+#modeOsint .toile .arete.h{stroke:#9FBEE6}
+#modeOsint .toile .arete.l{stroke-dasharray:3 3;stroke:#D8E2F0}
+#modeOsint .legende{display:flex;gap:14px;flex-wrap:wrap;padding:9px 12px;border-top:1px solid var(--line);
+  font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--dim)}
+#modeOsint .legende span{display:inline-flex;align-items:center;gap:6px}
+#modeOsint .legende i{width:10px;height:10px;display:inline-block;border-radius:50%}
+#modeOsint .bords{border:1px solid var(--line);background:var(--panel);border-radius:var(--r);padding:14px 16px;margin-top:12px}
+#modeOsint .bords li{margin:0 0 7px;font-size:12.5px}
+#modeOsint .bords li:last-child{margin-bottom:0}
+#modeOsint .constat{border:1px solid var(--line);border-left:4px solid var(--dim);background:var(--panel);
+  border-radius:var(--r);padding:12px 14px;margin-bottom:10px}
+#modeOsint .constat.g-haute{border-left-color:var(--serpent);background:rgba(192,57,43,.04)}
+#modeOsint .constat.g-moyenne{border-left-color:var(--neutral);background:rgba(150,101,15,.04)}
+#modeOsint .constat.g-basse{border-left-color:var(--pool)}
+#modeOsint .constat.g-info{border-left-color:var(--dim)}
+#modeOsint .constat .dit{font-size:13px;color:var(--paper)}
+#modeOsint .constat .grav{font-family:'Space Mono',monospace;font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;
+  padding:1px 6px;border-radius:2px;border:1px solid currentColor;margin-right:8px;vertical-align:1px}
+#modeOsint .constat.g-haute .grav{color:var(--serpent)}
+#modeOsint .constat.g-moyenne .grav{color:var(--neutral)}
+#modeOsint .constat.g-basse .grav{color:var(--pool)}
+#modeOsint .constat.g-info .grav{color:var(--dim)}
+#modeOsint .constat .piece{font-family:'Space Mono',monospace;font-size:10.5px;color:var(--dim);margin-top:6px;
+  border-left:2px solid var(--line);padding-left:8px}
+#modeOsint .conflit{border:1px dashed var(--serpent);border-radius:var(--r);padding:12px 14px;margin-bottom:10px;
+  background:rgba(192,57,43,.03)}
+#modeOsint .conflit .quoi{font-family:'Space Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--serpent)}
+#modeOsint .conflit .v{font-family:'Space Mono',monospace;font-size:12px;margin-top:6px;display:flex;gap:8px;flex-wrap:wrap;align-items:baseline}
+#modeOsint .conflit .note{font-size:11.5px;color:var(--dim);margin-top:8px;font-style:italic}
+#modeOsint .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;align-items:center}
+#modeOsint .actions a.tele,#modeOsint .actions button.bascule{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.04em;
+  text-transform:uppercase;border:1px solid var(--line);background:var(--panel);color:var(--dim);
+  border-radius:var(--r);padding:7px 12px;cursor:pointer;text-decoration:none}
+#modeOsint .actions a.tele:hover,#modeOsint .actions button.bascule:hover{border-color:var(--pool);color:var(--paper)}
+#modeOsint .actions button.bascule[aria-pressed="true"]{border-color:var(--pool);color:var(--pool);background:var(--goldlite)}
+#modeOsint .trace{font-family:'Space Mono',monospace;font-size:10.5px;color:var(--dim);margin-left:auto}
+#modeOsint .trace.actif{color:var(--neutral)}
+#modeOsint tr.conteste td{background:rgba(192,57,43,.04)}
+</style>
+<style>
+/* ==== eSIM, borne a #modeEsim (genere) ==== */
+#modeEsim{--fond:#EEF3FB; --carte:#fff; --encre:#0B1B36; --pale:#5a6b85; --bleu:#1652f0; --ligne:#E1E9F6; --ok:#0a7d3e; --err:#b3261e;}
+#modeEsim *{box-sizing:border-box;}
+#modeEsim .es-cadre{max-width:560px; margin:0 auto; padding:20px 16px 40px;}
+#modeEsim h1{font-size:22px; margin:0 0 6px;}
+#modeEsim p{margin:6px 0;}
+#modeEsim .carte{background:var(--carte); border:1px solid var(--ligne); border-radius:14px; padding:14px 16px; margin:14px 0;}
+#modeEsim .pale{color:var(--pale); font-size:13.5px;}
+#modeEsim button{font:inherit; font-weight:700; border:0; border-radius:999px; padding:12px 18px; background:var(--bleu); color:#fff; cursor:pointer; width:100%; min-height:44px; touch-action:manipulation;}
+#modeEsim button[disabled]{opacity:.45; cursor:default;}
+#modeEsim button.petit{width:auto; min-height:32px; padding:6px 12px; font-size:13px;}
+#modeEsim input[type=text]{width:100%; font:inherit; border:1px solid var(--ligne); border-radius:10px; padding:10px 12px; margin:6px 0 10px;}
+#modeEsim .choix{display:flex; gap:10px; align-items:flex-start; padding:10px 12px; border:1px solid var(--ligne); border-radius:12px; margin:8px 0; cursor:pointer;}
+#modeEsim .choix input{margin-top:3px; flex:0 0 auto;}
+#modeEsim .choix span{min-width:0;}
+#modeEsim .prix{font-weight:800; white-space:nowrap;}
+#modeEsim .statut{min-height:22px; font-weight:600;}
+#modeEsim .statut.err{color:var(--err);}
+#modeEsim .statut.ok{color:var(--ok);}
+#modeEsim code,#modeEsim .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12.5px; word-break:break-all;}
+#modeEsim a{color:var(--bleu);}
+#modeEsim .ach-act > div{display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin:8px 0;}
+#modeEsim .ach-act > div span{font-weight:700; font-size:13px;}
+#modeEsim .ach-act > div code{flex:1 1 200px; background:#f6f8fc; border-radius:8px; padding:6px 8px;}
+#modeEsim .ach-qr{width:216px; height:216px; image-rendering:pixelated; border-radius:8px; background:#fff; display:block; margin:8px auto;}
+#modeEsim .rapides{display:flex; flex-wrap:wrap; gap:8px; margin:12px 0 4px;}
+#modeEsim .puce{width:auto; min-height:36px; padding:7px 12px; border-radius:999px; background:#f3f6fc; color:var(--encre); border:1px solid var(--ligne); font-weight:600; font-size:14px; display:inline-flex; gap:6px; align-items:center;}
+#modeEsim .puce:hover,#modeEsim .puce:focus-visible{border-color:var(--bleu); background:#eaf1ff;}
+#modeEsim .puce .drapeau{font-size:18px; line-height:1;}
+#modeEsim .tous{margin-top:10px;}
+#modeEsim .tous summary{cursor:pointer; color:var(--bleu); font-weight:700; padding:6px 0;}
+#modeEsim .liste-pays{max-height:320px; overflow:auto; border:1px solid var(--ligne); border-radius:12px; margin-top:6px;}
+#modeEsim .liste-pays button{display:flex; gap:10px; align-items:center; width:100%; min-height:42px; border-radius:0; background:#fff; color:var(--encre); font-weight:500; text-align:left; padding:8px 12px; border-bottom:1px solid var(--ligne);}
+#modeEsim .liste-pays button:hover,#modeEsim .liste-pays button:focus-visible{background:#eaf1ff;}
+#modeEsim .liste-pays .drapeau{font-size:20px; line-height:1; width:26px; text-align:center;}
+#modeEsim .liste-pays .vide{padding:10px 12px; color:var(--pale);}
+@media (max-width:700px){}
+#modeEsim .carte{box-shadow:0 6px 24px rgba(11,27,54,.06);}
+</style>
+<style>
 /* ---- SWOGE AGENTS : deux onglets, une page (30/09/2026) ----
  * Une entree de menu au lieu de deux. Chaque onglet dit en une ligne ce
  * qu il fait : le joueur choisit sans connaitre les anciens noms. Le bouton
  * general de la page (Anton, majuscules, fond bleu) est entierement repris. */
 .onglets-cadre{max-width:780px;margin:0 auto;padding:12px 16px 0}
-.onglets{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;background:var(--panel2);border-radius:16px}
+.onglets{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;padding:4px;background:var(--panel2);border-radius:16px}
+@media (max-width:560px){ .onglets{grid-template-columns:1fr 1fr} }
 .onglets button{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;min-width:0;
   font:inherit;text-transform:none;letter-spacing:0;background:transparent;color:var(--dim);
   border:0;border-radius:12px;padding:7px 12px;min-height:44px;cursor:pointer}
@@ -1279,6 +1406,13 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 #modeChat .chat-tete .titre,#modeAgent .ag-tete h1{display:none}
 #modeChat .chat-tete .droite{margin-left:0}
 #modeChat .chat{padding-top:12px}
+/* OSINT et eSIM (30/09) : l onglet les nomme, leurs grands titres restent ; eSIM garde sa
+   typographie a lui, le bouton general de la page (Anton, majuscules) est repris. */
+#modeOsint .wrap{padding-top:14px}
+#modeEsim .es-cadre{font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:var(--encre)}
+#modeEsim h1{font-family:inherit;text-transform:none;letter-spacing:0}
+#modeEsim button{text-transform:none;letter-spacing:0}
+#modeEsim button:hover{transform:none;filter:none}
 </style>
 <div class="onglets-cadre">
   <div class="onglets" role="tablist" aria-label="SWOGE Agents">
@@ -1286,6 +1420,10 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       <b>&#128172; Chat &amp; create</b><small>Claude, ChatGPT, Grok &middot; images &middot; videos</small></button>
     <button type="button" role="tab" id="ongletAgent" aria-controls="modeAgent" aria-selected="false" tabindex="-1">
       <b>&#129302; Agent</b><small>Give it a task: tokens, the colony, the web</small></button>
+    <button type="button" role="tab" id="ongletOsint" aria-controls="modeOsint" aria-selected="false" tabindex="-1">
+      <b>&#128269; OSINT</b><small>Domain, IP, site or address, from public sources</small></button>
+    <button type="button" role="tab" id="ongletEsim" aria-controls="modeEsim" aria-selected="false" tabindex="-1">
+      <b>&#128246; eSIM</b><small>Travel data, paid in USDC from your wallet</small></button>
   </div>
 </div>
 <section class="ag-mode" id="modeChat" role="tabpanel" aria-labelledby="ongletChat">
@@ -1538,11 +1676,186 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     <div class="prixq" id="ag-prixq">&nbsp;</div>
   </div></div>
 </section>
+<section class="ag-mode" id="modeOsint" role="tabpanel" aria-labelledby="ongletOsint" hidden>
+<div class="wrap">
+
+
+
+  <div class="top">
+    <div class="kick">OSINT · public sources only · free, no account</div>
+    <h1>What can you learn about <em>this</em>?</h1>
+    <!-- Le sous-titre dit ce qu on lit ET ce qu on refuse, dans cet ordre :
+         un outil qui n annonce que ce qu il trouve laisse croire qu il trouve tout. -->
+    <div class="sub">
+      Paste a domain, an IP, a website or an on-chain address and it fans out across public
+      sources — DNS, registry, certificate logs, the site's own pages, launchpad records.
+      An e-mail, a username or a phone number is checked as a <b>selector</b>: what is publicly
+      known about it, never expanded into a person. Every line carries the source it came from.
+    </div>
+
+    <div class="bar">
+      <input id="os-q" type="text" spellcheck="false" autocapitalize="off" autocorrect="off"
+             placeholder="example.com · 8.8.8.8 · name@company.com · 0x… · Ada Lovelace · AS15169 · CVE-2021-44228"
+             aria-label="Domain, IP, website, on-chain address, or a selector to check">
+      <button id="os-go">Investigate</button>
+    </div>
+
+    <!-- La garde, avant le premier essai et non apres la deception. -->
+    <div class="garde">
+      <b>Public candidates, never a confirmed identity.</b><br>
+      You start from a domain, an IP, a website, an on-chain address — or a person's name. A name is
+      honest, not magic: it returns SEPARATE public candidates (a Wikidata entity, a GitHub account),
+      each kept apart and marked unverified. Same name is not the same person, and nothing is merged.
+      No leaked database is queried, and no password or secret is ever shown.
+    </div>
+
+    <div class="actions">
+      <button class="bascule" id="os-passif" aria-pressed="false"
+        title="Passive mode reads third-party indexes only. The target never sees your requests.">Passive only</button>
+      <a class="tele" id="os-teleJson" href="#" hidden>JSON</a>
+      <a class="tele" id="os-teleCsv" href="#" hidden>CSV</a>
+      <a class="tele" id="os-telePdf" href="#" hidden>PDF</a>
+      <span class="trace" id="os-trace"></span>
+    </div>
+
+    <p class="sub" style="margin-top:12px;font-size:12px">
+      Checking a token instead? <a href="swoge_scan.html" style="color:var(--pool)">SWOGE Scan</a>
+      reads what our AI has measured on tokens like it — same rule, every number with its sample size.</p>
+
+    <div class="state" id="os-state"></div>
+  </div>
+
+  <div id="os-out" hidden>
+
+    <!-- LES CALQUES. « Privacy by design » n est pas une phrase : c est ce
+         bouton, qui retire un calque du graphe ET des faits d un clic. -->
+    <div class="calques" role="group" aria-label="Layers">
+      <button class="calque" data-c="infrastructure" aria-pressed="true"><i class="pastille"></i>Infrastructure</button>
+      <button class="calque" data-c="organization" aria-pressed="true"><i class="pastille"></i>Organization</button>
+      <button class="calque" data-c="contacts" aria-pressed="true"><i class="pastille"></i>Contacts</button>
+      <button class="calque" data-c="chain" aria-pressed="true"><i class="pastille"></i>Chain</button>
+    </div>
+
+    <section class="bloc" id="os-sConstats">
+      <h2>Findings</h2>
+      <p class="hint">What crossing the facts says — a single fact is rarely a result, the crossing is.
+        Each finding carries its pieces and their sources. Nothing here is a verdict.</p>
+      <div id="os-constatsBox"></div>
+    </section>
+
+    <section class="bloc" id="os-sConflits" hidden>
+      <h2>Sources disagree</h2>
+      <p class="hint">Two sources gave different answers on the same point. Both are shown, best-supported
+        first — nothing was picked for you. The one that is wrong is often the finding.</p>
+      <div id="os-conflitsBox"></div>
+    </section>
+
+    <section class="bloc" id="os-sGraphe">
+      <h2>Graph</h2>
+      <p class="hint">Each line is a documented relation with a source behind it, not a conclusion.
+        Hover a line to read its source. People are drawn apart from machines on purpose.</p>
+      <div class="toile" id="os-tuile">
+        <svg id="os-gr" viewBox="0 0 960 560" role="img" aria-label="Relations graph"></svg>
+        <div class="legende">
+          <span><i style="background:#1B5FE0"></i>Infrastructure</span>
+          <span><i style="background:#96650F"></i>Organization</span>
+          <span><i style="background:#12805A"></i>Contact</span>
+          <span><i style="background:#7A3E9D"></i>Chain</span>
+          <span><i style="background:#96650F;border-radius:2px"></i>Person</span>
+          <span><i style="background:#D8E2F0"></i>Dashed = not verified</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="bloc" id="os-sFaits">
+      <h2>Facts</h2>
+      <p class="hint">Every statement a source made, its confidence and score, and where it came from.
+        A disputed value is flagged, not hidden. Filter with the layers above.</p>
+      <div id="os-faitsBox"></div>
+    </section>
+
+    <section class="bloc" id="os-sSources">
+      <h2>Sources reached</h2>
+      <p class="hint">Every connector this investigation ran, how long it took, and what it returned —
+        including the ones that timed out or refused us. This is the monitoring, in the open.</p>
+      <div id="os-sourcesBox"></div>
+    </section>
+
+    <section class="bloc">
+      <h2>What was not done</h2>
+      <p class="hint">Connectors left off for want of a key, connectors skipped in passive mode,
+        and the limits — all part of the result.</p>
+      <div id="os-offBox"></div>
+      <div class="bords"><ul id="os-bordsBox"></ul></div>
+    </section>
+
+  </div>
+  </div>
+
+</section>
+<section class="ag-mode" id="modeEsim" role="tabpanel" aria-labelledby="ongletEsim" hidden>
+<div class="es-cadre">
+  <h1>Travel eSIM — paid from your wallet</h1>
+  <p class="pale">Mobile data abroad, installed in minutes. No account, no deposit: pick a plan, sign one USDC payment on Base or Solana, get your eSIM. You are charged only if the eSIM is bought.</p>
+
+  <div class="carte" id="es-carteRecherche">
+    <label for="es-pays"><b>Where are you going?</b></label>
+    <input type="text" id="es-pays" maxlength="40" placeholder="France, Japan, US, Europe…" autocomplete="off">
+    <button type="button" id="es-chercher">Show plans</button>
+    <p class="statut" id="es-statutRecherche" role="status"></p>
+    <p class="pale" style="margin-top:10px">Or tap your destination:</p>
+    <div class="rapides" id="es-rapides"></div>
+    <details class="tous" id="es-tousPays"><summary>All countries</summary><div class="liste-pays" id="es-listePays"><div class="vide">Loading the list…</div></div></details>
+  </div>
+
+  <div class="carte" id="es-cartePlans" hidden>
+    <p><b id="es-destination"></b></p>
+    <div id="es-plans"></div>
+    <p class="pale" id="es-plansNote"></p>
+    <p class="pale">Data only (no phone number). Seller: CHIPS — by buying you accept its <a id="es-lienConditions" target="_blank" rel="noopener" href="https://vamoschips.com/legal/terms">terms</a>. <a id="es-lienCompat" target="_blank" rel="noopener" href="https://vamoschips.com/compatibility">Check that your phone supports eSIM</a> before buying.</p>
+  </div>
+
+  <div class="carte" id="es-cartePaiement" hidden>
+    <p><b>Pay <span id="es-prixChoisi"></span> in USDC on</b></p>
+    <label class="choix"><input type="radio" name="esReseau" value="base" checked><span><b>Base</b> — MetaMask, Coinbase Wallet, Rabby</span></label>
+    <label class="choix"><input type="radio" name="esReseau" value="solana"><span><b>Solana</b> — Phantom, Solflare, Backpack</span></label>
+    <p class="pale">You need USDC only: the network fee is paid for you.</p>
+    <div id="es-blocBase">
+      <p>Wallet: <span class="mono" id="es-adresse">not connected</span></p>
+      <p style="margin-top:10px"><button type="button" id="es-connecter">Connect Base wallet</button></p>
+      <p style="margin-top:8px"><button type="button" id="es-payer" disabled>Buy with USDC on Base</button></p>
+    </div>
+    <div id="es-blocSol" hidden>
+      <p>Solana wallet: <span class="mono" id="es-solAdresse">not connected</span></p>
+      <p style="margin-top:10px"><button type="button" id="es-solConnecter">Connect Phantom or another Solana wallet</button></p>
+      <div id="es-solChoix" hidden></div>
+      <p style="margin-top:8px"><button type="button" id="es-solPayer" disabled>Buy with USDC on Solana</button></p>
+    </div>
+    <p class="statut" id="es-statut" role="status"></p>
+  </div>
+
+  <div class="carte" id="es-carteResultat" hidden>
+    <p><b id="es-resTitre"></b></p>
+    <p id="es-resTx" class="pale"></p>
+    <div id="es-resLien" hidden>
+      <p><b>Your order link — save it now.</b> It is the only way to see your activation code again (there is no account).</p>
+      <div class="ach-act"><div><code id="es-lienCommande"></code><button type="button" class="petit" id="es-copierLien">Copy</button></div></div>
+    </div>
+    <div id="es-resActivation"></div>
+    <p class="statut" id="es-statutCommande" role="status"></p>
+    <p style="margin-top:8px"><button type="button" id="es-rafraichir" hidden>Check again</button></p>
+  </div>
+
+  <p class="pale">No wallet in this browser? Open this page inside your wallet app's browser. The page never sees a key: your wallet signs, the SWOGE server checks the signature, buys the eSIM, and only then the payment settles.</p></div>
+</section>
 <script>
 (function(){
   "use strict";
-  var onglets = { chat: document.getElementById("ongletChat"), agent: document.getElementById("ongletAgent") };
-  var vues = { chat: document.getElementById("modeChat"), agent: document.getElementById("modeAgent") };
+  var ordre = ["chat", "agent", "osint", "esim"];
+  var onglets = { chat: document.getElementById("ongletChat"), agent: document.getElementById("ongletAgent"),
+                  osint: document.getElementById("ongletOsint"), esim: document.getElementById("ongletEsim") };
+  var vues = { chat: document.getElementById("modeChat"), agent: document.getElementById("modeAgent"),
+               osint: document.getElementById("modeOsint"), esim: document.getElementById("modeEsim") };
   var saisies = { chat: "question", agent: "ag-question" };
   function montre(m, garde){
     if (!vues[m]) m = "chat";
@@ -1558,15 +1871,17 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     try { var u = new URL(location.href); u.searchParams.set("mode", m); history.replaceState(history.state, "", u); } catch (e) {}
   }
   var depart = null;
-  try { depart = new URLSearchParams(location.search).get("mode"); } catch (e) {}
-  if (!depart && /^#(agent|chat)$/.test(location.hash)) depart = location.hash.slice(1);
+  /* Les liens des anciennes pages rouvrent leur onglet : ?q= (enquete OSINT partagee),
+     ?order= (le lien de commande eSIM, seul moyen de revoir son code d activation). */
+  try { var u0 = new URLSearchParams(location.search); depart = u0.get("mode") || (u0.get("order") ? "esim" : u0.get("q") ? "osint" : null); } catch (e) {}
+  if (!depart && /^#(agent|chat|osint|esim)$/.test(location.hash)) depart = location.hash.slice(1);
   if (!depart) try { depart = localStorage.getItem("swogeAgentsVue"); } catch (e) {}
   montre(depart || "chat", false);
   Object.keys(onglets).forEach(function(k){
     onglets[k].addEventListener("click", function(){ montre(k, true); });
     onglets[k].addEventListener("keydown", function(e){
       if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
-      var autre = k === "chat" ? "agent" : "chat";
+      var autre = ordre[(ordre.indexOf(k) + (e.key === "ArrowRight" ? 1 : ordre.length - 1)) % ordre.length];
       montre(autre, true); onglets[autre].focus(); e.preventDefault();
     });
   });
@@ -1576,7 +1891,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
      le choix Chat/Agent invisible. Si elle est passee au-dessus, on remonte
      juste assez pour la montrer ; a 1280 elle reste visible et rien ne bouge. */
   document.addEventListener("DOMContentLoaded", function(){
-    montre(vues.agent.hidden ? "chat" : "agent", false);
+    montre(ordre.filter(function(k){ return !vues[k].hidden; })[0] || "chat", false);
     var haut = document.querySelector(".onglets").getBoundingClientRect().top;
     if (!location.hash && haut < 0) window.scrollBy(0, haut - 8);
   });
@@ -4809,6 +5124,810 @@ function qrMatrice(txt){
     var j = jeton(); if (j === dernierJeton) return;
     dernierJeton = j; if (j && $("etat").textContent === TXT.signin) dit(""); chargeSolde(); chargeDev();
   }, 2000);
+})();
+</script>
+<script>
+(function(){
+"use strict";
+/* ==================== SWOGE OSINT — LA PAGE ====================
+ * Elle ne mesure rien : tout vient de /osint/v2, ou les gardes vivent. Ici
+ * on MONTRE, et la seule chose que la page garantit, c est de ne jamais
+ * montrer plus que ce que le serveur a envoye — pas de fait reconstitue,
+ * pas de « probablement ».
+ *
+ * Le serveur rend des FAITS : un triplet sujet-predicat-objet avec sa
+ * source, son score, et s il est conteste. La page range ces faits en
+ * quatre choses : les CONSTATS (le croisement), les CONTRADICTIONS (on ne
+ * tranche pas), le GRAPHE (derive des faits) et la table des faits. Aucune
+ * de ces vues ne connait les sources : elles lisent la meme forme. */
+function serveurOsint(){
+  try{ const q = new URLSearchParams(location.search).get("server");
+       if(q) return String(q).replace(/^ws/,"http"); }catch(e){}
+  return "https://web-production-220a3.up.railway.app";
+}
+const $ = s => document.querySelector(String(s).replace(/^#/, "#os-"));
+let RAPPORT = null, PASSIF = false;
+/* Les quatre calques, tous allumes au depart. */
+const CALQUES = { infrastructure:true, organization:true, contacts:true, chain:true };
+
+function ech(s){ return String(s==null?"":s).replace(/[&<>"']/g, c =>
+  ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c])); }
+function etat(msg, err, spin){
+  const el = $("#state"); el.className = "state" + (err?" err":"");
+  el.innerHTML = (spin?'<span class="spin"></span>':"") + ech(msg);
+}
+function tagConf(niveau, score, pourquoi){
+  const c = niveau==="HIGH"?"h":niveau==="MEDIUM"?"m":"l";
+  return '<span class="tag '+c+'" title="'+ech(pourquoi||"")+'">'+ech(niveau)+' '+(score||"")+'</span>';
+}
+function lien(url, texte){
+  if(!url) return "";
+  if(!/^https?:\/\//.test(url)) return '<span class="pourquoi">'+ech(texte||url)+'</span>';
+  return '<a href="'+ech(url)+'" target="_blank" rel="noopener nofollow">'+ech(texte||url)+' ↗</a>';
+}
+
+/* ==================== L ENQUETE ==================== */
+async function enquete(){
+  const brut = $("#q").value.trim();
+  if(!brut){ etat("Type a target."); return; }
+  $("#go").disabled = true;
+  for(const id of ["teleJson","teleCsv","telePdf"]) $("#"+id).hidden = true;
+  etat("Fanning out across public sources…", false, true);
+  try{
+    const p = PASSIF ? "?passif=1" : "";
+    const r = await fetch(serveurOsint()+"/osint/v2/"+encodeURIComponent(brut)+p, { cache:"no-store" });
+    const j = await r.json();
+    if(!r.ok || j.erreur) throw new Error(j.erreur || ("HTTP "+r.status));
+    RAPPORT = j;
+    try{ history.replaceState(null,"",location.pathname+"?q="+encodeURIComponent(j.cible.type+":"+j.cible.valeur)); }catch(e){}
+    /* Les liens d export pointent la MEME enquete, servie autrement : le
+       serveur la sert du cache, le site vise ne repaie rien. */
+    const base = serveurOsint()+"/osint/v2/"+encodeURIComponent(j.cible.valeur)+p;
+    $("#teleJson").href = base;                         $("#teleJson").hidden = false;
+    $("#teleCsv").href  = serveurOsint()+"/osint/v2/"+encodeURIComponent(j.cible.valeur)+".csv"+p; $("#teleCsv").hidden = false;
+    $("#telePdf").href  = serveurOsint()+"/osint/v2/"+encodeURIComponent(j.cible.valeur)+".pdf"+p; $("#telePdf").hidden = false;
+    peins();
+    const nc = j.constats.length, nf = j.faits.length;
+    etat(j.cible.type+" "+j.cible.valeur+"  ·  "+nf+" fact"+(nf===1?"":"s")+"  ·  "
+       + nc+" finding"+(nc===1?"":"s")+"  ·  "+(j.ms/1000).toFixed(1)+"s"
+       + (j.doublonsFondus?("  ·  "+j.doublonsFondus+" duplicate"+(j.doublonsFondus===1?"":"s")+" merged"):""));
+  }catch(e){
+    $("#out").hidden = true;
+    etat(String(e.message||e).slice(0,300), true);
+  }finally{ $("#go").disabled = false; }
+}
+
+/* ==================== LE PEINTRE ====================
+ * Un seul peintre : rallumer un calque ne redemande rien, le rapport est
+ * deja la. */
+function peins(){
+  const j = RAPPORT; if(!j) return;
+  $("#out").hidden = false;
+
+  /* -- la trace : cette enquete a-t-elle ete vue par la cible -- */
+  const tr = $("#trace");
+  tr.textContent = j.passif ? "passive · the target was never touched"
+                            : "active · the target saw our requests";
+  tr.className = "trace" + (j.passif ? "" : " actif");
+
+  /* -- les constats, en tete, tries par gravite (le serveur les trie) -- */
+  const gClasse = { HIGH:"g-haute", MEDIUM:"g-moyenne", LOW:"g-basse", NOTE:"g-info" };
+  $("#constatsBox").innerHTML = (j.constats||[]).length
+    ? j.constats.map(c =>
+        '<div class="constat '+(gClasse[c.etiquette]||"g-info")+'">'
+        + '<span class="grav">'+ech(c.etiquette||"NOTE")+'</span>'
+        + '<span class="dit">'+ech(c.dit)+'</span>'
+        + c.pieces.map(p => '<div class="piece">'+ech(p.predicat)+': '+ech(p.valeur)
+            +'  — '+(p.sources||[]).map(ech).join(", ")+'</div>').join("")
+        + '</div>').join("")
+    : '<p class="hint">Nothing crossed. That is a result, not an absence of work — read the facts below.</p>';
+
+  /* -- les contradictions : montrees, jamais tranchees -- */
+  const conflits = j.contradictions||[];
+  $("#sConflits").hidden = !conflits.length;
+  $("#conflitsBox").innerHTML = conflits.map(k =>
+    '<div class="conflit"><div class="quoi">'+ech(k.sujet.valeur)+' — '+ech(k.predicat)+'</div>'
+    + k.versions.map(v => '<div class="v"><b>'+ech(v.valeur)+'</b>'+tagConf(v.confiance,v.score)
+        +' <span class="pourquoi">'+(v.sources||[]).map(ech).join(", ")+'</span></div>').join("")
+    + '<div class="note">'+ech(k.note)+'</div></div>').join("");
+
+  /* -- les faits, filtres par calque -- */
+  peinsFaits();
+
+  /* -- les sources reached : le journal, qui EST le monitoring -- */
+  $("#sourcesBox").innerHTML = '<table class="liste"><thead><tr><th>Connector</th><th>On</th>'
+    + '<th>Result</th><th>Facts</th><th>ms</th></tr></thead><tbody>'
+    + (j.journal||[]).map(l =>
+        '<tr><td class="val">'+ech(l.c)+'</td><td class="val">'+ech(l.e)+'</td>'
+        + '<td>'+(l.etat==="erreur"?('<span style="color:var(--serpent)">'+ech(l.message||"error")+'</span>')
+                 : l.etat==="cache"?'cached' : l.etat==="budget"?'budget reached' : 'ok')+'</td>'
+        + '<td class="val">'+(l.faits||0)+'</td><td class="val">'+(l.ms||0)+'</td></tr>').join("")
+    + '</tbody></table>';
+
+  /* -- ce qui est eteint ou ecarte, et les limites -- */
+  const off = [
+    ...(j.connecteursEteints||[]).map(e => '<div class="cell"><div class="k">off</div><div class="v">'
+        +ech(e.nom)+' — '+ech(e.pourquoi)+(e.cout?' ('+ech(e.cout)+')':"")+'</div></div>'),
+    ...(j.connecteursEcartes||[]).map(e => '<div class="cell"><div class="k">skipped</div><div class="v">'
+        +ech(e.nom)+' — '+ech(e.pourquoi)+'</div></div>'),
+  ];
+  $("#offBox").innerHTML = off.length ? '<div class="grille" style="margin-bottom:12px">'+off.join("")+'</div>' : "";
+  $("#bordsBox").innerHTML = (j.limites||[]).map(l => "<li>"+ech(l)+"</li>").join("");
+
+  calques();
+  graphe();
+}
+
+/* Les faits en table, ranges par sujet, filtres par calque. Un fait dont
+   le sujet ET l objet sont eteints par les calques disparait ; on ne montre
+   pas une arete a moitie. */
+const CALQUE_TYPE = { domaine:"infrastructure", ip:"infrastructure", reseau:"infrastructure", url:"infrastructure",
+  vulnerabilite:"infrastructure",
+  organisation:"organization", personne:"contacts", candidat:"contacts", email:"contacts", telephone:"contacts", pseudo:"contacts",
+  adresse:"chain", jeton:"chain" };
+function visible(e){ return CALQUES[CALQUE_TYPE[e.type] || "infrastructure"]; }
+
+function peinsFaits(){
+  const faits = (RAPPORT.faits||[]).filter(f => visible(f.sujet) && (!f.objet || visible(f.objet)));
+  $("#faitsBox").innerHTML = faits.length
+    ? '<table class="liste"><thead><tr><th>Subject</th><th>Says</th><th>Value</th>'
+      + '<th>Confidence</th><th>Source</th></tr></thead><tbody>'
+      + faits.map(f =>
+          '<tr'+(f.conteste?' class="conteste"':"")+'>'
+          + '<td class="val">'+ech(f.sujet.valeur)+'</td>'
+          + '<td>'+ech(f.predicat)+(f.conteste?' <span class="tag no">disputed</span>':"")+'</td>'
+          + '<td class="val">'+ech(f.objet?f.objet.valeur:f.valeur)+'</td>'
+          + '<td>'+tagConf(f.confiance,f.score,f.pourquoi)+'</td>'
+          + '<td>'+(f.sources||[]).map(sc => lien(sc, sc.replace(/^https?:\/\//,"").slice(0,40))).join("<br>")+'</td>'
+          + '</tr>').join("")
+      + '</tbody></table>'
+    : '<p class="hint">No facts in the layers you have left on.</p>';
+}
+
+function calques(){
+  document.querySelectorAll("#modeOsint .calque").forEach(b =>
+    b.setAttribute("aria-pressed", CALQUES[b.getAttribute("data-c")] ? "true" : "false"));
+}
+
+/* ==================== LE GRAPHE ====================
+ * Quatre colonnes fixes : contacts et organisation a gauche, la cible au
+ * centre, l infrastructure a droite, la chaine en bas. Une disposition FIXE
+ * se relit d un scan a l autre. Aucune bibliotheque : une page qui explique
+ * d ou vient chaque octet ne va pas charger un moteur de graphe chez un
+ * tiers. */
+const COULEUR = { domaine:"#1B5FE0", ip:"#1B5FE0", url:"#1B5FE0", reseau:"#5B8DE8", vulnerabilite:"#B23B3B",
+  organisation:"#96650F", personne:"#96650F", candidat:"#96650F",
+  email:"#12805A", telephone:"#12805A", pseudo:"#12805A",
+  adresse:"#7A3E9D", jeton:"#7A3E9D" };
+const SOUS_MAX = 12;
+
+function graphe(){
+  const g = RAPPORT && RAPPORT.graphe;
+  const svg = $("#gr");
+  if(!g){ svg.innerHTML=""; return; }
+  let vus = 0;
+  const noeuds = g.noeuds.filter(nd => {
+    if(!CALQUES[nd.filtre]) return false;
+    if(nd.type==="jeton"||nd.type==="sousdomaine"){ vus++; return vus<=SOUS_MAX; }
+    return true;
+  });
+  const ids = new Set(noeuds.map(nd => nd.id));
+  const aretes = g.aretes.filter(a => ids.has(a.de) && ids.has(a.vers));
+
+  const gauche = noeuds.filter(nd => nd.filtre==="contacts" || nd.filtre==="organization");
+  const centre = noeuds.filter(nd => nd.cible);
+  const bas    = noeuds.filter(nd => nd.filtre==="chain" && !nd.cible);
+  const droite = noeuds.filter(nd => !gauche.includes(nd) && !centre.includes(nd) && !bas.includes(nd));
+
+  const L = 960;
+  const H = Math.max(320, 60 + Math.max(gauche.length, droite.length, 1)*42 + (bas.length?70:0));
+  svg.setAttribute("viewBox","0 0 "+L+" "+H);
+  const pos = {};
+  const col = (liste,x,ancre) => liste.forEach((nd,i) =>
+    pos[nd.id] = { x, y:(H-(bas.length?60:0))/(liste.length+1)*(i+1), ancre, n:nd });
+  col(gauche, 190, "end"); col(centre, L/2, "middle"); col(droite, L-190, "start");
+  bas.forEach((nd,i) => pos[nd.id] = { x:(L/(bas.length+1))*(i+1), y:H-30, ancre:"middle", n:nd });
+
+  const esc = t => String(t==null?"":t).replace(/[&<>"']/g, c =>
+    ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+  let out = "";
+  for(const a of aretes){
+    const p = pos[a.de], q = pos[a.vers]; if(!p||!q) continue;
+    const cl = "arete " + (a.confiance==="HIGH"?"h":a.confiance==="LOW"?"l":"");
+    out += '<line class="'+cl+'" x1="'+p.x+'" y1="'+p.y.toFixed(1)+'" x2="'+q.x+'" y2="'+q.y.toFixed(1)+'">'
+         + '<title>'+esc(a.relation+"  —  "+a.confiance+"\n"+(a.source||""))+'</title></line>';
+  }
+  for(const id in pos){
+    const { x, y, ancre, n } = pos[id];
+    const c = COULEUR[n.type] || "#6B7C99";
+    const titre = esc(n.type.toUpperCase()+"  "+n.nom
+      + (n.attributs&&n.attributs.length ? "\n"+n.attributs.map(a=>a.quoi+": "+a.valeur).join("\n") : ""));
+    if(n.humain){
+      out += '<g><title>'+titre+'</title>'
+           + '<rect x="'+(x-9)+'" y="'+(y-9).toFixed(1)+'" width="18" height="18" rx="3" fill="#FFFBF2" stroke="'+c+'" stroke-width="2.5"></rect>'
+           + '<circle cx="'+x+'" cy="'+(y-2.5).toFixed(1)+'" r="2.8" fill="'+c+'"></circle>'
+           + '<path d="M'+(x-5)+' '+(y+6.5).toFixed(1)+' a5 5 0 0 1 10 0" fill="'+c+'"></path></g>';
+    } else if(n.cible){
+      out += '<g><title>'+titre+'</title><circle cx="'+x+'" cy="'+y.toFixed(1)+'" r="11" fill="'+c+'"></circle>'
+           + '<circle cx="'+x+'" cy="'+y.toFixed(1)+'" r="16" fill="none" stroke="'+c+'" stroke-opacity=".3"></circle></g>';
+    } else {
+      out += '<g><title>'+titre+'</title><circle cx="'+x+'" cy="'+y.toFixed(1)+'" r="6" fill="'+c
+           + (n.verifie===false?'" fill-opacity=".45':"")+'"></circle></g>';
+    }
+    const dx = ancre==="end"?-16:ancre==="start"?16:0;
+    const dy = ancre==="middle"?26:4;
+    const etiq = n.nom.length>30 ? n.nom.slice(0,29)+"…" : n.nom;
+    out += '<text x="'+(x+dx)+'" y="'+(y+dy).toFixed(1)+'" text-anchor="'+ancre
+         + '" font-family="\'Space Mono\',monospace" font-size="11" fill="#0B1B36">'+esc(etiq)+'</text>';
+  }
+  svg.innerHTML = out;
+}
+
+/* ==================== LES GESTES ==================== */
+$("#go").addEventListener("click", enquete);
+$("#q").addEventListener("keydown", e => { if(e.key==="Enter") enquete(); });
+$("#passif").addEventListener("click", () => {
+  PASSIF = !PASSIF;
+  $("#passif").setAttribute("aria-pressed", PASSIF?"true":"false");
+  if(RAPPORT) enquete();          /* le mode change ce qu on interroge : on refait */
+});
+document.querySelectorAll("#modeOsint .calque").forEach(b => b.addEventListener("click", () => {
+  const c = b.getAttribute("data-c");
+  CALQUES[c] = !CALQUES[c];
+  calques(); peinsFaits(); graphe();
+}));
+
+/* Un lien partage porte sa cible : ?q=domaine:acme.io se lance tout seul. */
+(function(){
+  let q = "";
+  try{ q = new URLSearchParams(location.search).get("q") || ""; }catch(e){}
+  if(q){ $("#q").value = q.replace(/^[a-z]+:/,""); enquete(); }
+  else { etat("Paste a domain, an IP, a website or an on-chain address — yours, or one you were asked to check."); $("#q").focus(); }
+})();
+
+})();
+</script>
+<script>
+(function(){
+/* ---- LE QR DU CODE D'ACTIVATION ----
+   Copie A L'IDENTIQUE du generateur de swoge_wallet.html (via swogeagentic.html) :
+   agent_qr.test.js le passe sur ces lignes-ci avec les 200 empreintes de reference. */
+var QR_TAILLE = 33, QR_DONNEES = 64, QR_EC = 18, QR_BLOCS = 2, QR_MARGE = 4;
+
+function qrCorps(){
+  var exp=new Array(512), log=new Array(256), x=1, i;
+  for(i=0;i<255;i++){ exp[i]=x; log[x]=i; x<<=1; if(x&256) x^=0x11d; }
+  for(i=255;i<512;i++) exp[i]=exp[i-255];
+  return { exp:exp, log:log };
+}
+var QRC = qrCorps();
+function qrMul(a,b){ return (a===0||b===0) ? 0 : QRC.exp[QRC.log[a]+QRC.log[b]]; }
+
+/* Le polynome generateur de degre n, dans le corps a 256 elements. */
+function qrGenerateur(n){
+  var g=[1];
+  for(var i=0;i<n;i++){
+    var h=g.concat([0]);
+    for(var j=0;j<g.length;j++) h[j+1]^=qrMul(g[j], QRC.exp[i]);
+    g=h;
+  }
+  return g;
+}
+/* Les codets de correction : le reste de la division du bloc par le
+   generateur. C'est ce qui permet au lecteur de retrouver l'adresse meme
+   si un doigt couvre un coin du symbole. */
+function qrReste(bloc, n){
+  var g=qrGenerateur(n), r=bloc.slice(), i, j;
+  for(i=0;i<n;i++) r.push(0);
+  for(i=0;i<bloc.length;i++){
+    var c=r[i]; if(!c) continue;
+    for(j=0;j<g.length;j++) r[i+j]^=qrMul(g[j], c);
+  }
+  return r.slice(bloc.length);
+}
+
+function qrOctets(txt){
+  var o=[], i;
+  for(i=0;i<txt.length;i++){
+    var c=txt.charCodeAt(i);
+    if(c<128) o.push(c);
+    else if(c<2048){ o.push(192|(c>>6), 128|(c&63)); }
+    else { o.push(224|(c>>12), 128|((c>>6)&63), 128|(c&63)); }
+  }
+  return o;
+}
+
+function qrCodets(txt){
+  var d=qrOctets(txt), i;
+  if(d.length > QR_DONNEES-2) return null;      /* 62 octets, pas un de plus */
+  var bits=[];
+  var pousse=function(v,n){ for(var k=n-1;k>=0;k--) bits.push((v>>k)&1); };
+  pousse(4,4);                                   /* mode « octets » */
+  pousse(d.length,8);                            /* longueur, 8 bits en version 1 a 9 */
+  for(i=0;i<d.length;i++) pousse(d[i],8);
+  pousse(0, Math.min(4, QR_DONNEES*8 - bits.length));
+  while(bits.length % 8) bits.push(0);
+  var c=[];
+  for(i=0;i<bits.length;i+=8){ var v=0; for(var j=0;j<8;j++) v=(v<<1)|bits[i+j]; c.push(v); }
+  var bourre=[0xEC,0x11], k=0;
+  while(c.length < QR_DONNEES) c.push(bourre[k++ % 2]);
+  return c;
+}
+
+/* Deux blocs de 32, entrelaces : un octet de l'un, un octet de l'autre.
+   C'est ce qui fait qu'une eraflure abime un peu des deux plutot que
+   beaucoup d'un seul. */
+function qrEntrelace(codets){
+  var t=QR_DONNEES/QR_BLOCS, blocs=[], ecs=[], b, i, out=[];
+  for(b=0;b<QR_BLOCS;b++){
+    var s=codets.slice(b*t,(b+1)*t);
+    blocs.push(s); ecs.push(qrReste(s, QR_EC));
+  }
+  for(i=0;i<t;i++) for(b=0;b<QR_BLOCS;b++) out.push(blocs[b][i]);
+  for(i=0;i<QR_EC;i++) for(b=0;b<QR_BLOCS;b++) out.push(ecs[b][i]);
+  return out;
+}
+
+function qrMasque(n,y,x){
+  switch(n){
+    case 0: return (x+y)%2===0;
+    case 1: return y%2===0;
+    case 2: return x%3===0;
+    case 3: return (x+y)%3===0;
+    case 4: return (Math.floor(x/3)+Math.floor(y/2))%2===0;
+    case 5: return (x*y)%2+(x*y)%3===0;
+    case 6: return ((x*y)%2+(x*y)%3)%2===0;
+    default: return ((x+y)%2+(x*y)%3)%2===0;
+  }
+}
+
+/* Les motifs fixes : les trois yeux, leurs separateurs, les deux lignes
+   de synchronisation, et l'unique motif d'alignement de la version 4. */
+function qrTrame(){
+  var T=QR_TAILLE, m=[], f=[], y, x, i;
+  for(y=0;y<T;y++){ m.push([]); f.push([]); for(x=0;x<T;x++){ m[y].push(0); f[y].push(0); } }
+  var pose=function(y,x,v){ if(y<0||x<0||y>=T||x>=T) return; m[y][x]=v; f[y][x]=1; };
+  var oeil=function(oy,ox){
+    for(var dy=-1;dy<=7;dy++) for(var dx=-1;dx<=7;dx++){
+      var d=Math.max(Math.abs(dy-3), Math.abs(dx-3));
+      pose(oy+dy, ox+dx, (d!==2 && d!==4) ? 1 : 0);
+    }
+  };
+  oeil(0,0); oeil(0,T-7); oeil(T-7,0);
+  for(i=8;i<T-8;i++){ pose(6,i, i%2===0?1:0); pose(i,6, i%2===0?1:0); }
+  for(var dy=-2;dy<=2;dy++) for(var dx=-2;dx<=2;dx++)
+    pose(T-7+dy, T-7+dx, Math.max(Math.abs(dy),Math.abs(dx))!==1 ? 1 : 0);
+  return { m:m, f:f };
+}
+
+/* Le format : niveau de correction et masque, protege par un code BCH
+   puis brouille. Il est ecrit DEUX fois, a deux endroits du symbole. */
+function qrFormat(masque){
+  var bits=(0<<3)|masque, d=bits<<10, i;
+  for(i=14;i>=10;i--) if((d>>i)&1) d^=0x537<<(i-10);
+  return ((bits<<10)|d)^0x5412;
+}
+function qrPoseFormat(masque, m, T){
+  var bits=qrFormat(masque), i;
+  var b=function(i){ return (bits>>i)&1; };
+  for(i=0;i<=5;i++) m[i][8]=b(i);
+  m[7][8]=b(6); m[8][8]=b(7); m[8][7]=b(8);
+  for(i=9;i<15;i++) m[8][14-i]=b(i);
+  for(i=0;i<8;i++) m[8][T-1-i]=b(i);
+  for(i=8;i<15;i++) m[T-15+i][8]=b(i);
+  m[T-8][8]=1;                                   /* le module toujours sombre */
+}
+
+/* La penalite du tableau 11 de la norme : quatre regles, et le masque
+   retenu est celui qui en recolte le moins. */
+var QR_N3=[1,0,1,1,1,0,1];
+function qrCherche(seq, dep){
+  for(var i=dep;i+7<=seq.length;i++){
+    var ok=true;
+    for(var k=0;k<7;k++) if(seq[i+k]!==QR_N3[k]){ ok=false; break; }
+    if(ok) return i;
+  }
+  return -1;
+}
+function qrClair(seq,a,b){
+  for(var i=Math.max(a,0);i<Math.min(b,seq.length);i++) if(seq[i]) return false;
+  return true;
+}
+function qrRegle3(seq){
+  var T=seq.length, s=0, i=qrCherche(seq,0);
+  while(i!==-1){
+    var apres=i+7;
+    if(i===0 || i===T-7 || qrClair(seq,i-4,i) || qrClair(seq,apres,apres+4)) s+=40;
+    else apres=i+4;
+    i=qrCherche(seq,apres);
+  }
+  return s;
+}
+function qrPenalite(m){
+  var T=QR_TAILLE, s=0, y, x, c, n;
+  for(y=0;y<T;y++){
+    var col=[]; for(x=0;x<T;x++) col.push(m[x][y]);
+    s+=qrRegle3(m[y]); s+=qrRegle3(col);
+  }
+  for(y=0;y<T;y++){
+    c=m[y][0]; n=1;
+    for(x=1;x<T;x++){ if(m[y][x]===c) n++; else { if(n>=5) s+=n-2; c=m[y][x]; n=1; } }
+    if(n>=5) s+=n-2;
+  }
+  for(x=0;x<T;x++){
+    c=m[0][x]; n=1;
+    for(y=1;y<T;y++){ if(m[y][x]===c) n++; else { if(n>=5) s+=n-2; c=m[y][x]; n=1; } }
+    if(n>=5) s+=n-2;
+  }
+  for(y=0;y<T-1;y++) for(x=0;x<T-1;x++){
+    var v=m[y][x];
+    if(m[y][x+1]===v && m[y+1][x]===v && m[y+1][x+1]===v) s+=3;
+  }
+  var noirs=0;
+  for(y=0;y<T;y++) for(x=0;x<T;x++) noirs+=m[y][x];
+  s += 10*Math.floor(Math.abs(noirs*100/(T*T)-50)/5);
+  return s;
+}
+
+function qrMatrice(txt){
+  var codets=qrCodets(txt); if(!codets) return null;
+  var flux=qrEntrelace(codets), T=QR_TAILLE, base=qrTrame(), res=base.f, i;
+  /* La zone du format est reservee AVANT le placement : le module toujours
+     sombre en fait partie, et l'oublier decalait tout le flux d'un bit. */
+  for(i=0;i<=8;i++){ if(i!==6){ res[8][i]=1; res[i][8]=1; } }
+  for(i=0;i<8;i++) res[8][T-1-i]=1;
+  for(i=T-8;i<T;i++) res[i][8]=1;
+
+  var meilleure=null, gagnante=null, masque=0;
+  for(var k=0;k<8;k++){
+    var m=[], y;
+    for(y=0;y<T;y++) m.push(base.m[y].slice());
+    var bit=0;
+    for(var droite=T-1; droite>=1; droite-=2){
+      if(droite===6) droite=5;
+      for(var vert=0;vert<T;vert++) for(var j=0;j<2;j++){
+        var x=droite-j, monte=((droite+1)&2)===0, yy=monte ? (T-1-vert) : vert;
+        if(res[yy][x]){ continue; }
+        var v=0;
+        if(bit < flux.length*8) v=(flux[bit>>3]>>(7-(bit&7)))&1;
+        bit++;
+        m[yy][x]=qrMasque(k,yy,x) ? (v^1) : v;
+      }
+    }
+    var p=qrPenalite(m);
+    if(meilleure===null || p<meilleure){ meilleure=p; gagnante=m; masque=k; }
+  }
+  qrPoseFormat(masque, gagnante, T);
+  return gagnante;
+}
+(function(){
+  "use strict";
+  var $ = function(id){ return document.getElementById("es-" + id); };
+  function serveur(){
+    try { var q = new URLSearchParams(location.search).get("server"); if (q) return String(q).replace(/\/$/, ""); } catch (e) {}
+    return "https://web-production-220a3.up.railway.app";
+  }
+  var USDC_BASE = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", BASE_ID = "0x2105";
+  var SOL = { reseau: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp", usdc: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", chaine: "solana:mainnet" };
+  var etat = { plan: null, prix: null, compte: null, portefeuilles: [], sol: null, solCompte: null };
+  function statut(id, t, genre){ var s = $(id); s.textContent = t || ""; s.className = "statut" + (genre ? " " + genre : ""); }
+  function b64(o){ return btoa(unescape(encodeURIComponent(JSON.stringify(o)))); }
+  function de64(s){ return JSON.parse(decodeURIComponent(escape(atob(s)))); }
+  function hex32(){ var a = new Uint8Array(32); crypto.getRandomValues(a); return "0x" + Array.prototype.map.call(a, function(x){ return ("0" + x.toString(16)).slice(-2); }).join(""); }
+  function adresseOk(a){ return /^0x[0-9a-fA-F]{40}$/.test(String(a || "")); }
+  function lienSur(u){ return /^https:\/\/[a-z0-9.-]+\//i.test(String(u || "")) ? String(u) : null; }
+  function copie(txt, b){ try { navigator.clipboard.writeText(txt).then(function(){ b.textContent = "Copied"; }, function(){ b.textContent = "Copy failed"; }); } catch (e) { b.textContent = "Copy failed"; } }
+  function ligneCopie(nom, val){
+    var r = document.createElement("div"), l = document.createElement("span"), c = document.createElement("code"), b = document.createElement("button");
+    l.textContent = nom; c.textContent = val; b.type = "button"; b.className = "petit"; b.textContent = "Copy";
+    b.addEventListener("click", function(){ copie(val, b); });
+    r.appendChild(l); r.appendChild(c); r.appendChild(b); return r;
+  }
+
+  /* ---- 1. chercher ---- */
+  function cherche(){
+    var pays = String($("pays").value || "").trim();
+    if (!pays) { statut("statutRecherche", "Type a country or a region.", "err"); return; }
+    $("chercher").disabled = true; statut("statutRecherche", "Looking for plans…");
+    fetch(serveur() + "/esim/plans?country=" + encodeURIComponent(pays.slice(0, 40)), { cache: "no-store" }).then(function(r){ return r.json(); }).then(function(d){
+      $("chercher").disabled = false;
+      if (!d || !d.ok) { statut("statutRecherche", (d && d.raison) || "The shop did not answer - try again.", "err"); return; }
+      statut("statutRecherche", "");
+      peintPlans(d);
+    })["catch"](function(){ $("chercher").disabled = false; statut("statutRecherche", "The shop did not answer - try again.", "err"); });
+  }
+  function peintPlans(d){
+    $("cartePlans").hidden = false; $("cartePaiement").hidden = true; etat.plan = null;
+    var dp = PAYS.filter(function(x){ return x.name === d.destination; })[0];
+    var ic = dp ? drapeau(dp.code) + " " : (REGIONS[d.destination] ? REGIONS[d.destination] + " " : "");
+    $("destination").textContent = ic + (d.plans.length ? "Plans for " + d.destination : "No plan for " + d.destination + " right now.");
+    var box = $("plans"); box.textContent = "";
+    d.plans.forEach(function(p){
+      var l = document.createElement("label"); l.className = "choix";
+      var i = document.createElement("input"); i.type = "radio"; i.name = "plan"; i.value = p.plan;
+      var s = document.createElement("span"), b = document.createElement("b"), pr = document.createElement("span"), br = document.createElement("br"), pa = document.createElement("span");
+      b.textContent = String(p.name || "eSIM"); pr.className = "prix"; pr.textContent = " — $" + Number(p.priceUsd).toFixed(2);
+      /* Ce que couvre le forfait : le pays, ou une region qui le contient (souvent moins chere par Go). */
+      pa.className = "pale"; pa.textContent = (p.gb ? p.gb + " GB" : "") + (p.days ? " · " + p.days + " days" : "") + (p.covers ? " · covers " + String(p.covers).slice(0, 80) : "");
+      s.appendChild(b); s.appendChild(pr); s.appendChild(br); s.appendChild(pa); l.appendChild(i); l.appendChild(s);
+      i.addEventListener("change", function(){ etat.plan = p.plan; etat.prix = Number(p.priceUsd); $("prixChoisi").textContent = "$" + etat.prix.toFixed(2);
+        $("cartePaiement").hidden = false; statut("statut", ""); });
+      box.appendChild(l);
+    });
+    var autres = (d.otherDestinations || []).slice(0, 3);
+    $("plansNote").textContent = (autres.length ? "Also covering it: " + autres.join("; ") + ". " : "") + (d.unavailable ? d.unavailable + " more plan(s) are sold out here right now." : "");
+    var c = lienSur(d.terms), k = lienSur(d.compatibility);
+    if (c) $("lienConditions").href = c; if (k) $("lienCompat").href = k;
+  }
+  $("chercher").addEventListener("click", cherche);
+  $("pays").addEventListener("keydown", function(e){ if (e.key === "Enter") cherche(); });
+
+  /* ---- 1b. choisir sans taper (demande du proprietaire, 29/09) ----
+   * Des pastilles pour les destinations courantes, et TOUS les pays que vend CHIPS
+   * (/esim/destinations), avec leur drapeau. Le drapeau est l'emoji tire du code du
+   * pays (deux lettres regionales) : aucune image a charger. Un tap = une recherche. */
+  function drapeau(code){
+    var c = String(code || "").toUpperCase();
+    if (!/^[A-Z]{2}$/.test(c)) return "\ud83c\udf10";
+    return String.fromCodePoint(0x1F1E6 + c.charCodeAt(0) - 65, 0x1F1E6 + c.charCodeAt(1) - 65);
+  }
+  var REGIONS = { "Europe": "\ud83c\udf0d", "Asia": "\ud83c\udf0f", "Middle East": "\ud83c\udf0d", "South America": "\ud83c\udf0e", "North America": "\ud83c\udf0e", "Global": "\ud83c\udf10" };
+  var COURANTS = [["FR", "France"], ["JP", "Japan"], ["US", "United States"], ["GB", "United Kingdom"], ["ES", "Spain"], ["IT", "Italy"],
+    ["TH", "Thailand"], ["TR", "Turkey"], ["AE", "United Arab Emirates"], ["MX", "Mexico"], ["DE", "Germany"], ["PT", "Portugal"]];
+  function choisit(nom){
+    $("pays").value = nom; $("tousPays").open = false; cherche();
+    try { $("carteRecherche").scrollIntoView({ behavior: "smooth", block: "start" }); } catch (e) {}
+  }
+  function puce(txt, ic, nom){
+    var b = document.createElement("button"); b.type = "button"; b.className = "puce";
+    var d = document.createElement("span"); d.className = "drapeau"; d.setAttribute("aria-hidden", "true"); d.textContent = ic;
+    var t = document.createElement("span"); t.textContent = txt;
+    b.appendChild(d); b.appendChild(t);
+    b.addEventListener("click", function(){ choisit(nom); });
+    return b;
+  }
+  function peintRapides(){
+    var z = $("rapides"); z.textContent = "";
+    Object.keys(REGIONS).slice(0, 2).forEach(function(r){ z.appendChild(puce(r, REGIONS[r], r)); });
+    COURANTS.forEach(function(x){ z.appendChild(puce(x[1], drapeau(x[0]), x[1])); });
+    Object.keys(REGIONS).slice(2).forEach(function(r){ z.appendChild(puce(r, REGIONS[r], r)); });
+  }
+  peintRapides();
+  var PAYS = [];
+  function peintListe(){
+    var z = $("listePays"), f = String($("pays").value || "").trim().toLowerCase();
+    z.textContent = "";
+    var l = PAYS.filter(function(x){ return !f || x.name.toLowerCase().indexOf(f) >= 0 || x.code.toLowerCase() === f; });
+    if (!PAYS.length) { var v = document.createElement("div"); v.className = "vide"; v.textContent = "The list is not available right now - type your country above."; z.appendChild(v); return; }
+    if (!l.length) { var v2 = document.createElement("div"); v2.className = "vide"; v2.textContent = "No country matches \u201c" + f.slice(0, 40) + "\u201d - try a region (Europe, Asia, Global)."; z.appendChild(v2); return; }
+    l.forEach(function(x){
+      var b = document.createElement("button"); b.type = "button";
+      var d = document.createElement("span"); d.className = "drapeau"; d.setAttribute("aria-hidden", "true"); d.textContent = drapeau(x.code);
+      var t = document.createElement("span"); t.textContent = x.name;
+      b.appendChild(d); b.appendChild(t);
+      b.addEventListener("click", function(){ choisit(x.name); });
+      z.appendChild(b);
+    });
+  }
+  /* Taper filtre aussi la liste (ouverte) : on voit les drapeaux des pays qui correspondent. */
+  $("pays").addEventListener("input", function(){ if (PAYS.length && $("pays").value.trim().length >= 2) $("tousPays").open = true; peintListe(); });
+  fetch(serveur() + "/esim/destinations", { cache: "default" }).then(function(r){ return r.json(); }).then(function(d){
+    if (d && d.ok && Array.isArray(d.countries)) {
+      PAYS = d.countries.filter(function(x){ return x && /^[A-Z]{2}$/.test(String(x.code)) && x.name; })
+        .map(function(x){ return { code: String(x.code), name: String(x.name).slice(0, 60) }; });
+      /* Les pastilles ne montrent que des pays vraiment vendus. */
+      var vendus = {}; PAYS.forEach(function(x){ vendus[x.code] = true; });
+      if (PAYS.length) { COURANTS = COURANTS.filter(function(x){ return vendus[x[0]]; }); peintRapides(); }
+    }
+    peintListe();
+  })["catch"](function(){ peintListe(); });
+  /* Le fond : une des trois images faites par Kling le 29/09 (le serveur les garde en PNG
+     de ~6 Mo ; ici des JPEG de 1600 px, 86 a 190 Ko, servis par le site). Posee une fois
+     chargee : sans image, le fond d'avant. */
+  (function(){
+    var u = "img/esim/fond_" + (1 + Math.floor(Math.random() * 3)) + ".jpg", im = new Image();
+    im.onload = function(){ document.body.style.setProperty("--image-fond", "url(\"" + u + "\")"); document.body.classList.add("avec-fond"); };
+    im.src = u;
+  })();
+
+  /* ---- 2. payer : le devis et le paiement portent le MEME plan (le serveur lie l'un a l'autre) ---- */
+  function appel(entetes){
+    return fetch(serveur() + "/esim/buy", { method: "POST", cache: "no-store", headers: Object.assign({ "content-type": "application/json" }, entetes || {}),
+      body: JSON.stringify({ plan: etat.plan }) });
+  }
+  function demande(){
+    return appel().then(function(r){
+      if (r.status !== 402) return r.text().then(function(t){ var c = null; try { c = JSON.parse(t); } catch (e) {}
+        throw new Error((c && c.raison) || "the shop did not ask for a payment (HTTP " + r.status + ")"); });
+      var h = r.headers.get("payment-required");
+      if (!h) throw new Error("no payment request from the shop");
+      return de64(h);
+    });
+  }
+  function reseau(){ var r = document.querySelector('input[name="esReseau"]:checked'); return r ? r.value : "base"; }
+  function montreReseau(){ var sol = reseau() === "solana"; $("blocBase").hidden = sol; $("blocSol").hidden = !sol; }
+  Array.prototype.forEach.call(document.querySelectorAll('input[name="esReseau"]'), function(r){ r.addEventListener("change", montreReseau); });
+  montreReseau();
+
+  /* Base : Rabby, MetaMask, Coinbase — EIP-3009, le domaine « USD Coin » v2 de Base (lu sur la chaine le 27/09). */
+  function versBase(){
+    var eth = window.ethereum;
+    return eth.request({ method: "wallet_switchEthereumChain", params: [{ chainId: BASE_ID }] })["catch"](function(e){
+      if (!e || e.code !== 4902) throw e;
+      return eth.request({ method: "wallet_addEthereumChain", params: [{ chainId: BASE_ID, chainName: "Base",
+        nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 }, rpcUrls: ["https://mainnet.base.org"], blockExplorerUrls: ["https://basescan.org"] }] });
+    });
+  }
+  $("connecter").addEventListener("click", function(){
+    var eth = window.ethereum;
+    if (!eth) { statut("statut", "No wallet found in this browser — open this page inside your wallet app.", "err"); return; }
+    statut("statut", "Connecting…");
+    eth.request({ method: "eth_requestAccounts" }).then(function(l){
+      if (!l || !adresseOk(l[0])) throw new Error("no account");
+      etat.compte = l[0]; $("adresse").textContent = l[0];
+      return versBase();
+    }).then(function(){ $("payer").disabled = false; statut("statut", "Connected on Base. Ready to buy."); })
+      ["catch"](function(e){ statut("statut", "Connection failed: " + String(e && (e.message || e.code) || e).slice(0, 160), "err"); });
+  });
+  $("payer").addEventListener("click", function(){
+    var eth = window.ethereum;
+    if (!eth || !etat.compte || !etat.plan) return;
+    $("payer").disabled = true; statut("statut", "Asking the shop for its payment request…");
+    demande().then(function(req){
+      var acc = (req.accepts || []).filter(function(a){ return a.network === "eip155:8453"; })[0];
+      if (!acc) throw new Error("the shop does not take Base right now - try Solana");
+      if (String(acc.asset).toLowerCase() !== USDC_BASE.toLowerCase() || !adresseOk(acc.payTo) || !/^[0-9]+$/.test(String(acc.amount))) throw new Error("unexpected payment request");
+      var s = Math.floor(Date.now() / 1000);
+      var auth = { from: etat.compte, to: acc.payTo, value: String(acc.amount), validAfter: String(s - 600),
+                   validBefore: String(s + Math.max(30, (Number(acc.maxTimeoutSeconds) || 120) - 20)), nonce: hex32() };
+      var extra = acc.extra || {};
+      var typed = { types: {
+          EIP712Domain: [{ name: "name", type: "string" }, { name: "version", type: "string" }, { name: "chainId", type: "uint256" }, { name: "verifyingContract", type: "address" }],
+          TransferWithAuthorization: [{ name: "from", type: "address" }, { name: "to", type: "address" }, { name: "value", type: "uint256" },
+            { name: "validAfter", type: "uint256" }, { name: "validBefore", type: "uint256" }, { name: "nonce", type: "bytes32" }] },
+        primaryType: "TransferWithAuthorization",
+        domain: { name: extra.name || "USD Coin", version: extra.version || "2", chainId: 8453, verifyingContract: acc.asset }, message: auth };
+      statut("statut", "Sign in your wallet: " + (Number(acc.amount) / 1e6) + " USDC to SWOGE (" + acc.payTo.slice(0, 6) + "…" + acc.payTo.slice(-4) + ").");
+      return eth.request({ method: "eth_signTypedData_v4", params: [etat.compte, JSON.stringify(typed)] }).then(function(signature){
+        statut("statut", "Signed. Buying your eSIM, then the payment settles — a few seconds…");
+        return appel({ "payment-signature": b64({ x402Version: 2, resource: req.resource, accepted: acc, payload: { signature: signature, authorization: auth }, extensions: req.extensions }) });
+      });
+    }).then(function(r){ return fin(r, "base"); })
+      ["catch"](function(e){ $("payer").disabled = false; statut("statut", "Not bought, not charged: " + String(e && (e.message || e.code) || e).slice(0, 200), "err"); });
+  });
+
+  /* Solana : Wallet Standard (Phantom d'abord) + x402_solana.js, comme x402_essai.html. */
+  (function(){
+    function enregistre(){ for (var i = 0; i < arguments.length; i++) if (etat.portefeuilles.indexOf(arguments[i]) < 0) etat.portefeuilles.push(arguments[i]); return function(){}; }
+    var api = Object.freeze({ register: enregistre });
+    try { window.addEventListener("wallet-standard:register-wallet", function(e){ try { e.detail(api); } catch (x) {} }); } catch (e) {}
+    try { var ev = new Event("wallet-standard:app-ready"); Object.defineProperty(ev, "detail", { value: api }); window.dispatchEvent(ev); } catch (e) {}
+  })();
+  function solPeutSigner(w){ var f = w && w.features || {}; return !!(f["solana:signTransaction"] && f["standard:connect"]) && (!w.chains || w.chains.indexOf(SOL.chaine) >= 0); }
+  $("solConnecter").addEventListener("click", function(){
+    var l = etat.portefeuilles.filter(solPeutSigner);
+    l.sort(function(a, b){ return (/phantom/i.test(b.name) ? 1 : 0) - (/phantom/i.test(a.name) ? 1 : 0); });
+    if (!l.length) { statut("statut", "No Solana wallet found in this browser — install Phantom, Solflare or Backpack, or open this page in its app.", "err"); return; }
+    if (l.length === 1) return solConnecte(l[0]);
+    var c = $("solChoix"); c.textContent = ""; c.hidden = false;
+    l.forEach(function(w){
+      var b = document.createElement("button"); b.type = "button"; b.style.marginTop = "8px"; b.textContent = "Connect " + String(w.name || "wallet").slice(0, 40);
+      b.addEventListener("click", function(){ c.hidden = true; solConnecte(w); });
+      c.appendChild(b);
+    });
+    statut("statut", "Choose your Solana wallet.");
+  });
+  function solConnecte(w){
+    statut("statut", "Connecting to " + String(w.name || "your wallet").slice(0, 40) + "…");
+    Promise.resolve(w.features["standard:connect"].connect()).then(function(r){
+      var c = (r && r.accounts && r.accounts[0]) || (w.accounts && w.accounts[0]);
+      if (!c || !c.address) throw new Error("no account");
+      etat.sol = w; etat.solCompte = c; $("solAdresse").textContent = c.address;
+      $("solPayer").disabled = false; statut("statut", "Connected. Ready to buy.");
+    })["catch"](function(e){ statut("statut", "Connection failed: " + String(e && (e.message || e.code) || e).slice(0, 160), "err"); });
+  }
+  function solBlockhash(acc){
+    return fetch(serveur() + "/agentic/solana/blockhash", { cache: "no-store" }).then(function(r){ return r.json(); }).then(function(d){
+      if (d && d.ok && d.blockhash) return d.blockhash;
+      if (acc.extra && acc.extra.recentBlockhash) return acc.extra.recentBlockhash;
+      throw new Error("no recent Solana blockhash - try again");
+    });
+  }
+  function solPaie(sansMemo){
+    var req, acc, lu = null;
+    statut("statut", "Asking the shop for its payment request…");
+    return demande().then(function(r){
+      req = r;
+      acc = (req.accepts || []).filter(function(x){ return x.network === SOL.reseau; })[0];
+      if (!acc) throw new Error("the shop does not take Solana right now - try Base");
+      if (acc.asset !== SOL.usdc || !/^[0-9]+$/.test(String(acc.amount)) || !(acc.extra && acc.extra.feePayer)) throw new Error("unexpected payment request");
+      return solBlockhash(acc);
+    }).then(function(bh){
+      return SwogeSolana.construit(acc, { payeur: etat.solCompte.address, blockhash: bh, sansMemo: sansMemo });
+    }).then(function(t){
+      statut("statut", "Approve in your wallet: " + (Number(acc.amount) / 1e6) + " USDC to SWOGE.");
+      return etat.sol.features["solana:signTransaction"].signTransaction({ account: etat.solCompte, transaction: t.octets, chain: SOL.chaine });
+    }).then(function(sorties){
+      var signe = sorties && sorties[0] && sorties[0].signedTransaction;
+      if (!signe || !signe.length) throw new Error("the wallet returned no signed transaction");
+      try { lu = SwogeSolana.lit(new Uint8Array(signe)); } catch (e) { lu = null; }
+      statut("statut", "Signed. Buying your eSIM, then the payment settles — a few seconds…");
+      return appel({ "payment-signature": b64({ x402Version: 2, resource: req.resource, accepted: acc, payload: { transaction: SwogeSolana.b64(new Uint8Array(signe)) }, extensions: req.extensions }) });
+    }).then(function(r){ return fin(r, "solana"); })["catch"](function(e){ if (e) e.lu = lu; throw e; });
+  }
+  $("solPayer").addEventListener("click", function(){
+    if (!etat.sol || !etat.plan) return;
+    $("solPayer").disabled = true;
+    solPaie(false)["catch"](function(e){
+      /* Le portefeuille a ajoute des instructions (Phantom : jusqu'a 3) et le facilitateur plafonne a 6 : une fois encore, sans le memo. */
+      if (e && e.lu && e.lu.programmes.length > 6 && /smart_wallet|instructions_length/.test(e.raison || e.message)) {
+        statut("statut", "Your wallet added instructions the facilitator refuses — sign once more (a shorter transaction)…");
+        return solPaie(true);
+      }
+      throw e;
+    })["catch"](function(e){ $("solPayer").disabled = false; statut("statut", "Not bought, not charged: " + String(e && (e.message || e.code) || e).slice(0, 200), "err"); });
+  });
+
+  /* ---- 3. le resultat : le lien secret, puis le code ---- */
+  function fin(r, res){
+    var rep = r.headers.get("payment-response");
+    return r.text().then(function(t){
+      var c = null; try { c = JSON.parse(t); } catch (e) {}
+      if (r.status !== 200 || !c || !c.ok) { var err = new Error(String(c && (c.raison || c.error || c.detail) || ("HTTP " + r.status)).slice(0, 200)); err.raison = String(c && c.raison || ""); throw err; }
+      var tx = null; try { tx = rep ? de64(rep) : null; } catch (e) {}
+      $("cartePaiement").hidden = true; $("carteRecherche").hidden = true; $("cartePlans").hidden = true;
+      montreCommande(c.orderLink, c.achat, tx && tx.transaction, res);
+    });
+  }
+  function lienDe(k){ return location.origin + location.pathname + "?order=" + k; }
+  function montreCommande(k, achat, tx, res){
+    $("carteResultat").hidden = false;
+    $("resTitre").textContent = achat && achat.nom ? "Your eSIM: " + achat.nom : "Your eSIM";
+    var p = $("resTx"); p.textContent = "";
+    if (tx && res === "base" && /^0x[0-9a-fA-F]{64}$/.test(tx)) { var a = document.createElement("a"); a.href = "https://basescan.org/tx/" + tx; a.target = "_blank"; a.rel = "noopener"; a.textContent = "Payment on BaseScan"; p.appendChild(a); }
+    else if (tx && res === "solana" && /^[1-9A-HJ-NP-Za-km-z]{64,90}$/.test(tx)) { var b = document.createElement("a"); b.href = "https://solscan.io/tx/" + tx; b.target = "_blank"; b.rel = "noopener"; b.textContent = "Payment on Solscan"; p.appendChild(b); }
+    if (/^[0-9a-f]{32}$/.test(String(k || ""))) {
+      $("resLien").hidden = false; $("lienCommande").textContent = lienDe(k); etat.lien = k;
+      try { history.replaceState(null, "", "?order=" + k); } catch (e) {}
+    }
+    peintAchat(achat);
+  }
+  function peintAchat(achat){
+    var box = $("resActivation"); box.textContent = "";
+    var a = achat && achat.activation;
+    if (!a) { statut("statutCommande", "Paid. Your eSIM is being prepared — check again in a minute."); $("rafraichir").hidden = false; return; }
+    $("rafraichir").hidden = true; statut("statutCommande", "Ready.", "ok");
+    var d = document.createElement("div"); d.className = "ach-act";
+    if (a.smdp) d.appendChild(ligneCopie("SM-DP+ address", a.smdp));
+    if (a.code) d.appendChild(ligneCopie("Activation code", a.code));
+    if (a.uri) d.appendChild(ligneCopie("Full code (LPA)", a.uri));
+    var h = document.createElement("p"); h.className = "pale";
+    h.textContent = "To install: in your phone's settings, add an eSIM and enter the details manually, or scan the QR code below from another screen." + (a.iccid4 ? " eSIM ending in " + a.iccid4 + "." : "");
+    d.appendChild(h);
+    var m = null;
+    try { m = a.uri ? qrMatrice(a.uri) : null; } catch (e) { m = null; }
+    if (m) {
+      var T = QR_TAILLE, pas = 6, cv = document.createElement("canvas");
+      cv.width = cv.height = (T + 2 * QR_MARGE) * pas; cv.className = "ach-qr"; cv.setAttribute("role", "img"); cv.setAttribute("aria-label", "QR code of your eSIM activation code");
+      var g = cv.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, cv.width, cv.height); g.fillStyle = "#000";
+      for (var y = 0; y < T; y++) for (var x = 0; x < T; x++) if (m[y][x]) g.fillRect((x + QR_MARGE) * pas, (y + QR_MARGE) * pas, pas, pas);
+      d.appendChild(cv);
+    }
+    box.appendChild(d);
+  }
+  $("copierLien").addEventListener("click", function(){ copie($("lienCommande").textContent, $("copierLien")); });
+  function relit(k){
+    statut("statutCommande", "Looking for your eSIM…");
+    fetch(serveur() + "/esim/order/" + encodeURIComponent(k), { cache: "no-store" }).then(function(r){ return r.json(); }).then(function(d){
+      if (d && d.achat) { $("carteResultat").hidden = false; montreCommande(k, d.achat, d.achat.tx, d.achat.reseau === SOL.reseau ? "solana" : "base"); return; }
+      statut("statutCommande", (d && d.raison) || "Order not found.", "err");
+    })["catch"](function(){ statut("statutCommande", "The shop did not answer - try again.", "err"); });
+  }
+  $("rafraichir").addEventListener("click", function(){ if (etat.lien) relit(etat.lien); });
+  /* ?order=<lien> : retrouver son eSIM sans compte. */
+  try { var k0 = new URLSearchParams(location.search).get("order"); if (/^[0-9a-f]{32}$/.test(String(k0 || ""))) { etat.lien = k0; $("carteResultat").hidden = false; $("carteRecherche").hidden = true; relit(k0); } } catch (e) {}
+})();
+
 })();
 </script>
 </main>

@@ -19,6 +19,7 @@ const ok = (c, m) => { n++; if (c) console.log('  ok   ' + m); else { rates++; c
 const agent = (id, name, o) => Object.assign({ id, name, role: 'Role of ' + name, bank: 1000, bets: 0, resolved: 0, won: 0, voided: 0, winRate: null, skill: null, avgPricePaid: null,
   pnl: 0, fees: 0, drawdown: 0, open: 0, verdict: 'Too few resolved bets to judge (0/100).' }, o || {});
 const ETAT = (calib) => ({ ok: true, depuis: '2026-09-29T14:00:00.000Z', stakeUsd: 10, bankUsd: 1000, minResolved: 100,
+  totalStrategies: 200, parametric: { running: 100, distinct: 2460, combinations: 110700, note: '<img src=x onerror=window.pirate=9> not simulated.' },
   agents: [agent('coin', 'Coin', { bets: 120, resolved: 118, won: 57, winRate: { p: 0.483, low: 0.395, high: 0.572 }, skill: -0.4, avgPricePaid: 0.51, pnl: -41.2, fees: 20.3, drawdown: 55.1, verdict: 'No edge: loses after the spread and fees (skill score -0.4).' }),
     agent('crowd', 'Crowd'), agent('fair', 'Fair Value', { role: 'Model <img src=x onerror=window.pirate=1>', pnl: 12.5 }), agent('late', 'Last Minute'), agent('fade', 'Longshot')],
   calibration: calib, open: [{ agent: 'fair', asset: 'BTC', window: '2026-09-29T14:15:00.000Z', side: 'Up', price: 0.55, fee: 0.315, model: 0.716, url: 'https://polymarket.com/event/btc-updown-15m-1790691300' }],
@@ -57,6 +58,10 @@ const CALIBS = {
     ok(/No edge: loses after the spread and fees/.test(t) && /Too few resolved bets to judge \(0\/100\)/.test(t), 'le verdict du serveur tel quel, y compris « trop peu »');
     ok((await page.$('#agents img')) === null && !(await page.evaluate(() => window.pirate)), 'ce que dit le serveur est du texte, jamais du HTML');
     ok(/no verdict under 100 settled bets/.test(await page.textContent('#depuis')), 'la regle est dite en tete');
+    /* 30/09 : la page n en montre que quelques-unes ; elle dit combien tournent, et ce qui n est pas simule. */
+    const ef = await page.textContent('#effectif');
+    ok(/^200 strategies running, including 100 parametric ones picked from 2,460 distinct behaviours\./.test(ef) && /not simulated/.test(ef)
+       && await page.evaluate(() => !document.querySelector('#effectif img') && window.pirate === undefined), 'l effectif reel est dit en tete, en texte seulement [' + ef.slice(0, 60) + ']');
     await ctx.close();
   }
 

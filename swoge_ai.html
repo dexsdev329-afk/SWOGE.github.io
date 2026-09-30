@@ -40,7 +40,7 @@
  * une fois par session pour savoir si le serveur en a une plus recente.
  * Sans ca, un joueur garde des semaines une version corrigee depuis
  * longtemps — et ici, cela voudrait dire un agent qui a cesse d'apprendre. */
-var MARQUE_PAGE = '2b6fa957';
+var MARQUE_PAGE = '602d8f30';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -183,18 +183,18 @@ var MARQUE_PAGE = '2b6fa957';
   .bandeau{
     display:flex; align-items:stretch; gap:0; flex:none;
     border-bottom:1px solid var(--line); background:var(--hud-3);
-    overflow-x:auto; scrollbar-width:none;
+    overflow-x:auto; scrollbar-width:none; padding:14px 0;
   }
   .bandeau::-webkit-scrollbar{ display:none }
-  .b-item{ flex:1 1 0; min-width:82px; padding:9px 12px; text-align:center;
-    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px }
+  .b-item{ flex:1 1 0; min-width:82px; padding:12px 18px; text-align:center;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px }
   .b-item + .b-item{ border-left:1px solid var(--line) }
-  .b-item b{ font-family:"JetBrains Mono",monospace; font-weight:700; font-size:17px;
+  .b-item b{ font-family:"JetBrains Mono",monospace; font-weight:700; font-size:20px;
     line-height:1.1; font-variant-numeric:tabular-nums; color:var(--ink) }
-  .b-item i{ font-style:normal; font-size:9.5px; letter-spacing:1.1px; text-transform:uppercase;
-    color:var(--ink-dim); white-space:nowrap }
-  .b-gros b{ font-size:24px }
-  @media (max-width:560px){ .b-item{ min-width:70px; padding:8px } .b-gros b{ font-size:19px } }
+  .b-item i{ font-style:normal; font-size:10px; letter-spacing:1.2px; text-transform:uppercase;
+    color:var(--ink-dim); white-space:nowrap; font-weight:500 }
+  .b-gros b{ font-size:32px; color:var(--gain) }
+  @media (max-width:560px){ .b-item{ min-width:70px; padding:10px } .b-gros b{ font-size:24px } }
 
   /* ---------- partage principal ---------- */
   /* Le village prenait 60 % de la largeur pour une animation, et laissait 40 %
@@ -294,17 +294,17 @@ var MARQUE_PAGE = '2b6fa957';
   .grp[hidden]{ display:none }
   .grp > .card:last-child{ border-bottom:none }
 
-  .card{padding:14px 16px; border-bottom:1px solid var(--line)}
+  .card{padding:16px 18px; border-bottom:1px solid var(--line)}
   .card h2{
-    font-family:"Outfit",sans-serif; font-weight:600; font-size:11px; letter-spacing:1.6px;
-    text-transform:uppercase; color:var(--ink-faint); margin:0 0 11px; display:flex; align-items:center; gap:8px;
+    font-family:"Outfit",sans-serif; font-weight:600; font-size:12px; letter-spacing:1.8px;
+    text-transform:uppercase; color:var(--ink-faint); margin:0 0 14px; display:flex; align-items:center; gap:8px;
     cursor:pointer; user-select:none;
   }
   .card h2 .count{
     margin-left:auto; color:var(--ink-dim); font-weight:600; letter-spacing:.2px;
-    text-transform:none; font-size:10.5px; font-family:"JetBrains Mono",monospace;
-    font-variant-numeric:tabular-nums; background:var(--hud-3);
-    border:1px solid var(--line); border-radius:999px; padding:2px 8px;
+    text-transform:none; font-size:11px; font-family:"JetBrains Mono",monospace;
+    font-variant-numeric:tabular-nums; background:rgba(27,95,224,.05);
+    border:1px solid rgba(27,95,224,.15); border-radius:999px; padding:3px 10px;
     max-width:58%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
   }
   /* ---- ON VOIT LEQUEL EST OUVERT SANS LIRE ----
@@ -335,13 +335,14 @@ var MARQUE_PAGE = '2b6fa957';
   .card h2:hover{ color:var(--ink-dim) }
   .card h2:hover::after{ background:rgba(27,95,224,.16) }
 
-  .agent{display:flex; align-items:center; gap:11px; padding:7px 0}
-  .agent + .agent{border-top:1px dashed rgba(11,27,54,.05)}
-  .ava{width:30px;height:30px;border-radius:9px;flex:none;display:grid;place-items:center;font-size:15px;
+  .agent{display:flex; align-items:center; gap:12px; padding:10px 0; background:rgba(11,27,54,.02);
+         padding:10px 10px; border-radius:10px; margin-bottom:8px; transition:.12s}
+  .agent:hover{background:rgba(11,27,54,.06)}
+  .ava{width:36px;height:36px;border-radius:10px;flex:none;display:grid;place-items:center;font-size:17px;
        box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.16)}
-  .agent .nm{font-weight:600; font-size:13.5px; font-family:"Fredoka",sans-serif; letter-spacing:.2px}
-  .agent .ms{font-size:11px; color:var(--ink-dim); line-height:1.25}
-  .agent .sc{font-size:10.5px; color:var(--ink-faint); font-family:"JetBrains Mono",monospace; margin-top:2px}
+  .agent .nm{font-weight:600; font-size:14.5px; font-family:"Fredoka",sans-serif; letter-spacing:.2px; color:var(--ink)}
+  .agent .ms{font-size:11.5px; color:var(--ink-dim); line-height:1.35}
+  .agent .sc{font-size:11px; color:var(--ink-faint); font-family:"JetBrains Mono",monospace; margin-top:3px}
   .agent .st{margin-left:auto; text-align:right; flex:none}
   .stpill{font-size:10px; font-weight:600; padding:2px 7px; border-radius:999px; font-family:"JetBrains Mono",monospace;
           letter-spacing:.2px; white-space:nowrap}
@@ -349,9 +350,10 @@ var MARQUE_PAGE = '2b6fa957';
   .stpill.work{color:#0b1a13; background:var(--gold)}
   .stpill.walk{color:#04140c; background:var(--gain)}
 
-  .flow{display:flex;flex-direction:column;gap:8px}
-  .tok{display:flex;align-items:center;gap:9px;background:rgba(11,27,54,.03);border:1px solid var(--line);
-       border-radius:11px;padding:8px 10px}
+  .flow{display:flex;flex-direction:column;gap:10px}
+  .tok{display:flex;align-items:center;gap:10px;background:rgba(11,27,54,.03);border:1px solid var(--line);
+       border-radius:12px;padding:10px 12px;transition:.12s;cursor:pointer}
+  .tok:hover{background:rgba(11,27,54,.06);border-color:rgba(27,95,224,.3)}
   .tok .sym{font-family:"JetBrains Mono",monospace;font-weight:700;font-size:13px}
   .badge{font-size:9.5px;font-weight:700;padding:2px 6px;border-radius:6px;letter-spacing:.4px;font-family:"JetBrains Mono",monospace}
   .badge.rh{color:#04140c;background:var(--rh)}
@@ -368,12 +370,12 @@ var MARQUE_PAGE = '2b6fa957';
   .mini.pris{color:var(--gain)}
   .meta .rej{color:var(--loss)}
   .meta .muet{color:var(--ink-faint);opacity:.75;border-bottom:1px dashed currentColor;cursor:help}
-  .empty{font-size:12px;color:var(--ink-faint);padding:6px 0;font-style:italic;line-height:1.5}
+  .empty{font-size:13px;color:var(--ink-faint);padding:12px 8px;font-style:italic;line-height:1.6;
+          text-align:center;background:rgba(11,27,54,.02);border-radius:9px;margin:6px 0}
 
-  .pick{display:flex;align-items:center;gap:9px;text-decoration:none;color:inherit;cursor:pointer;
-        border-radius:8px;padding:6px;margin:0 -6px;transition:background .12s}
-  .pick+.pick{border-top:1px dashed rgba(11,27,54,.05)}
-  .pick:hover{background:rgba(11,27,54,.04)}
+  .pick{display:flex;align-items:center;gap:10px;text-decoration:none;color:inherit;cursor:pointer;
+        border-radius:10px;padding:9px 10px;margin-bottom:6px;transition:background .12s;background:rgba(11,27,54,.02)}
+  .pick:hover{background:rgba(27,95,224,.08);border-color:rgba(27,95,224,.2)}
   .rank{font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--ink-faint);width:16px;flex:none}
   .pick .sym{font-family:"JetBrains Mono",monospace;font-weight:700;font-size:13px}
   .pick .meta2{font-family:"JetBrains Mono",monospace;font-size:10.5px;color:var(--ink-faint);white-space:nowrap}
@@ -383,8 +385,9 @@ var MARQUE_PAGE = '2b6fa957';
   .symlink{color:inherit;text-decoration:none} .symlink:hover{color:var(--gold)}
 
   .feed{display:flex;flex-direction:column;gap:0}
-  .tr{display:flex;align-items:center;gap:8px;padding:6px 0;font-size:12.5px}
-  .tr+.tr{border-top:1px dashed rgba(11,27,54,.05)}
+  .tr{display:flex;align-items:center;gap:9px;padding:8px 10px;font-size:13px;background:rgba(11,27,54,.02);
+      margin-bottom:6px;border-radius:9px;transition:.12s}
+  .tr:hover{background:rgba(11,27,54,.06)}
   .tr .sym{font-family:"JetBrains Mono",monospace;font-weight:700;min-width:78px}
   .tag{font-size:9.5px;font-weight:700;padding:2px 6px;border-radius:6px;letter-spacing:.4px;font-family:"JetBrains Mono",monospace}
   .tag.open{color:#04140c;background:#9fe6c0} .tag.buy{color:#04140c;background:var(--gain)}
@@ -394,8 +397,9 @@ var MARQUE_PAGE = '2b6fa957';
   .quand{font-size:10px;color:var(--ink-faint);font-family:"JetBrains Mono",monospace}
 
   /* positions ouvertes */
-  .pos{display:flex;align-items:center;gap:8px;padding:7px 0;font-size:12.5px}
-  .pos+.pos{border-top:1px dashed rgba(11,27,54,.05)}
+  .pos{display:flex;align-items:center;gap:9px;padding:8px 10px;font-size:13px;background:rgba(11,27,54,.02);
+       margin-bottom:6px;border-radius:9px;transition:.12s}
+  .pos:hover{background:rgba(11,27,54,.06)}
   .pos .sym{font-family:"JetBrains Mono",monospace;font-weight:700;min-width:78px}
 
   /* ce que l'oracle a appris */

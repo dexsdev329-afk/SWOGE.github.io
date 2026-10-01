@@ -321,6 +321,31 @@ const srv = http.createServer((q, r) => {
     await page.close();
   }
 
+  /* ==================== 7. SANS LA BIBLIOTHEQUE DE CHAINE ====================
+   * Le CDN d ethers peut tomber, ou etre bloque par une extension. Le
+   * telephone le dit ; la vitrine, elle, restait morte — le crochet etait
+   * pose APRES l arret du script. */
+  console.log('\n-- sans la bibliotheque de chaine --');
+  {
+    const page = await nav.newPage({ viewport: { width: 1440, height: 900 } });
+    const boum = [];
+    page.on('pageerror', (e) => boum.push(String(e).slice(0, 160)));
+    await page.addInitScript(() => { try { sessionStorage.setItem('swogeWalletIntroVue', '1'); } catch (e) {} });
+    await page.route((u) => !u.href.startsWith(BASE), (r) => r.abort());
+    await page.goto(BASE + '/swoge_wallet.html', { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(1500);
+    await page.click('.wl-cote.droite .vt-carte[data-vt-va="ecPont"] .vt-ct');
+    await page.waitForTimeout(300);
+    const m = await page.evaluate(() => ({
+      api: !!window.SwogeWallet,
+      valeurs: [...document.querySelectorAll('.vt-carte .vt-r b:not(.vt-qr), #vtLignes .vt-tl > span:not(.vt-tok)')]
+        .map((b) => b.textContent.trim()) }));
+    ok(m.api && (await ecran(page)) === 'ecPont', 'la vitrine reste vivante : la carte BRIDGE ouvre le pont');
+    ok(m.valeurs.length > 0 && m.valeurs.every((v) => v === '--'), 'et rien ne s y ecrit d autre que « -- »');
+    ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
+    await page.close();
+  }
+
   await nav.close(); srv.close();
   console.log('\n' + (rates ? 'RATES : ' + rates + '/' + n : 'VERIFICATIONS : ' + n + ' — tout passe'));
   process.exit(rates ? 1 : 0);

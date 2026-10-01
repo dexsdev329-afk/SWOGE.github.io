@@ -384,7 +384,14 @@ function fusionne() {
     ONGLETS_JS +
     jsChat + '\n' +
     js + '\n' + os.js + es.js + st.js +
-    '</main>' + chat.queue;
+    '</main>' + chat.queue.replace('</body>', FOND() + '</body>');
+}
+
+/* Le fond d ecran anime (fond_anime.js), avec l empreinte du fichier relue a chaque generation :
+   un marqueur ecrit a la main ici serait perime au premier changement du script. */
+function FOND() {
+  const v = require('crypto').createHash('md5').update(fs.readFileSync(path.join(SITE, 'fond_anime.js'))).digest('hex').slice(0, 8);
+  return '<!-- Le fond d ecran anime, derriere tout : voir fond_anime.js. -->\n<script src="fond_anime.js?v=' + v + '" data-fond="agents" defer></script>\n';
 }
 
 module.exports = { fusionne, CIBLE };

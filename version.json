@@ -7,9 +7,9 @@
   "predict_moteur.js": "02c7f1ce",
   "privy-swoge.js": "c662549f",
   "stakebubble.min.js": "c324151c",
-  "swoge_ai.html": "3e3baf4b",
-  "swoge_perp.html": "31738ecf",
-  "swoge_wallet.html": "79e16a13",
+  "swoge_ai.html": "7f797b0e",
+  "swoge_perp.html": "479083a5",
+  "swoge_wallet.html": "8ab37a15",
   "swogebuy.js": "9d7c39e5",
   "swogecompte.js": "2e1921ce",
   "swogecx.js": "3ba0a8ea",
@@ -20,5 +20,6 @@
   "swoge_terminal.css": "6229304d",
   "swoge_terminal.js": "eeb88660",
   "x402_solana.js": "1d86ed41",
-  "x402_paie.js": "6f6b9006"
+  "x402_paie.js": "6f6b9006",
+  "fond_anime.js": "caf410ea"
 }

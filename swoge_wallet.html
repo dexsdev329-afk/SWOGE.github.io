@@ -68,7 +68,7 @@
      A savoir : cela ne sauve pas la page DEJA en cache chez quelqu'un, qui ne
      contient pas ces lignes. Ce garde-fou vaut a partir de celle-ci. -->
 <script>
-var MARQUE_PAGE = '79e16a13';
+var MARQUE_PAGE = '8ab37a15';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -1740,6 +1740,11 @@ html.wl-encadre .wl-haut{ position:static; height:auto }
 .vt-bloc .vt-lien{ justify-self:start }
 .vt-bloc p{ font-size:13.5px }
 
+/* les deux films du portefeuille : SWOGE et sa cle, SWOGE et le coffre */
+.vt-film{ margin-top:22px; aspect-ratio:16 / 9; border-radius:20px; overflow:hidden;
+  border:1px solid var(--bord); background:var(--carte2); box-shadow:var(--vt-ombre) }
+.vt-film video{ width:100%; height:100%; object-fit:cover; display:block }
+
 /* le casino */
 .vt-flux{ display:flex; align-items:stretch; gap:8px; margin:26px 0 14px }
 .vt-etape{ flex:1 1 0; min-width:0; display:flex; flex-direction:column; align-items:center; gap:7px;
@@ -3107,6 +3112,8 @@ html.wl-encadre .wl-haut{ position:static; height:auto }
   <section class="vt-sec" id="vtCasino">
     <span class="vt-sur">THE CASINO, CONNECTED</span>
     <h2>Deposit to play. Withdraw to your wallet.</h2>
+    <div class="vt-film"><video data-src="media/wallet_casino.mp4" data-webm="media/wallet_casino.webm" poster="img/site/fonds/wallet_casino.webp"
+         muted loop playsinline disablepictureinpicture preload="none" aria-hidden="true"></video></div>
     <div class="vt-flux">
       <div class="vt-etape"><span class="vt-ic bleu">&#9673;</span><b>WALLET</b><i>Your $SWOGE</i></div>
       <span class="vt-fl" aria-hidden="true"></span>
@@ -3142,6 +3149,8 @@ html.wl-encadre .wl-haut{ position:static; height:auto }
   <section class="vt-sec" id="vtCles" data-ecran="ecCompte">
     <span class="vt-sur">YOUR KEYS. YOUR CONTROL.</span>
     <h2>Your account, in plain sight.</h2>
+    <div class="vt-film"><video data-src="media/wallet_cles.mp4" data-webm="media/wallet_cles.webm" poster="img/site/fonds/wallet_cles.webp"
+         muted loop playsinline disablepictureinpicture preload="none" aria-hidden="true"></video></div>
     <div class="vt-cles">
       <div class="vt-r"><span>Wallet address</span><b><code id="vtAdr">--</code></b></div>
       <div class="vt-r"><span>Network</span><b>Robinhood Chain</b></div>
@@ -10627,6 +10636,7 @@ if($('cpSolAdr')) $('cpSolAdr').addEventListener('click', function(){
 
 
 heure(); setInterval(heure, 20000);
+exposeVitrine();
 
 if(ethersManquant()){
   crieSansEthers();
@@ -10803,15 +10813,22 @@ function etatVitrine(){
     coffre: { pret: pret, swoge: f(CASINO.solde), bet: f(CASINO.betSolde) }
   };
 }
-window.SwogeWallet = Object.freeze({
-  etat: etatVitrine,
-  va: function(id){
-    var e = document.getElementById(id);
-    if(e && e.classList.contains('wl-ecran')) va(id);
-  },
-  connecte: function(){ if(moi) va('ecCompte'); else ouvreConnexion(); },
-  ouvreConnexion: ouvreConnexion
-});
+/* Pose AVANT l'arret sur bibliotheque absente (plus haut, `ethersManquant`) :
+   sans elle, la vitrine entiere restait morte — ni cartes, ni boutons, ni
+   films — alors que le telephone, lui, expliquait la panne. Rien ici ne
+   touche `ethers` tant que rien n'est connecte (mesure : l'essai coupe le CDN). */
+function exposeVitrine(){
+  if(window.SwogeWallet) return;
+  window.SwogeWallet = Object.freeze({
+    etat: etatVitrine,
+    va: function(id){
+      var e = document.getElementById(id);
+      if(e && e.classList.contains('wl-ecran')) va(id);
+    },
+    connecte: function(){ if(moi) va('ecCompte'); else ouvreConnexion(); },
+    ouvreConnexion: ouvreConnexion
+  });
+}
 signale();
 
 })();
@@ -11113,17 +11130,23 @@ if(window.IntersectionObserver){
     es.forEach(function(e){
       var v = e.target;
       if(e.isIntersecting){
-        if(!v.src && v.dataset.src && !calme){ v.src = v.dataset.src; }
+        if(!v.src && v.dataset.src && !calme){
+          /* le mp4 la ou H.264 se lit, sinon son jumeau VP9 quand il en a un */
+          v.src = v.canPlayType('video/mp4; codecs="avc1.42E01E"') ? v.dataset.src
+                : (v.dataset.webm || v.dataset.src);
+        }
         if(v.src && !calme){ var p = v.play(); if(p && p['catch']) p['catch'](function(){}); }
       }else if(v.src) v.pause();
     });
   });
-  [].forEach.call(document.querySelectorAll('.vt-lieux video[data-src]'), function(v){ vo.observe(v); });
+  [].forEach.call(document.querySelectorAll('.vt-lieux video[data-src], .vt-film video[data-src]'), function(v){ vo.observe(v); });
 }
 
 peint();
 trace();
 })();
 </script>
+<!-- Le fond d ecran anime, derriere tout : voir fond_anime.js. -->
+<script src="fond_anime.js?v=caf410ea" data-fond="wallet" defer></script>
 </body>
 </html>

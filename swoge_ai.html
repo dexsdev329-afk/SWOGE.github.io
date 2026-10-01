@@ -40,7 +40,7 @@
  * une fois par session pour savoir si le serveur en a une plus recente.
  * Sans ca, un joueur garde des semaines une version corrigee depuis
  * longtemps — et ici, cela voudrait dire un agent qui a cesse d'apprendre. */
-var MARQUE_PAGE = '3e3baf4b';
+var MARQUE_PAGE = '7f797b0e';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -3847,4 +3847,6 @@ demande(false);
 </script>
 <!-- Le terminal : il lit `VUE` et `LANGUE` de la page, et repeint sur « swoge:vue ». -->
 <script src="swoge_terminal.js?v=eeb88660"></script>
+<!-- Le fond d ecran anime, derriere tout : voir fond_anime.js. -->
+<script src="fond_anime.js?v=caf410ea" data-fond="ai" defer></script>
 </html>

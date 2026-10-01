@@ -701,6 +701,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px}
   .promesses{grid-template-columns:repeat(2,minmax(0,1fr))}
   .heros h1{font-size:34px}
   .heros .dit{max-width:78%}
+  .acc-hero h1{font-size:48px}
 }
 @media (max-width:620px){
   .sw-haut{flex-wrap:wrap}
@@ -713,6 +714,115 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px}
      probleme n'a jamais ete la fenetre. */
   .heros h1{font-size:28px}
   .heros .dit{max-width:100%}
+}
+
+/* ==================== L ACCUEIL EN DOUZE SECTIONS (01/10/2026) ====================
+   Meme systeme que les pages AI Trading : blanc #FFFFFF dominant, fond #F7F9FC, marine
+   #0B1736, bleu #1652F0, violet #7C3AED, bordures #E6EBF2, rayons 16-20, ombres legeres.
+   Une seule colonne de sections : la grille a deux colonnes d hier tassait l offre, la
+   liste IA et le sport a droite, a cote de cartes qui n avaient rien a voir. */
+body{ background:#F7F9FC; }
+.sw-plat.acc{ display:flex; flex-direction:column; gap:22px; }
+.acc .carte{ border-color:#E6EBF2; border-radius:18px; box-shadow:0 1px 2px rgba(11,23,54,.05),0 10px 30px rgba(11,23,54,.05); }
+.acc-sec{ background:#FFFFFF; border:1px solid #E6EBF2; border-radius:20px; padding:22px; box-shadow:0 1px 2px rgba(11,23,54,.05),0 10px 30px rgba(11,23,54,.05); min-width:0; }
+.acc-tete{ margin:0 0 16px; max-width:720px; }
+.acc-tete small{ display:inline-block; font:800 11px/1 'Inter',system-ui,sans-serif; letter-spacing:.14em; color:#7C3AED; background:#F1ECFE; border-radius:999px; padding:6px 10px; }
+.acc-tete h2{ margin:10px 0 6px; font:800 28px/1.15 'Inter',system-ui,sans-serif; letter-spacing:-.02em; color:#0B1736; }
+.acc-tete p{ margin:0; font:500 14.5px/1.55 'Inter',system-ui,sans-serif; color:#5B6B86; }
+.acc-duo{ display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.1fr); gap:24px; align-items:center; }
+.acc-duo.inverse .acc-visuel{ order:2; }
+.acc-visuel{ position:relative; border-radius:18px; overflow:hidden; background:#EEF2F8; aspect-ratio:3/2; }
+.acc-visuel img{ width:100%; height:100%; object-fit:cover; }
+.acc-visuel .acc-sur{ position:absolute; left:14px; bottom:14px; }
+.acc-texte{ min-width:0; }
+.acc-texte > .carte{ box-shadow:none; }
+.acc-dex{ display:inline-block; margin-top:14px; }
+/* Le heros : l image claire, le texte marine sur un voile blanc a gauche. */
+.acc-hero{ min-height:480px; border-color:#E6EBF2; border-radius:20px; background:#FFFFFF; }
+.acc-hero .voile{ background:linear-gradient(90deg,rgba(255,255,255,.97) 0%,rgba(255,255,255,.9) 34%,rgba(255,255,255,.35) 58%,rgba(255,255,255,0) 72%); }
+.acc-hero .film{ background:#EEF2F8; object-position:center 6%; }
+.acc-hero .dit{ max-width:560px; padding:40px 36px; }
+.acc-hero small{ color:#7C3AED; }
+.acc-hero h1{ color:#0B1736; font-size:64px; letter-spacing:-2px; }
+.acc-hero h1{ background:linear-gradient(90deg,#1652F0,#7C3AED); -webkit-background-clip:text; background-clip:text; color:transparent; }
+.acc-promesse{ margin:0 0 20px !important; font:500 17px/1.5 'Inter',system-ui,sans-serif !important; letter-spacing:0 !important; text-transform:none !important; color:#33456B !important; }
+.acc-boutons{ display:flex; flex-wrap:wrap; gap:10px; }
+.acc-boutons .sw-b{ padding:14px 20px; font-size:13.5px; border-radius:12px; }
+.acc-puces{ list-style:none; margin:20px 0 0; padding:0; display:flex; flex-direction:column; gap:7px; }
+.acc-puces li{ font:600 13px/1.4 'Inter',system-ui,sans-serif; color:#33456B; }
+/* L ecosysteme : les quatre portes gardent leur film. */
+.acc .univers{ gap:14px; }
+.acc .uni{ border-radius:18px; }
+/* La colonie : trois mesures, chacune avec son effectif. */
+.acc-mesures{ display:grid; grid-template-columns:1fr; gap:10px; }
+.acc-m{ display:grid !important; grid-template-columns:150px minmax(0,1fr); grid-template-rows:auto auto; column-gap:14px; align-items:baseline; }
+.acc-m small{ grid-column:1; } .acc-m b{ grid-column:1; grid-row:2; } .acc-m span{ grid-column:2; grid-row:1 / span 2; align-self:center; }
+@media (max-width:480px){ .acc-m{ grid-template-columns:1fr; } .acc-m span{ grid-column:1; grid-row:auto; } }
+.acc-m{ display:flex; flex-direction:column; gap:6px; border:1px solid #E6EBF2; border-radius:16px; padding:14px; background:#F7F9FC; min-width:0; color:#0B1736; }
+.acc-m:hover{ border-color:#1652F0; }
+.acc-m small{ font:800 11px/1.2 'Inter',system-ui,sans-serif; letter-spacing:.08em; color:#5B6B86; }
+.acc-m b{ font:800 22px/1.2 'Inter',system-ui,sans-serif; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
+.acc-m span{ font:500 12.5px/1.45 'Inter',system-ui,sans-serif; color:#5B6B86; }
+.acc-m b.pos{ color:#0E8A4F; } .acc-m b.neg{ color:#C8322B; }
+.acc-note{ margin:12px 0 0; font:500 12.5px/1.5 'Inter',system-ui,sans-serif; color:#5B6B86; }
+/* Le monde du jeu : une banniere claire, puis le classement, le niveau, le salon. */
+.acc-banniere{ position:relative; border-radius:18px; overflow:hidden; min-height:300px; display:flex; align-items:center; background:#EEF2F8; margin-bottom:16px; }
+.acc-banniere .film{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:center 10%; }
+.acc-banniere .voile{ position:absolute; inset:0; background:linear-gradient(90deg,rgba(255,255,255,.96) 0%,rgba(255,255,255,.82) 38%,rgba(255,255,255,0) 66%); }
+.acc-banniere .acc-tete{ position:relative; padding:26px; max-width:460px; margin:0; }
+.acc-banniere .acc-tete .sw-b{ display:inline-block; margin-top:16px; }
+@media (prefers-reduced-motion:reduce){ .acc .film{ display:none; } .acc-hero, .acc-banniere, .acc-cta{ background-size:cover; } }
+.acc-trio{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; }
+.acc-trio > *{ min-height:200px; }
+.acc-trio #gxRangCarte[hidden]{ display:none; }
+/* L economie des agents. */
+.acc-liens{ display:flex; flex-direction:column; border:1px solid #E6EBF2; border-radius:16px; overflow:hidden; }
+.acc-liens a{ display:flex; gap:12px; align-items:center; padding:13px 14px; color:#0B1736; }
+.acc-liens a + a{ border-top:1px solid #E6EBF2; }
+.acc-liens a:hover{ background:#F7F9FC; }
+.acc-liens .ic{ flex:0 0 auto; width:38px; height:38px; border-radius:12px; display:grid; place-items:center; font-size:18px; background:#F1ECFE; }
+.acc-liens b{ display:block; font:800 14px/1.25 'Inter',system-ui,sans-serif; }
+.acc-liens small{ display:block; font:500 12.5px/1.4 'Inter',system-ui,sans-serif; color:#5B6B86; margin-top:2px; }
+.acc-liens .fl{ margin-left:auto; color:#1652F0; font-weight:800; }
+/* Le dernier appel. */
+.acc-cta{ position:relative; border-radius:20px; overflow:hidden; min-height:340px; display:flex; align-items:center; background:#EEF2F8; border:1px solid #E6EBF2; }
+.acc-cta .film{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:center 20%; }
+.acc-cta .voile{ position:absolute; inset:0; background:linear-gradient(90deg,rgba(255,255,255,.97) 0%,rgba(255,255,255,.86) 40%,rgba(255,255,255,0) 70%); }
+.acc-cta .dit{ position:relative; padding:36px; max-width:520px; }
+.acc-cta h2{ margin:0 0 8px; font:900 40px/1.05 'Inter',system-ui,sans-serif; letter-spacing:-1px; color:#0B1736; }
+.acc-cta p{ margin:0 0 18px; font:500 16px/1.5 'Inter',system-ui,sans-serif; color:#33456B; }
+/* Le pied de page. */
+.acc-pied{ background:#0B1736; color:#C9D3E6; border-radius:20px; padding:28px 26px 22px; }
+.acc-pied-g{ display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:18px; }
+.acc-pied-g div{ display:flex; flex-direction:column; gap:8px; min-width:0; }
+.acc-pied-g b{ font:800 11px/1.2 'Inter',system-ui,sans-serif; letter-spacing:.12em; color:#FFFFFF; margin-bottom:4px; }
+.acc-pied-g a{ font:500 13.5px/1.3 'Inter',system-ui,sans-serif; color:#C9D3E6; }
+.acc-pied-g a:hover{ color:#FFFFFF; }
+.acc-legal{ margin:22px 0 0; padding-top:16px; border-top:1px solid rgba(255,255,255,.12); font:500 12px/1.6 'Inter',system-ui,sans-serif; color:#8C9AB5; }
+@media (max-width:900px){
+  .acc-duo{ grid-template-columns:1fr; gap:16px; }
+  .acc-duo.inverse .acc-visuel{ order:0; }
+  .acc-trio{ grid-template-columns:1fr; }
+  .acc-pied-g{ grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+@media (max-width:640px){
+  .acc-sec{ padding:16px; border-radius:18px; }
+  .acc-tete h2{ font-size:23px; }
+  .acc .univers{ grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+  .acc .uni{ min-height:210px; }
+  .acc .uni .dit{ padding:10px; }
+  .acc .uni b{ font-size:16px; }
+  .acc .uni .sw-b{ font-size:11px; padding:9px 4px; }
+  .acc-hero{ min-height:0; flex-direction:column; align-items:stretch; }
+  .acc-hero .film{ position:relative; height:240px; inset:auto; }
+  .acc-hero .voile{ display:none; }
+  .acc-hero .dit{ max-width:none; padding:22px 18px 24px; }
+  .acc-hero h1{ font-size:44px; }
+  .acc-banniere, .acc-cta{ flex-direction:column; align-items:stretch; min-height:0; }
+  .acc-banniere .film, .acc-cta .film{ position:relative; height:200px; inset:auto; }
+  .acc-banniere .voile, .acc-cta .voile{ display:none; }
+  .acc-cta .dit{ padding:22px 18px; }
+  .acc-cta h2{ font-size:30px; }
 }
 </style>
 </head>
@@ -853,38 +963,47 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px}
            aria-hidden="true"></video>
   </aside>
 
-  <main class="sw-plat">
+  <!-- ================== L ACCUEIL EN DOUZE SECTIONS (01/10/2026) ==================
+       Demande du proprietaire, maquette a l appui : en-tete, heros, ecosysteme, couche IA,
+       colonie, monde du jeu, SWOGE BET, economie des agents, economie $SWOGE, portefeuille,
+       dernier appel, pied de page. Blanc dominant, aucune fausse donnee.
+       TOUT CE QUI VIVAIT ICI RESTE, avec ses identifiants et ses scripts : les quatre univers,
+       l economie lue sur la chaine, le classement, le salon de poker, l offre de bienvenue, la
+       liste SWOGE AI et le calendrier sportif. Les images et les trois films sont neufs —
+       generes pour l occasion (ChatGPT pour les images, Grok pour les films) avec le personnage
+       de reference, et SANS AUCUN TEXTE NI CHIFFRE dedans : un chiffre peint dans une image ne
+       se relit jamais. Les seuls chiffres de la page viennent du serveur, avec leur effectif. -->
+  <main class="sw-plat acc">
 
-    <!-- ============================ LA COLONNE LARGE ============================ -->
-    <div class="sw-col">
-
-      <!-- ---- LA VIDEO, ET L IMAGE QUI TIENT SA PLACE ----
-           `poster` n'est pas une precaution de style : la video pese un
-           mega-octet et met un instant a arriver, et sans affiche la banniere
-           est un rectangle NOIR pendant ce temps — c'est la premiere chose
-           qu'on voit du site. L'affiche est la premiere image du film, donc
-           le passage de l'une a l'autre ne se voit pas.
-           `muted` avant `autoplay` : un navigateur refuse de lancer tout seul
-           une video qui pourrait faire du bruit, et l'ordre des attributs
-           compte pour certains d'entre eux. `playsinline` empeche iOS de
-           passer en plein ecran tout seul. `preload="none"` non : on VEUT
-           qu'elle arrive vite, elle est le sujet. -->
-      <section class="heros">
-        <video class="film" src="media/monde.mp4" poster="img/site/monde_poster.webp"
-               muted autoplay loop playsinline disablepictureinpicture
-               aria-hidden="true"></video>
-        <div class="voile"></div>
-        <div class="dit">
-          <small>WELCOME TO</small>
-          <h1>SWOGE<br>WORLD</h1>
-          <p>One token. One world.<br>Infinite ways to play.</p>
+    <!-- 2. LE HEROS -->
+    <section class="heros acc-hero">
+      <video class="film" src="media/accueil_hero.mp4" poster="img/site/accueil/hero.webp"
+             muted autoplay loop playsinline disablepictureinpicture
+             aria-hidden="true"></video>
+      <div class="voile"></div>
+      <div class="dit">
+        <small>WELCOME TO</small>
+        <h1>SWOGE<br>WORLD</h1>
+        <p class="acc-promesse">A casino, a sportsbook, an open world and a lab of AI agents &mdash; one token, one wallet.</p>
+        <div class="acc-boutons">
           <!-- Le meme geste que la marque, et par le meme chemin : deux
                promesses identiques qui ne feraient pas la meme chose
                seraient pires que l une des deux morte. -->
           <button class="sw-b sw-b-plein vif" id="gxMonde2">ENTER SWOGE WORLD &nbsp;&rarr;</button>
+          <a class="sw-b sw-b-vide vif" href="swoge_ai.html">SEE THE AI AT WORK</a>
         </div>
-      </section>
+        <ul class="acc-puces">
+          <li>&#128202; AI trading measured in public, losses included</li>
+          <li>&#9939;&#65039; Supply and burn read on-chain</li>
+          <li>&#9917; Real fixtures, closes at kick-off</li>
+        </ul>
+      </div>
+    </section>
 
+    <!-- 3. L ECOSYSTEME : les quatre portes d hier, et la banniere IA. -->
+    <section class="acc-sec" aria-labelledby="accTEco">
+      <div class="acc-tete"><small>THE ECOSYSTEM</small><h2 id="accTEco">One world, every way to play</h2>
+        <p>Every door below leads to a page that exists and runs today.</p></div>
       <section class="univers">
         <article class="uni">
           <video class="film" src="media/doge_casino.mp4" poster="img/site/doge_casino_poster.webp"
@@ -953,8 +1072,123 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px}
             <a class="sw-b vif second" href="swoge_perp.html">AI PERPS &nbsp;&rarr;</a></span></div>
         </article>
       </section>
+    </section>
 
-      <section class="duo">
+    <!-- 4. LA COUCHE IA -->
+    <section class="acc-sec acc-duo" aria-labelledby="accTIa">
+      <div class="acc-visuel"><img src="img/site/accueil/ia.webp" alt="" width="1200" height="800" loading="lazy" decoding="async"></div>
+      <div class="acc-texte">
+        <div class="acc-tete"><small>THE AI LAYER</small><h2 id="accTIa">Agents that trade, read and work</h2>
+          <p>Every AI page shows its own results, read on the server, with the number of trades or rounds behind each figure. Nothing is promised: most of what is measured so far is a loss, and the pages say so.</p></div>
+      <section class="carte carte-p">
+        <div class="tete"><h3>SWOGE AI</h3>
+          <a class="vif" href="swoge_ai.html">OPEN</a></div>
+        <p class="sous">AI agents trading at real prices &mdash; measured in public, losses included.</p>
+        <nav class="ia-liste" aria-label="SWOGE AI">
+          <a class="ia-l vif" href="swoge_ai.html"><span class="ic">&#129302;</span><span><b>AI Trading Colony</b><small>Agents read new Robinhood Chain tokens, score them and trade what they see.</small></span><span class="fl">&rarr;</span></a>
+          <a class="ia-l vif" href="swoge_perp.html"><span class="ic">&#128200;</span><span><b>AI Perps</b><small>Agents on BTC, ETH, SOL, XRP and DOGE perpetuals, funding included.</small></span><span class="fl">&rarr;</span></a>
+          <a class="ia-l vif" href="swoge_predict.html"><span class="ic">&#128302;</span><span><b>Predict</b><small>PancakeSwap Prediction rounds on BNB Chain, read live.</small></span><span class="fl">&rarr;</span></a>
+          <a class="ia-l vif" href="swoge_polymarket_ai.html"><span class="ic">&#127922;</span><span><b>Polymarket AI</b><small>A colony on Polymarket&rsquo;s 15-minute crypto markets.</small></span><span class="fl">&rarr;</span></a>
+          <a class="ia-l vif" href="swoge_agents.html"><span class="ic">&#129504;</span><span><b>Agents</b><small>Chat with Claude, ChatGPT and Grok &mdash; or give an agent a task.</small></span><span class="fl">&rarr;</span></a>
+        </nav>
+      </section>
+      </div>
+    </section>
+
+    <!-- 5. LA COLONIE : ce que les colonies ont MESURE, lu sur le serveur, avec l effectif. -->
+    <section class="acc-sec acc-duo inverse" aria-labelledby="accTCol">
+      <div class="acc-visuel"><img src="img/site/accueil/colonie.webp" alt="" width="1200" height="800" loading="lazy" decoding="async"></div>
+      <div class="acc-texte">
+        <div class="acc-tete"><small>THE COLONY</small><h2 id="accTCol">What the colonies measured</h2>
+          <p>Paper money at real prices and real fees. Each figure says how many observations it rests on, and none is a promise.</p></div>
+        <div class="acc-mesures" id="accColonie">
+          <a class="acc-m vif" href="swoge_perp.html" data-m="perp"><small>AI PERPS</small><b>--</b><span>Loading&hellip;</span></a>
+          <a class="acc-m vif" href="swoge_predict.html" data-m="predict"><small>PREDICT</small><b>--</b><span>Loading&hellip;</span></a>
+          <a class="acc-m vif" href="swoge_polymarket_ai.html" data-m="poly"><small>POLYMARKET AI</small><b>--</b><span>Loads when you scroll here.</span></a>
+        </div>
+        <p class="acc-note" id="accColonieNote">Paper trading only &mdash; no result here is a profit, and none is financial advice.</p>
+      </div>
+    </section>
+
+    <!-- 6. LE MONDE DU JEU -->
+    <section class="acc-sec" aria-labelledby="accTJeu">
+      <div class="acc-banniere">
+        <video class="film" src="media/accueil_jeux.mp4" poster="img/site/accueil/jeux.webp"
+               muted autoplay loop playsinline disablepictureinpicture aria-hidden="true"></video>
+        <div class="voile"></div>
+        <div class="acc-tete clair"><small>THE GAMING WORLD</small><h2 id="accTJeu">Play, climb, own your character</h2>
+          <p>Casino tables, an arcade and an open world where characters climb to level 20.</p>
+          <a class="sw-b sw-b-plein vif" href="games.html">OPEN THE CASINO &nbsp;&rarr;</a></div>
+      </div>
+      <div class="acc-trio">
+        <div class="carte carte-p" id="gxRangCarte" hidden>
+          <div class="tete"><h3>SWOGE WORLD LEADERBOARD</h3>
+            <a class="vif" href="nexus.html" id="gxRangTout">VIEW ALL</a></div>
+          <div id="gxRangs"></div>
+        </div>
+        <a class="carte niveau vif" href="nexus.html" id="gxMonde3">
+          <img src="img/site/doge_muscle.webp" alt=""><div class="voile"></div>
+          <div class="dit">
+            <small>SWOGE WORLD</small>
+            <b>LEVEL 20 MAX</b>
+            <em>ENTER THE WORLD &rarr;</em>
+          </div>
+        </a>
+        <a class="carte salon vif" href="swoge_poker.html">
+          <video class="film" src="media/poker_live.mp4" poster="img/site/poker_live_poster.webp"
+                 muted autoplay loop playsinline disablepictureinpicture
+                 aria-label="SWOGE Poker Live"></video>
+          <span class="voile"></span>
+          <span class="dit">ENTER THE ROOM &nbsp;&rarr;</span>
+        </a>
+      </div>
+    </section>
+
+    <!-- 7. SWOGE BET -->
+    <section class="acc-sec acc-duo" aria-labelledby="accTBet">
+      <div class="acc-visuel"><img src="img/site/accueil/bet.webp" alt="" width="1200" height="800" loading="lazy" decoding="async">
+        <a class="sw-b sw-b-plein vif acc-sur" href="swogebet.html">OPEN SWOGE BET &nbsp;&rarr;</a></div>
+      <div class="acc-texte">
+        <div class="acc-tete"><small>SWOGE BET</small><h2 id="accTBet">Real fixtures, real odds</h2></div>
+      <section class="carte carte-p">
+        <div class="tete"><h3>SWOGE SPORTS</h3>
+          <span class="ferme">CLOSES AT KICK-OFF</span></div>
+        <p class="sous">Real fixtures, real odds &mdash; pick a winner and
+          <b>place the bet right here</b>. Six markets on the full board.</p>
+        <div class="onglets" data-groupe="sports">
+          <button class="on vif" data-sport=""><span class="ic">&#9878;</span>All Sports</button>
+          <button class="vif" data-sport="foot"><span class="ic">&#9917;</span>Football</button>
+          <button class="vif" data-sport="tennis"><span class="ic">&#127934;</span>Tennis</button>
+          <button class="vif" data-sport="nba"><span class="ic">&#127936;</span>NBA</button>
+        </div>
+        <div id="gxSports" class="gx-liste" aria-live="polite">
+          <div class="gx-dit">Loading today&rsquo;s fixtures&hellip;</div>
+        </div>
+      </section>
+      </div>
+    </section>
+
+    <!-- 8. L ECONOMIE DES AGENTS : des pages qui existent, sans chiffre ecrit a la main. -->
+    <section class="acc-sec acc-duo inverse" aria-labelledby="accTAg">
+      <div class="acc-visuel"><img src="img/site/accueil/agents.webp" alt="" width="1200" height="800" loading="lazy" decoding="async"></div>
+      <div class="acc-texte">
+        <div class="acc-tete"><small>THE AGENT ECONOMY</small><h2 id="accTAg">Agents that pay, and get paid</h2>
+          <p>Agents use SWOGE tools and pay per call in USDC; their results are measured before they are listed.</p></div>
+        <nav class="acc-liens" aria-label="Agent economy">
+          <a class="vif" href="swoge_agents.html"><span class="ic">&#129504;</span><span><b>Agents</b><small>Chat with Claude, ChatGPT and Grok, give an agent a task, or browse the web with it.</small></span><span class="fl">&rarr;</span></a>
+          <a class="vif" href="agent_store.html"><span class="ic">&#129513;</span><span><b>Agent Store</b><small>Measured agents and paid tools, with the numbers behind each one.</small></span><span class="fl">&rarr;</span></a>
+          <a class="vif" href="agent_passport.html"><span class="ic">&#128737;&#65039;</span><span><b>Agent Passport</b><small>A verifiable identity for an agent&rsquo;s key.</small></span><span class="fl">&rarr;</span></a>
+          <a class="vif" href="swogeagentic_api.html"><span class="ic">&#128268;</span><span><b>For developers</b><small>The SWOGE tools over HTTP, paid per call with x402.</small></span><span class="fl">&rarr;</span></a>
+        </nav>
+      </div>
+    </section>
+
+    <!-- 9. L ECONOMIE $SWOGE : la carte lue sur la chaine, telle qu elle etait. -->
+    <section class="acc-sec acc-duo" aria-labelledby="accTSw">
+      <div class="acc-visuel"><img src="img/site/accueil/economie.webp" alt="" width="1200" height="800" loading="lazy" decoding="async"></div>
+      <div class="acc-texte">
+        <div class="acc-tete"><small>$SWOGE</small><h2 id="accTSw">One token, read on-chain</h2>
+          <p>Fixed supply, a burn that only goes up, and a casino vault you can check on the contract. These figures are read on Robinhood Chain every five minutes.</p></div>
         <div class="carte carte-p">
           <div class="tete"><h3>THE $SWOGE ECONOMY</h3></div>
           <!-- ================== QUATRE CHIFFRES, QUATRE SOURCES ==================
@@ -1000,89 +1234,16 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px}
             <small id="ecoSource" style="font:600 9px/1.3 'Inter',system-ui,sans-serif;color:var(--gris)">Read on-chain</small>
           </div>
         </div>
-        <!-- ================== LE NIVEAU, SANS LE MENTIR ==================
-             Cette carte annoncait « YOUR SWOGE LEVEL / BEAST / NEXT LEVEL:
-             ALPHA », avec une jauge remplie a 62 %. Trois affirmations sur le
-             visiteur, dont on ne sait rien : il n est peut-etre meme pas
-             inscrit. Et « BEAST » comme « ALPHA » n existent nulle part dans
-             le jeu — les personnages y montent au niveau 20, et la Fame est
-             un nombre. C etait la troisieme invention de cette page, apres
-             les chiffres de la maquette et le faux classement.
-             Il reste ce qui est VRAI et ne depend de personne : le monde
-             existe, il monte jusqu au niveau vingt, et voici la porte. La
-             jauge part avec le reste — une barre a 62 % mesure quelque
-             chose, et il n y avait rien a mesurer. -->
-        <a class="carte niveau vif" href="nexus.html" id="gxMonde3">
-          <img src="img/site/doge_muscle.webp" alt=""><div class="voile"></div>
-          <div class="dit">
-            <small>SWOGE WORLD</small>
-            <b>LEVEL 20 MAX</b>
-            <em>ENTER THE WORLD &rarr;</em>
-          </div>
-        </a>
-      </section>
+        <a class="sw-b sw-b-vide vif acc-dex" href="https://dexscreener.com/robinhood/0x2dc0fb72d9284228046cc95910eeaabebfe48456" target="_blank" rel="noopener">SEE THE $SWOGE CHART &#8599;</a>
+      </div>
+    </section>
 
-      <section class="duo">
-        <!-- ================== LE CLASSEMENT, EN VRAI ==================
-             Cette carte portait trois lignes ecrites a la main : SwogeKing,
-             DogeLord, FlonDoge — LEGEND, ALPHA, GAMMA, 984 200 XP. Trois
-             joueurs qui n existent pas, une XP que personne n a gagnee, et
-             des rangs qui n existent nulle part dans le jeu : la Fame y est
-             un NOMBRE, pas un titre. C est la meme faute que les chiffres de
-             la maquette, a trente lignes d ecart, et elle se repare pareil —
-             on la lit sur le serveur, ou l on ne montre rien.
-             Les lignes sont donc VIDES ici. Le script du bas les remplit, et
-             cache la carte entiere s il n a rien a y mettre. -->
-        <div class="carte carte-p" id="gxRangCarte" hidden>
-          <div class="tete"><h3>SWOGE WORLD LEADERBOARD</h3>
-            <a class="vif" href="nexus.html" id="gxRangTout">VIEW ALL</a></div>
-          <div id="gxRangs"></div>
-        </div>
-        <!-- ================== LE SALON DE POKER ==================
-             La carte portait « WEEKLY SWOGE RACE / $50,000 / REWARD POOL » :
-             un montant qui n existe nulle part dans la configuration. Il part
-             avec le trophee.
-             L AFFICHE PARLE D ELLE-MEME — elle porte deja « SWOGE POKER LIVE »
-             en toutes lettres. Lui superposer les memes mots aurait fait deux
-             fois le meme titre, une fois peint et une fois pose dessus. Il ne
-             reste donc qu une invitation, en bas, et un voile qui la detache
-             du fond sans manger l affiche. -->
-        <a class="carte salon vif" href="swoge_poker.html">
-          <video class="film" src="media/poker_live.mp4" poster="img/site/poker_live_poster.webp"
-                 muted autoplay loop playsinline disablepictureinpicture
-                 aria-label="SWOGE Poker Live"></video>
-          <span class="voile"></span>
-          <span class="dit">ENTER THE ROOM &nbsp;&rarr;</span>
-        </a>
-      </section>
-
-    </div>
-
-    <!-- ============================ LA COLONNE ETROITE ============================ -->
-    <div class="sw-col">
-
-      <!-- ================== L OFFRE REELLE, LUE DANS LA CONFIGURATION ==================
-           « Cent pour cent jusqu a cinq mille » n existait nulle part : c etait
-           la maquette. Les trois lignes ci-dessous sont dans `config.js` et
-           chacune se verifie :
-
-             · WELCOME_BONUS = 100 — « credit d essai, a la premiere connexion » ;
-             · le COFFRE DU JOUR, un par jour, gratuit. Son essai dit les deux
-               regles qui comptent et qu aucune signature ne porte : il NE S
-               ACCUMULE PAS, et manquer un jour NE PUNIT PAS ;
-             · REFERRAL_WELCOME = 500 pour le filleul, et REFERRAL_PALIER_BPS
-               1000 a 2000 pour le parrain, soit dix a vingt pour cent.
-
-           CE QU ON NE MET PAS : les conditions du parrainage — dix mille de
-           depot minimum et une mise a atteindre. Elles sont vraies et elles
-           comptent, mais une banniere n est pas un contrat : l ecrire en trois
-           mots la rendrait fausse dans l autre sens. La ligne dit ce qu on
-           gagne, la page du parrainage dira a quelles conditions.
-
-           LE BOUTON NE PROMET QUE LA CONNEXION, parce que c est tout ce qu il
-           demande — par courriel ou par portefeuille. Il reste muet tant que
-           cette connexion ne vit pas sur cette page : un bouton qui mene a un
-           ecran de refus fait faire le trajet pour rien. -->
+    <!-- 10. LE PORTEFEUILLE -->
+    <section class="acc-sec acc-duo inverse" aria-labelledby="accTWal">
+      <div class="acc-visuel"><img src="img/site/accueil/wallet.webp" alt="" width="1200" height="800" loading="lazy" decoding="async"></div>
+      <div class="acc-texte">
+        <div class="acc-tete"><small>THE WALLET</small><h2 id="accTWal">Your keys, on Robinhood Chain</h2>
+          <p>Sign in with an email and a wallet is created for you, or connect your own. A generated private key is shown to you once and never stored in this browser.</p></div>
       <section class="carte bonus">
         <video class="film" src="media/doge_roulette.mp4" poster="img/site/doge_roulette_poster.webp"
                muted autoplay loop playsinline disablepictureinpicture
@@ -1107,78 +1268,36 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px}
           <button class="sw-b sw-b-plein cx-mail">CLAIM YOUR 100 $SWOGE</button>
         </div>
       </section>
+        <a class="sw-b sw-b-vide vif acc-dex" href="swoge_wallet.html">OPEN THE WALLET &nbsp;&rarr;</a>
+      </div>
+    </section>
 
-      <!-- ---- SWOGE AI : CE QUI TOURNE VRAIMENT (30/09/2026) ----
-           A la place de « Featured games / Coming soon » (dix vignettes sans
-           lien). Chaque ligne mene a une page qui existe et tourne ; le texte
-           dit ce qu elle fait, sans chiffre ecrit a la main — les chiffres
-           sont sur les pages, lus sur le serveur. -->
-      <section class="carte carte-p">
-        <div class="tete"><h3>SWOGE AI</h3>
-          <a class="vif" href="swoge_ai.html">OPEN</a></div>
-        <p class="sous">AI agents trading at real prices &mdash; measured in public, losses included.</p>
-        <nav class="ia-liste" aria-label="SWOGE AI">
-          <a class="ia-l vif" href="swoge_ai.html"><span class="ic">&#129302;</span><span><b>AI Trading Colony</b><small>Agents read new Robinhood Chain tokens, score them and trade what they see.</small></span><span class="fl">&rarr;</span></a>
-          <a class="ia-l vif" href="swoge_perp.html"><span class="ic">&#128200;</span><span><b>AI Perps</b><small>Agents on BTC, ETH, SOL, XRP and DOGE perpetuals, funding included.</small></span><span class="fl">&rarr;</span></a>
-          <a class="ia-l vif" href="swoge_predict.html"><span class="ic">&#128302;</span><span><b>Predict</b><small>PancakeSwap Prediction rounds on BNB Chain, read live.</small></span><span class="fl">&rarr;</span></a>
-          <a class="ia-l vif" href="swoge_polymarket_ai.html"><span class="ic">&#127922;</span><span><b>Polymarket AI</b><small>A colony on Polymarket&rsquo;s 15-minute crypto markets.</small></span><span class="fl">&rarr;</span></a>
-          <a class="ia-l vif" href="swoge_agents.html"><span class="ic">&#129504;</span><span><b>Agents</b><small>Chat with Claude, ChatGPT and Grok &mdash; or give an agent a task.</small></span><span class="fl">&rarr;</span></a>
-        </nav>
-      </section>
-
-      <!-- ================== CE QU'ON PROPOSE VRAIMENT ==================
-           Les rencontres, les cotes, les competitions et les marches viennent
-           du catalogue du serveur, pas d'une maquette. Trois choses fausses
-           sont parties avec l'ancien bloc :
-
-           1. « LIVE » et le score en cours. ON NE PREND AUCUN PARI EN DIRECT :
-              le catalogue ferme au coup d'envoi — « accepter un pari sur un
-              match commence, c'est accepter le pari de quelqu'un qui regarde
-              le score ». Un bandeau LIVE promettait exactement ce qu'on
-              refuse. L'heure du coup d'envoi prend sa place, parce que c'est
-              elle qui compte : c'est la limite.
-
-           2. Basketball et MMA dans les onglets. On ne porte ni l'un ni
-              l'autre. La NBA existe au catalogue mais elle y est marquee
-              INACTIVE — elle est donc montree comme telle, et non comme un
-              onglet qui ne rendrait rien.
-
-           3. « +128 », « +96 », « +72 » marches en plus. Le vrai nombre est
-              CINQ, et seulement au football : double chance, les deux equipes
-              marquent, plus ou moins de deux buts et demi, score exact,
-              handicap. Le tennis n'a que le vainqueur. Annoncer cent
-              vingt-huit marches qu'on n'a pas est la seule sorte de mensonge
-              qu'un joueur verifie en un clic. -->
-      <!-- ================== CE QU ON PROPOSE VRAIMENT ==================
-           QUATRE RENCONTRES ETAIENT ECRITES ICI, cotes comprises, jouees le 15
-           aout. L accueil annoncait donc des matchs finis a des prix qui
-           n existent plus — la seule sorte de mensonge qu un visiteur verifie
-           en un geste, et il le verifie toujours.
-           Le hall avait deja recu le vrai calendrier ; l accueil le recoit par
-           le MEME fichier, et non par une copie. Le squelette reste VIDE :
-           laisser un exemple « en attendant » ferait clignoter de fausses
-           cotes a chaque chargement, et l on finirait par les prendre pour les
-           vraies.
-           La cle du sport est ECRITE a cote du libelle, jamais devinee dans le
-           texte : celui-ci commence par une icone, donc « ⚽Football » ne
-           commence pas par « football ». -->
-      <section class="carte carte-p">
-        <div class="tete"><h3>SWOGE SPORTS</h3>
-          <span class="ferme">CLOSES AT KICK-OFF</span></div>
-        <p class="sous">Real fixtures, real odds &mdash; pick a winner and
-          <b>place the bet right here</b>. Six markets on the full board.</p>
-        <div class="onglets" data-groupe="sports">
-          <button class="on" data-sport=""><span class="ic">&#9878;</span>All Sports</button>
-          <button data-sport="foot"><span class="ic">&#9917;</span>Football</button>
-          <button data-sport="tennis"><span class="ic">&#127934;</span>Tennis</button>
-          <button data-sport="nba"><span class="ic">&#127936;</span>NBA</button>
+    <!-- 11. LE DERNIER APPEL -->
+    <section class="acc-cta" aria-labelledby="accTCta">
+      <video class="film" src="media/accueil_cta.mp4" poster="img/site/accueil/cta.webp"
+             muted autoplay loop playsinline disablepictureinpicture aria-hidden="true"></video>
+      <div class="voile"></div>
+      <div class="dit">
+        <h2 id="accTCta">The world is open.</h2>
+        <p>Play, bet, or watch the agents work &mdash; with one wallet. Not signed in yet? The door asks who you are first.</p>
+        <div class="acc-boutons">
+          <button class="sw-b sw-b-plein vif" id="gxMonde4">ENTER SWOGE WORLD &nbsp;&rarr;</button>
         </div>
-        <div id="gxSports" class="gx-liste" aria-live="polite">
-          <div class="gx-dit">Loading today&rsquo;s fixtures&hellip;</div>
-        </div>
-      </section>
+      </div>
+    </section>
 
-    </div>
+    <!-- 12. LE PIED DE PAGE -->
+    <footer class="acc-pied">
+      <div class="acc-pied-g">
+        <div><b>PLAY</b><a class="vif" href="games.html">Casino</a><a class="vif" href="swogebet.html">Sports</a><a class="vif" href="nexus.html">SWOGE World</a><a class="vif" href="swoge_poker.html">Poker</a></div>
+        <div><b>AI</b><a class="vif" href="swoge_ai.html">AI Trading</a><a class="vif" href="swoge_perp.html">AI Perps</a><a class="vif" href="swoge_predict.html">Predict</a><a class="vif" href="swoge_polymarket_ai.html">Polymarket AI</a></div>
+        <div><b>AGENTS</b><a class="vif" href="swoge_agents.html">Agents</a><a class="vif" href="agent_store.html">Agent Store</a><a class="vif" href="agent_passport.html">Agent Passport</a><a class="vif" href="swogeagentic_api.html">Developers</a></div>
+        <div><b>$SWOGE</b><a class="vif" href="swoge_wallet.html">Wallet</a><a class="vif" href="whitepaper.html">Docs</a><a class="vif" href="https://dexscreener.com/robinhood/0x2dc0fb72d9284228046cc95910eeaabebfe48456" target="_blank" rel="noopener">Chart &#8599;</a></div>
+        <div><b>COMMUNITY</b><a class="vif" href="https://x.com/SwoleDogeSwoge" target="_blank" rel="noopener">X &#8599;</a><a class="vif" href="https://t.me/swoleswoge" target="_blank" rel="noopener">Telegram &#8599;</a></div>
+      </div>
+      <p class="acc-legal">The AI pages trade paper money: their results are measurements, not profits, and nothing on this site is financial advice. Play only with what you can afford to lose. &copy; SWOGE WORLD</p>
+    </footer>
+
   </main>
 </div>
 
@@ -1212,18 +1331,11 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px}
   </div>
 </div>
 
-<footer class="sw-bas">
-  <div class="promesses">
-    <div class="pro"><span class="ic">&#128737;</span><span><b>SAFE &amp; SECURE</b>
-      <small>Provably fair games &amp; secure transactions</small></span></div>
-    <div class="pro"><span class="ic">&#9889;</span><span><b>INSTANT PAYOUTS</b>
-      <small>Fastest withdrawals in crypto</small></span></div>
-    <div class="pro"><span class="ic">&#127911;</span><span><b>24/7 SUPPORT</b>
-      <small>We&rsquo;re here for you anytime</small></span></div>
-    <div class="pro"><span class="ic">&#129309;</span><span><b>COMMUNITY FIRST</b>
-      <small>Built for the community, by the community</small></span></div>
-  </div>
-</footer>
+<!-- ---- LE PIED D HIER EST PARTI (01/10/2026) ----
+     Il promettait « 24/7 SUPPORT », « Fastest withdrawals in crypto » et « Provably fair
+     games » : trois phrases que rien sur le site ne prouve, et que la regle « no fake data »
+     interdit. Le pied de page de la section 12, dans `main`, le remplace : des liens qui
+     existent et l avertissement sur le papier. -->
 
 
 <!-- ---- LA PORTE QUI SIGNE, ENFIN SUR L ACCUEIL ----
@@ -1364,7 +1476,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px}
        que de rester sur un lien mort. */
     if (typeof window.swogeEntreLeMonde === "function") window.swogeEntreLeMonde(ev);
   }
-  ["gxMonde","gxMonde2","gxArcade","gxRangTout","gxMonde3"].forEach(function(i){
+  ["gxMonde","gxMonde2","gxArcade","gxRangTout","gxMonde3","gxMonde4"].forEach(function(i){
     var e = document.getElementById(i);
     if (e) e.addEventListener("click", va);
   });
@@ -1498,6 +1610,53 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px}
          inconnus valent mieux que trois inventions. */
       peintRangs(null);
     });
+})();
+</script>
+<!-- ---- LA COLONIE, MESUREE (01/10/2026) ----
+     Trois chiffres lus sur le serveur, chacun avec son effectif, et seulement quand la
+     section arrive a l ecran : /poly/etat pese 180 Ko, l accueil ne le paie que pour qui
+     descend jusque-la. Une reponse absente laisse « -- » : jamais un zero, jamais un
+     chiffre de maquette. Tout est pose en textContent. -->
+<script>
+(function(){
+  "use strict";
+  var hote = document.getElementById("accColonie");
+  if(!hote) return;
+  function serveur(){
+    try{ var q=new URLSearchParams(location.search).get("server"); if(q) return String(q).replace(/^ws/,"http").replace(/\/$/,""); }catch(e){}
+    return "https://web-production-220a3.up.railway.app";
+  }
+  function nb(x){ return Number(x || 0).toLocaleString("en-US"); }
+  function pc(x, d){ var n = Number(x); return (n > 0 ? "+" : "") + n.toFixed(d == null ? 2 : d) + "%"; }
+  function pose(cle, valeur, sous, cls){
+    var a = hote.querySelector('[data-m="' + cle + '"]'); if(!a) return;
+    var b = a.querySelector("b"), sp = a.querySelector("span");
+    b.textContent = valeur; b.className = cls || ""; sp.textContent = sous;
+  }
+  function lit(chemin){ return fetch(serveur() + chemin, { cache: "no-store" }).then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); }); }
+  function charge(){
+    lit("/ai/perp").then(function(v){
+      var b = v && v.bilan;
+      if(!b || !b.n || b.netReel == null) return pose("perp", "--", "No closed trade yet.");
+      var ci = b.seReel != null ? " (95% CI " + pc(b.netReel - 1.96 * b.seReel) + " to " + pc(b.netReel + 1.96 * b.seReel) + ")" : "";
+      pose("perp", pc(b.netReel) + " / trade", "Net at real fees over " + nb(b.n) + " closed trades" + ci + (b.jugeable ? "." : " \u2014 not judgeable below " + nb(b.seuil) + " trades."), b.jugeable ? (b.netReel > 0 ? "pos" : "neg") : "");
+    })["catch"](function(){ pose("perp", "--", "The server did not answer."); });
+    lit("/predict/etat").then(function(j){
+      var t = j && j.toutesCaisses, pm = (j && j.parConfiance && j.parConfiance.pointMort) || 51.5;
+      if(!t || !t.trades) return pose("predict", "--", "No call scored yet.");
+      pose("predict", Number(t.winRate).toFixed(1) + "% right", "Over " + nb(t.trades) + " calls" + (t.wilson ? " (95% CI " + t.wilson[0] + "\u2013" + t.wilson[1] + "%)" : "") + "; " + pm + "% is needed to break even on PancakeSwap.");
+    })["catch"](function(){ pose("predict", "--", "The server did not answer."); });
+    lit("/poly/etat").then(function(d){
+      var e = d && d.evidence, c = (d && d.calibration) || {};
+      if(!e || !e.tested) return pose("poly", "--", "No strategy measured yet.");
+      var cal = c.enough ? " Over " + nb(c.n) + " windows, the " + (c.brierMarket < c.brierModel ? "market was better calibrated than the model." : "model was better calibrated than the market.") : "";
+      pose("poly", nb(e.proven || 0) + " proven", "Strategies with an edge, out of " + nb(e.tested) + " tested on Polymarket\u2019s 15-minute markets." + cal);
+    })["catch"](function(){ pose("poly", "--", "The server did not answer."); });
+  }
+  if("IntersectionObserver" in window){
+    var vu = new IntersectionObserver(function(l){ if(l.some(function(x){ return x.isIntersecting; })){ vu.disconnect(); charge(); } }, { rootMargin: "300px" });
+    vu.observe(hote);
+  } else charge();
 })();
 </script>
 </body>

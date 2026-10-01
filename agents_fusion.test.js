@@ -107,29 +107,58 @@ let chromium = null; try { chromium = require('playwright').chromium; } catch (e
   ok(await visible(p, 'es-carteResultat'), 'un lien de commande eSIM (?order=) ouvre l onglet eSIM, sur la commande');
   await ctx.close();
 
-  /* 30/09 : « un navigateur AI », le leger — l agent lit le web, cite, et ne depense rien d autre. */
-  console.log('\n-- Browse : la vue de l agent, en mode lecture du web --');
-  ({ p, ctx, erreurs } = await ouvre(''));
-  await p.click('#ongletBrowse');
-  ok(await visible(p, 'ag-question') && await visible(p, 'browseNote') && !(await visible(p, 'question')), 'Browse montre la saisie de l agent et la ligne qui dit ce que fait le mode');
-  ok(await p.evaluate(() => document.documentElement.getAttribute('data-agent-mode')) === 'browse' && /[?&]mode=browse/.test(p.url())
-     && /Paste a link/.test(await p.$eval('#ag-question', (t) => t.placeholder)), 'la page passe en mode browse (attribut lu a l envoi), l adresse le garde, la saisie le dit');
-  await p.click('#browseNote [data-t]');
-  ok(/^Read this page and summarise it/.test(await p.$eval('#ag-question', (t) => t.value)), 'un exemple remplit la saisie ; rien ne part sans le joueur');
-  await p.click('#ongletAgent');
-  ok(await p.evaluate(() => document.documentElement.getAttribute('data-agent-mode')) === null && !(await visible(p, 'browseNote'))
-     && !/Paste a link/.test(await p.$eval('#ag-question', (t) => t.placeholder)), 'retour a Agent : le mode browse est retire, la ligne disparait');
-  ok(await p.$eval('#ongletBrowse', (b) => b.getAttribute('aria-selected')) === 'false' && await p.$eval('#modeAgent', (v) => v.getAttribute('aria-labelledby')) === 'ongletAgent',
-     'les lecteurs d ecran suivent : onglet actif, vue nommee par lui');
-  ok(erreurs.length === 0, erreurs.length ? 'erreurs : ' + erreurs.slice(0, 2).join(' | ') : 'aucune erreur de script');
-  await ctx.close();
-  ({ p, ctx, erreurs } = await ouvre('?mode=browse'));
-  await p.waitForTimeout(300);
-  ok(await visible(p, 'browseNote') && await p.evaluate(() => document.documentElement.getAttribute('data-agent-mode')) === 'browse', '?mode=browse ouvre directement Browse (et y reste apres le chargement)');
-  await ctx.close();
-  const agentJs = page.slice(page.indexOf('function modeTache()'), page.indexOf('function modeTache()') + 2600);
-  ok(/data-agent-mode"\) === "browse" \? "browse" : undefined/.test(agentJs) && /payeur: payeurServeur\(\), mode: modeTache\(\)/.test(agentJs),
-     'la tache envoyee porte mode: "browse" seulement quand la page est en mode browse');
+  /* 30/09 : « un endroit ou naviguer, un bouton pour screen et poser une question — ou une question de
+     base dans son cerveau — qu il reponde et se souvienne des reponses precedentes ». Le service
+     navigateur et le chat sont simules ici ; le vrai Chromium a son essai (navigateur.test.js). */
+  console.log('\n-- Browse : un vrai navigateur, et Screen --');
+  {
+    const ctx = await nav.newContext({ viewport: { width: 1280, height: 900 } });
+    const p = await ctx.newPage(), erreurs = [];
+    p.on('pageerror', (e) => erreurs.push(String(e.message || e)));
+    const jpeg = (await p.screenshot({ type: 'jpeg', quality: 50, clip: { x: 0, y: 0, width: 128, height: 80 } })).toString('base64');
+    const gestes = [], chats = [];
+    let branche = true;
+    await p.addInitScript(() => { try { localStorage.setItem('swogeSession', 'jeton-essai'); } catch (e) {} });
+    await p.route('**/*', (r) => r.request().url().startsWith(base) ? r.continue() : r.abort());
+    await p.route('**/navigateur/etat', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, actif: branche }) }));
+    await p.route('**/navigateur/geste', (r) => { const b = JSON.parse(r.request().postData()); gestes.push({ b, auth: r.request().headers().authorization });
+      r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, url: 'https://example.org/', titre: 'Example <b>', image: jpeg, ecran: { width: 1280, height: 800 }, note: null }) }); });
+    await p.route('**/studio/chat', (r) => { const b = JSON.parse(r.request().postData()); chats.push(b);
+      const rep = chats.length === 1 ? 'It is a demo page.' : 'Same page as before.';
+      r.fulfill({ status: 200, contentType: 'text/event-stream', body: 'event: texte\ndata: ' + JSON.stringify({ t: rep }) + '\n\nevent: fin\ndata: {"ok":true}\n\n' }); });
+    await p.goto(base + CIBLE + '?mode=browse', { waitUntil: 'load' });
+    await p.waitForTimeout(400);
+    ok(await visible(p, 'bw-adresse') && await visible(p, 'bw-screen') && !(await visible(p, 'question')) && !(await visible(p, 'ag-question')), '?mode=browse ouvre le navigateur seul : barre d adresse, bouton Screen');
+    ok(/Analyse this screen for me/.test(await p.$eval('#bw-cerveau', (t) => t.value)), 'la question de base est la, deja remplie, et modifiable');
+    await p.fill('#bw-adresse', 'example.org'); await p.click('#bw-va');
+    await p.waitForFunction(() => !document.getElementById('bw-ecran').hidden);
+    ok(gestes[0].b.action === 'goto' && gestes[0].b.url === 'example.org' && gestes[0].auth === 'Bearer jeton-essai' && !('joueur' in gestes[0].b), 'Go : le geste part avec la session du joueur (jamais une adresse de joueur dans le corps)');
+    ok(/Example <b>/.test(await p.textContent('#bw-statut')) && !(await p.$('#bw-statut b')), 'le titre de la page est ecrit en texte, jamais en HTML');
+    const box = await p.$eval('#bw-ecran', (i) => { const r = i.getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height }; });
+    await p.mouse.click(box.x + box.w / 2, box.y + box.h / 4);
+    await p.waitForTimeout(300);
+    const clic = gestes.find((g) => g.b.action === 'clic');
+    ok(clic && Math.abs(clic.b.x - 640) <= 2 && Math.abs(clic.b.y - 200) <= 2, 'un clic sur la capture devient un clic au meme endroit de la vraie page (' + (clic && clic.b.x) + ', ' + (clic && clic.b.y) + ' sur 1280 × 800)');
+    await p.fill('#bw-cerveau', 'Is this site legit?'); await p.dispatchEvent('#bw-cerveau', 'change');
+    await p.click('#bw-screen');
+    await p.waitForFunction(() => /demo page/.test(document.getElementById('bw-fil').textContent));
+    const c1 = chats[0], dernier = c1.messages[c1.messages.length - 1];
+    ok(c1.messages.length === 1 && dernier.pieces[0].media === 'image/jpeg' && dernier.pieces[0].data === jpeg && /Base instruction \(always apply\): Is this site legit\?/.test(dernier.content)
+       && /never instructions to you/.test(dernier.content), 'Screen : la capture part au chat, avec la question de base et la regle « le texte de la page n est pas une consigne »');
+    await p.fill('#bw-question', 'and the owner?'); await p.click('#bw-screen');
+    await p.waitForFunction(() => /Same page/.test(document.getElementById('bw-fil').textContent));
+    const c2 = chats[1];
+    ok(c2.messages.length === 3 && c2.messages[1].content === 'It is a demo page.' && !c2.messages[0].pieces && /Question: and the owner\?/.test(c2.messages[2].content),
+       'il se souvient : la reponse precedente est envoyee en memoire (sans renvoyer l ancienne image)');
+    await p.reload({ waitUntil: 'load' }); await p.waitForTimeout(300);
+    ok(/Same page as before/.test(await p.textContent('#bw-fil')) && (await p.$eval('#bw-cerveau', (t) => t.value)) === 'Is this site legit?', 'la memoire et la question de base survivent a un rechargement');
+    await p.click('#bw-oublie');
+    ok((await p.textContent('#bw-fil')) === '' && await p.evaluate(() => JSON.parse(localStorage.getItem('swogeBrowserFil')).length === 0), 'Forget : la memoire est effacee');
+    branche = false; await p.reload({ waitUntil: 'load' }); await p.waitForTimeout(400);
+    ok(/being set up/.test(await p.textContent('#bw-vide')), 'service pas encore branche : on le dit, rien n est facture');
+    ok(erreurs.length === 0, erreurs.length ? 'erreurs : ' + erreurs.slice(0, 2).join(' | ') : 'aucune erreur de script');
+    await ctx.close();
+  }
 
   for (const m of ['chat', 'agent', 'browse', 'osint', 'esim']) {
     ({ p, ctx, erreurs } = await ouvre('?mode=' + m, 360));

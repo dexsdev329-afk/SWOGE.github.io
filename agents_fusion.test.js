@@ -121,7 +121,8 @@ let chromium = null; try { chromium = require('playwright').chromium; } catch (e
     await p.addInitScript(() => { try { localStorage.setItem('swogeSession', 'jeton-essai'); } catch (e) {} });
     await p.route('**/*', (r) => r.request().url().startsWith(base) ? r.continue() : r.abort());
     await p.route('**/navigateur/etat', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, actif: branche }) }));
-    await p.route('**/navigateur/geste', (r) => { const b = JSON.parse(r.request().postData()); gestes.push({ b, auth: r.request().headers().authorization });
+    await p.route('**/navigateur/geste', async (r) => { const b = JSON.parse(r.request().postData()); gestes.push({ b, auth: r.request().headers().authorization });
+      if (b.action === 'recharge') await new Promise((s2) => setTimeout(s2, 700));
       r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, url: 'https://example.org/', titre: 'Example <b>', image: jpeg, ecran: { width: 1280, height: 800 }, note: null }) }); });
     await p.route('**/studio/chat', (r) => { const b = JSON.parse(r.request().postData()); chats.push(b);
       const rep = chats.length === 1 ? 'It is a demo page.' : 'Same page as before.';
@@ -139,6 +140,18 @@ let chromium = null; try { chromium = require('playwright').chromium; } catch (e
     await p.waitForTimeout(300);
     const clic = gestes.find((g) => g.b.action === 'clic');
     ok(clic && Math.abs(clic.b.x - 640) <= 2 && Math.abs(clic.b.y - 200) <= 2, 'un clic sur la capture devient un clic au meme endroit de la vraie page (' + (clic && clic.b.x) + ', ' + (clic && clic.b.y) + ' sur 1280 × 800)');
+    /* 01/10 : « ca lague ». Une capture de suivi 1,5 s apres le geste montre ce qui a fini de charger. */
+    await p.waitForTimeout(1900);
+    const apres = gestes.slice(gestes.indexOf(clic) + 1).map((g) => g.b.action);
+    ok(apres.join() === 'capture', 'apres un clic, UNE capture de suivi part seule 1,5 s plus tard [' + apres.join() + ']');
+    const n0 = gestes.length;
+    await p.click('#bw-recharge');
+    const charge = await p.evaluate(() => document.getElementById('bw-ecran').parentNode.classList.contains('charge'));
+    await p.click('#bw-retour');
+    await p.waitForFunction((n) => !document.getElementById('bw-ecran').parentNode.classList.contains('charge'), n0, { timeout: 4000 });
+    await p.waitForTimeout(300);
+    const suite = gestes.slice(n0).map((g) => g.b.action);
+    ok(charge && suite[0] === 'recharge' && suite[1] === 'retour', 'pendant un chargement l ecran le montre, et un appui n est plus perdu : il part ensuite [' + suite.join() + ']');
     await p.fill('#bw-cerveau', 'Is this site legit?'); await p.dispatchEvent('#bw-cerveau', 'change');
     await p.click('#bw-screen');
     await p.waitForFunction(() => /demo page/.test(document.getElementById('bw-fil').textContent));

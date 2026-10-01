@@ -1695,6 +1695,12 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 #modeBrowse .bw-barre input{flex:1;min-width:0;font:inherit;font-size:14px;padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--paper)}
 #modeBrowse .bw-cadre{position:relative;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--panel2);min-height:220px}
 #modeBrowse .bw-cadre img{display:block;width:100%;height:auto;cursor:pointer;user-select:none}
+/* 01/10 : « ca lague ». Pendant un geste, l'ecran le dit (voile + barre qui court) au lieu de
+   rester fige : un doigt qui ne voit rien bouger retape, et ce second appui etait perdu. */
+#modeBrowse .bw-cadre.charge img{opacity:.72;transition:opacity .15s}
+#modeBrowse .bw-cadre.charge::after{content:"";position:absolute;left:0;top:0;height:3px;width:35%;background:var(--accent,#1652F0);animation:bwCourt 1s linear infinite}
+@keyframes bwCourt{from{left:-35%}to{left:100%}}
+@media (prefers-reduced-motion:reduce){ #modeBrowse .bw-cadre.charge::after{animation:none;left:0;width:100%;opacity:.5} }
 #modeBrowse .bw-vide{padding:40px 18px;text-align:center;color:var(--dim);font-size:14px;line-height:1.5}
 #modeBrowse .bw-statut{font-size:12.5px;color:var(--dim);margin-top:6px;min-height:18px}
 #modeBrowse .bw-statut.mal{color:#c0392b}
@@ -1782,21 +1788,34 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     if (document.activeElement !== $("adresse")) $("adresse").value = etat.url;
     statut(j.note || (etat.titre ? etat.titre : ""), !!j.note);
   }
-  function geste(o, apres){
+  /* 01/10 : la capture de SUIVI. Le serveur rend la page 2,5 s au plus apres son DOM ; ce qui
+     arrive ensuite (images, contenu charge en script) n'apparaissait qu'au geste suivant. Une
+     seule capture silencieuse, 1,5 s apres chaque geste qui change la page, et seulement si
+     rien d'autre n'a ete demande entre-temps. Et un appui pendant un chargement n'est plus
+     perdu : le DERNIER est garde et part des que l'ecran est libre. */
+  var SUIVI = { goto: 1, clic: 1, touche: 1, recharge: 1, retour: 1, avance: 1, defile: 1 }, suivi = null, attente = null;
+  function cadre(){ var e = $("ecran"); return e && e.parentNode; }
+  function geste(o, apres, discret){
     var j = jeton();
     if (!j) { statut("Sign in with your wallet (top right) to browse.", true); return; }
     if (etat.actif === false) { statut("The browser is not connected yet.", true); return; }
-    if (etat.occupe) return;
-    etat.occupe = true; statut("Loading…");
+    if (etat.occupe) { if (!discret) attente = [o, apres]; return; }
+    clearTimeout(suivi);
+    etat.occupe = true; if (!discret) { statut("Loading…"); if (cadre()) cadre().classList.add("charge"); }
     o.ecran = etat.ecran;
     fetch(serveur() + "/navigateur/geste", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + j }, body: JSON.stringify(o) })
       .then(function(r){ return r.json().then(function(x){ return { code: r.status, x: x }; }, function(){ return { code: r.status, x: null }; }); })
       .then(function(r){
-        etat.occupe = false;
-        if (!r.x || !r.x.ok) { statut((r.x && r.x.raison) || "The browser did not answer.", true); if (apres) apres(false); return; }
+        libre();
+        if (!r.x || !r.x.ok) { if (!discret) statut((r.x && r.x.raison) || "The browser did not answer.", true); if (apres) apres(false); return suite(); }
+        if (discret && !r.x.image) return suite();
         peins(r.x); if (apres) apres(true);
-      })["catch"](function(){ etat.occupe = false; statut("The browser is not reachable right now.", true); if (apres) apres(false); });
+        if (!discret && SUIVI[o.action]) suivi = setTimeout(function(){ geste({ action: "capture" }, null, true); }, 1500);
+        suite();
+      })["catch"](function(){ libre(); if (!discret) statut("The browser is not reachable right now.", true); if (apres) apres(false); suite(); });
   }
+  function libre(){ etat.occupe = false; if (cadre()) cadre().classList.remove("charge"); }
+  function suite(){ if (attente) { var a = attente; attente = null; geste(a[0], a[1]); } }
   function va(){ var u = $("adresse").value.trim(); if (u) geste({ action: "goto", url: u }); }
   $("va").addEventListener("click", va);
   $("adresse").addEventListener("keydown", function(e){ if (e.key === "Enter") { e.preventDefault(); va(); } });

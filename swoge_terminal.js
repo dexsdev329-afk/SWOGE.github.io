@@ -54,7 +54,7 @@
     sAgents:[null,"Agents actifs"], sWin:[null,"Taux de gain"], sPnl:[null,"P&amp;L papier"],
     chargement:[null,"Chargement…"], tFil:[null,"Activité de la colonie en direct"], tSante:[null,"Santé de la colonie"],
     tColonie:[null,"La colonie"], sColonie:[null,"Chaque agent, ce qu'il fait maintenant et ce qu'il a décidé. Le réseau en haut montre les mêmes statuts en direct ; ses paquets ne bougent que sur un vrai événement du serveur."],
-    tConsole:[null,"Console de la colonie"], sConsole:[null,"La vue d'origine : le village, les positions de papier et tous les panneaux de mesure. Votre miroir est en haut de la page."],
+    tConsole:[null,"Console de la colonie"], sConsole:[null,"La vue d'origine : le village, les positions de papier et tous les panneaux de mesure. Votre miroir est dans l'onglet Live."],
     tMarche:[null,"Scanner de marché"], cherche:[null,"Chercher un jeton ou une adresse"],
     soumets:[null,"Soumettre à la colonie"],
     soumisCo:["Connect your wallet to submit a token to the colony.","Connectez votre portefeuille pour soumettre un jeton à la colonie."],
@@ -1034,18 +1034,63 @@
   hauteurBarre();
   addEventListener("resize", hauteurBarre);
   const SECTIONS = ["tm-live", "tm-colony", "tm-market", "tm-trades", "tm-learning", "tm-proof"];
-  function actif(id){ document.querySelectorAll(".tm-nav a, .tm-bnav a").forEach(a => a.classList.toggle("on", a.dataset.s === id)); }
-  if("IntersectionObserver" in window){
-    const vis = {};
-    const io = new IntersectionObserver(es => {
-      es.forEach(e => { vis[e.target.id] = e.isIntersecting ? e.intersectionRatio : 0; });
-      let best = null, r = 0;
-      SECTIONS.forEach(id => { if((vis[id] || 0) > r){ r = vis[id]; best = id; } });
-      if(best) actif(best);
-    }, { threshold:[0, .1, .25, .5], rootMargin:"-30% 0px -50% 0px" });
-    SECTIONS.forEach(id => { const e = $(id); if(e) io.observe(e); });
+  function actif(id){ document.querySelectorAll(".tm-nav a, .tm-bnav a").forEach(a => {
+    a.classList.toggle("on", a.dataset.s === id);
+    if(a.dataset.s === id) a.setAttribute("aria-current", "true"); else a.removeAttribute("aria-current");
+  }); }
+
+  /* ---- UN ONGLET A LA FOIS (01/10/2026) ----
+   * « Trop d'information et mal organisee » : quarante blocs empiles, 7 100
+   * pixels sur ordinateur, 12 500 sur telephone. Chaque section porte son
+   * onglet (`data-onglet`) ; on ne montre que celui qu'on a choisi. Rien n'est
+   * retire : tout continue d'etre PEINT a chaque lecture de /ai/colonie, cache
+   * ou non — un onglet qu'on ouvre est deja a jour.
+   * Un lien vers n'importe quel element (`#tm-proof`, `#tm-mirror`…) ouvre
+   * l'onglet qui le contient avant d'y aller : sans cela, « VIEW PROOF » menait
+   * a un bloc invisible. Les dessins qui mesurent leur boite (la courbe, le
+   * village) se refont sur `resize`, qu'on emet a chaque changement. */
+  let onglet = null;
+  function ongletDe(el){
+    if(!el) return null;
+    if(SECTIONS.indexOf(el.id) >= 0 && el.id !== "tm-live") return el.id;
+    const s = el.closest("[data-onglet]");
+    return s ? s.dataset.onglet : (el.id === "tm-live" ? "tm-live" : null);
   }
-  actif("tm-live");
+  function montre(id){
+    if(SECTIONS.indexOf(id) < 0) id = "tm-live";
+    document.querySelectorAll("[data-onglet]").forEach(s => { s.hidden = s.dataset.onglet !== id; });
+    actif(id);
+    if(onglet !== id){ onglet = id; try{ dispatchEvent(new Event("resize")); }catch(e){} }
+  }
+  /* Amene le haut de l'onglet sous la barre du site — pas au hero : celui
+     qui vient de choisir un onglet veut en voir le contenu. */
+  function vaA(el){
+    const nav = $("tmNav");
+    const cible = (el && SECTIONS.indexOf(el.id) >= 0) || !el
+      ? document.querySelector("[data-onglet]:not([hidden])") : el;
+    if(!cible) return;
+    const haut = (parseInt(getComputedStyle(document.documentElement).getPropertyValue("--t-haut")) || 0)
+               + (nav && getComputedStyle(nav).display !== "none" ? nav.getBoundingClientRect().height + 16 : 12);
+    const y = cible.getBoundingClientRect().top + scrollY - haut;
+    window.scrollTo({ top: Math.max(0, y), behavior: "smooth" });
+  }
+  document.addEventListener("click", e => {
+    const a = e.target.closest && e.target.closest('a[href^="#"]');
+    if(!a) return;
+    const id = a.getAttribute("href").slice(1);
+    const el = id && document.getElementById(id);
+    const o = a.dataset.s || ongletDe(el);
+    if(!o || !el || !el.closest(".tm, .tablette")) return;
+    e.preventDefault();
+    montre(o);
+    vaA(a.dataset.s ? null : el);
+    try{ history.replaceState(null, "", "#" + (a.dataset.s || id)); }catch(err){}
+  });
+  /* Une adresse avec un fragment (#tm-market, #tm-proof…) ouvre son onglet. */
+  (function(){
+    const id = (location.hash || "").slice(1), el = id && document.getElementById(id);
+    montre(ongletDe(el) || "tm-live");
+  })();
 
   /* ==================== LES GESTES ==================== */
   $("tmFiltres").addEventListener("click", e => {

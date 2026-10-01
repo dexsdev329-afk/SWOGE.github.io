@@ -54,6 +54,9 @@ html,body{ height:auto }
 .tm h2,.tm h3{ margin:0 }
 .tm .mono{ font-family:var(--t-mono); font-variant-numeric:tabular-nums }
 .tm-sec{ margin:26px 0 0; scroll-margin-top:calc(var(--t-haut) + 64px) }
+/* Un onglet a la fois : voir « UN ONGLET A LA FOIS » dans swoge_terminal.js. */
+.tm-sec[hidden], .tablette[data-onglet][hidden]{ display:none !important }
+.tm-nav + .tm-sec{ margin-top:18px }
 .tm-titre{ display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; margin:0 0 12px }
 .tm-titre h2{ font:700 13px/1.2 "Outfit",sans-serif; letter-spacing:2.2px; text-transform:uppercase; color:var(--t-titre) }
 .tm-titre .tm-sous{ font-size:12.5px; color:var(--t-pale) }
@@ -330,13 +333,22 @@ html,body{ height:auto }
 }
 @media (max-width:560px){
   /* La constellation est un decor : sur telephone elle se fait petite, pour
-     que le miroir arrive vite sous le pouce. */
-  .tm-graphe{ min-height:0 }
-  .tm-graphe svg{ max-height:330px }
-  .tm-stats{ grid-template-columns:repeat(2,minmax(0,1fr)) }
-  .tm-stat b{ font-size:18px }
+     que le miroir arrive vite sous le pouce. Et elle passe APRES le titre
+     (01/10) : en tete, elle repoussait « SWOGE AI » sous le premier ecran —
+     on arrivait sur un reseau sans savoir de quoi. Le hero mesurait 1 200
+     pixels de haut sur 390 de large. Les six chiffres gardent leur ligne
+     d'explication (« needs 20 closed trades… ») : un chiffre sans son
+     effectif n'a pas le droit d'etre montre seul. */
+  .tm-graphe{ min-height:0; order:1 }
+  .tm-graphe svg{ max-height:230px }
+  .tm-stats{ grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px }
+  .tm-stat{ padding:10px 11px }
+  .tm-stat b{ font-size:17px }
+  .tm-stat span{ font-size:10.5px }
   .tm-hero h1{ font-size:44px }
-  .tm-boutons .tm-bouton{ flex:1 1 100% }
+  .tm-devise{ font-size:15px }
+  .tm-papier{ font-size:11.5px; padding:9px 11px }
+  .tm-boutons .tm-bouton{ flex:1 1 0; padding:0 10px; letter-spacing:.8px }
   .tm-evt{ grid-template-columns:minmax(0,1fr) }
   .tm-fil li{ grid-template-columns:44px 22px minmax(0,1fr) }
 }

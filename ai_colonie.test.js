@@ -336,6 +336,15 @@ async function ouvre(nav, port, opts) {
   return { page, ctx, boum, appels };
 }
 
+/* 01/10/2026 : « trop d information et mal organisee » — la page montre UN onglet a la fois
+   (data-onglet, swoge_terminal.js). Un bloc d un autre onglet n a pas de boite : un geste ou
+   une mesure dessus commence donc, comme pour le joueur, par ouvrir son onglet. Ce que chaque
+   essai verifie ne change pas. */
+const onglet = async (page, id) => {
+  await page.evaluate((i) => document.querySelector('.tm-nav a[data-s="' + i + '"]').click(), id);
+  await page.waitForTimeout(250);
+};
+
 const lit = (page) => page.evaluate(() => ({
   /* La tresorerie de la colonie, pas le solde $SWOGE de la barre
      partagee : les deux vivaient sous le meme identifiant, et la barre du
@@ -1024,6 +1033,7 @@ async function panneauAlertes() {
      * PERDU en route, que le compteur d'un panneau replie reste lisible, et
      * que les deux choix — l'onglet et le pli — soient gardes. */
     const { page, boum } = await ouvre(nav, port, {});
+    await onglet(page, 'tm-colony');
     const p = await page.evaluate(() => {
       const c = [...document.querySelectorAll('.card[data-pan]')];
       const h = c[0].querySelector('h2');
@@ -1179,6 +1189,7 @@ async function soumissionScanner() {
   await ctx.addInitScript(() => { try { localStorage.setItem('swogeSession', 'j'); } catch (e) {} });
   const { page, boum } = await ouvre(nav, port, { ctx, urlSuffixe: '?server=ws://127.0.0.1:' + httpJeu.address().port });
   await page.waitForTimeout(3500);
+  await onglet(page, 'tm-market');
   ok(recus.indexOf('liste') >= 0, 'a la connexion, la page demande ses soumissions (une fois la session ouverte)');
   ok(await page.isHidden('#tmSoumets'), 'sans adresse dans la recherche : pas de bouton');
   await page.fill('#tmCherche', 'miel'); await page.waitForTimeout(150);
@@ -1197,6 +1208,7 @@ async function soumissionScanner() {
   await page.close(); await ctx.close(); jeu.close(); httpJeu.close();
   /* Sans fil (serveur injoignable) : le bouton le dit, rien ne part. */
   const b2 = await ouvre(nav, port, {});
+  await onglet(b2.page, 'tm-market');
   await b2.page.fill('#tmCherche', ADR); await b2.page.waitForTimeout(150);
   await b2.page.click('#tmSoumets'); await b2.page.waitForTimeout(300);
   ok(/Connect your wallet to submit a token to the colony/.test(await b2.page.textContent('#tmSoumis')), 'sans session : « connect your wallet », rien n est envoye');
@@ -1667,6 +1679,7 @@ async function auditDesVetos() {
     const ctx = await nav.newContext({ viewport: { width: 1440, height: 900 } });
     const { page, boum } = await ouvre(nav, port, { ctx });
     await page.waitForTimeout(1500);
+    await onglet(page, 'tm-colony');
     const av = await page.evaluate(() => {
       const p = document.querySelector('.panel'); p.scrollTop = 0;
       const s = document.querySelector('.stage').getBoundingClientRect();
@@ -1689,9 +1702,13 @@ async function auditDesVetos() {
     await page.mouse.move(pos.x, pos.y);
     for (let i = 0; i < 30; i++) await page.mouse.wheel(0, 200);
     await page.waitForTimeout(600);
-    const ap = await page.evaluate(() => ({ panneau: Math.round(document.querySelector('.panel').scrollTop), page: Math.round(scrollY) }));
+    const ap = await page.evaluate(() => ({ panneau: Math.round(document.querySelector('.panel').scrollTop), page: Math.round(scrollY),
+                                            fond: Math.round(scrollY) >= document.documentElement.scrollHeight - innerHeight - 2 }));
     console.log('   souris sur le village · page descendue de ' + (ap.page - pos.y0) + ' px · panneau de ' + ap.panneau + ' px');
-    ok(pos.pageDefile ? ap.page - pos.y0 > 1000 : ap.panneau >= av.max - 2,
+    /* 01/10 : un onglet a la fois — la page n a plus 7 000 pixels a parcourir, et trente crans
+       peuvent l amener en bas avant 1 000. « Pas morte » veut dire : elle descend de plus de
+       1 000 pixels, OU jusqu a son pied. */
+    ok(pos.pageDefile ? (ap.page - pos.y0 > 1000 || (ap.fond && ap.page - pos.y0 > 200)) : ap.panneau >= av.max - 2,
        'trente crans au-dessus du village font bouger quelque chose : ' + (pos.pageDefile ? 'la page descend (' + (ap.page - pos.y0) + ' px)' : 'le panneau (' + ap.panneau + '/' + av.max + ')'));
     /* Et on ne vole pas le geste a ce qui peut encore defiler tout seul. */
     const menuOk = await page.evaluate(() => {
@@ -2059,6 +2076,7 @@ async function auditDesVetos() {
     const { page, boum } = await ouvre(nav, port, { ctx,
       urlSuffixe: '?server=ws://127.0.0.1:' + httpJeu.address().port });
     await page.waitForTimeout(4000);
+    await onglet(page, 'tm-colony');
     const v = await page.evaluate(() => {
       const b = document.querySelector('.mir-val');
       const p = document.querySelector('header.bar .treasury:not(.mir-val)');
@@ -2089,7 +2107,10 @@ async function auditDesVetos() {
          etait sous la barre du papier, au fond de la console. Elle est
          maintenant EN TETE de « Your mirror », au-dessus de la console. */
       const m = document.getElementById('tm-mirror');
-      return { visible: !b.hidden, sous: !!(m && m.contains(b)) && b.getBoundingClientRect().bottom <= p.getBoundingClientRect().top,
+      /* « au-dessus de la console » : depuis les onglets (01/10), la console est dans
+         « Colony » et le miroir dans « Live » — jamais a l ecran ensemble. On verifie
+         donc l ORDRE du document, qui est ce que « au-dessus » voulait dire. */
+      return { visible: !b.hidden, sous: !!(m && m.contains(b)) && !!(b.compareDocumentPosition(p) & Node.DOCUMENT_POSITION_FOLLOWING),
                solde: t('mir-solde'), profit: t('mir-profit'), wr: t('mir-wr'), trades: t('mir-trades'), best: t('mir-best'), open: t('mir-open'),
                etiquettes: [...b.querySelectorAll('i')].map((x) => x.textContent) };
     });
@@ -2499,6 +2520,7 @@ async function auditDesVetos() {
     const lignes = async () => page.evaluate(() => [...document.querySelectorAll('#tmLignes tr[data-adr]')].map((r) => r.querySelector('.sym').textContent));
     const tout = await lignes();
     ok(tout.length === 9, 'le scanner porte les 7 candidats du tour et les 2 surveilles (' + tout.length + ')');
+    await onglet(page, 'tm-market');
     const filtre = async (f) => { await page.click('#tmFiltres [data-f="' + f + '"]'); await page.waitForTimeout(150); return lignes(); };
     const refus = await filtre('refus'), risque = await filtre('risque'), veille = await filtre('veille');
     ok(refus.length === 6 && refus.indexOf('$NOVA') < 0, 'Reject : les 6 refuses, pas NOVA (' + refus.join(' ') + ')');
@@ -2517,11 +2539,13 @@ async function auditDesVetos() {
 
     const bt = await page.evaluate(() => document.getElementById('tmBtCorps').textContent);
     ok(/Collecting historical data/.test(bt), 'sans carnet servi, le backtest dit qu il collecte — il ne simule rien');
+    await onglet(page, 'tm-proof');
     await page.click('#tmPrF [data-p="appris"]'); await page.waitForTimeout(150);
     const pr = await page.evaluate(() => [...document.querySelectorAll('#tmPreuve tr')].map((r) => r.textContent));
     ok(pr.length === 2 && pr.every((x) => /LEARNING/.test(x)), 'la preuve filtree sur LEARNING ne montre que les 2 evenements du journal');
     const fiches = await page.evaluate(() => document.querySelectorAll('#tmFiches .tm-fiche').length);
     ok(fiches === 9, 'une fiche par agent du roster, ni plus ni moins (' + fiches + ')');
+    await onglet(page, 'tm-colony');
     await page.click('#langue'); await page.waitForTimeout(250);
     const fr = await page.evaluate(() => [document.querySelector('.tm-kicker').textContent, document.getElementById('tmEtatTx').textContent]);
     ok(fr[0] === 'LA COLONIE DE TRADING AUTONOME' && fr[1] === 'COLONIE EN LIGNE', 'le drapeau bascule aussi le terminal (' + fr.join(' · ') + ')');
@@ -2562,6 +2586,45 @@ async function auditDesVetos() {
     ok(vu, 'TRADES emmene vraiment a la section');
     ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
     await ctx.close();
+  }
+
+  /* ---- UN ONGLET A LA FOIS (01/10/2026) ----
+   * « Trop d information et mal organisee » : quarante blocs empiles, 7 124 px de haut sur
+   * ordinateur, 12 506 sur telephone (mesure avant). Ce qui se verifie : un seul onglet a
+   * l ecran, le hero toujours la, rien de PERDU (les onglets caches sont peints quand meme),
+   * et chaque lien mene a son onglet au lieu d un bloc invisible. */
+  console.log('\n-- un onglet a la fois --');
+  {
+    const { page, boum } = await ouvre(nav, port, {});
+    await page.waitForTimeout(1500);
+    const vus = () => page.evaluate(() => [...document.querySelectorAll('[data-onglet]')]
+      .filter((e) => e.getBoundingClientRect().height > 0).map((e) => e.id || e.className.split(' ')[0]));
+    const a = await page.evaluate(() => ({
+      hero: document.getElementById('tm-live').getBoundingClientRect().height > 0,
+      h: document.documentElement.scrollHeight,
+      peints: ['tmLignes', 'tmPreuve', 'tmFiches'].map((id) => (document.getElementById(id) || {}).textContent.length > 20),
+      on: (document.querySelector('.tm-nav a.on') || {}).dataset.s }));
+    const v0 = await vus();
+    console.log('   ' + JSON.stringify({ vus: v0, hauteur: a.h }));
+    ok(a.hero && a.on === 'tm-live' && v0.join() === 'tm-mirror,tm-fil',
+       'a l arrivee : le hero, puis « Live » seul — le miroir et le fil (' + v0.join(', ') + ')');
+    ok(a.h < 3000, 'la page ne fait plus 7 124 pixels de haut (' + a.h + ')');
+    ok(a.peints.every(Boolean), 'le scanner, la preuve et les fiches sont peints quand meme : un onglet qu on ouvre est deja a jour');
+    await page.click('.tm-hero a[href="#tm-proof"]'); await page.waitForTimeout(900);
+    const v1 = await vus();
+    const vu = await page.evaluate(() => { const r = document.getElementById('tm-proof').getBoundingClientRect(); return r.top < innerHeight && r.bottom > 0; });
+    ok(v1.join() === 'tm-proof' && vu, '« VIEW PROOF » ouvre l onglet de la preuve et y emmene (' + v1.join(', ') + ')');
+    await page.click('.tm-hero a[href="#tm-colony"]'); await page.waitForTimeout(900);
+    const v2 = await vus();
+    ok(v2.join() === 'tm-colony,tablette', '« ENTER THE COLONY » ouvre les fiches ET la console d origine (' + v2.join(', ') + ')');
+    ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
+    await page.context().close();
+    const b = await ouvre(nav, port, { urlSuffixe: '#tm-market' });
+    await b.page.waitForTimeout(1200);
+    const v3 = await b.page.evaluate(() => [...document.querySelectorAll('[data-onglet]')]
+      .filter((e) => e.getBoundingClientRect().height > 0).map((e) => e.id));
+    ok(v3.join() === 'tm-market', 'une adresse en #tm-market ouvre le scanner (' + v3.join(', ') + ')');
+    await b.page.context().close();
   }
 
   await nav.close();

@@ -40,7 +40,7 @@
  * une fois par session pour savoir si le serveur en a une plus recente.
  * Sans ca, un joueur garde des semaines une version corrigee depuis
  * longtemps — et ici, cela voudrait dire un agent qui a cesse d'apprendre. */
-var MARQUE_PAGE = '7f797b0e';
+var MARQUE_PAGE = '0ed2cd50';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -808,7 +808,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   .tab-ecran .panel{ max-height:none; }
 }
 </style>
-<link rel="stylesheet" href="swoge_terminal.css?v=6229304d">
+<link rel="stylesheet" href="swoge_terminal.css?v=356c7c9c">
 
 
 <!-- ==================== LA BARRE DU SITE ====================
@@ -984,6 +984,17 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
         <div class="tm-graphe"><svg id="tmConstellation" viewBox="-40 -10 480 420" role="img" aria-label="The colony's agents and what each one is doing now"></svg><div class="tm-legende" id="tmLegende"></div></div>
       </section>
 
+      <!-- ---- UN ONGLET A LA FOIS (01/10/2026) ----
+           « Il y a trop d'information et mal organisee sur la page SWOGE AI. »
+           Quarante blocs les uns sous les autres : 7 100 pixels sur ordinateur,
+           12 500 sur telephone (mesure). Rien n'est retire : chaque section
+           appartient a un onglet (`data-onglet`) et `swoge_terminal.js` ne
+           montre que celui qu'on a choisi. Le hero reste toujours visible, et
+           « Live » — le miroir puis le fil — s'ouvre par defaut. -->
+      <nav class="tm-nav" id="tmNav" aria-label="Sections">
+        <a href="#tm-live" data-s="tm-live">LIVE</a><a href="#tm-colony" data-s="tm-colony">COLONY</a><a href="#tm-market" data-s="tm-market">MARKET</a><a href="#tm-trades" data-s="tm-trades">TRADES</a><a href="#tm-learning" data-s="tm-learning">LEARNING</a><a href="#tm-proof" data-s="tm-proof">PROOF</a>
+      </nav>
+
       <!-- ---- LE MIROIR, EN PREMIER ----
            « L'utilisateur veut voir son miroir dans les premiers, faut descendre
              bas la. » (27/09) Les deux cartes du miroir vivaient dans l'onglet
@@ -992,7 +1003,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
            et la plus loin. Elles sont deplacees telles quelles (memes
            identifiants : `swogemiroir.js` les remplit sans rien savoir du
            deplacement), juste sous le hero. -->
-      <section class="tm-sec" id="tm-mirror" aria-labelledby="tmMirH">
+      <section class="tm-sec" id="tm-mirror" data-onglet="tm-live" aria-labelledby="tmMirH">
         <div class="tm-titre"><h2 id="tmMirH" data-tt="tMiroirT">Your mirror</h2><span class="tm-pastille tm-p-vert">LIVE</span><span class="tm-sous" data-tt="sMiroirT">Real money, on a mirror wallet you create and fund yourself: the colony buys and sells in it at the same moment as its paper.</span></div>
         <!-- Les stats du miroir (profit, taux, trades, meilleur, ouvertes) :
              `swogemiroir.js` les pose ici des qu'un miroir existe. -->
@@ -1025,11 +1036,8 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
         </div>
       </section>
 
-      <nav class="tm-nav" id="tmNav" aria-label="Sections">
-        <a href="#tm-live" data-s="tm-live">LIVE</a><a href="#tm-colony" data-s="tm-colony">COLONY</a><a href="#tm-market" data-s="tm-market">MARKET</a><a href="#tm-trades" data-s="tm-trades">TRADES</a><a href="#tm-learning" data-s="tm-learning">LEARNING</a><a href="#tm-proof" data-s="tm-proof">PROOF</a>
-      </nav>
 
-      <section class="tm-sec" aria-labelledby="tmFilH">
+      <section class="tm-sec" id="tm-fil" data-onglet="tm-live" aria-labelledby="tmFilH">
         <div class="tm-grille2">
           <div class="tm-carte">
             <div class="tm-titre"><h2 id="tmFilH" data-tt="tFil">Live colony activity</h2><span class="tm-n" id="tmFilN">—</span></div>
@@ -1042,13 +1050,14 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
         </div>
       </section>
 
-      <section class="tm-sec" id="tm-colony" aria-labelledby="tmColH">
+      <section class="tm-sec" id="tm-colony" data-onglet="tm-colony" aria-labelledby="tmColH">
         <div class="tm-titre"><h2 id="tmColH" data-tt="tColonie">The colony</h2><span class="tm-sous" data-tt="sColonie">Every agent, what it is doing now and what it has decided. The network at the top shows the same statuses live; its packets move only when the server reports a real event.</span></div>
         <div class="tm-fiches" id="tmFiches"><div class="tm-vide" data-tt="chargement">Loading…</div></div>
-        <div class="tm-titre tm-console-titre" id="tm-console"><h2 data-tt="tConsole">Colony console</h2><span class="tm-sous" data-tt="sConsole">The original view: the village, the paper positions and every measurement panel. Your mirror is at the top of the page.</span></div>
+        <div class="tm-titre tm-console-titre" id="tm-console"><h2 data-tt="tConsole">Colony console</h2><span class="tm-sous" data-tt="sConsole">The original view: the village, the paper positions and every measurement panel. Your mirror is in the Live tab.</span></div>
       </section>
     </div>
-    <div class="tablette">
+    <!-- La console d'origine vit entre les deux moities du terminal : elle est de l'onglet « Colony ». -->
+    <div class="tablette" data-onglet="tm-colony">
       <div class="tab-ecran">
   <header class="bar">
     <div class="brand">
@@ -1235,7 +1244,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       </div>
     </div>
     <div class="tm" id="tmSuite">
-      <section class="tm-sec" id="tm-market" aria-labelledby="tmMarH">
+      <section class="tm-sec" id="tm-market" data-onglet="tm-market" aria-labelledby="tmMarH">
         <div class="tm-titre"><h2 id="tmMarH" data-tt="tMarche">Market scanner</h2><span class="tm-sous" id="tmMarS"></span><span class="tm-n" id="tmMarN">—</span></div>
         <div class="tm-outils">
           <input class="tm-champ" id="tmCherche" type="search" placeholder="Search a token or an address" data-tt-ph="cherche" aria-label="Search">
@@ -1261,7 +1270,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
         </div>
       </section>
 
-      <section class="tm-sec" id="tm-trades" aria-labelledby="tmTrH">
+      <section class="tm-sec" id="tm-trades" data-onglet="tm-trades" aria-labelledby="tmTrH">
         <div class="tm-titre"><h2 id="tmTrH" data-tt="tTrades">Trades terminal</h2><span class="tm-pastille tm-p-ambre" data-tt="badgePapier">PAPER</span><span class="tm-n" id="tmTrN">—</span></div>
         <div class="tm-tuiles" id="tmTuiles"></div>
         <div class="tm-carte" style="margin-top:12px">
@@ -1288,7 +1297,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
         </div>
       </section>
 
-      <section class="tm-sec" id="tm-learning" aria-labelledby="tmSlH">
+      <section class="tm-sec" id="tm-learning" data-onglet="tm-learning" aria-labelledby="tmSlH">
         <div class="tm-titre"><h2 id="tmSlH" data-tt="tSecond">Every token gets a second look</h2><span class="tm-sous" data-tt="sSecond">Bought or rejected, every token is followed to its deadline and priced again.</span><span class="tm-n" id="tmSlN">—</span></div>
         <div class="tm-quatre" id="tmQuatre"></div>
         <div class="tm-carte"><div id="tmRegles"><div class="tm-vide" data-tt="chargement">Loading…</div></div></div>
@@ -1300,7 +1309,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
         </div>
       </section>
 
-      <section class="tm-sec" id="tm-proof" aria-labelledby="tmPrH">
+      <section class="tm-sec" id="tm-proof" data-onglet="tm-proof" aria-labelledby="tmPrH">
         <div class="tm-titre"><h2 id="tmPrH" data-tt="tPreuve">Proof</h2><span class="tm-sous" data-tt="sPreuve">Everything the server kept, newest first. Each token links to its pair on DexScreener.</span><span class="tm-n" id="tmPrN">—</span></div>
         <div class="tm-onglets" id="tmPrF" role="group" aria-label="Filters">
           <button type="button" class="tm-puce" data-p="tout" aria-pressed="true">ALL</button>
@@ -3846,7 +3855,7 @@ requestAnimationFrame(loop);
 demande(false);
 </script>
 <!-- Le terminal : il lit `VUE` et `LANGUE` de la page, et repeint sur « swoge:vue ». -->
-<script src="swoge_terminal.js?v=eeb88660"></script>
+<script src="swoge_terminal.js?v=7624ddaa"></script>
 <!-- Le fond d ecran anime, derriere tout : voir fond_anime.js. -->
 <script src="fond_anime.js?v=caf410ea" data-fond="ai" defer></script>
 </html>

@@ -732,7 +732,7 @@ body{ background:#F7F9FC; }
 .acc-duo{ display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.1fr); gap:24px; align-items:center; }
 .acc-duo.inverse .acc-visuel{ order:2; }
 .acc-visuel{ position:relative; border-radius:18px; overflow:hidden; background:#EEF2F8; aspect-ratio:3/2; }
-.acc-visuel img{ width:100%; height:100%; object-fit:cover; }
+.acc-visuel img, .acc-visuel video{ display:block; width:100%; height:100%; object-fit:cover; }
 .acc-visuel .acc-sur{ position:absolute; left:14px; bottom:14px; }
 .acc-texte{ min-width:0; }
 .acc-texte > .carte{ box-shadow:none; }
@@ -771,7 +771,9 @@ body{ background:#F7F9FC; }
 .acc-banniere .voile{ position:absolute; inset:0; background:linear-gradient(90deg,rgba(255,255,255,.96) 0%,rgba(255,255,255,.82) 38%,rgba(255,255,255,0) 66%); }
 .acc-banniere .acc-tete{ position:relative; padding:26px; max-width:460px; margin:0; }
 .acc-banniere .acc-tete .sw-b{ display:inline-block; margin-top:16px; }
-@media (prefers-reduced-motion:reduce){ .acc .film{ display:none; } .acc-hero, .acc-banniere, .acc-cta{ background-size:cover; } }
+/* Mouvement reduit : le film reste en place mais ne joue pas (le script le met en pause) —
+   le cacher laissait un cadre vide, l affiche etant portee par la video elle-meme. */
+@media (prefers-reduced-motion:reduce){ .acc .film, .acc-hero .film{ display:block !important; } }
 .acc-trio{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; }
 .acc-trio > *{ min-height:200px; }
 .acc-trio #gxRangCarte[hidden]{ display:none; }
@@ -1076,7 +1078,7 @@ body{ background:#F7F9FC; }
 
     <!-- 4. LA COUCHE IA -->
     <section class="acc-sec acc-duo" aria-labelledby="accTIa">
-      <div class="acc-visuel"><img src="img/site/accueil/ia.webp" alt="" width="1200" height="800" loading="lazy" decoding="async"></div>
+      <div class="acc-visuel"><video class="film" data-src="media/accueil_ia.mp4" poster="img/site/accueil/ia.webp" muted loop playsinline disablepictureinpicture preload="none" aria-hidden="true" width="1200" height="800"></video></div>
       <div class="acc-texte">
         <div class="acc-tete"><small>THE AI LAYER</small><h2 id="accTIa">Agents that trade, read and work</h2>
           <p>Every AI page shows its own results, read on the server, with the number of trades or rounds behind each figure. Nothing is promised: most of what is measured so far is a loss, and the pages say so.</p></div>
@@ -1097,7 +1099,7 @@ body{ background:#F7F9FC; }
 
     <!-- 5. LA COLONIE : ce que les colonies ont MESURE, lu sur le serveur, avec l effectif. -->
     <section class="acc-sec acc-duo inverse" aria-labelledby="accTCol">
-      <div class="acc-visuel"><img src="img/site/accueil/colonie.webp" alt="" width="1200" height="800" loading="lazy" decoding="async"></div>
+      <div class="acc-visuel"><video class="film" data-src="media/accueil_colonie.mp4" poster="img/site/accueil/colonie.webp" muted loop playsinline disablepictureinpicture preload="none" aria-hidden="true" width="1200" height="800"></video></div>
       <div class="acc-texte">
         <div class="acc-tete"><small>THE COLONY</small><h2 id="accTCol">What the colonies measured</h2>
           <p>Paper money at real prices and real fees. Each figure says how many observations it rests on, and none is a promise.</p></div>
@@ -1113,8 +1115,8 @@ body{ background:#F7F9FC; }
     <!-- 6. LE MONDE DU JEU -->
     <section class="acc-sec" aria-labelledby="accTJeu">
       <div class="acc-banniere">
-        <video class="film" src="media/accueil_jeux.mp4" poster="img/site/accueil/jeux.webp"
-               muted autoplay loop playsinline disablepictureinpicture aria-hidden="true"></video>
+        <video class="film" data-src="media/accueil_jeux.mp4" poster="img/site/accueil/jeux.webp"
+               muted loop playsinline disablepictureinpicture preload="none" aria-hidden="true"></video>
         <div class="voile"></div>
         <div class="acc-tete clair"><small>THE GAMING WORLD</small><h2 id="accTJeu">Play, climb, own your character</h2>
           <p>Casino tables, an arcade and an open world where characters climb to level 20.</p>
@@ -1146,7 +1148,7 @@ body{ background:#F7F9FC; }
 
     <!-- 7. SWOGE BET -->
     <section class="acc-sec acc-duo" aria-labelledby="accTBet">
-      <div class="acc-visuel"><img src="img/site/accueil/bet.webp" alt="" width="1200" height="800" loading="lazy" decoding="async">
+      <div class="acc-visuel"><video class="film" data-src="media/accueil_bet.mp4" poster="img/site/accueil/bet.webp" muted loop playsinline disablepictureinpicture preload="none" aria-hidden="true" width="1200" height="800"></video>
         <a class="sw-b sw-b-plein vif acc-sur" href="swogebet.html">OPEN SWOGE BET &nbsp;&rarr;</a></div>
       <div class="acc-texte">
         <div class="acc-tete"><small>SWOGE BET</small><h2 id="accTBet">Real fixtures, real odds</h2></div>
@@ -1170,7 +1172,7 @@ body{ background:#F7F9FC; }
 
     <!-- 8. L ECONOMIE DES AGENTS : des pages qui existent, sans chiffre ecrit a la main. -->
     <section class="acc-sec acc-duo inverse" aria-labelledby="accTAg">
-      <div class="acc-visuel"><img src="img/site/accueil/agents.webp" alt="" width="1200" height="800" loading="lazy" decoding="async"></div>
+      <div class="acc-visuel"><video class="film" data-src="media/accueil_agents.mp4" poster="img/site/accueil/agents.webp" muted loop playsinline disablepictureinpicture preload="none" aria-hidden="true" width="1200" height="800"></video></div>
       <div class="acc-texte">
         <div class="acc-tete"><small>THE AGENT ECONOMY</small><h2 id="accTAg">Agents that pay, and get paid</h2>
           <p>Agents use SWOGE tools and pay per call in USDC; their results are measured before they are listed.</p></div>
@@ -1185,7 +1187,7 @@ body{ background:#F7F9FC; }
 
     <!-- 9. L ECONOMIE $SWOGE : la carte lue sur la chaine, telle qu elle etait. -->
     <section class="acc-sec acc-duo" aria-labelledby="accTSw">
-      <div class="acc-visuel"><img src="img/site/accueil/economie.webp" alt="" width="1200" height="800" loading="lazy" decoding="async"></div>
+      <div class="acc-visuel"><video class="film" data-src="media/accueil_economie.mp4" poster="img/site/accueil/economie.webp" muted loop playsinline disablepictureinpicture preload="none" aria-hidden="true" width="1200" height="800"></video></div>
       <div class="acc-texte">
         <div class="acc-tete"><small>$SWOGE</small><h2 id="accTSw">One token, read on-chain</h2>
           <p>Fixed supply, a burn that only goes up, and a casino vault you can check on the contract. These figures are read on Robinhood Chain every five minutes.</p></div>
@@ -1240,7 +1242,7 @@ body{ background:#F7F9FC; }
 
     <!-- 10. LE PORTEFEUILLE -->
     <section class="acc-sec acc-duo inverse" aria-labelledby="accTWal">
-      <div class="acc-visuel"><img src="img/site/accueil/wallet.webp" alt="" width="1200" height="800" loading="lazy" decoding="async"></div>
+      <div class="acc-visuel"><video class="film" data-src="media/accueil_wallet.mp4" poster="img/site/accueil/wallet.webp" muted loop playsinline disablepictureinpicture preload="none" aria-hidden="true" width="1200" height="800"></video></div>
       <div class="acc-texte">
         <div class="acc-tete"><small>THE WALLET</small><h2 id="accTWal">Your keys, on Robinhood Chain</h2>
           <p>Sign in with an email and a wallet is created for you, or connect your own. A generated private key is shown to you once and never stored in this browser.</p></div>
@@ -1274,8 +1276,8 @@ body{ background:#F7F9FC; }
 
     <!-- 11. LE DERNIER APPEL -->
     <section class="acc-cta" aria-labelledby="accTCta">
-      <video class="film" src="media/accueil_cta.mp4" poster="img/site/accueil/cta.webp"
-             muted autoplay loop playsinline disablepictureinpicture aria-hidden="true"></video>
+      <video class="film" data-src="media/accueil_cta.mp4" poster="img/site/accueil/cta.webp"
+             muted loop playsinline disablepictureinpicture preload="none" aria-hidden="true"></video>
       <div class="voile"></div>
       <div class="dit">
         <h2 id="accTCta">The world is open.</h2>
@@ -1657,6 +1659,26 @@ body{ background:#F7F9FC; }
     var vu = new IntersectionObserver(function(l){ if(l.some(function(x){ return x.isIntersecting; })){ vu.disconnect(); charge(); } }, { rootMargin: "300px" });
     vu.observe(hote);
   } else charge();
+})();
+</script>
+<!-- ---- LES FILMS DE L ACCUEIL, A LA DEMANDE (01/10/2026) ----
+     Neuf films, 6 a 8 Mo en tout : un telephone ne doit pas tout tirer a l ouverture. Hors du
+     heros, chaque film porte `data-src` et `preload="none"` : il se charge quand il approche de
+     l ecran, joue tant qu il y est, et se met en pause quand il en sort. Mouvement reduit :
+     aucun ne joue, l affiche (premiere image) reste. -->
+<script>
+(function(){
+  "use strict";
+  var calme = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var films = [].slice.call(document.querySelectorAll("main.acc video.film"));
+  if (calme) { films.forEach(function(v){ v.removeAttribute("autoplay"); try { v.pause(); } catch (e) {} }); return; }
+  var lazy = films.filter(function(v){ return v.hasAttribute("data-src"); });
+  function joue(v){ if (!v.getAttribute("src")) { v.src = v.getAttribute("data-src"); } var p = v.play(); if (p && p["catch"]) p["catch"](function(){}); }
+  if (!("IntersectionObserver" in window)) { lazy.forEach(joue); return; }
+  var vu = new IntersectionObserver(function(l){
+    l.forEach(function(x){ if (x.isIntersecting) joue(x.target); else if (x.target.getAttribute("src")) { try { x.target.pause(); } catch (e) {} } });
+  }, { rootMargin: "200px 0px" });
+  lazy.forEach(function(v){ vu.observe(v); });
 })();
 </script>
 </body>

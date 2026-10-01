@@ -21,7 +21,8 @@ for (const f of ['hero', 'ia', 'colonie', 'jeux', 'bet', 'agents', 'economie', '
   const p = path.join(SITE, 'img/site/accueil/' + f + '.webp');
   ok(fs.existsSync(p) && fs.statSync(p).size < 200 * 1024 && src.includes('img/site/accueil/' + f + '.webp'), f + '.webp : present, sous 200 Ko, utilise');
 }
-for (const f of ['hero', 'jeux', 'cta']) {
+/* 01/10 : « manque des videos a animer » — les neuf visuels sont des films. */
+for (const f of ['hero', 'jeux', 'cta', 'ia', 'colonie', 'bet', 'agents', 'economie', 'wallet']) {
   const p = path.join(SITE, 'media/accueil_' + f + '.mp4');
   ok(fs.existsSync(p) && fs.statSync(p).size < 1.5 * 1024 * 1024 && src.includes('media/accueil_' + f + '.mp4'), 'accueil_' + f + '.mp4 : present, sous 1,5 Mo, utilise');
 }
@@ -59,6 +60,12 @@ ok(!/24\/7|Fastest withdrawals|Provably fair/i.test(src.replace(/<!--[\s\S]*?-->
     const garde = await page.evaluate(() => ['#ecoCarte', '#gxRangCarte', '#gxMonde2', '#gxMonde3', '#gxSports', '.ia-liste', '.carte.bonus', '.univers', '#cxVoile'].filter((s) => !document.querySelector(s)));
     ok(garde.length === 0, 'tout ce qui vivait avant est encore la (economie, classement, offre, liste IA, sport, univers, connexion) ' + garde.join(' '));
     ok(!vus.some((u) => /\/poly\/etat$/.test(u)), 'avant de descendre, /poly/etat (180 Ko) n est pas demande');
+    /* Les neuf films neufs (media/accueil_*) ; ceux d avant (casino, sport, arcade, poker, roulette) restent tels quels. */
+    const films = await page.evaluate(() => [...document.querySelectorAll('main.acc video.film')].map((v) => ({ d: v.getAttribute('data-src'), s: v.getAttribute('src') })).filter((f) => /accueil_/.test(f.d || f.s || '')));
+    ok(films.length === 9 && films.filter((f) => f.d).length === 8 && !films.find((f) => /wallet/.test(f.d || '')).s, 'neuf films ; hors du heros, aucun ne se charge avant d approcher de l ecran ' + JSON.stringify(films));
+    await page.evaluate(() => document.querySelector('video[data-src*="wallet"]').scrollIntoView());
+    await page.waitForFunction(() => !!document.querySelector('video[data-src*="wallet"]').getAttribute('src'), null, { timeout: 5000 });
+    ok(true, 'arrive a l ecran, le film du portefeuille se charge et joue');
     await page.evaluate(() => document.getElementById('accColonie').scrollIntoView());
     await page.waitForFunction(() => /proven/.test(document.querySelector('[data-m="poly"] b').textContent), null, { timeout: 8000 });
     const m = await page.$$eval('#accColonie .acc-m', (l) => l.map((a) => [a.querySelector('b').textContent, a.querySelector('span').textContent]));

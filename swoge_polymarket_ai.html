@@ -600,6 +600,18 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
         <tbody id="prLignes"></tbody>
       </table></div>
     </div>
+    <!-- 01/10 : « si on garde les gagnants et supprime les perdants, le P&L ne devrait-il pas
+         remonter ? » — ce que les gardees font APRES leur selection, contre Coin. -->
+    <div class="preuve survie" id="survie" hidden>
+      <h3>Do the kept strategies keep winning?</h3>
+      <p class="gros" id="svVerdict"></p>
+      <div class="ds-kpis" id="svKpis" style="margin:8px 0 10px"></div>
+      <p id="svRegle"></p>
+      <div class="ds-table" id="svBoite" hidden><table>
+        <thead><tr><th>Kept strategy</th><th class="num">P&amp;L when kept</th><th class="num">Settled since</th><th class="num">Won</th><th class="num">P&amp;L since</th><th class="num">Skill / window</th></tr></thead>
+        <tbody id="svLignes"></tbody>
+      </table></div>
+    </div>
     <div class="classement" id="classement" hidden>
       <h3>All strategies, from most to least profitable</h3>
       <p class="ds-sous" id="clResume"></p>
@@ -803,6 +815,44 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
     });
     bloc.hidden = false;
   }
+  /* ---- APRES LA SELECTION (01/10) ----
+     Tout vient de d.survivors (poly_papier.js). Le P&L d'avant le jugement est montre a part :
+     c'est lui qui a fait garder la strategie, il ne prouve rien. Sous 500 paris regles apres
+     selection, aucun verdict ; au-dela, la comparaison avec Coin sur la meme periode. */
+  function peintSurvie(d){
+    var bloc = $("survie"), v = d.survivors;
+    if (!v || v.minResolved == null) { bloc.hidden = true; return; }
+    var nb = function(x){ return Number(x || 0).toLocaleString("en-US"); }, verdict = $("svVerdict");
+    if (!v.kept) {
+      var proche = (d.ranking || []).filter(function(c){ return c.nextJudgedAt; }).reduce(function(m, c){ return !m || (c.resolved || 0) > (m.resolved || 0) ? c : m; }, null);
+      verdict.textContent = "Not measurable yet: no strategy has passed its first check." + (proche ? " The closest has " + nb(proche.resolved) + " of " + nb(proche.nextJudgedAt) + " settled bets." : "");
+    } else if (!v.enough) {
+      verdict.textContent = "Too early: " + nb(v.kept) + " strateg" + (v.kept === 1 ? "y" : "ies") + " kept, " + nb(v.resolved) + " of " + nb(v.minResolved) + " settled bets since selection. No verdict yet.";
+    } else {
+      var mieux = v.coinPerBet != null && v.pnlPerBet > v.coinPerBet;
+      verdict.textContent = (v.pnl > 0 ? "So far, the kept strategies made money after being kept: " : "So far, the kept strategies lost money after being kept: ") + signe(v.pnl) + " over " + nb(v.resolved) + " settled bets" +
+        (v.coinPerBet != null ? " (" + signe(v.pnlPerBet) + " per bet, against " + signe(v.coinPerBet) + " for Coin over the same period" + (mieux ? ")." : " \u2014 no better than luck).") : ".") +
+        " Only a skill score above the bar over enough windows would make it an edge.";
+    }
+    var k = $("svKpis"); k.textContent = "";
+    k.appendChild(kpi("Strategies kept", nb(v.kept), v.kept ? nb(v.stillRunning) + " still running \u00b7 " + nb(v.retiredAfterKept) + " retired later" : "First checks at " + nb(v.minResolved) + " bets"));
+    k.appendChild(kpi("Settled since kept", v.kept ? nb(v.resolved) : "--", v.kept ? (v.enough ? "enough to compare" : "no verdict under " + nb(v.minResolved)) : "--"));
+    k.appendChild(kpi("P&L since kept", v.kept && v.resolved ? signe(v.pnl) : "--", v.pnlPerBet != null && v.resolved ? signe(v.pnlPerBet) + " per bet" + (v.coinPerBet != null ? " \u00b7 Coin " + signe(v.coinPerBet) : "") : "paper money", v.enough ? (v.pnl > 0 ? "pos" : v.pnl < 0 ? "neg" : null) : null));
+    $("svRegle").textContent = String(v.rule || "");
+    var tb = $("svLignes"); tb.textContent = "";
+    (v.strategies || []).forEach(function(c){
+      var tr = el("tr");
+      tr.appendChild(el("td", "nom", String(c.name || c.id)));
+      tr.appendChild(el("td", "num", signe(c.pnlBefore || 0)));
+      tr.appendChild(el("td", "num", nb(c.resolved)));
+      tr.appendChild(el("td", "num", c.resolved ? pct(c.won / c.resolved) : "\u2014"));
+      tr.appendChild(el("td", "num " + (Number(c.pnl) > 0 ? "pos" : Number(c.pnl) < 0 ? "neg" : ""), c.resolved ? signe(c.pnl) : "\u2014"));
+      tr.appendChild(el("td", "num", c.skillPerWindow == null ? "\u2014" : c.skillPerWindow + " (" + c.windows + ")"));
+      tb.appendChild(tr);
+    });
+    $("svBoite").hidden = !(v.strategies || []).length;
+    bloc.hidden = false;
+  }
   function peintTournoi(d){
     var bloc = $("tournoi"), t = d.tournament;
     if (!t || !t.threshold) { bloc.hidden = true; return; }
@@ -872,6 +922,7 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
     peintClassement(d);
     peintTournoi(d);
     peintPreuve(d);
+    peintSurvie(d);
     var c = d.calibration || {}, v = $("calibVerdict");
     if (!c.n) { v.className = "ds-verdict verdict peu"; v.textContent = "No window scored yet (" + (c.pending || 0) + " waiting for their result)."; }
     else if (!c.enough) { v.className = "ds-verdict verdict peu"; v.textContent = "Too few windows to compare (" + c.n + "/" + c.minN + "). So far: model " + c.brierModel + ", market " + c.brierMarket + " (lower is better)."; }

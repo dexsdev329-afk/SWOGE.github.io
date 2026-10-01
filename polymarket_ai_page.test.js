@@ -39,6 +39,11 @@ const ETAT = (calib) => ({ ok: true, depuis: '2026-09-29T14:00:00.000Z', stakeUs
     trades: { marketsChecked: 8, betsChecked: 200, confirmedAtOurPrice: 150, noTradeWithin: 10, withinSeconds: 15, nextTradeSeconds: 30 },
     medianVolumeUsd: { BTC: 16734, ETH: 1083, SOL: null, XRP: 335 }, rule: 'Checked against <b>real</b> trades.' } : undefined,
   summary: { total: 6, inProfit: 2, inLoss: 3, noSettledBet: 1, totalPnl: -1315.49, judgeable: 3 },
+  /* 01/10 : apres la selection. « vide » : personne de garde ; « peu » : trop tot ; « marche » : un verdict. */
+  survivors: !calib.n ? { kept: 0, stillRunning: 0, retiredAfterKept: 0, resolved: 0, pnl: 0, pnlPerBet: null, coin: null, coinPerBet: null, minResolved: 500, enough: false, strategies: [], rule: 'Only bets settled AFTER <b>selection</b> count.' }
+    : calib.enough ? { kept: 3, stillRunning: 2, retiredAfterKept: 1, resolved: 1200, pnl: -96, pnlPerBet: -0.08, coin: { resolved: 700, pnl: -77 }, coinPerBet: -0.11, minResolved: 500, enough: true,
+        strategies: [{ id: 'p_a', name: '<img src=x onerror=window.pirate=5>', resolved: 640, won: 330, pnl: -41.2, pnlBefore: 352.99, windows: 70, skillPerWindow: -0.4 }], rule: 'r' }
+    : { kept: 1, stillRunning: 1, retiredAfterKept: 0, resolved: 120, pnl: 12.5, pnlPerBet: 0.104, coin: { resolved: 120, pnl: -9 }, coinPerBet: -0.075, minResolved: 500, enough: false, strategies: [], rule: 'r' },
   agents: [agent('coin', 'Coin', { bets: 120, resolved: 118, won: 57, winRate: { p: 0.483, low: 0.395, high: 0.572 }, skill: -0.4, skillPerWindow: -0.3, windows: 42,
     real: { repriced: 30, emptyBook: 2, paperPnl: -5, pnlAfterDelay: -9.5, tradeChecked: 30, confirmedByTrade: 22 }, avgPricePaid: 0.51, pnl: -41.2, fees: 20.3, drawdown: 55.1, verdict: 'No edge: loses after the spread and fees (skill score -0.4).' }),
     agent('crowd', 'Crowd'), agent('fair', 'Fair Value', { role: 'Model <img src=x onerror=window.pirate=1>', pnl: 12.5 }), agent('late', 'Last Minute'), agent('fade', 'Longshot')],
@@ -250,6 +255,28 @@ CALIBS.peu.hourly = []; CALIBS.peu.hourlySince = null;
     await page.click('#periodes button[data-h="168"]');
     t = await page.textContent('#periodeTxt');
     ok(/^Last 7 days: 124 windows scored · model 0\.2258 · market 0\.1742/.test(t), 'sur 7 jours : la case de 3 jours entre dans le calcul (28/124 et 21,6/124) [' + t + ']');
+    await ctx.close();
+  }
+
+  console.log('\n-- 7. les gardees, apres leur selection --');
+  {
+    let { page, ctx } = await ouvre('vide');
+    await page.waitForFunction(() => !document.getElementById('survie').hidden);
+    ok(/^Not measurable yet: no strategy has passed its first check\. The closest has 74 of 500 settled bets\.$/.test(await page.textContent('#svVerdict')) && /<b>selection<\/b>/.test(await page.textContent('#svRegle')),
+       'personne de garde : « pas encore mesurable », et la plus proche du premier jugement (74/500) ; la regle en texte');
+    await ctx.close();
+    ({ page, ctx } = await ouvre('peu'));
+    await page.waitForFunction(() => /Too early/.test(document.getElementById('svVerdict').textContent));
+    ok(/1 strategy kept, 120 of 500 settled bets since selection\. No verdict yet\./.test(await page.textContent('#svVerdict')) && !/made money/.test(await page.textContent('#svVerdict')),
+       'sous 500 paris apres selection : « trop tot », meme a +12,50 $');
+    await ctx.close();
+    ({ page, ctx } = await ouvre('marche'));
+    await page.waitForFunction(() => /lost money/.test(document.getElementById('svVerdict').textContent));
+    const vt = await page.textContent('#svVerdict');
+    ok(/lost money after being kept: −\$96\.00 over 1,200 settled bets \(−\$0\.08 per bet, against −\$0\.11 for Coin over the same period\)\./.test(vt), 'au-dela : le P&L apres selection, par pari, contre Coin sur la meme periode [' + vt.slice(0, 120) + ']');
+    const l = await page.evaluate(() => [...document.querySelectorAll('#svLignes tr')].map((tr) => [...tr.children].map((td) => td.textContent)));
+    ok(l[0][0] === '<img src=x onerror=window.pirate=5>' && l[0][1] === '+$352.99' && l[0][4] === '−$41.20' && await page.evaluate(() => window.pirate === undefined),
+       'chaque gardee : son gain AVANT (qui l a fait garder) a part de son P&L APRES ; nom en texte');
     await ctx.close();
   }
 

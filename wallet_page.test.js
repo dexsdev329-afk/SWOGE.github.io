@@ -2497,9 +2497,10 @@ function servir(q, r, f, type) {
      * La liste attendue est donc ecrite UNE fois, comme le contrat du site,
      * et c'est elle qu'il faut relire le jour ou cet essai echoue. */
     /* 30/09 : relue — SwoleMind et SwogeAgentic reunis sous « Agents », OSINT et eSIM devenus
-       deux de ses onglets, Polymarket Edge retire ; Perp, Predict, Agent Store, Polymarket AI ajoutes. */
+       deux de ses onglets, Polymarket Edge retire ; Perp, Predict, Agent Store, Polymarket AI ajoutes.
+       01/10 : SWOGE AI, Perp, Predict et Polymarket AI reunis sous « AI Trading » (onglets en tete). */
     ok(col.liens.join(',') === 'index.html,games.html,swogebet.html,swoge_wallet.html*,'
-         + 'swoge_ai.html,swoge_perp.html,swoge_predict.html,swoge_agents.html,agent_store.html,swoge_polymarket_ai.html,whitepaper.html',
+         + 'swoge_ai.html,swoge_agents.html,agent_store.html,whitepaper.html',
        'le menu de gauche est celui du site, dans le meme ordre, et « Wallet » y est'
        + ' marque page courante (' + col.liens.join(', ') + ')');
     ok(col.reseaux === 3, 'les trois liens du site sont sous le menu');

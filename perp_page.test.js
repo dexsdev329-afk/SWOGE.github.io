@@ -543,24 +543,22 @@ const txt = (page, sel) => page.$eval(sel, (e) => (e.textContent || '').trim()).
     await pg.close();
   }
 
-  console.log('\n-- le menu de gauche : UNE entree, pas cinq --');
+  /* 01/10 : SWOGE AI, AI Perps, Predict et Polymarket AI ne font plus qu UNE entree de menu,
+     « AI Trading » ; on passe de l une a l autre par les onglets en tete (outils/onglets_ia.js).
+     L intention d hier tient toujours : une seule porte pour tous les marches, et on sait ou on est. */
+  console.log('\n-- le menu de gauche : UNE entree AI Trading, et les onglets en tete --');
   {
     const { page } = await ouvre(nav, port, 'swoge_perp.html');
     const liens = await page.$$eval('.sw-nav a', (e) => e.map((x) => x.getAttribute('href')));
-    const perp = liens.filter((h) => /swoge_perp/.test(h));
-    ok(perp.length === 1 && perp[0] === 'swoge_perp.html',
-       'une seule entree pour tous les marches : ' + perp.join(', '));
-    ok(liens.includes('swoge_ai.html'), 'a cote de la colonie de jetons, dont elle est la suite');
-    ok(await page.$eval('.sw-nav a.on', (e) => e.getAttribute('href')) === 'swoge_perp.html',
-       'et la page courante est marquee');
-    /* Le menu du site fait foi partout : une entree qui n existe que sur
-       certaines pages envoie les autres dans le vide. */
+    ok(!liens.some((h) => /swoge_perp|swoge_predict|polymarket_ai/.test(h)) && liens.filter((h) => h === 'swoge_ai.html').length === 1,
+       'le menu n a qu une entree pour les quatre pages d IA : ' + liens.filter((h) => /swoge_ai/.test(h)).join(', '));
+    ok(/AI Trading/.test(await page.$eval('.sw-nav a.on', (e) => e.textContent)), 'et elle est marquee courante sur la page des perps');
+    const onglets = await page.$$eval('.ia-onglets a', (e) => e.map((x) => ({ h: x.getAttribute('href'), c: x.getAttribute('aria-current') })));
+    ok(onglets.map((o) => o.h).join(',') === 'swoge_ai.html,swoge_perp.html,swoge_predict.html,swoge_polymarket_ai.html'
+       && onglets.filter((o) => o.c === 'page').map((o) => o.h).join() === 'swoge_perp.html', 'les onglets en tete : les quatre pages, celle des perps marquee');
     const ailleurs = fs.readFileSync(path.join(SITE, 'index.html'), 'utf8');
-    /* 30/09 : l accueil a maintenant une banniere SWOGE AI / AI Perps et un bloc SWOGE AI qui
-       menent aussi a la page : on compte dans le MENU, qui est ce que cette ligne gardait. */
     const menuAccueil = (ailleurs.match(/<nav class="sw-nav">[\s\S]*?<\/nav>/) || [''])[0];
-    ok((menuAccueil.match(/swoge_perp/g) || []).length === 1,
-       'et le menu de l accueil ne porte qu elle aussi');
+    ok(!/swoge_perp/.test(menuAccueil) && (menuAccueil.match(/AI Trading/g) || []).length === 1, 'le menu de l accueil aussi : une entree AI Trading');
     await page.close();
   }
 

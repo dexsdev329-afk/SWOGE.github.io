@@ -698,12 +698,9 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       <a href="games.html"><span class="ic">&#127920;</span>Casino</a>
       <a href="swogebet.html"><span class="ic">&#9917;</span>Sports</a>
       <a href="swoge_wallet.html"><span class="ic">&#129433;</span>Wallet</a>
-      <a href="swoge_ai.html"><span class="ic">&#129302;</span>SWOGE AI</a>
-      <a href="swoge_perp.html"><span class="ic">&#128200;</span>AI Perp</a>
-      <a href="swoge_predict.html" class="on"><span class="ic">&#128302;</span>Predict</a>
+      <a href="swoge_ai.html" class="on" aria-current="page"><span class="ic">&#129302;</span>AI Trading</a>
       <a href="swoge_agents.html"><span class="ic">&#129504;</span>Agents</a>
       <a href="agent_store.html"><span class="ic">&#129513;</span>Agent Store</a>
-      <a href="swoge_polymarket_ai.html"><span class="ic">&#129302;</span>Polymarket AI</a>
       <a href="whitepaper.html"><span class="ic">&#128220;</span>Docs</a>
     </nav>
     <div class="sw-reseaux">
@@ -723,6 +720,25 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     </article>
   </aside>
 <main>
+<!-- ONGLETS-IA:debut (genere par outils/onglets_ia.js, ne pas editer ici) -->
+<style>
+.ia-onglets{margin:0 0 14px;padding:4px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;background:#E1E9F6;border-radius:16px}
+@media (max-width:640px){ .ia-onglets{grid-template-columns:1fr 1fr} }
+.ia-onglets a{display:flex;flex-direction:column;gap:2px;min-width:0;padding:8px 12px;border-radius:12px;text-decoration:none;color:#6B7C99;min-height:44px;justify-content:center}
+.ia-onglets a:hover{color:#0B1B36}
+.ia-onglets a[aria-current="page"]{background:#fff;color:#0B1B36;box-shadow:0 1px 2px rgba(11,27,54,.08),0 4px 12px rgba(11,27,54,.06)}
+.ia-onglets b{font:800 14px/1.2 Archivo,system-ui,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ia-onglets small{font-size:11.5px;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media (max-width:420px){ .ia-onglets small{display:none} }
+.ia-onglets a:focus-visible{outline:2px solid #1B5FE0;outline-offset:2px}
+</style>
+<nav class="ia-onglets" aria-label="AI Trading">
+  <a href="swoge_ai.html"><b>&#129302; SWOGE AI</b><small>Trading colony on new tokens</small></a>
+  <a href="swoge_perp.html"><b>&#128200; AI Perps</b><small>Agents on BTC, ETH, SOL perps</small></a>
+  <a href="swoge_predict.html" aria-current="page"><b>&#128302; Predict</b><small>PancakeSwap rounds, 5 min</small></a>
+  <a href="swoge_polymarket_ai.html"><b>&#127919; Polymarket AI</b><small>15-minute crypto markets</small></a>
+</nav>
+<!-- ONGLETS-IA:fin -->
 <div class="wrap">
 <style>
 /* ---- SWOGE PREDICT — propre a cette page ---- */

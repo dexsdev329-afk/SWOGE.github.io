@@ -22,6 +22,11 @@ const PAGES = [
 ];
 const DEBUT = '<!-- ONGLETS-IA:debut (genere par outils/onglets_ia.js, ne pas editer ici) -->';
 const FIN = '<!-- ONGLETS-IA:fin -->';
+/* Le style commun (01/10) : outils/ia_design.css, recopie tel quel dans chaque page qui porte
+   les marqueurs IA-DESIGN (une page sans eux n'est pas touchee : SWOGE AI garde le sien). */
+const D_DEBUT = '<!-- IA-DESIGN:debut (copie de outils/ia_design.css par outils/onglets_ia.js, ne pas editer ici) -->';
+const D_FIN = '<!-- IA-DESIGN:fin -->';
+function design() { return D_DEBUT + '\n<style>\n' + fs.readFileSync(path.join(__dirname, 'ia_design.css'), 'utf8').replace(/\s+$/, '') + '\n</style>\n' + D_FIN; }
 const ENTREE = '<a href="swoge_ai.html"%CLS%><span class="ic">&#129302;</span>AI Trading</a>';
 
 function bloc(courante) {
@@ -65,6 +70,8 @@ function menu(html, courante) {
 
 function transforme(f, html) {
   let h = menu(html, f);
+  const di = h.indexOf(D_DEBUT);
+  if (di >= 0) h = h.slice(0, di) + design() + h.slice(h.indexOf(D_FIN, di) + D_FIN.length);
   if (PAGES.some((p) => p.f === f)) {
     const b = bloc(f);
     const i = h.indexOf(DEBUT);
@@ -80,7 +87,7 @@ function transforme(f, html) {
 
 function pagesDuSite() { return fs.readdirSync(SITE).filter((f) => f.endsWith('.html')); }
 
-module.exports = { PAGES, bloc, menu, transforme, pagesDuSite, DEBUT, FIN, SITE };
+module.exports = { PAGES, bloc, menu, design, transforme, pagesDuSite, DEBUT, FIN, D_DEBUT, D_FIN, SITE };
 if (require.main === module) {
   let n = 0;
   for (const f of pagesDuSite()) {

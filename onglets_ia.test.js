@@ -19,6 +19,9 @@ for (const p of O.PAGES) {
   ok(b === O.bloc(p.f) && (barre.match(/aria-current="page"/g) || []).length === 1 && barre.includes('href="' + p.f + '" aria-current="page"'), p.f + ' : la barre commune, elle-meme marquee courante');
   ok((h.match(/<nav class="ia-onglets"/g) || []).length === 1, p.f + ' : une seule barre');
 }
+/* 01/10 : le style commun — chaque page qui porte les marqueurs a la copie exacte de outils/ia_design.css. */
+const avecDesign = O.pagesDuSite().filter((f) => lis(f).includes(O.D_DEBUT));
+ok(avecDesign.includes('swoge_polymarket_ai.html') && avecDesign.every((f) => lis(f).includes(O.design())), 'le style commun : ' + avecDesign.join(', ') + ' portent la copie exacte de ia_design.css');
 const menus = O.pagesDuSite().filter((f) => { const m = (lis(f).match(/<nav class="(?:sw-nav|wl-nav)">[\s\S]*?<\/nav>/) || [''])[0]; return /href="(swoge_perp|swoge_predict|swoge_polymarket_ai)\.html"/.test(m); });
 ok(menus.length === 0, menus.length ? 'menus qui listent encore les pages d IA : ' + menus.join(', ') : 'aucun menu du site ne liste plus Perp, Predict ou Polymarket AI : une entree « AI Trading »');
 

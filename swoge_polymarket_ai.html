@@ -27,7 +27,7 @@
 <meta name="theme-color" content="#1B5FE0">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Archivo:wght@600;700;800&display=swap" rel="stylesheet">
 <!-- ==================================================================
  * POLYMARKET AI (29 septembre 2026)
  *
@@ -39,57 +39,62 @@
  * est le temoin : un agent qui ne fait pas mieux que lui n'a rien trouve.
  * Tout ce qui vient du serveur est pose en textContent ; un lien n'est suivi que
  * s'il va vers polymarket.com.
+ *
+ * REFONTE DU 01/10/2026 (demande du proprietaire, maquette a l'appui) : blanc dominant,
+ * badge « paper trading only », six cartes d'etat, modele contre marche par periode,
+ * marches en cours, agents, tournoi, paris ouverts/regles en onglets. Les chiffres de la
+ * maquette etaient des exemples : chaque bloc ici est lu sur /poly/etat, et dit « -- »
+ * ou se cache quand le serveur ne donne pas la donnee. Le style commun aux pages AI
+ * Trading est dans outils/ia_design.css (recopie par outils/onglets_ia.js).
  * ================================================================== -->
 <style>
-:root{ --fond:#EEF3FB; --carte:#fff; --encre:#0B1B36; --pale:#5a6b85; --bleu:#1652f0; --violet:#5b3df5; --ligne:#E1E9F6; --ok:#0a7d3e; --err:#b3261e; --ambre:#9a6200; }
+/* La page (01/10/2026) : le style commun vient du bloc IA-DESIGN (outils/ia_design.css) ; ici,
+   seulement ce qui est propre a Polymarket AI. Les classes que le script pose (agent, tete,
+   temoin, pos, neg, peu, num, nom) gardent leur nom : les essais les lisent. */
 *{ box-sizing:border-box; }
 html{ -webkit-text-size-adjust:100%; }
-body{ margin:0; background:linear-gradient(180deg,#e9efff 0,var(--fond) 280px); color:var(--encre); font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; min-height:100vh; }
-a{ color:var(--bleu); }
-.haut{ display:flex; gap:14px; align-items:center; flex-wrap:wrap; max-width:1080px; margin:0 auto; padding:14px 16px 0; font-size:14px; }
-.haut .logo{ font-weight:800; color:var(--encre); text-decoration:none; margin-right:auto; }
-.haut a{ text-decoration:none; font-weight:600; }
-main{ max-width:1080px; margin:0 auto; padding:18px 16px 48px; }
-h1{ font-size:30px; margin:6px 0 6px; letter-spacing:-.01em; }
-h1 em{ font-style:normal; background:linear-gradient(90deg,var(--bleu),var(--violet)); -webkit-background-clip:text; background-clip:text; color:transparent; }
-h2{ font-size:19px; margin:0 0 8px; }
-.intro{ color:var(--pale); max-width:760px; margin:0 0 12px; }
-.bloc{ background:var(--carte); border:1px solid var(--ligne); border-radius:14px; padding:16px; margin-top:16px; box-shadow:0 6px 22px rgba(11,27,54,.05); min-width:0; }
-.recherche{ display:flex; gap:8px; flex-wrap:wrap; }
-.recherche input{ flex:1 1 240px; min-width:0; font:inherit; border:1px solid var(--ligne); border-radius:10px; padding:10px 12px; }
-.recherche select{ font:inherit; border:1px solid var(--ligne); border-radius:10px; padding:9px 8px; background:#fff; }
-.btn{ font:inherit; font-size:13.5px; font-weight:700; border:0; border-radius:999px; padding:9px 16px; background:var(--bleu); color:#fff; cursor:pointer; min-height:38px; }
-.btn.clair{ background:#eaf1ff; color:var(--bleu); }
-.btn:disabled{ opacity:.55; cursor:default; }
-.statut{ min-height:20px; color:var(--pale); font-size:13.5px; margin:8px 0; }
-.statut.err{ color:var(--err); }
-.verdict{ border-radius:12px; padding:12px 14px; font-weight:600; margin:10px 0; border:1px solid var(--ligne); background:#f6f8fd; }
-.verdict.ok{ background:#e9f8ef; border-color:#b9e6c9; color:var(--ok); }
-.verdict.non{ background:#fdf0ef; border-color:#f3c9c5; color:var(--err); }
-.verdict.peu{ background:#fff6e5; border-color:#f2dcae; color:var(--ambre); }
-.verdict small{ display:block; font-weight:500; color:var(--pale); margin-top:4px; }
-.tuiles{ display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:10px; margin-top:10px; }
-.tuile{ border:1px solid var(--ligne); border-radius:12px; padding:10px 12px; min-width:0; }
-.tuile .k{ font-size:12.5px; color:var(--pale); }
-.tuile .v{ font-size:20px; font-weight:800; overflow-wrap:anywhere; }
-.tuile .s{ font-size:12px; color:var(--pale); }
-.pos{ color:var(--ok); } .neg{ color:var(--err); }
-.defile{ overflow-x:auto; }
-table{ width:100%; border-collapse:collapse; font-size:13.5px; }
-th, td{ text-align:left; padding:6px 8px; border-top:1px solid var(--ligne); white-space:nowrap; }
-th{ color:var(--pale); font-weight:600; border-top:0; }
-.puces{ display:flex; flex-wrap:wrap; gap:6px; margin:6px 0 10px; }
-.puce{ font:inherit; font-size:13px; font-weight:600; border:1px solid var(--ligne); background:#fff; color:var(--encre); border-radius:999px; padding:6px 12px; cursor:pointer; min-height:34px; }
-.puce[aria-pressed="true"]{ border-color:var(--bleu); background:#eaf1ff; color:var(--bleu); }
-.marches{ display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:10px; }
-.marche{ border:1px solid var(--ligne); border-radius:12px; padding:10px 12px; min-width:0; }
-.marche .t{ font-weight:700; }
-.marche .barre{ display:flex; height:10px; border-radius:6px; overflow:hidden; margin:8px 0 4px; background:#f1d6d4; }
-.marche .barre span{ background:#9fd9b4; }
-.marche .p{ display:flex; justify-content:space-between; font-size:13px; }
-.lecture li{ margin:6px 0; }
-.note{ font-size:12.5px; color:var(--pale); margin-top:12px; }
+body{ margin:0; min-height:100vh; }
+a{ color:var(--ds-bleu); }
+main{ max-width:1180px; margin:0 auto; padding:18px 16px 48px; }
 [hidden]{ display:none !important; }
+.pos{ color:var(--ds-vert); } .neg{ color:var(--ds-rouge); }
+.agents{ display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:12px; margin-top:12px; }
+.agent{ border:1px solid var(--ds-ligne); border-radius:16px; padding:14px; min-width:0; background:var(--ds-blanc); }
+.agent .tete{ display:flex; justify-content:space-between; gap:8px; align-items:baseline; }
+.agent .nom{ font-weight:800; overflow-wrap:anywhere; }
+.agent .tete .pos, .agent .tete .neg{ font-weight:800; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.agent .role{ font-size:13px; color:var(--ds-pale); margin:4px 0 10px; }
+.agent dl{ margin:0; display:grid; grid-template-columns:auto 1fr; gap:4px 10px; font-size:13px; }
+.agent dt{ color:var(--ds-pale); } .agent dd{ margin:0; overflow-wrap:anywhere; }
+.agent.replie{ display:none; }
+.agent .trois{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; margin:0 0 8px; }
+.agent .trois div{ background:var(--ds-fond); border-radius:10px; padding:7px 8px; min-width:0; }
+.agent .trois small{ display:block; font-size:11px; color:var(--ds-pale); }
+.agent .trois b{ font-size:15px; font-variant-numeric:tabular-nums; }
+.agent details summary{ cursor:pointer; font-size:12.5px; font-weight:700; color:var(--ds-bleu); padding:2px 0 6px; }
+.agent .v{ margin-top:10px; padding-top:10px; border-top:1px solid var(--ds-ligne); font-size:13px; font-weight:600; }
+.temoin{ font-size:11px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:var(--ds-violet); background:#F1ECFE; border-radius:999px; padding:3px 8px; }
+.classement tr.peu td{ color:var(--ds-pale); }
+.classement tr.peu td.pos, .classement tr.peu td.neg{ opacity:.75; }
+td.nom{ white-space:normal !important; min-width:170px; }
+.preuve{ border:1px solid var(--ds-ligne); border-radius:16px; padding:14px 16px; background:var(--ds-fond); margin-bottom:16px; }
+.preuve h3{ margin-top:0 !important; }
+.preuve .gros{ font-weight:800; color:var(--ds-encre); font-size:15px; }
+.preuve p{ color:var(--ds-pale); font-size:13.5px; margin:0 0 8px; }
+.marches{ display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:12px; }
+.marche{ border:1px solid var(--ds-ligne); border-radius:16px; padding:14px; min-width:0; background:var(--ds-blanc); display:flex; flex-direction:column; gap:6px; }
+.marche .haut{ display:flex; justify-content:space-between; align-items:center; gap:8px; }
+.marche .actif{ font:800 18px/1 Inter,system-ui,sans-serif; }
+.marche .titre{ font-size:13px; color:var(--ds-pale); overflow-wrap:anywhere; }
+.marche .reste{ font:800 15px/1.2 Inter,system-ui,sans-serif; font-variant-numeric:tabular-nums; }
+.marche dl{ margin:0; display:grid; grid-template-columns:auto 1fr; gap:3px 10px; font-size:13px; }
+.marche dt{ color:var(--ds-pale); } .marche dd{ margin:0; text-align:right; font-variant-numeric:tabular-nums; }
+.marche .barre{ display:flex; height:8px; border-radius:6px; overflow:hidden; background:#FDECEB; }
+.marche .barre span{ background:#7FCCA0; }
+.marche a{ font-weight:700; font-size:13px; text-decoration:none; margin-top:auto; }
+.texte p{ color:var(--ds-pale); font-size:14px; margin:0 0 10px; }
+.texte b{ color:var(--ds-encre); }
+
 /* ==================== LA NOUVELLE BARRE, BLANCHE ====================
    DEMANDE : « tous se qu on viens de faire a blackjack html et spin html » —
    meme barre que `games.html`, `index.html`, `swogebet.html`,
@@ -297,43 +302,106 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 .sw-haut a, .sw-cote a, .sw-lat a{ color:inherit; text-decoration:none; }
 /* Le contenu de la page dans la colonne du milieu : la grille de la barre fixe sa largeur. */
 .sw-corps main{ max-width:none; }
-@media (max-width:420px){ h1{ font-size:25px; } .tuile .v{ font-size:18px; } }
-.agents{ display:grid; grid-template-columns:repeat(auto-fill,minmax(290px,1fr)); gap:12px; margin-top:10px; }
-/* Le classement complet (30/09) : toutes les strategies, du plus gagnant au plus perdant.
-   Sous 100 paris regles, le rang est grise : il dit la chance autant que l adresse. */
-.classement{ margin-top:18px; }
-.classement h3{ font-size:15px; margin:0 0 6px; }
-.classement .boite{ max-height:520px; overflow:auto; border:1px solid var(--ligne); border-radius:10px; background:var(--carte); }
-.classement th{ position:sticky; top:0; background:var(--carte); }
-.classement td.num, .classement th.num{ text-align:right; font-variant-numeric:tabular-nums; }
-.classement tr.peu td{ color:var(--pale); }
-.classement tr.peu td.pos, .classement tr.peu td.neg{ opacity:.75; }
-.classement td.nom{ white-space:normal; min-width:180px; }
-/* Le tournoi (30/09) : la regle, les chiffres, les derniers retires. */
-.tournoi{ margin-top:18px; }
-.tournoi h3{ font-size:15px; margin:0 0 6px; }
-.tournoi .boite{ max-height:360px; overflow:auto; border:1px solid var(--ligne); border-radius:10px; background:var(--carte); }
-.tournoi th{ position:sticky; top:0; background:var(--carte); }
-.tournoi td.num, .tournoi th.num{ text-align:right; font-variant-numeric:tabular-nums; }
-.tournoi td.nom{ white-space:normal; min-width:160px; }
-/* La preuve (30/09) : ou en est-on d un resultat, par fenetre et contre la barre. */
-.preuve{ margin:14px 0 4px; padding:12px 14px; border:1px solid var(--ligne); border-radius:10px; background:var(--carte); }
-.preuve h3{ font-size:15px; margin:0 0 6px; }
-.preuve .gros{ font-weight:700; }
-.preuve .boite{ margin-top:6px; max-height:320px; overflow:auto; }
-.preuve td.num, .preuve th.num{ text-align:right; font-variant-numeric:tabular-nums; }
-.preuve td.nom{ white-space:normal; min-width:150px; }
-.agent{ border:1px solid var(--ligne); border-radius:12px; padding:12px; min-width:0; }
-.agent .tete{ display:flex; justify-content:space-between; gap:8px; align-items:baseline; }
-.agent .nom{ font-weight:800; }
-.agent .role{ font-size:13px; color:var(--pale); margin:4px 0 8px; }
-.agent dl{ margin:0; display:grid; grid-template-columns:auto 1fr; gap:3px 10px; font-size:13.5px; }
-.agent dt{ color:var(--pale); } .agent dd{ margin:0; overflow-wrap:anywhere; }
-.agent .v{ margin-top:8px; font-size:13px; font-weight:600; }
-.temoin{ font-size:11.5px; font-weight:700; color:var(--violet); background:#efeaff; border-radius:999px; padding:2px 8px; }
 </style>
+<!-- IA-DESIGN:debut (copie de outils/ia_design.css par outils/onglets_ia.js, ne pas editer ici) -->
+<style>
+/* ==================================================================
+ * LE STYLE COMMUN DES PAGES « AI TRADING » (01/10/2026)
+ * Polymarket AI, AI Perps et Predict portent ce meme bloc, recopie par
+ * outils/onglets_ia.js entre les marqueurs IA-DESIGN : une seule source,
+ * trois pages identiques (onglets_ia.test.js echoue si une copie derive).
+ * Demande du proprietaire : blanc dominant, #F7F9FC, marine #0B1736,
+ * bleu #1652F0, violet #7C3AED, bordures #E6EBF2, rayons 16-20, ombres legeres.
+ * Tout est prefixe « ds- » : rien ne touche au decor commun (sw-*).
+ * ================================================================== */
+:root{ --ds-blanc:#FFFFFF; --ds-fond:#F7F9FC; --ds-encre:#0B1736; --ds-pale:#5B6B86; --ds-bleu:#1652F0; --ds-violet:#7C3AED;
+  --ds-ligne:#E6EBF2; --ds-vert:#0E8A4F; --ds-rouge:#C8322B; --ds-ambre:#A15C00; --ds-r:18px; --ds-r2:14px;
+  --ds-ombre:0 1px 2px rgba(11,23,54,.05),0 10px 30px rgba(11,23,54,.05); }
+body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+.ds main{ min-width:0; }
+.ds-hero{ position:relative; overflow:hidden; background:var(--ds-blanc); border:1px solid var(--ds-ligne); border-radius:20px; box-shadow:var(--ds-ombre);
+  padding:24px; display:grid; grid-template-columns:minmax(0,1.5fr) minmax(0,1fr); gap:20px; align-items:center; }
+.ds-hero::before{ content:""; position:absolute; inset:0 0 auto 0; height:4px; background:linear-gradient(90deg,var(--ds-bleu),var(--ds-violet)); }
+.ds-hero h1{ font:800 34px/1.1 Inter,system-ui,sans-serif; letter-spacing:-.02em; margin:10px 0 8px; color:var(--ds-encre); }
+.ds-hero h1 em{ font-style:normal; background:linear-gradient(90deg,var(--ds-bleu),var(--ds-violet)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+.ds-hero p{ margin:0 0 10px; color:var(--ds-pale); max-width:640px; }
+.ds-hero .ds-faits{ display:grid; gap:8px; }
+.ds-fait{ display:flex; gap:10px; align-items:flex-start; padding:10px 12px; border:1px solid var(--ds-ligne); border-radius:var(--ds-r2); background:var(--ds-fond); font-size:13.5px; }
+.ds-fait b{ display:block; color:var(--ds-encre); }
+.ds-fait span{ color:var(--ds-pale); }
+.ds-fait i{ font-style:normal; font-size:18px; line-height:1.2; }
+@media (max-width:820px){ .ds-hero{ grid-template-columns:1fr; padding:18px; } .ds-hero h1{ font-size:28px; } }
+.ds-badges{ display:flex; flex-wrap:wrap; gap:6px; }
+.ds-badge{ display:inline-flex; align-items:center; gap:6px; font:800 11px/1 Inter,system-ui,sans-serif; letter-spacing:.08em; text-transform:uppercase;
+  padding:7px 10px; border-radius:999px; border:1px solid var(--ds-ligne); background:var(--ds-blanc); color:var(--ds-encre); }
+.ds-badge.papier{ background:#F1ECFE; border-color:#DCCFFC; color:var(--ds-violet); }
+.ds-badge.risque{ background:#FDECEB; border-color:#F6C9C6; color:var(--ds-rouge); }
+.ds-badge.reel{ background:#FFF4E0; border-color:#F2D9A8; color:var(--ds-ambre); }
+.ds-badge .pt{ width:7px; height:7px; border-radius:50%; background:#9AA6BA; }
+.ds-badge.vif .pt{ background:var(--ds-vert); box-shadow:0 0 0 3px rgba(14,138,79,.15); }
+.ds-badge.panne .pt{ background:var(--ds-rouge); }
+.ds-statut{ min-height:20px; color:var(--ds-pale); font-size:13px; margin:10px 2px; }
+.ds-statut.err{ color:var(--ds-rouge); }
+.ds-kpis{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin:14px 0 0; }
+.ds-kpis.quatre{ grid-template-columns:repeat(4,minmax(0,1fr)); }
+@media (max-width:900px){ .ds-kpis.quatre{ grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media (max-width:640px){ .ds-kpis{ grid-template-columns:repeat(2,minmax(0,1fr)); } }
+.ds-kpi{ background:var(--ds-blanc); border:1px solid var(--ds-ligne); border-radius:16px; padding:14px; box-shadow:var(--ds-ombre); min-width:0; }
+.ds-kpi small{ display:block; font:700 11px/1.3 Inter,system-ui,sans-serif; letter-spacing:.06em; text-transform:uppercase; color:var(--ds-pale); }
+.ds-kpi b{ display:block; font:800 22px/1.25 Inter,system-ui,sans-serif; margin:6px 0 2px; overflow-wrap:anywhere; font-variant-numeric:tabular-nums; }
+.ds-kpi span{ display:block; font-size:12.5px; color:var(--ds-pale); }
+.ds-carte{ background:var(--ds-blanc); border:1px solid var(--ds-ligne); border-radius:var(--ds-r); box-shadow:var(--ds-ombre); padding:20px; margin-top:16px; min-width:0; }
+.ds-carte > h2, .ds-tete h2{ font:800 19px/1.25 Inter,system-ui,sans-serif; margin:0; color:var(--ds-encre); }
+.ds-tete{ display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end; justify-content:space-between; margin-bottom:12px; }
+.ds-tete p, .ds-sous{ margin:4px 0 0; color:var(--ds-pale); font-size:13.5px; max-width:720px; }
+.ds-carte h3{ font:800 15px/1.3 Inter,system-ui,sans-serif; margin:18px 0 6px; }
+.ds-grille2{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
+.ds-grille3{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+@media (max-width:820px){ .ds-grille2, .ds-grille3{ grid-template-columns:1fr; } }
+.ds-seg{ display:inline-flex; gap:2px; padding:3px; border-radius:12px; background:#EEF2F8; border:1px solid var(--ds-ligne); flex-wrap:wrap; }
+.ds-seg button{ font:700 12.5px/1 Inter,system-ui,sans-serif; border:0; background:transparent; color:var(--ds-pale); padding:8px 12px; border-radius:9px; cursor:pointer; min-height:32px; }
+.ds-seg button[aria-pressed="true"], .ds-seg button[aria-selected="true"]{ background:var(--ds-blanc); color:var(--ds-encre); box-shadow:0 1px 2px rgba(11,23,54,.1); }
+.ds-seg button:focus-visible{ outline:2px solid var(--ds-bleu); outline-offset:1px; }
+.ds-table{ overflow-x:auto; border:1px solid var(--ds-ligne); border-radius:var(--ds-r2); }
+.ds-table table{ width:100%; border-collapse:collapse; font-size:13.5px; }
+.ds-table th, .ds-table td{ text-align:left; padding:9px 12px; border-top:1px solid var(--ds-ligne); white-space:nowrap; }
+.ds-table th{ border-top:0; background:var(--ds-fond); color:var(--ds-pale); font:700 11.5px/1.3 Inter,system-ui,sans-serif; letter-spacing:.04em; text-transform:uppercase; position:sticky; top:0; }
+.ds-table td.num, .ds-table th.num{ text-align:right; font-variant-numeric:tabular-nums; }
+.ds-table.haut{ max-height:440px; overflow:auto; }
+.ds-pos{ color:var(--ds-vert); } .ds-neg{ color:var(--ds-rouge); }
+.ds-pill{ display:inline-block; font:700 11.5px/1 Inter,system-ui,sans-serif; padding:5px 8px; border-radius:999px; background:#EEF2F8; color:var(--ds-pale); }
+.ds-pill.up{ background:#E6F5EC; color:var(--ds-vert); } .ds-pill.down{ background:#FDECEB; color:var(--ds-rouge); }
+.ds-pill.bleu{ background:#E9F0FF; color:var(--ds-bleu); } .ds-pill.violet{ background:#F1ECFE; color:var(--ds-violet); }
+.ds-verdict{ border-radius:var(--ds-r2); padding:12px 14px; font-weight:600; margin:10px 0; border:1px solid var(--ds-ligne); background:var(--ds-fond); }
+.ds-verdict.ok{ background:#E9F7EF; border-color:#BFE5CF; color:var(--ds-vert); }
+.ds-verdict.non{ background:#FDF0EF; border-color:#F3C9C5; color:var(--ds-rouge); }
+.ds-verdict.peu{ background:#FFF6E5; border-color:#F2DCAE; color:var(--ds-ambre); }
+.ds-graphe{ position:relative; border:1px solid var(--ds-ligne); border-radius:var(--ds-r2); background:var(--ds-blanc); padding:10px; }
+.ds-graphe svg{ display:block; width:100%; height:auto; }
+.ds-graphe .vide{ padding:46px 12px; text-align:center; color:var(--ds-pale); font-size:13.5px; }
+.ds-legende{ display:flex; flex-wrap:wrap; gap:14px; font-size:12.5px; color:var(--ds-pale); margin:8px 2px 0; }
+.ds-legende i{ display:inline-block; width:12px; height:3px; border-radius:2px; vertical-align:middle; margin-right:6px; }
+.ds-etapes{ counter-reset:e; list-style:none; padding:0; margin:0; display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:12px; }
+.ds-etapes li{ counter-increment:e; border:1px solid var(--ds-ligne); border-radius:16px; padding:14px; background:var(--ds-fond); font-size:13.5px; color:var(--ds-pale); }
+.ds-etapes li::before{ content:counter(e); display:grid; place-items:center; width:28px; height:28px; border-radius:9px; margin-bottom:8px;
+  background:linear-gradient(135deg,var(--ds-bleu),var(--ds-violet)); color:#fff; font:800 13px/1 Inter,system-ui,sans-serif; }
+.ds-etapes b{ display:block; color:var(--ds-encre); margin-bottom:4px; }
+.ds-avis{ display:flex; gap:12px; align-items:flex-start; border-radius:var(--ds-r); padding:16px 18px; border:1px solid #DCCFFC; background:#F7F3FF; color:var(--ds-encre); margin-top:16px; font-size:14px; }
+.ds-avis.risque{ border-color:#F6C9C6; background:#FFF5F4; }
+.ds-avis i{ font-style:normal; font-size:20px; line-height:1.2; }
+.ds-avis p{ margin:0 0 4px; }
+.ds-avis a{ color:var(--ds-bleu); }
+.ds-bouton{ font:700 13.5px/1 Inter,system-ui,sans-serif; border:1px solid var(--ds-ligne); background:var(--ds-blanc); color:var(--ds-bleu); border-radius:12px; padding:11px 16px; cursor:pointer; min-height:40px; }
+.ds-bouton:hover{ border-color:var(--ds-bleu); }
+.ds-bouton.plein{ background:var(--ds-bleu); border-color:var(--ds-bleu); color:#fff; }
+.ds-bouton:disabled{ opacity:.55; cursor:default; }
+.ds-note{ font-size:12.5px; color:var(--ds-pale); margin-top:10px; }
+.ds-vide{ padding:16px; text-align:center; color:var(--ds-pale); font-size:13.5px; border:1px dashed var(--ds-ligne); border-radius:var(--ds-r2); }
+@media (max-width:420px){ .ds-carte{ padding:16px; } .ds-kpi b{ font-size:19px; } }
+</style>
+<!-- IA-DESIGN:fin -->
 </head>
-<body>
+<body class="ds">
 <!-- LE MENU COMMUN (29/09, demande du proprietaire) : la barre blanche, la colonne de gauche
      et celle de droite, recopiees de `swogeagentic.html`. `stakebubble.js` (en bas) y pose la
      connexion et reprend les entrees de la colonne dans son tiroir : c'est le menu du telephone. -->
@@ -436,81 +504,153 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   <a href="swoge_polymarket_ai.html" aria-current="page"><b>&#127919; Polymarket AI</b><small>15-minute crypto markets</small></a>
 </nav>
 <!-- ONGLETS-IA:fin -->
-  <h1>Polymarket <em>AI</em></h1>
-  <p class="intro">A colony of AI agents trades Polymarket&rsquo;s 15-minute crypto markets &mdash; will Bitcoin, Ethereum, Solana or XRP end the next 15 minutes higher? &mdash; with <b>paper money</b>, around the clock. They buy at the prices really on offer, and pay the official fees. <b>Coin</b> picks at random: it shows what luck, the spread and the fees give on their own. An agent that does no better than Coin has found nothing.</p>
-  <p class="statut" id="statut" role="status">Loading the colony&hellip;</p>
+  <section class="ds-hero" aria-labelledby="t-titre">
+    <div>
+      <div class="ds-badges">
+        <span class="ds-badge papier">&#128221; Paper trading only</span>
+        <span class="ds-badge" id="pastille"><span class="pt"></span><span id="pastilleTxt">Connecting</span></span>
+      </div>
+      <h1 id="t-titre">Polymarket <em>AI</em></h1>
+      <p>A colony of AI agents trades Polymarket&rsquo;s 15-minute crypto markets &mdash; will Bitcoin, Ethereum, Solana or XRP end the next 15 minutes higher? &mdash; with <b>paper money</b>, around the clock. They buy at the prices really on offer, and pay the official fees. <b>Coin</b> picks at random: it shows what luck, the spread and the fees give on their own. An agent that does no better than Coin has found nothing.</p>
+      <p class="ds-sous" id="depuis"></p>
+    </div>
+    <div class="ds-faits">
+      <div class="ds-fait"><i>&#128221;</i><div><b>Paper money only</b><span>No key, no order, no wallet. Nothing is ever placed on Polymarket.</span></div></div>
+      <div class="ds-fait"><i>&#128214;</i><div><b>Real prices, official fees</b><span>Bought at the ask on the live order book; the fee rate is read on each market.</span></div></div>
+      <div class="ds-fait"><i>&#127922;</i><div><b>A random control</b><span>Coin bets at random. Doing no better than Coin means no edge.</span></div></div>
+    </div>
+  </section>
+  <p class="ds-statut statut" id="statut" role="status">Loading the colony&hellip;</p>
 
-  <section class="bloc" aria-labelledby="t-agents">
-    <h2 id="t-agents">The agents</h2>
-    <p class="intro" id="depuis"></p>
-    <p class="intro" id="effectif" hidden></p>
+  <section aria-label="Colony status">
+    <div class="ds-kpis" id="kpis"></div>
+  </section>
+
+  <section class="ds-carte" aria-labelledby="t-calib">
+    <div class="ds-tete">
+      <div>
+        <h2 id="t-calib">Model vs market</h2>
+        <p>With 5 minutes left in every window, without betting, SWOGE writes down its model&rsquo;s probability of &ldquo;Up&rdquo; and the market&rsquo;s price. Once resolved, both are scored (Brier score: lower is better). If the market scores better, no agent trading on the model has an edge, whatever it shows over an hour.</p>
+      </div>
+      <div class="ds-seg" role="group" aria-label="Period" id="periodes">
+        <button type="button" data-h="6" aria-pressed="false">6H</button>
+        <button type="button" data-h="24" aria-pressed="true">24H</button>
+        <button type="button" data-h="168" aria-pressed="false">7D</button>
+      </div>
+    </div>
+    <div class="ds-verdict verdict" id="calibVerdict"></div>
+    <p class="ds-sous" id="periodeTxt"></p>
+    <div class="ds-graphe" id="graphe"><div class="vide">Loading&hellip;</div></div>
+    <div class="ds-legende"><span><i style="background:#1652F0"></i>SWOGE model</span><span><i style="background:#7C3AED"></i>Market price</span><span>Running Brier score since the start of the period &mdash; lower is better</span></div>
+    <h3>All scored windows, by what the model said</h3>
+    <div class="ds-table"><table>
+      <thead><tr><th>Model said</th><th class="num">Windows</th><th class="num">Up happened</th><th class="num">Model average</th><th class="num">Market average</th></tr></thead>
+      <tbody id="seaux"></tbody>
+    </table></div>
+  </section>
+
+  <section class="ds-carte" aria-labelledby="t-marches">
+    <div class="ds-tete"><div>
+      <h2 id="t-marches">Live markets</h2>
+      <p>The 15-minute windows where the colony holds open paper bets right now. Prices are what the last paper buy paid, not a live quote.</p>
+    </div></div>
+    <div class="marches" id="marches"></div>
+  </section>
+
+  <section class="ds-carte" aria-labelledby="t-agents">
+    <div class="ds-tete"><div>
+      <h2 id="t-agents">The colony agents</h2>
+      <p id="effectif" hidden></p>
+    </div></div>
+    <div class="agents" id="agents"></div>
+    <div style="text-align:center;margin-top:12px"><button type="button" class="ds-bouton" id="toutes" hidden></button></div>
+  </section>
+
+  <section class="ds-carte" aria-labelledby="t-tournoi">
+    <div class="ds-tete"><div>
+      <h2 id="t-tournoi">Strategy tournament</h2>
+      <p>Every strategy runs on the same markets with the same paper stake. Nothing here is a verdict until the numbers say so.</p>
+    </div></div>
     <div class="preuve" id="preuve" hidden>
       <h3>Is there a real result yet?</h3>
-      <p class="intro gros" id="prVerdict"></p>
-      <p class="intro" id="prRegle"></p>
-      <p class="intro" id="prReel" hidden></p>
-      <div class="boite"><table>
+      <p class="gros" id="prVerdict"></p>
+      <p id="prRegle"></p>
+      <p id="prReel" hidden></p>
+      <div class="ds-table"><table>
         <thead><tr><th>Strategy</th><th class="num">Windows</th><th class="num">Skill / window</th><th class="num">P&amp;L</th></tr></thead>
         <tbody id="prLignes"></tbody>
       </table></div>
     </div>
-    <div class="agents" id="agents"></div>
     <div class="classement" id="classement" hidden>
       <h3>All strategies, from most to least profitable</h3>
-      <p class="intro" id="clResume"></p>
-      <div class="boite"><table>
+      <p class="ds-sous" id="clResume"></p>
+      <div class="ds-table haut" style="margin-top:8px"><table>
         <thead><tr><th class="num">#</th><th>Strategy</th><th class="num">Settled</th><th class="num">Won</th><th class="num">P&amp;L</th><th class="num">Skill / window</th><th class="num">Judged at</th></tr></thead>
         <tbody id="clLignes"></tbody>
       </table></div>
     </div>
     <div class="tournoi" id="tournoi" hidden>
       <h3>The tournament: 500 settled bets to prove it</h3>
-      <p class="intro" id="toRegle"></p>
-      <p class="intro" id="toChiffres"></p>
-      <div class="boite"><table>
+      <p class="ds-sous" id="toRegle"></p>
+      <p class="ds-sous" id="toChiffres"></p>
+      <div class="ds-table haut" style="margin-top:8px"><table>
         <thead><tr><th>Retired strategy</th><th class="num">Settled</th><th class="num">Won</th><th class="num">P&amp;L</th><th>Retired</th></tr></thead>
         <tbody id="toLignes"></tbody>
       </table></div>
     </div>
   </section>
 
-  <section class="bloc" aria-labelledby="t-calib">
-    <h2 id="t-calib">Model against market</h2>
-    <p class="intro">With 5 minutes left in every window, without betting, SWOGE writes down its model&rsquo;s probability of &ldquo;Up&rdquo; and the market&rsquo;s price. Once resolved, both are scored (Brier score: lower is better). If the market scores better, no agent trading on the model has an edge, whatever it shows over an hour.</p>
-    <div class="verdict" id="calibVerdict"></div>
-    <div class="defile"><table>
-      <thead><tr><th>Model said</th><th>Windows</th><th>Up happened</th><th>Model average</th><th>Market average</th></tr></thead>
-      <tbody id="seaux"></tbody>
-    </table></div>
-  </section>
-
-  <section class="bloc" aria-labelledby="t-ouverts">
-    <h2 id="t-ouverts">Open paper bets</h2>
-    <div class="defile"><table>
+  <section class="ds-carte" aria-labelledby="t-paris">
+    <div class="ds-tete">
+      <div><h2 id="t-paris">Paper bets</h2><p>Every bet the colony placed with paper money, with the price it paid and the fee.</p></div>
+      <div class="ds-seg" role="tablist" aria-label="Bets">
+        <button type="button" role="tab" id="ongOuverts" aria-selected="true" aria-controls="boiteOuverts">Open <span id="nOuverts"></span></button>
+        <button type="button" role="tab" id="ongRecents" aria-selected="false" aria-controls="boiteRecents">Settled <span id="nRecents"></span></button>
+      </div>
+    </div>
+    <div class="ds-table haut" id="boiteOuverts" role="tabpanel" aria-labelledby="ongOuverts"><table>
       <thead><tr><th>Window (UTC)</th><th>Agent</th><th>Market</th><th>Side</th><th>Price</th><th>Fee</th><th>Model</th></tr></thead>
       <tbody id="ouverts"></tbody>
     </table></div>
-  </section>
-
-  <section class="bloc" aria-labelledby="t-recents">
-    <h2 id="t-recents">Settled paper bets</h2>
-    <div class="defile"><table>
+    <div class="ds-table haut" id="boiteRecents" role="tabpanel" aria-labelledby="ongRecents" hidden><table>
       <thead><tr><th>Window (UTC)</th><th>Agent</th><th>Market</th><th>Side</th><th>Price</th><th>Fee</th><th>Result</th><th>P&amp;L</th></tr></thead>
       <tbody id="recents"></tbody>
     </table></div>
   </section>
 
-  <section class="bloc" aria-labelledby="t-comment">
-    <h2 id="t-comment">How it works</h2>
-    <ol class="lecture">
-      <li><b>The markets.</b> Each window resolves &ldquo;Up&rdquo; if Chainlink&rsquo;s 60-second average price at the end is at or above the one at the start. SWOGE reads the real order book every 15 seconds.</li>
-      <li><b>The bets.</b> $10 of paper money per bet, one bet per agent per window, bought at the ask like a taker, walking up the book. No maker orders: whether they would fill cannot be known without really placing them.</li>
-      <li><b>The fees.</b> Polymarket&rsquo;s published formula: shares &times; rate &times; p &times; (1 &minus; p), with the rate read on each market (7% on the day this started).</li>
-      <li><b>The model.</b> The price move since the window opened, against the volatility of the last 90 minutes, gives a probability of &ldquo;Up&rdquo;. Prices come from Hyperliquid, not Chainlink: the gap between the two is part of what is measured.</li>
-      <li><b>The verdicts.</b> No verdict under 100 settled bets. The skill score compares each result with the price paid: around 0 is luck, 2 or more starts to be unusual.</li>
-    </ol>
-    <p class="note">Paper money only: no key, no order, no wallet. Polymarket is not available in every country (France included). Nothing here is investment advice. Check any real trader with the <a href="swoge_polymarket.html">Polymarket Edge Check</a>.</p>
+  <section class="ds-carte texte" aria-labelledby="t-lecture">
+    <h2 id="t-lecture">Model vs market, in plain words</h2>
+    <div class="ds-grille2" style="margin-top:10px">
+      <div>
+        <p><b>The market price is already a probability.</b> A share of &ldquo;Up&rdquo; at 62&cent; says the crowd puts Up at about 62%. To make money, the model must be right more often than the price says, by more than the spread and the fee.</p>
+        <p><b>The Brier score measures it.</b> Each window, the squared gap between the forecast and what happened (1 for Up, 0 for Down). A perfect forecast scores 0; always saying 50% scores 0.25.</p>
+      </div>
+      <div>
+        <p><b>If the market scores lower, the model has no edge.</b> Any profit an agent shows over a few hours is then luck, and it fades as bets pile up.</p>
+        <p><b>Small samples are not results.</b> Below 100 scored windows the page shows the numbers but names no winner; bets placed in the same 15 minutes on four coins count as one observation, because the coins move together.</p>
+      </div>
+    </div>
   </section>
+
+  <section class="ds-carte" aria-labelledby="t-comment">
+    <h2 id="t-comment">How it works</h2>
+    <ol class="ds-etapes" style="margin-top:12px">
+      <li><b>The markets</b>Each window resolves &ldquo;Up&rdquo; if Chainlink&rsquo;s 60-second average price at the end is at or above the one at the start. SWOGE reads the real order book every 15 seconds.</li>
+      <li><b>The bets</b>$10 of paper money per bet, one bet per agent per window, bought at the ask like a taker, walking up the book. No maker orders: whether they would fill cannot be known without really placing them.</li>
+      <li><b>The fees</b>Polymarket&rsquo;s published formula: shares &times; rate &times; p &times; (1 &minus; p), with the rate read on each market (7% on the day this started).</li>
+      <li><b>The model</b>The price move since the window opened, against the volatility of the last 90 minutes, gives a probability of &ldquo;Up&rdquo;. Prices come from Hyperliquid, not Chainlink: the gap between the two is part of what is measured.</li>
+      <li><b>The verdicts</b>No verdict under 100 settled bets. The skill score compares each result with the price paid: around 0 is luck, 2 or more starts to be unusual.</li>
+    </ol>
+  </section>
+
+  <div class="ds-avis" role="note">
+    <i>&#128221;</i>
+    <div>
+      <p><b>Paper trading only.</b> No key, no order, no wallet: every bet on this page is simulated with fake money at real prices. Results here are not profits and promise none.</p>
+      <p class="ds-note" style="margin:0">Polymarket is not available in every country (France included). Nothing here is investment advice. Check any real trader with the <a href="swoge_polymarket.html">Polymarket Edge Check</a>.</p>
+    </div>
+  </div>
+
 </main>
 
   <aside class="sw-lat">
@@ -544,8 +684,10 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   function pct(x){ return Math.round(Number(x) * 1000) / 10 + "%"; }
   function cents(x){ return x == null ? "\u2014" : Math.round(Number(x) * 1000) / 10 + "\u00a2"; }
   function heure(s){ return String(s || "").slice(5, 16).replace("T", " "); }
-  function statut(t, err){ var s = $("statut"); s.textContent = t || ""; s.className = "statut" + (err ? " err" : ""); }
-  var NOMS = {};
+  function statut(t, err){ var s = $("statut"); s.textContent = t || ""; s.className = "ds-statut statut" + (err ? " err" : ""); }
+  /* La pastille du haut : en direct, derniere lecture, ou serveur qui redemarre — jamais « live » sans reponse. */
+  function pastille(etat, txt){ $("pastille").className = "ds-badge " + etat; $("pastilleTxt").textContent = txt; }
+  var NOMS = {}, CARTES_VUES = 6, TOUTES = false;
 
   function carte(a){
     var c = el("div", "agent"), t = el("div", "tete");
@@ -553,6 +695,14 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     if (a.id === "coin") t.appendChild(el("span", "temoin", "control"));
     t.appendChild(el("span", Number(a.pnl) >= 0 ? "pos" : "neg", signe(a.pnl)));
     c.appendChild(t); c.appendChild(el("p", "role", a.role));
+    /* 01/10 : trois chiffres en tete, le detail replie (25 cartes depliees faisaient 6 000 px). */
+    var tr3 = el("div", "trois");
+    function chiffre(k, v){ var x = el("div"); x.appendChild(el("small", null, k)); x.appendChild(el("b", null, v)); tr3.appendChild(x); }
+    chiffre("Settled", String(a.resolved));
+    chiffre("Won", a.winRate ? pct(a.winRate.p) : "--");
+    chiffre("Skill / window", a.skillPerWindow == null ? "--" : String(a.skillPerWindow));
+    c.appendChild(tr3);
+    var det = el("details"); det.appendChild(el("summary", null, "Details"));
     var dl = el("dl");
     function ligne(k, v){ dl.appendChild(el("dt", null, k)); dl.appendChild(el("dd", null, v)); }
     ligne("Paper bank", usd(a.bank) + " (from $1,000)");
@@ -568,7 +718,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     if (a.real && a.real.repriced) ligne("Real order book", a.real.repriced + " bets re-priced after the order delay: " + signe(a.real.pnlAfterDelay) +
       " (paper " + signe(a.real.paperPnl) + ")" + (a.real.emptyBook ? " \u00b7 " + a.real.emptyBook + " with nothing left to buy" : ""));
     ligne("Worst drawdown", a.drawdown ? "\u2212" + usd(a.drawdown) : "$0.00");
-    c.appendChild(dl); c.appendChild(el("div", "v", a.verdict));
+    det.appendChild(dl); c.appendChild(det); c.appendChild(el("div", "v", a.verdict));
     return c;
   }
   /* Le classement complet : chaque strategie, ecrite en texte, jamais en HTML. */
@@ -683,6 +833,9 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     });
   }
   function peint(d){
+    /* 01/10 : le classement porte le nom de TOUTES les strategies (les paris ouverts citaient
+       « fade_s85_t130 » quand la strategie n avait pas de carte). */
+    (d.ranking || []).forEach(function(a){ if (a && a.id && a.name) NOMS[a.id] = a.name; });
     (d.agents || []).forEach(function(a){ NOMS[a.id] = a.name; });
     $("depuis").textContent = "Running since " + String(d.depuis || "").slice(0, 16).replace("T", " ") + " UTC \u00b7 $" + d.stakeUsd + " per bet \u00b7 no verdict under " + d.minResolved + " settled bets.";
     /* Combien tournent vraiment, dit par le serveur (30/09) : la page n en montre que 25. */
@@ -694,20 +847,162 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     } else ef.hidden = true;
     /* Du plus gagnant au plus perdant (30/09) : l ordre est garanti ici aussi, pas seulement par le serveur. */
     var g = $("agents"); g.textContent = "";
-    (d.agents || []).slice().sort(function(x, y){ return (Number(y.pnl) || 0) - (Number(x.pnl) || 0); }).forEach(function(a){ g.appendChild(carte(a)); });
+    var tous = (d.agents || []).slice().sort(function(x, y){ return (Number(y.pnl) || 0) - (Number(x.pnl) || 0); });
+    tous.forEach(function(a, i){ var c = carte(a); if (i >= CARTES_VUES && !TOUTES) c.classList.add("replie"); g.appendChild(c); });
+    var bt = $("toutes"); bt.hidden = tous.length <= CARTES_VUES; bt.textContent = TOUTES ? "Show fewer" : "Show all " + tous.length + " agents";
     peintClassement(d);
     peintTournoi(d);
     peintPreuve(d);
     var c = d.calibration || {}, v = $("calibVerdict");
-    if (!c.n) { v.className = "verdict peu"; v.textContent = "No window scored yet (" + (c.pending || 0) + " waiting for their result)."; }
-    else if (!c.enough) { v.className = "verdict peu"; v.textContent = "Too few windows to compare (" + c.n + "/" + c.minN + "). So far: model " + c.brierModel + ", market " + c.brierMarket + " (lower is better)."; }
-    else { var mieux = c.brierModel < c.brierMarket; v.className = "verdict " + (mieux ? "ok" : "non");
+    if (!c.n) { v.className = "ds-verdict verdict peu"; v.textContent = "No window scored yet (" + (c.pending || 0) + " waiting for their result)."; }
+    else if (!c.enough) { v.className = "ds-verdict verdict peu"; v.textContent = "Too few windows to compare (" + c.n + "/" + c.minN + "). So far: model " + c.brierModel + ", market " + c.brierMarket + " (lower is better)."; }
+    else { var mieux = c.brierModel < c.brierMarket; v.className = "ds-verdict verdict " + (mieux ? "ok" : "non");
       v.textContent = (mieux ? "The model has been better calibrated than the market" : "The market has been better calibrated than the model") + " over " + c.n + " windows: model " + c.brierModel + ", market " + c.brierMarket + " (lower is better)."; }
     var tb = $("seaux"); tb.textContent = "";
-    (c.buckets || []).forEach(function(b){ var tr = el("tr"); [b.range, String(b.n), pct(b.upRate), pct(b.model), pct(b.market)].forEach(function(x){ tr.appendChild(el("td", null, x)); }); tb.appendChild(tr); });
+    (c.buckets || []).forEach(function(b){ var tr = el("tr"); [b.range, String(b.n), pct(b.upRate), pct(b.model), pct(b.market)].forEach(function(x, i){ tr.appendChild(el("td", i ? "num" : null, x)); }); tb.appendChild(tr); });
     lignes("ouverts", d.open || [], false);
     lignes("recents", d.recent || [], true);
+    $("nOuverts").textContent = "(" + (d.open || []).length + ")";
+    $("nRecents").textContent = "(" + (d.recent || []).length + ")";
+    peintKpis(d);
+    peintMarches(d);
+    DERNIER = d; peintGraphe();
   }
+
+  /* ---- L ETAT DE LA COLONIE, EN SIX CARTES (01/10) ----
+     Chaque chiffre vient de /poly/etat et dit sur combien il porte ; absent, la carte dit « -- ». */
+  function nombre(x){ return Number(x || 0).toLocaleString("en-US"); }
+  function kpi(titre, valeur, sous, cls){ var k = el("div", "ds-kpi"); k.appendChild(el("small", null, titre)); k.appendChild(el("b", cls || null, valeur)); k.appendChild(el("span", null, sous)); return k; }
+  function peintKpis(d){
+    var g = $("kpis"); g.textContent = "";
+    var l = Array.isArray(d.ranking) ? d.ranking : [], regles = 0, ouverts = 0;
+    l.forEach(function(c){ regles += Number(c.resolved) || 0; ouverts += Number(c.open) || 0; });
+    var s = d.summary || {}, e = d.evidence, c = d.calibration || {}, r = d.reality, pa = d.parametric, t = d.tournament;
+    g.appendChild(kpi("Strategies running", d.totalStrategies ? nombre(d.totalStrategies) : "--",
+      pa ? nombre(pa.running) + " parametric" + (t && t.controls ? " \u00b7 " + t.controls + " controls" : "") : "Paper money only"));
+    g.appendChild(kpi("Settled paper bets", l.length ? nombre(regles) : "--", l.length ? nombre(ouverts || (d.open || []).length) + " open right now" : "--"));
+    g.appendChild(kpi("Combined paper P&L", s.total ? signe(s.totalPnl || 0) : "--",
+      s.total ? (s.inProfit || 0) + " in profit \u00b7 " + (s.inLoss || 0) + " at a loss \u00b7 fake money" : "--", s.total ? (Number(s.totalPnl) > 0 ? "pos" : Number(s.totalPnl) < 0 ? "neg" : null) : null));
+    g.appendChild(kpi("Proven edges", e && e.minWindows ? String(e.proven || 0) : "--",
+      e && e.minWindows ? "Skill above " + e.bar + " over " + e.minWindows + "+ windows, out of " + nombre(e.tested) + " tested" : "--"));
+    g.appendChild(kpi("Model vs market", c.n ? c.brierModel + " / " + c.brierMarket : "--",
+      c.n ? "Brier, model / market, over " + nombre(c.n) + " windows" + (c.enough ? "" : " \u2014 too few to compare") : "No window scored yet"));
+    var tr = r && r.trades;
+    g.appendChild(kpi("Real fills check", tr && tr.betsChecked ? pct(tr.confirmedAtOurPrice / tr.betsChecked) : "--",
+      tr && tr.betsChecked ? "of " + nombre(tr.betsChecked) + " bets saw a real trade at our price within " + tr.withinSeconds + " s" : "Not measured yet"));
+  }
+
+  /* ---- LES MARCHES EN COURS (01/10) ----
+     Lus dans les paris OUVERTS seulement : un marche ou la colonie n a rien n apparait pas. Le temps
+     restant se calcule sur la fin de la fenetre (debut + 15 min), pas sur l instant du pari. */
+  var NOMS_ACTIFS = { BTC: "Bitcoin", ETH: "Ethereum", SOL: "Solana", XRP: "XRP" };
+  function peintMarches(d){
+    var g = $("marches"); g.textContent = "";
+    var parCle = {}, ordre = [];
+    (d.open || []).forEach(function(p){
+      var k = p.asset + "|" + p.window;
+      if (!parCle[k]) { parCle[k] = { asset: p.asset, window: p.window, title: p.title, url: p.url, up: 0, down: 0, dernier: p }; ordre.push(k); }
+      if (p.side === "Up") parCle[k].up++; else parCle[k].down++;
+    });
+    if (!ordre.length) { g.appendChild(el("div", "ds-vide", "No open paper bet right now: the colony is waiting for the next 15-minute window.")); return; }
+    ordre.sort(function(a, b){ return String(parCle[a].window).localeCompare(String(parCle[b].window)) || String(parCle[a].asset).localeCompare(String(parCle[b].asset)); });
+    ordre.forEach(function(k){
+      var m = parCle[k], c = el("div", "marche"), h = el("div", "haut"), dl = el("dl");
+      h.appendChild(el("span", "actif", m.asset));
+      h.appendChild(el("span", "ds-pill bleu", (m.up + m.down) + " open bet" + (m.up + m.down === 1 ? "" : "s")));
+      c.appendChild(h);
+      c.appendChild(el("div", "titre", m.title ? String(m.title) : (NOMS_ACTIFS[m.asset] || m.asset) + " Up or Down \u00b7 " + heure(m.window)));
+      var fin = Date.parse(m.window) + 15 * 60000, reste = el("div", "reste", "--");
+      if (isFinite(fin)) reste.setAttribute("data-fin", String(fin));
+      c.appendChild(reste);
+      function ligne(k2, v){ dl.appendChild(el("dt", null, k2)); dl.appendChild(el("dd", null, v)); }
+      ligne("Model, last bet", m.dernier.model == null ? "--" : "Up " + pct(m.dernier.model));
+      ligne("Last paper buy", m.dernier.side + " at " + cents(m.dernier.price));
+      ligne("Paper bets", m.up + " Up \u00b7 " + m.down + " Down");
+      c.appendChild(dl);
+      var b = el("div", "barre"), sp = el("span"); sp.style.width = Math.round(m.up / (m.up + m.down) * 100) + "%"; b.appendChild(sp); c.appendChild(b);
+      var u = String(m.url || "");
+      if (/^https:\/\/polymarket\.com\/event\/[a-z0-9-]+$/.test(u)) { var a = el("a", null, "View on Polymarket \u2197"); a.href = u; a.target = "_blank"; a.rel = "noopener"; c.appendChild(a); }
+      g.appendChild(c);
+    });
+    compte();
+  }
+  function compte(){
+    [].forEach.call(document.querySelectorAll("#marches [data-fin]"), function(e){
+      var s = Math.round((Number(e.getAttribute("data-fin")) - Date.now()) / 1000);
+      e.textContent = s > 0 ? "Ends in " + Math.floor(s / 60) + ":" + ("0" + (s % 60)).slice(-2) : "Window closed \u2014 settling";
+    });
+  }
+  setInterval(compte, 1000);
+
+  /* ---- MODELE CONTRE MARCHE, PAR PERIODE (01/10) ----
+     Le serveur garde, par heure de depart, le nombre de fenetres notees et les sommes des carres ;
+     la courbe est le score de Brier CUMULE depuis le debut de la periode (une case d une heure ne
+     porte que 4 fenetres : trop peu pour un point a elle seule). Sous calibration.minN fenetres
+     sur la periode, les chiffres sont dits mais aucun gagnant n est nomme. */
+  var DERNIER = null, PERIODE = 24;
+  [].forEach.call(document.querySelectorAll("#periodes button"), function(b){
+    b.addEventListener("click", function(){
+      PERIODE = Number(b.getAttribute("data-h"));
+      [].forEach.call(document.querySelectorAll("#periodes button"), function(x){ x.setAttribute("aria-pressed", String(x === b)); });
+      peintGraphe();
+    });
+  });
+  var SVG = "http://www.w3.org/2000/svg";
+  function svg(tag, at){ var e = document.createElementNS(SVG, tag); for (var k in at) e.setAttribute(k, at[k]); return e; }
+  function peintGraphe(){
+    var g = $("graphe"), txt = $("periodeTxt"); g.textContent = ""; txt.textContent = "";
+    var c = (DERNIER && DERNIER.calibration) || {}, h = Array.isArray(c.hourly) ? c.hourly : null;
+    var nomP = PERIODE === 168 ? "7 days" : PERIODE + " hours";
+    if (!h) { g.appendChild(el("div", "vide", "The server does not keep scores by hour yet: only the totals above.")); return; }
+    var depuis = Date.now() - PERIODE * 3600000, pts = [], n = 0, m = 0, k = 0;
+    h.forEach(function(x){ var t = Date.parse(x.t); if (!(t >= depuis - 3600000) || !x.n) return; n += x.n; m += Number(x.sqModel) || 0; k += Number(x.sqMarket) || 0; pts.push({ t: t, m: m / n, k: k / n }); });
+    if (!pts.length) {
+      g.appendChild(el("div", "vide", h.length ? "No window scored in the last " + nomP + "." : "Hourly history starts with the first window scored after " + (c.hourlySince ? String(c.hourlySince).slice(0, 16).replace("T", " ") + " UTC" : "this update") + ". The totals above cover every window."));
+      return;
+    }
+    var fm = Math.round(m / n * 10000) / 10000, fk = Math.round(k / n * 10000) / 10000, min = c.minN || 100;
+    txt.textContent = "Last " + nomP + ": " + n + " window" + (n === 1 ? "" : "s") + " scored \u00b7 model " + fm + " \u00b7 market " + fk +
+      (n < min ? " \u2014 too few to compare (" + n + "/" + min + ")." : fm < fk ? " \u2014 the model was better calibrated over this period." : fm > fk ? " \u2014 the market was better calibrated over this period." : " \u2014 a tie.");
+    /* La largeur reelle du cadre (01/10) : un dessin de 640 reduit a 330 px rendait les chiffres illisibles au telephone. */
+    var W = Math.max(280, Math.min(900, (g.clientWidth || 640) - 22)), H = W < 480 ? 200 : 220, G = 48, D = 12, Hh = 14, B = 26;
+    var ys = []; pts.forEach(function(p){ ys.push(p.m, p.k); });
+    var lo = Math.min.apply(null, ys), hi = Math.max.apply(null, ys), marge = Math.max((hi - lo) * 0.15, 0.005);
+    lo = Math.max(0, lo - marge); hi = hi + marge;
+    var t0 = pts[0].t, t1 = pts[pts.length - 1].t; if (t1 === t0) { t0 -= 1800000; t1 += 1800000; }
+    var X = function(t){ return G + (t - t0) / (t1 - t0) * (W - G - D); }, Y = function(v){ return Hh + (hi - v) / (hi - lo) * (H - Hh - B); };
+    var s = svg("svg", { viewBox: "0 0 " + W + " " + H, role: "img", "aria-label": "Running Brier score, model against market, last " + nomP });
+    for (var i = 0; i <= 4; i++) {
+      var v = lo + (hi - lo) * i / 4, y = Y(v);
+      s.appendChild(svg("line", { x1: G, x2: W - D, y1: y, y2: y, stroke: "#E6EBF2" }));
+      var lt = svg("text", { x: G - 6, y: y + 4, "text-anchor": "end", "font-size": "11", fill: "#5B6B86" }); lt.textContent = v.toFixed(3); s.appendChild(lt);
+    }
+    [t0, (t0 + t1) / 2, t1].forEach(function(t, j){
+      var d0 = new Date(t), lb = PERIODE > 24 ? d0.toISOString().slice(5, 10) + " " + d0.toISOString().slice(11, 13) + "h" : d0.toISOString().slice(11, 16);
+      var tx = svg("text", { x: X(t), y: H - 6, "text-anchor": j === 0 ? "start" : j === 2 ? "end" : "middle", "font-size": "11", fill: "#5B6B86" }); tx.textContent = lb + (j === 2 ? " UTC" : ""); s.appendChild(tx);
+    });
+    [["m", "#1652F0"], ["k", "#7C3AED"]].forEach(function(cc){
+      var dpath = pts.map(function(p, j){ return (j ? "L" : "M") + X(p.t).toFixed(1) + " " + Y(p[cc[0]]).toFixed(1); }).join(" ");
+      if (pts.length > 1) s.appendChild(svg("path", { d: dpath, fill: "none", stroke: cc[1], "stroke-width": "2.5", "stroke-linejoin": "round", "stroke-linecap": "round" }));
+      var p = pts[pts.length - 1]; s.appendChild(svg("circle", { cx: X(p.t), cy: Y(p[cc[0]]), r: 4, fill: cc[1] }));
+    });
+    g.appendChild(s);
+  }
+
+  $("toutes").addEventListener("click", function(){
+    TOUTES = !TOUTES;
+    [].forEach.call(document.querySelectorAll("#agents .agent"), function(c, i){ c.classList.toggle("replie", !TOUTES && i >= CARTES_VUES); });
+    this.textContent = TOUTES ? "Show fewer" : "Show all " + document.querySelectorAll("#agents .agent").length + " agents";
+  });
+  var redim = null, largeurVue = window.innerWidth;
+  window.addEventListener("resize", function(){ if (window.innerWidth === largeurVue) return; largeurVue = window.innerWidth; clearTimeout(redim); redim = setTimeout(peintGraphe, 200); });
+  /* Ouverts / regles : deux tableaux, un seul montre. */
+  function onglet(ouv){
+    $("ongOuverts").setAttribute("aria-selected", String(ouv)); $("ongRecents").setAttribute("aria-selected", String(!ouv));
+    $("boiteOuverts").hidden = !ouv; $("boiteRecents").hidden = ouv;
+  }
+  $("ongOuverts").addEventListener("click", function(){ onglet(true); });
+  $("ongRecents").addEventListener("click", function(){ onglet(false); });
   /* ---- LA DERNIERE LECTURE, GARDEE DANS CE NAVIGATEUR (29/09) ----
      Le proprietaire, a 20:35 UTC : « on dirait que ca a perdu toutes ses donnees ». Le serveur les
      avait toutes (269 paris depuis 16:02) : il redemarrait, comme a chaque mise en ligne Railway
@@ -720,23 +1015,26 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   function garde(d){ try { localStorage.setItem(CLE_LOCALE, JSON.stringify({ t: Date.now(), d: d })); } catch (e) {} }
   function relue(){ try { var x = JSON.parse(localStorage.getItem(CLE_LOCALE) || "null"); return x && x.d && x.d.ok && Array.isArray(x.d.agents) ? x : null; } catch (e) { return null; } }
   var derniere = relue();
-  if (derniere) { peint(derniere.d); statut("Showing the last reading, from " + heure(derniere.t) + " \u2014 loading the latest\u2026"); }
+  if (derniere) { peint(derniere.d); pastille("", "Last reading \u00b7 " + heure(derniere.t)); statut("Showing the last reading, from " + heure(derniere.t) + " \u2014 loading the latest\u2026"); }
   function suivant(ms){ clearTimeout(minuterie); minuterie = setTimeout(charge, ms); }
   function charge(){
     fetch(serveur() + "/poly/etat", { cache: "no-store" }).then(function(r){ return r.json(); }).then(function(d){
       if (!d || !d.ok || !Array.isArray(d.agents)) throw new Error("x");
       peint(d); garde(d); derniere = { t: Date.now(), d: d };
       statut("Updated " + new Date().toISOString().slice(11, 19) + " UTC \u2014 refreshed every 30 seconds.");
+      pastille("vif", "Live \u00b7 " + new Date().toISOString().slice(11, 16) + " UTC");
       suivant(30000);
     })["catch"](function(){
       statut(derniere ? "The server is restarting \u2014 nothing is lost. Showing the last reading, from " + heure(derniere.t) + "; retrying every 10 seconds."
                       : "The server is restarting \u2014 nothing is lost. Retrying every 10 seconds\u2026", true);
+      pastille("panne", derniere ? "Last reading \u00b7 " + heure(derniere.t) : "Server restarting");
       suivant(10000);
     });
   }
   charge();
 })();
 </script>
+
 <script>
 (function(){
   var btn = document.getElementById("gxMenuBtn");

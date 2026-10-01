@@ -51,6 +51,13 @@ const CALIBS = {
   peu: { n: 12, pending: 1, brierModel: 0.21, brierMarket: 0.19, enough: false, minN: 100, buckets: [{ range: '0.6–0.7', n: 12, upRate: 0.58, model: 0.65, market: 0.61 }] },
   marche: { n: 240, pending: 0, brierModel: 0.231, brierMarket: 0.198, enough: true, minN: 100, buckets: [] },
 };
+/* 01/10 : l historique par heure (le serveur garde les sommes) — 30 cases recentes de 4 fenetres,
+   le modele a 0,20 de score par fenetre et le marche a 0,18 ; une case vieille de 3 jours en plus. */
+const H0 = Math.floor(Date.now() / 3600000) * 3600000;
+CALIBS.marche.hourlySince = new Date(H0 - 80 * 3600000).toISOString();
+CALIBS.marche.hourly = [{ t: new Date(H0 - 72 * 3600000).toISOString(), n: 4, sqModel: 4, sqMarket: 0 }]
+  .concat(Array.from({ length: 30 }, (x, i) => ({ t: new Date(H0 - (29 - i) * 3600000).toISOString(), n: 4, sqModel: 0.8, sqMarket: 0.72 })));
+CALIBS.peu.hourly = []; CALIBS.peu.hourlySince = null;
 
 (async () => {
   if (!chromium) { console.log('playwright absent : essai ignore'); return; }
@@ -205,6 +212,44 @@ const CALIBS = {
     ok(true, 'le serveur revient : la page se remet a jour seule en moins de 15 s');
     const cle = await page.evaluate(() => localStorage.getItem('swogePolyEtat') || '');
     ok(!/key|secret|0x[0-9a-f]{64}/i.test(cle) && cle.length > 0, 'ce qui est garde dans le navigateur : la vue publique, rien d autre');
+    await ctx.close();
+  }
+
+  /* 01/10 : la refonte (« blanc dominant, paper trading only, aucune fausse donnee ») — chaque
+     nouveau bloc est lu sur /poly/etat, et dit « -- » ou se tait quand la donnee manque. */
+  console.log('\n-- 6. la refonte : etat, marches, periodes, onglets --');
+  {
+    let { page, ctx } = await ouvre('peu');
+    await page.waitForFunction(() => document.querySelectorAll('#kpis .ds-kpi').length === 6 && document.querySelectorAll('#agents .agent').length === 5);
+    ok(/paper trading only/i.test(await page.textContent('.ds-hero .ds-badges')), 'le badge « paper trading only » est en tete');
+    const k = await page.evaluate(() => [...document.querySelectorAll('#kpis .ds-kpi')].map((e) => e.textContent));
+    ok(/Strategies running200/.test(k[0]) && /Settled paper bets1,041/.test(k[1]) && /Combined paper P&L−\$1,315/.test(k[2]) && /fake money/.test(k[2]),
+       'les cartes d etat : strategies, paris regles (somme du classement), P&L papier dit comme tel [' + k.slice(0, 3).join(' | ') + ']');
+    ok(/Proven edges0/.test(k[3]) && /above 3\.67/.test(k[3]) && /0\.21 \/ 0\.19/.test(k[4]) && /too few to compare/.test(k[4]) && /75%/.test(k[5]) && /of 200 bets/.test(k[5]),
+       'aucune preuve, calibration sous le minimum dite « trop peu », controle des vrais echanges (150/200)');
+    const m = await page.evaluate(() => [...document.querySelectorAll('#marches .marche')].map((e) => [e.textContent, e.querySelector('a') && e.querySelector('a').href]));
+    ok(m.length === 1 && /BTC/.test(m[0][0]) && /1 open bet/.test(m[0][0]) && /Up 71\.6%/.test(m[0][0]) && /Up at 55¢/.test(m[0][0]) && m[0][1] === 'https://polymarket.com/event/btc-updown-15m-1790691300',
+       'les marches en cours : lus dans les paris ouverts, avec le lien polymarket.com');
+    ok(/Window closed/.test(m[0][0]), 'une fenetre deja finie ne montre pas de compte a rebours invente');
+    ok(/Hourly history starts with the first window scored after this update/.test(await page.textContent('#graphe')) && !(await page.$('#graphe svg')),
+       'sans historique horaire : aucune courbe, on dit quand elle commencera');
+    ok(await page.isHidden('#boiteRecents') && /2026|UTC/.test(await page.textContent('#ouverts')), 'les paris ouverts d abord');
+    await page.click('#ongRecents');
+    ok(await page.isVisible('#boiteRecents') && await page.isHidden('#boiteOuverts') && (await page.getAttribute('#ongRecents', 'aria-selected')) === 'true', 'l onglet « Settled » montre les paris regles');
+    ok(await page.isHidden('#toutes'), 'cinq agents : pas de bouton « tout montrer »');
+    await ctx.close();
+    ({ page, ctx } = await ouvre('marche'));
+    await page.waitForFunction(() => !!document.querySelector('#graphe svg'));
+    let t = await page.textContent('#periodeTxt');
+    ok(/^Last 24 hours: 100 windows scored · model 0\.2 · market 0\.18 — the market was better calibrated over this period\.$/.test(t),
+       'sur 24 h : chaque case qui touche la periode compte (25 cases de 4 fenetres), et le marche mieux calibre [' + t + ']');
+    ok((await page.$$('#graphe svg path')).length === 2, 'deux courbes : le modele et le marche');
+    await page.click('#periodes button[data-h="6"]');
+    t = await page.textContent('#periodeTxt');
+    ok(/^Last 6 hours: 28 windows scored/.test(t) && /too few to compare \(28\/100\)/.test(t) && !/better calibrated/.test(t), 'sur 6 h : 28 fenetres, sous 100 — aucun gagnant nomme [' + t + ']');
+    await page.click('#periodes button[data-h="168"]');
+    t = await page.textContent('#periodeTxt');
+    ok(/^Last 7 days: 124 windows scored · model 0\.2258 · market 0\.1742/.test(t), 'sur 7 jours : la case de 3 jours entre dans le calcul (28/124 et 21,6/124) [' + t + ']');
     await ctx.close();
   }
 

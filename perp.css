@@ -324,143 +324,155 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 }
 
 /* ==========================================================================
- * CE QUE CES DEUX PAGES SONT LES SEULES A AVOIR
+ * CE QUE LA PAGE DES PERPS EST SEULE A AVOIR
  *
- * Meme lumiere que le reste du site — blanc, bleu #1B5FE0, encre #0A1F44 —
- * parce qu'une page qui change de monde donne l'impression d'avoir quitte le
- * site. Les couleurs sont ecrites en clair, comme partout ici.
+ * Refonte du 01/10/2026 : le style commun aux pages AI Trading (blanc #FFFFFF,
+ * fond #F7F9FC, marine #0B1736, bleu #1652F0, violet #7C3AED, bordures #E6EBF2)
+ * vient du bloc IA-DESIGN de la page (outils/ia_design.css). Ici, seulement ce
+ * que perp.js peint : bande, cartes, tableaux, agents, audit, journal. Les noms
+ * de classes ne changent pas : perp.js et perp_page.test.js les lisent.
  * ======================================================================== */
 
 .pp-wrap{max-width:1180px; margin:0 auto; padding:0 0 40px}
 
-/* ---- LE TITRE ---- */
-.pp-tete{display:flex; align-items:center; gap:14px; flex-wrap:wrap;
-  background:#FFFFFF; border:1px solid #E1E9F6; border-radius:16px;
-  padding:14px 16px; margin:0 0 14px}
-.pp-logo{width:44px; height:44px; border-radius:13px; background:#EAF1FF;
-  display:grid; place-items:center; font-size:23px; flex:0 0 auto}
-.pp-tete h1{margin:0; font:800 19px/1.2 'Outfit',system-ui,sans-serif; color:#0A1F44}
-.pp-tete p{margin:3px 0 0; font:500 12px/1.4 'Outfit',system-ui,sans-serif; color:#6B7C99}
-.pp-puce{font:800 10px/1 'JetBrains Mono',ui-monospace,monospace; letter-spacing:.6px;
-  padding:7px 10px; border-radius:999px; background:#EAF1FF; color:#1B5FE0;
-  border:1px solid #D6E4FF; flex:0 0 auto}
-.pp-puce.papier{background:#FFF6E5; color:#A96A00; border-color:#FFE2AE}
-.pp-puce.vieux{background:#FDECEC; color:#B3261E; border-color:#F6C9C6}
-.pp-tete .pp-droite{margin-left:auto; display:flex; gap:8px; align-items:center; flex-wrap:wrap}
-
-/* ---- UNE COLONIE, TOUS LES MARCHES ----
-   Il y a eu un basculeur de marche en haut de page, du temps ou chaque marche
-   avait sa colonie. Il n'y en a plus qu'une : il ne reste rien a basculer, et
-   la puce le dit plutot que de laisser croire a un choix. */
-.pp-puce.une{background:#EEF7F1; color:#0F8A4F; border-color:#CCE8D9}
+/* ---- LE TITRE (une .ds-hero) ---- */
+.pp-tete{margin:0 0 14px}
+.pp-tete .pp-syms{margin:0 0 8px; font:800 12.5px/1.3 'JetBrains Mono',ui-monospace,monospace; letter-spacing:.06em; color:#1652F0}
+.pp-tete #ppSous{margin:0; color:#5B6B86}
+.pp-puce{flex:0 0 auto; cursor:default}
+button.pp-puce{cursor:pointer}
+.pp-puce.une{background:#E9F7EF; color:#0E8A4F; border-color:#BFE5CF}
+.pp-puce.vieux{background:#FDECEB; color:#C8322B; border-color:#F6C9C6}
+#ppStamp{font-family:'JetBrains Mono',ui-monospace,monospace; letter-spacing:.02em; text-transform:none}
 /* L'effectif d'une case apprise, a cote de son esperance. */
-.pp-n{font-style:normal; font:600 9px/1 'JetBrains Mono',ui-monospace,monospace; color:#A3B0C8}
+.pp-n{font-style:normal; font:600 10px/1 'JetBrains Mono',ui-monospace,monospace; color:#8A99B5}
 
-/* ---- LA BANDE DE CHIFFRES ----
-   Ce pour quoi on ouvre la page : elle est en haut, pleine largeur, et on ne
-   defile pas pour l'atteindre. */
-.pp-bande{display:grid; grid-template-columns:repeat(8,1fr); gap:10px; margin:0 0 14px}
-.pp-b{background:#FFFFFF; border:1px solid #E1E9F6; border-radius:14px; padding:12px 13px}
-.pp-b b{display:block; font:800 21px/1.15 'Outfit',system-ui,sans-serif; color:#0A1F44;
-  font-variant-numeric:tabular-nums}
-.pp-b i{display:block; margin-top:3px; font-style:normal;
-  font:700 9.5px/1 'Inter',system-ui,sans-serif; letter-spacing:.8px;
-  text-transform:uppercase; color:#6B7C99}
-.pp-b small{display:block; margin-top:5px; font:500 10.5px/1.35 'Outfit',system-ui,sans-serif; color:#8A99B5}
-.pp-b.gros b{font-size:27px}
-.pp-vert{color:#0F8A4F !important}
-.pp-rouge{color:#B3261E !important}
+/* ---- L'AVERTISSEMENT ----
+   Ecrit en toutes lettres, en haut de la page et non en bas : rien n'est
+   signe, aucune cle ne vit ici, aucun ordre ne part. */
+.pp-avis{background:#FFF8EC; border:1px solid #F2DCAE; border-radius:16px;
+  padding:13px 16px; margin:0 0 14px; font-size:13.5px; line-height:1.55; color:#6B4A00}
+.pp-avis b{color:#A15C00}
+
+/* ---- LES MARCHES EN TETE ---- */
+.pp-mtete{margin:0 0 14px}
+.pp-mts{display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:10px}
+.pp-mt{background:#FFFFFF; border:1px solid #E6EBF2; border-radius:16px; padding:12px 14px;
+  display:flex; flex-direction:column; gap:5px; min-width:0; box-shadow:0 1px 2px rgba(11,23,54,.05)}
+.pp-mt b{font:800 16px/1.1 Inter,system-ui,sans-serif; color:#0B1736}
+.pp-mt span{font-size:12.5px; color:#5B6B86; font-variant-numeric:tabular-nums}
+.pp-mt .pp-sens{align-self:flex-start; font-size:10.5px}
+.pp-mt-rien{font-style:italic}
+
+/* ---- LA BANDE DE CHIFFRES : HUIT CARTES ---- */
+.pp-bande{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin:0 0 14px}
+.pp-b{background:#FFFFFF; border:1px solid #E6EBF2; border-radius:16px; padding:14px; min-width:0;
+  box-shadow:0 1px 2px rgba(11,23,54,.05),0 10px 30px rgba(11,23,54,.05)}
+.pp-b i{display:block; font-style:normal; font:700 11px/1.3 Inter,system-ui,sans-serif; letter-spacing:.06em;
+  text-transform:uppercase; color:#5B6B86}
+.pp-b b{display:block; margin:6px 0 2px; font:800 22px/1.2 Inter,system-ui,sans-serif; color:#0B1736;
+  font-variant-numeric:tabular-nums; overflow-wrap:anywhere}
+.pp-b small{display:block; font-size:12px; line-height:1.4; color:#5B6B86}
+.pp-b.gros b{font-size:24px}
+.pp-vert{color:#0E8A4F !important}
+.pp-rouge{color:#C8322B !important}
 
 /* ---- LES CARTES ---- */
-.pp-grille{display:grid; grid-template-columns:1.35fr 1fr; gap:14px; align-items:start}
-.pp-carte{background:#FFFFFF; border:1px solid #E1E9F6; border-radius:16px;
-  padding:14px 16px; margin:0 0 14px}
-.pp-carte>h2{margin:0 0 4px; font:800 13px/1.2 'Outfit',system-ui,sans-serif; color:#0A1F44;
+.pp-duo{display:grid; grid-template-columns:minmax(0,1.6fr) minmax(0,1fr); gap:14px; align-items:start}
+.pp-carte{background:#FFFFFF; border:1px solid #E6EBF2; border-radius:18px; padding:18px 20px; margin:0 0 14px;
+  box-shadow:0 1px 2px rgba(11,23,54,.05),0 10px 30px rgba(11,23,54,.05)}
+.pp-carte>h2, .pp-carte .ds-tete h2{margin:0 0 4px; font:800 18px/1.25 Inter,system-ui,sans-serif; color:#0B1736;
   display:flex; align-items:center; gap:8px}
-.pp-carte>h2 .n{margin-left:auto; font:700 10px/1 'JetBrains Mono',ui-monospace,monospace;
-  color:#6B7C99; letter-spacing:.4px}
+.pp-carte>h2 .n{margin-left:auto; font:700 11px/1 'JetBrains Mono',ui-monospace,monospace; color:#5B6B86; letter-spacing:.02em}
+.pp-carte .ds-tete{margin-bottom:6px}
 /* Une carte qui montre un chiffre dit sur combien d'observations il porte —
    et se tait en dessous. C'est la regle du panneau, elle vaut ici aussi. */
-.pp-carte>p.sur{margin:0 0 10px; font:500 11px/1.45 'Outfit',system-ui,sans-serif; color:#8A99B5}
-.pp-vide{padding:16px 2px; font:500 12px/1.5 'Outfit',system-ui,sans-serif; color:#8A99B5; text-align:center}
+.pp-carte p.sur{margin:0 0 10px; font-size:13px; line-height:1.5; color:#5B6B86}
+.pp-vide{padding:18px 4px; font-size:13.5px; color:#5B6B86; text-align:center}
 
 /* ---- LES TABLEAUX ---- */
-.pp-tab{width:100%; border-collapse:collapse; font:500 12px/1.4 'Outfit',system-ui,sans-serif}
-.pp-tab th{text-align:left; padding:6px 8px; font:700 9.5px/1 'Inter',system-ui,sans-serif;
-  letter-spacing:.7px; text-transform:uppercase; color:#8A99B5; border-bottom:1px solid #E1E9F6}
-.pp-tab td{padding:8px; border-bottom:1px solid #F0F4FB; color:#0A1F44;
-  font-variant-numeric:tabular-nums}
+.pp-tab{width:100%; border-collapse:collapse; font-size:13px; line-height:1.4}
+.pp-tab th{text-align:left; padding:9px 10px; font:700 11px/1.2 Inter,system-ui,sans-serif;
+  letter-spacing:.05em; text-transform:uppercase; color:#5B6B86; background:#F7F9FC; border-bottom:1px solid #E6EBF2; white-space:nowrap}
+.pp-tab td{padding:9px 10px; border-bottom:1px solid #EEF2F7; color:#0B1736; font-variant-numeric:tabular-nums; white-space:nowrap}
 .pp-tab tr:last-child td{border-bottom:0}
 .pp-tab td.num{text-align:right}
-.pp-sens{font:800 10px/1 'Inter',system-ui,sans-serif; letter-spacing:.6px; padding:4px 7px;
-  border-radius:6px; display:inline-block}
-.pp-sens.long{background:#E7F6EE; color:#0F8A4F}
-.pp-sens.short{background:#FDECEC; color:#B3261E}
+.pp-sens{font:800 11px/1 Inter,system-ui,sans-serif; letter-spacing:.05em; padding:5px 8px;
+  border-radius:999px; display:inline-block}
+.pp-sens.long{background:#E6F5EC; color:#0E8A4F}
+.pp-sens.short{background:#FDECEB; color:#C8322B}
+
+/* ---- LES FILTRES DU CARNET ---- */
+.pp-filtres{display:flex; flex-wrap:wrap; gap:8px; align-items:center}
+.pp-filtres select{font:600 13px/1 Inter,system-ui,sans-serif; border:1px solid #E6EBF2; border-radius:12px;
+  padding:9px 10px; background:#FFFFFF; color:#0B1736; min-height:38px}
+
+/* ---- LA POSITION EN COURS ---- */
+.pp-cour-t{display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:6px 0 12px}
+.pp-cour-t b{font:800 20px/1 Inter,system-ui,sans-serif; color:#0B1736}
+.pp-cour-g{margin-left:auto; font:800 18px/1 Inter,system-ui,sans-serif; font-variant-numeric:tabular-nums}
+.pp-cour-g i{font-style:normal; font-size:13px; font-weight:700}
+#ppCourante dl{margin:0; display:grid; grid-template-columns:auto 1fr; gap:6px 12px; font-size:13.5px}
+#ppCourante dt{color:#5B6B86} #ppCourante dd{margin:0; text-align:right; font-variant-numeric:tabular-nums}
+.pp-cour-barre{display:flex; align-items:center; gap:8px; margin:14px 0 8px; font:700 11px/1 Inter,system-ui,sans-serif; color:#5B6B86}
+.pp-cour-barre div{position:relative; flex:1; height:8px; border-radius:6px; background:linear-gradient(90deg,#FDECEB,#EEF2F8 50%,#E6F5EC)}
+.pp-cour-barre i{position:absolute; top:50%; width:14px; height:14px; margin:-7px 0 0 -7px; border-radius:50%; background:#1652F0; border:2px solid #fff; box-shadow:0 1px 4px rgba(11,23,54,.25)}
 
 /* ---- LES AGENTS ---- */
-.pp-agents{display:grid; grid-template-columns:repeat(auto-fill,minmax(168px,1fr)); gap:10px}
-.pp-ag{border:1px solid #E1E9F6; border-radius:12px; padding:10px 11px; background:#FBFDFF}
-.pp-ag .t{display:flex; align-items:center; gap:7px}
-.pp-ag .e{font-size:17px}
-.pp-ag b{font:800 12px/1.2 'Outfit',system-ui,sans-serif; color:#0A1F44}
-.pp-ag .r{font:700 9px/1 'Inter',system-ui,sans-serif; letter-spacing:.7px; text-transform:uppercase;
-  color:#1B5FE0; background:#EAF1FF; border-radius:5px; padding:3px 5px; margin-left:auto}
-.pp-ag p{margin:7px 0 0; font:500 11px/1.45 'Outfit',system-ui,sans-serif; color:#6B7C99}
+.pp-agents{display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:12px}
+.pp-ag{border:1px solid #E6EBF2; border-radius:16px; padding:14px; background:#FFFFFF}
+.pp-ag .t{display:flex; align-items:center; gap:8px}
+.pp-ag .e{width:34px; height:34px; border-radius:11px; display:grid; place-items:center; font-size:18px; background:#F1ECFE}
+.pp-ag b{font:800 14px/1.2 Inter,system-ui,sans-serif; color:#0B1736}
+.pp-ag .r{font:700 10px/1 Inter,system-ui,sans-serif; letter-spacing:.06em; text-transform:uppercase;
+  color:#1652F0; background:#E9F0FF; border-radius:999px; padding:5px 8px; margin-left:auto}
+.pp-ag p{margin:10px 0 0; font-size:13px; line-height:1.5; color:#5B6B86}
 
 /* ---- L'AUDIT ----
    Une regle sans ligne d'audit n'est pas jugeable : la colonne « verdict »
    existe pour ca, et elle dit « pas encore » tant que l'echantillon est trop
    court, au lieu d'inventer un avis. */
-.pp-verdict{font:800 9.5px/1 'Inter',system-ui,sans-serif; letter-spacing:.5px;
-  padding:4px 7px; border-radius:6px; display:inline-block; white-space:nowrap}
-.pp-verdict.bon{background:#E7F6EE; color:#0F8A4F}
-.pp-verdict.mauvais{background:#FDECEC; color:#B3261E}
-.pp-verdict.attente{background:#F3F5F9; color:#8A99B5}
+.pp-verdict{font:800 11px/1 Inter,system-ui,sans-serif; letter-spacing:.03em;
+  padding:5px 8px; border-radius:999px; display:inline-block; white-space:nowrap}
+.pp-verdict.bon{background:#E6F5EC; color:#0E8A4F}
+.pp-verdict.mauvais{background:#FDECEB; color:#C8322B}
+.pp-verdict.attente{background:#EEF2F8; color:#5B6B86}
 /* Les marches en desaccord ne sont ni un bon ni un mauvais verdict : c'est
    l'absence de verdict, et elle doit se voir comme telle. */
-.pp-verdict.diverge{background:#FFF1E0; color:#A35A00}
-.pp-ecart{display:inline-block; margin-left:6px; font:700 9.5px/1 'JetBrains Mono',ui-monospace,monospace;
-  color:#8A99B5}
-/* La repartition par marche : un effectif a cote de chaque part, sinon une
-   regle vue mille fois sur BTC et trois fois sur DOGE se lit « vue partout ». */
-.pp-m{display:inline-flex; align-items:baseline; gap:4px; margin:1px 5px 1px 0;
-  font:600 10.5px/1.5 'Outfit',system-ui,sans-serif; color:#33456B; white-space:nowrap}
-.pp-m b{font:800 9.5px/1 'Inter',system-ui,sans-serif; letter-spacing:.4px; color:#1B5FE0}
-.pp-m i{font-style:normal; font:600 9px/1 'JetBrains Mono',ui-monospace,monospace; color:#A3B0C8}
+.pp-verdict.diverge{background:#FFF4E0; color:#A15C00}
+.pp-ecart{display:inline-block; margin-left:6px; font:700 10px/1 'JetBrains Mono',ui-monospace,monospace; color:#8A99B5}
+.pp-m{display:inline-flex; align-items:baseline; gap:4px; margin:1px 5px 1px 0; font-size:12px; color:#33456B; white-space:nowrap}
+.pp-m b{font:800 10.5px/1 Inter,system-ui,sans-serif; letter-spacing:.03em; color:#1652F0}
+.pp-m i{font-style:normal; font:600 10px/1 'JetBrains Mono',ui-monospace,monospace; color:#8A99B5}
 
-/* ---- LE JOURNAL ---- */
-.pp-flux{margin:0; padding:0; list-style:none; max-height:320px; overflow-y:auto; scrollbar-width:thin}
-.pp-flux li{display:flex; gap:9px; padding:7px 2px; border-bottom:1px solid #F0F4FB;
-  font:500 11.5px/1.45 'Outfit',system-ui,sans-serif; color:#33456B}
-.pp-flux li:last-child{border-bottom:0}
-.pp-flux time{flex:0 0 auto; font:600 10px/1.5 'JetBrains Mono',ui-monospace,monospace; color:#8A99B5}
-
-/* ---- L'AVERTISSEMENT ----
-   Ecrit en toutes lettres, en haut de la page et non en bas : rien n'est
-   signe, aucune cle ne vit ici, aucun ordre ne part. */
-.pp-avis{background:#FFF9EC; border:1px solid #FFE2AE; border-radius:14px;
-  padding:12px 15px; margin:0 0 14px;
-  font:500 12px/1.55 'Outfit',system-ui,sans-serif; color:#7A5200}
-.pp-avis b{color:#A96A00}
+/* ---- LE JOURNAL : UNE FRISE ---- */
+.pp-flux{margin:0; padding:0 0 0 4px; list-style:none; max-height:360px; overflow-y:auto; scrollbar-width:thin}
+.pp-flux li{position:relative; display:flex; gap:12px; padding:9px 4px 9px 18px; font-size:13px; line-height:1.45; color:#33456B}
+.pp-flux li::before{content:""; position:absolute; left:3px; top:14px; width:9px; height:9px; border-radius:50%; background:#7C3AED; box-shadow:0 0 0 3px #F1ECFE}
+.pp-flux li::after{content:""; position:absolute; left:7px; top:26px; bottom:-6px; width:1px; background:#E6EBF2}
+.pp-flux li:last-child::after{display:none}
+.pp-flux time{flex:0 0 auto; font:600 11px/1.6 'JetBrains Mono',ui-monospace,monospace; color:#5B6B86}
 
 @media (max-width:1000px){
-  .pp-grille{grid-template-columns:1fr}
-  .pp-bande{grid-template-columns:repeat(4,1fr)}
+  .pp-duo{grid-template-columns:1fr}
 }
-@media (max-width:560px){
-  .pp-bande{grid-template-columns:repeat(2,1fr)}
-  .pp-tete .pp-droite{width:100%; margin-left:0}
+@media (max-width:900px){
+  .pp-bande{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width:420px){
+  .pp-b b{font-size:19px} .pp-b.gros b{font-size:20px}
+  .pp-carte{padding:16px}
 }
 
 /* ---- LE CARNET ENTIER, ET L ISSUE REELLE (27 septembre 2026) ----
  * Deux cents lignes ne tiennent pas dans la carte : elles defilent dans leur
  * boite, l en-tete reste visible. L issue reelle des trades a son sous-titre,
  * pour ne jamais se lire comme une ligne de l audit des ombres. */
-.pp-defile{max-height:420px; overflow:auto; -webkit-overflow-scrolling:touch}
-.pp-defile .pp-tab th{position:sticky; top:0; background:#FFFFFF}
-.pp-sous{margin:14px 0 6px; font:700 11px/1.2 'Inter',system-ui,sans-serif; letter-spacing:.06em;
-  text-transform:uppercase; color:#5A6B8C}
-.pp-ic{display:block; font:500 10px/1.3 'JetBrains Mono',ui-monospace,monospace; color:#8A99B5}
+.pp-defile{max-height:440px; overflow:auto; -webkit-overflow-scrolling:touch; border:1px solid #E6EBF2; border-radius:14px}
+.pp-defile .pp-tab th{position:sticky; top:0; background:#F7F9FC}
+.pp-sous{margin:16px 0 8px; font:700 12px/1.2 Inter,system-ui,sans-serif; letter-spacing:.06em;
+  text-transform:uppercase; color:#5B6B86}
+.pp-ic{display:block; font:500 10.5px/1.3 'JetBrains Mono',ui-monospace,monospace; color:#8A99B5}
 @media (max-width:560px){ .pp-defile{max-height:360px} }
 /* ---- A 320 PX, LES TABLEAUX DEFILENT DANS LEUR CARTE ----
  * Mesure du 27 septembre 2026 (Playwright, 320 px, vue reelle) : chaque
@@ -468,5 +480,5 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
  * retrecit pas sous la largeur de son contenu et que les tableaux ont huit
  * colonnes. La colonne a le droit de retrecir (`min-width:0`) et la carte
  * fait defiler son tableau, au lieu de pousser toute la page de cote. */
-.pp-grille>div{min-width:0}
+.pp-duo>*{min-width:0}
 .pp-carte{min-width:0; overflow-x:auto; -webkit-overflow-scrolling:touch}

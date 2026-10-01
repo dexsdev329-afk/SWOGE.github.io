@@ -38,7 +38,7 @@
  * Meme garde que `swoge_ai.html` : sans elle, un joueur garde des semaines
  * une version corrigee depuis longtemps, et ici cela voudrait dire une
  * colonie qui a l'air arretee alors qu'elle tourne. */
-var MARQUE_PAGE = '6f7a4c1a';
+var MARQUE_PAGE = '73214d1d';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -58,18 +58,115 @@ var MARQUE_PAGE = '6f7a4c1a';
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap">
 <!-- La barre du site et le decor de ces deux pages vivent dans une feuille
      partagee : BTC et ETH montrent exactement la meme chose, et recopier
      l'habillage deux fois garantit qu'un jour l'une aura une correction que
      l'autre n'aura pas. Versionnee, comme tout fichier que le navigateur
      garde. -->
-<link rel="stylesheet" href="perp.css?v=4edb0272">
+<link rel="stylesheet" href="perp.css?v=4789e33c">
 <style>
-  body{margin:0; background:#F6F9FF; color:#0A1F44;
-       font-family:'Outfit',system-ui,-apple-system,sans-serif}
+  body{margin:0}
 </style>
+<!-- IA-DESIGN:debut (copie de outils/ia_design.css par outils/onglets_ia.js, ne pas editer ici) -->
+<style>
+/* ==================================================================
+ * LE STYLE COMMUN DES PAGES « AI TRADING » (01/10/2026)
+ * Polymarket AI, AI Perps et Predict portent ce meme bloc, recopie par
+ * outils/onglets_ia.js entre les marqueurs IA-DESIGN : une seule source,
+ * trois pages identiques (onglets_ia.test.js echoue si une copie derive).
+ * Demande du proprietaire : blanc dominant, #F7F9FC, marine #0B1736,
+ * bleu #1652F0, violet #7C3AED, bordures #E6EBF2, rayons 16-20, ombres legeres.
+ * Tout est prefixe « ds- » : rien ne touche au decor commun (sw-*).
+ * ================================================================== */
+:root{ --ds-blanc:#FFFFFF; --ds-fond:#F7F9FC; --ds-encre:#0B1736; --ds-pale:#5B6B86; --ds-bleu:#1652F0; --ds-violet:#7C3AED;
+  --ds-ligne:#E6EBF2; --ds-vert:#0E8A4F; --ds-rouge:#C8322B; --ds-ambre:#A15C00; --ds-r:18px; --ds-r2:14px;
+  --ds-ombre:0 1px 2px rgba(11,23,54,.05),0 10px 30px rgba(11,23,54,.05); }
+body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+.ds main{ min-width:0; }
+.ds-hero{ position:relative; overflow:hidden; background:var(--ds-blanc); border:1px solid var(--ds-ligne); border-radius:20px; box-shadow:var(--ds-ombre);
+  padding:24px; display:grid; grid-template-columns:minmax(0,1.5fr) minmax(0,1fr); gap:20px; align-items:center; }
+.ds-hero::before{ content:""; position:absolute; inset:0 0 auto 0; height:4px; background:linear-gradient(90deg,var(--ds-bleu),var(--ds-violet)); }
+.ds-hero h1{ font:800 34px/1.1 Inter,system-ui,sans-serif; letter-spacing:-.02em; margin:10px 0 8px; color:var(--ds-encre); }
+.ds-hero h1 em{ font-style:normal; background:linear-gradient(90deg,var(--ds-bleu),var(--ds-violet)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+.ds-hero p{ margin:0 0 10px; color:var(--ds-pale); max-width:640px; }
+.ds-hero .ds-faits{ display:grid; gap:8px; }
+.ds-fait{ display:flex; gap:10px; align-items:flex-start; padding:10px 12px; border:1px solid var(--ds-ligne); border-radius:var(--ds-r2); background:var(--ds-fond); font-size:13.5px; }
+.ds-fait b{ display:block; color:var(--ds-encre); }
+.ds-fait span{ color:var(--ds-pale); }
+.ds-fait i{ font-style:normal; font-size:18px; line-height:1.2; }
+@media (max-width:820px){ .ds-hero{ grid-template-columns:1fr; padding:18px; } .ds-hero h1{ font-size:28px; } }
+.ds-badges{ display:flex; flex-wrap:wrap; gap:6px; }
+.ds-badge{ display:inline-flex; align-items:center; gap:6px; font:800 11px/1 Inter,system-ui,sans-serif; letter-spacing:.08em; text-transform:uppercase;
+  padding:7px 10px; border-radius:999px; border:1px solid var(--ds-ligne); background:var(--ds-blanc); color:var(--ds-encre); }
+.ds-badge.papier{ background:#F1ECFE; border-color:#DCCFFC; color:var(--ds-violet); }
+.ds-badge.risque{ background:#FDECEB; border-color:#F6C9C6; color:var(--ds-rouge); }
+.ds-badge.reel{ background:#FFF4E0; border-color:#F2D9A8; color:var(--ds-ambre); }
+.ds-badge .pt{ width:7px; height:7px; border-radius:50%; background:#9AA6BA; }
+.ds-badge.vif .pt{ background:var(--ds-vert); box-shadow:0 0 0 3px rgba(14,138,79,.15); }
+.ds-badge.panne .pt{ background:var(--ds-rouge); }
+.ds-statut{ min-height:20px; color:var(--ds-pale); font-size:13px; margin:10px 2px; }
+.ds-statut.err{ color:var(--ds-rouge); }
+.ds-kpis{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin:14px 0 0; }
+.ds-kpis.quatre{ grid-template-columns:repeat(4,minmax(0,1fr)); }
+@media (max-width:900px){ .ds-kpis.quatre{ grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media (max-width:640px){ .ds-kpis{ grid-template-columns:repeat(2,minmax(0,1fr)); } }
+.ds-kpi{ background:var(--ds-blanc); border:1px solid var(--ds-ligne); border-radius:16px; padding:14px; box-shadow:var(--ds-ombre); min-width:0; }
+.ds-kpi small{ display:block; font:700 11px/1.3 Inter,system-ui,sans-serif; letter-spacing:.06em; text-transform:uppercase; color:var(--ds-pale); }
+.ds-kpi b{ display:block; font:800 22px/1.25 Inter,system-ui,sans-serif; margin:6px 0 2px; overflow-wrap:anywhere; font-variant-numeric:tabular-nums; }
+.ds-kpi span{ display:block; font-size:12.5px; color:var(--ds-pale); }
+.ds-carte{ background:var(--ds-blanc); border:1px solid var(--ds-ligne); border-radius:var(--ds-r); box-shadow:var(--ds-ombre); padding:20px; margin-top:16px; min-width:0; }
+.ds-carte > h2, .ds-tete h2{ font:800 19px/1.25 Inter,system-ui,sans-serif; margin:0; color:var(--ds-encre); }
+.ds-tete{ display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end; justify-content:space-between; margin-bottom:12px; }
+.ds-tete p, .ds-sous{ margin:4px 0 0; color:var(--ds-pale); font-size:13.5px; max-width:720px; }
+.ds-carte h3{ font:800 15px/1.3 Inter,system-ui,sans-serif; margin:18px 0 6px; }
+.ds-grille2{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
+.ds-grille3{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+@media (max-width:820px){ .ds-grille2, .ds-grille3{ grid-template-columns:1fr; } }
+.ds-seg{ display:inline-flex; gap:2px; padding:3px; border-radius:12px; background:#EEF2F8; border:1px solid var(--ds-ligne); flex-wrap:wrap; }
+.ds-seg button{ font:700 12.5px/1 Inter,system-ui,sans-serif; border:0; background:transparent; color:var(--ds-pale); padding:8px 12px; border-radius:9px; cursor:pointer; min-height:32px; }
+.ds-seg button[aria-pressed="true"], .ds-seg button[aria-selected="true"]{ background:var(--ds-blanc); color:var(--ds-encre); box-shadow:0 1px 2px rgba(11,23,54,.1); }
+.ds-seg button:focus-visible{ outline:2px solid var(--ds-bleu); outline-offset:1px; }
+.ds-table{ overflow-x:auto; border:1px solid var(--ds-ligne); border-radius:var(--ds-r2); }
+.ds-table table{ width:100%; border-collapse:collapse; font-size:13.5px; }
+.ds-table th, .ds-table td{ text-align:left; padding:9px 12px; border-top:1px solid var(--ds-ligne); white-space:nowrap; }
+.ds-table th{ border-top:0; background:var(--ds-fond); color:var(--ds-pale); font:700 11.5px/1.3 Inter,system-ui,sans-serif; letter-spacing:.04em; text-transform:uppercase; position:sticky; top:0; }
+.ds-table td.num, .ds-table th.num{ text-align:right; font-variant-numeric:tabular-nums; }
+.ds-table.haut{ max-height:440px; overflow:auto; }
+.ds-pos{ color:var(--ds-vert); } .ds-neg{ color:var(--ds-rouge); }
+.ds-pill{ display:inline-block; font:700 11.5px/1 Inter,system-ui,sans-serif; padding:5px 8px; border-radius:999px; background:#EEF2F8; color:var(--ds-pale); }
+.ds-pill.up{ background:#E6F5EC; color:var(--ds-vert); } .ds-pill.down{ background:#FDECEB; color:var(--ds-rouge); }
+.ds-pill.bleu{ background:#E9F0FF; color:var(--ds-bleu); } .ds-pill.violet{ background:#F1ECFE; color:var(--ds-violet); }
+.ds-verdict{ border-radius:var(--ds-r2); padding:12px 14px; font-weight:600; margin:10px 0; border:1px solid var(--ds-ligne); background:var(--ds-fond); }
+.ds-verdict.ok{ background:#E9F7EF; border-color:#BFE5CF; color:var(--ds-vert); }
+.ds-verdict.non{ background:#FDF0EF; border-color:#F3C9C5; color:var(--ds-rouge); }
+.ds-verdict.peu{ background:#FFF6E5; border-color:#F2DCAE; color:var(--ds-ambre); }
+.ds-graphe{ position:relative; border:1px solid var(--ds-ligne); border-radius:var(--ds-r2); background:var(--ds-blanc); padding:10px; }
+.ds-graphe svg{ display:block; width:100%; height:auto; }
+.ds-graphe .vide{ padding:46px 12px; text-align:center; color:var(--ds-pale); font-size:13.5px; }
+.ds-legende{ display:flex; flex-wrap:wrap; gap:14px; font-size:12.5px; color:var(--ds-pale); margin:8px 2px 0; }
+.ds-legende i{ display:inline-block; width:12px; height:3px; border-radius:2px; vertical-align:middle; margin-right:6px; }
+.ds-etapes{ counter-reset:e; list-style:none; padding:0; margin:0; display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:12px; }
+.ds-etapes li{ counter-increment:e; border:1px solid var(--ds-ligne); border-radius:16px; padding:14px; background:var(--ds-fond); font-size:13.5px; color:var(--ds-pale); }
+.ds-etapes li::before{ content:counter(e); display:grid; place-items:center; width:28px; height:28px; border-radius:9px; margin-bottom:8px;
+  background:linear-gradient(135deg,var(--ds-bleu),var(--ds-violet)); color:#fff; font:800 13px/1 Inter,system-ui,sans-serif; }
+.ds-etapes b{ display:block; color:var(--ds-encre); margin-bottom:4px; }
+.ds-avis{ display:flex; gap:12px; align-items:flex-start; border-radius:var(--ds-r); padding:16px 18px; border:1px solid #DCCFFC; background:#F7F3FF; color:var(--ds-encre); margin-top:16px; font-size:14px; }
+.ds-avis.risque{ border-color:#F6C9C6; background:#FFF5F4; }
+.ds-avis i{ font-style:normal; font-size:20px; line-height:1.2; }
+.ds-avis p{ margin:0 0 4px; }
+.ds-avis a{ color:var(--ds-bleu); }
+.ds-bouton{ font:700 13.5px/1 Inter,system-ui,sans-serif; border:1px solid var(--ds-ligne); background:var(--ds-blanc); color:var(--ds-bleu); border-radius:12px; padding:11px 16px; cursor:pointer; min-height:40px; }
+.ds-bouton:hover{ border-color:var(--ds-bleu); }
+.ds-bouton.plein{ background:var(--ds-bleu); border-color:var(--ds-bleu); color:#fff; }
+.ds-bouton:disabled{ opacity:.55; cursor:default; }
+.ds-note{ font-size:12.5px; color:var(--ds-pale); margin-top:10px; }
+.ds-vide{ padding:16px; text-align:center; color:var(--ds-pale); font-size:13.5px; border:1px dashed var(--ds-ligne); border-radius:var(--ds-r2); }
+@media (max-width:420px){ .ds-carte{ padding:16px; } .ds-kpi b{ font-size:19px; } }
+</style>
+<!-- IA-DESIGN:fin -->
 
+<body class="ds">
 <header class="sw-haut">
   <a class="sw-marque" href="nexus.html" id="gxMonde">
     <span class="sw-patte">&#128062;</span>
@@ -196,108 +293,149 @@ var MARQUE_PAGE = '6f7a4c1a';
 <!-- ONGLETS-IA:fin -->
   <div class="pp-wrap">
 
-    <div class="pp-tete">
-      <div class="pp-logo">&#128200;</div>
+    <!-- ==== LA REFONTE DU 01/10/2026 (maquette du proprietaire) ====
+         Blanc dominant, meme style que Polymarket AI et Predict (bloc IA-DESIGN). Tout ce qui
+         etait la reste, avec les memes identifiants : perp.js les remplit comme avant. Les
+         quatre blocs nouveaux (marches en tete, courbe, position en cours, chemin d'une
+         decision) sont lus sur /ai/perp ; rien n'y vient de la maquette. -->
+    <section class="ds-hero pp-tete" aria-labelledby="ppTitre">
       <div>
-        <h1 id="ppSym">BTC &middot; PERPETUAL</h1>
+        <div class="ds-badges pp-droite">
+          <span class="ds-badge papier pp-puce papier" id="ppPapier">&nbsp;</span>
+          <span class="ds-badge pp-puce une" id="ppUne">&nbsp;</span>
+          <span class="ds-badge pp-puce" id="ppStamp">&#9679;</span>
+          <button class="ds-badge pp-puce" id="ppLangue" type="button" title="Fran&ccedil;ais / English">&#127468;&#127463;</button>
+        </div>
+        <h1 id="ppTitre">AI <em>Perps</em></h1>
+        <p class="pp-syms" id="ppSym">BTC &middot; PERPETUAL</p>
         <p id="ppSous">&nbsp;</p>
       </div>
-      <div class="pp-droite">
-        <!-- Les deux colonies sont separees, mais on les compare du regard :
-             le lien vers l'autre est ici, pas dans le menu. -->
-        <span class="pp-puce une" id="ppUne">&nbsp;</span>
-        <span class="pp-puce papier" id="ppPapier">&nbsp;</span>
-        <span class="pp-puce" id="ppStamp">&#9679;</span>
-        <button class="pp-puce" id="ppLangue" type="button" title="Fran&ccedil;ais / English">&#127468;&#127463;</button>
+      <div class="ds-faits">
+        <div class="ds-fait" id="ppFait0"><i>&#128221;</i><div><b></b><span></span></div></div>
+        <div class="ds-fait" id="ppFait1"><i>&#128214;</i><div><b></b><span></span></div></div>
+        <div class="ds-fait" id="ppFait2"><i>&#9878;&#65039;</i><div><b></b><span></span></div></div>
       </div>
-    </div>
+    </section>
 
     <!-- L'avertissement est EN HAUT, pas en bas de page : ce qu'il dit
          change la lecture de tous les chiffres en dessous. -->
     <div class="pp-avis" id="ppAvis">&nbsp;</div>
 
+    <section class="pp-mtete" aria-labelledby="ppTMarchesTete">
+      <h2 class="pp-sous" id="ppTMarchesTete">Markets read every turn</h2>
+      <div class="pp-mts" id="ppMarchesTete"></div>
+    </section>
+
     <div class="pp-bande">
-      <div class="pp-b gros"><b id="ppProfit">&mdash;</b><i id="ppLProfit">Profit</i><small id="ppProfitSur"></small></div>
-      <div class="pp-b"><b id="ppTresor">&mdash;</b><i id="ppLTresor">Paper treasury</i></div>
-      <div class="pp-b"><b id="ppTaux">&mdash;</b><i id="ppLTaux">Win rate</i><small id="ppTauxSur"></small></div>
+      <div class="pp-b gros"><i id="ppLProfit">Profit</i><b id="ppProfit">&mdash;</b><small id="ppProfitSur"></small></div>
+      <div class="pp-b"><i id="ppLTresor">Paper treasury</i><b id="ppTresor">&mdash;</b></div>
+      <div class="pp-b"><i id="ppLTaux">Win rate</i><b id="ppTaux">&mdash;</b><small id="ppTauxSur"></small></div>
       <!-- Le net par trade AUX FRAIS REELS, avec son erreur-type et son
            effectif : c'est le seul chiffre qui dit si la colonie gagne, et il
            se tait tant qu'il n'a pas les 143 trades qui le rendent jugeable. -->
-      <div class="pp-b"><b id="ppNet">&mdash;</b><i id="ppLNet">Net per trade</i><small id="ppNetSur"></small></div>
-      <div class="pp-b"><b id="ppTrades">&mdash;</b><i id="ppLTrades">Closed trades</i></div>
-      <div class="pp-b"><b id="ppMeilleur">&mdash;</b><i id="ppLMeilleur">Best / worst trade</i><small id="ppMeilleurSur"></small></div>
-      <div class="pp-b"><b id="ppOuvertes">&mdash;</b><i id="ppLOuvertes">Open now</i></div>
+      <div class="pp-b"><i id="ppLNet">Net per trade</i><b id="ppNet">&mdash;</b><small id="ppNetSur"></small></div>
+      <div class="pp-b"><i id="ppLTrades">Closed trades</i><b id="ppTrades">&mdash;</b></div>
+      <div class="pp-b"><i id="ppLMeilleur">Best / worst trade</i><b id="ppMeilleur">&mdash;</b><small id="ppMeilleurSur"></small></div>
+      <div class="pp-b"><i id="ppLOuvertes">Open now</i><b id="ppOuvertes">&mdash;</b></div>
       <!-- Le financement a sa propre case : c'est le cout qu'un marche
            perpetuel fait payer a qui tient, et le seul que le papier oublie
            quand on ne le montre pas. -->
-      <div class="pp-b"><b id="ppFin">&mdash;</b><i id="ppLFin">Funding (net)</i><small id="ppFinSur"></small></div>
+      <div class="pp-b"><i id="ppLFin">Funding (net)</i><b id="ppFin">&mdash;</b><small id="ppFinSur"></small></div>
     </div>
 
-    <div class="pp-grille">
-      <div>
-        <section class="pp-carte">
-          <h2 id="ppTPos">Open positions</h2>
-          <div id="ppPos"></div>
-        </section>
-
-        <section class="pp-carte">
-          <h2 id="ppTCarnet">Closed trades</h2>
-          <p class="sur" id="ppCarnetSous">&nbsp;</p>
-          <!-- Le carnet ENTIER (200 lignes au plus), dans une boite qui defile :
-               il n'en montrait que 20 sur les 40 que le serveur servait. -->
-          <div class="pp-defile" id="ppCarnet"></div>
-        </section>
-
-        <section class="pp-carte">
-          <h2 id="ppTAudit">What each refusal is worth</h2>
-          <p class="sur" id="ppAuditSous">&nbsp;</p>
-          <div id="ppAudit"></div>
-          <p class="sur" id="ppHorizons">&nbsp;</p>
-          <!-- L'issue REELLE des trades, sur une ligne a part : l'audit juge
-               les ombres a 4 h fixes, les trades sortent au stop, a la cible
-               ou a 12 h. Les deux ne se melangent pas. -->
-          <h3 class="pp-sous" id="ppTIssue">What taking actually did</h3>
-          <div id="ppIssue"></div>
-        </section>
-
-        <!-- L'audit commun aux marches. Il vient APRES celui de ce marche-ci :
-             on lit d'abord ce que cette colonie a vu elle-meme, puis ce que
-             les autres en disent. -->
-        <!-- Ce que chaque marche a rendu. C'est la repartition que les cinq
-             colonies separees donnaient gratuitement : une colonie unique
-             doit la RENDRE, sinon on perd la seule chose qu'elles faisaient
-             mieux. -->
-        <section class="pp-carte">
-          <h2 id="ppTMarches">What each market gave back</h2>
-          <p class="sur" id="ppMarchesSous">&nbsp;</p>
-          <div id="ppMarches"></div>
-          <p class="sur" id="ppAppris">&nbsp;</p>
-          <p class="sur" id="ppJournal">&nbsp;</p>
-        </section>
-
-        <!-- La soupape de famine. Sans elle la colonie ne prend rien, et sans
-             rien de pris l'audit ne peut JAMAIS conclure : elle doit se voir,
-             et se juger. -->
-        <section class="pp-carte">
-          <h2 id="ppTSoupape">Famine valve</h2>
-          <p class="sur" id="ppSoupapeDit">&nbsp;</p>
-          <div id="ppSoupape"></div>
-        </section>
-      </div>
-
-      <div>
-        <section class="pp-carte">
-          <h2><span id="ppTFlux">What just happened</span><span class="n" id="ppOmbres"></span></h2>
-          <div id="ppFlux"></div>
-        </section>
-
-        <section class="pp-carte">
-          <h2 id="ppTAgents">The eight agents</h2>
-          <p class="sur" id="ppAgentsSous">&nbsp;</p>
-          <div class="pp-agents" id="ppAgents"></div>
-        </section>
-      </div>
+    <div class="pp-duo">
+      <section class="pp-carte">
+        <div class="ds-tete">
+          <div><h2 id="ppTCourbe">Paper treasury</h2><p class="sur" id="ppCourbeSous">&nbsp;</p></div>
+          <div class="ds-seg" role="group" aria-label="Period" id="ppPeriodes">
+            <button type="button" data-h="24" aria-pressed="false">24H</button>
+            <button type="button" data-h="168" aria-pressed="false">7D</button>
+            <button type="button" data-h="0" aria-pressed="true">All</button>
+          </div>
+        </div>
+        <p class="sur" id="ppCourbeDit"></p>
+        <div class="ds-graphe" id="ppCourbe"><div class="vide">&hellip;</div></div>
+      </section>
+      <section class="pp-carte">
+        <h2 id="ppTCourante">Current position</h2>
+        <div id="ppCourante"><div class="pp-vide">&hellip;</div></div>
+      </section>
     </div>
+
+    <section class="pp-carte">
+      <h2 id="ppTPos">Open positions</h2>
+      <div id="ppPos"></div>
+    </section>
+
+    <section class="pp-carte">
+      <div class="ds-tete">
+        <div><h2 id="ppTCarnet">Closed trades</h2><p class="sur" id="ppCarnetSous">&nbsp;</p></div>
+        <div class="pp-filtres">
+          <div class="ds-seg" role="group" aria-label="Result" id="ppFiltreR">
+            <button type="button" data-r="" aria-pressed="true" id="ppFTous">All</button>
+            <button type="button" data-r="g" aria-pressed="false" id="ppFGagnants">Wins</button>
+            <button type="button" data-r="p" aria-pressed="false" id="ppFPerdants">Losses</button>
+          </div>
+          <select id="ppFiltreM" aria-label="Market"><option value="">All markets</option></select>
+        </div>
+      </div>
+      <p class="sur" id="ppFiltreDit"></p>
+      <!-- Le carnet ENTIER (200 lignes au plus), dans une boite qui defile :
+           il n'en montrait que 20 sur les 40 que le serveur servait. -->
+      <div class="pp-defile" id="ppCarnet"></div>
+    </section>
+
+    <section class="pp-carte">
+      <h2 id="ppTAgents">The eight agents</h2>
+      <p class="sur" id="ppAgentsSous">&nbsp;</p>
+      <div class="pp-agents" id="ppAgents"></div>
+    </section>
+
+    <section class="pp-carte">
+      <h2><span id="ppTFlux">What just happened</span><span class="n" id="ppOmbres"></span></h2>
+      <div id="ppFlux"></div>
+    </section>
+
+    <section class="pp-carte">
+      <h2 id="ppTAudit">What each refusal is worth</h2>
+      <p class="sur" id="ppAuditSous">&nbsp;</p>
+      <div id="ppAudit"></div>
+      <p class="sur" id="ppHorizons">&nbsp;</p>
+      <!-- L'issue REELLE des trades, sur une ligne a part : l'audit juge
+           les ombres a 4 h fixes, les trades sortent au stop, a la cible
+           ou a 12 h. Les deux ne se melangent pas. -->
+      <h3 class="pp-sous" id="ppTIssue">What taking actually did</h3>
+      <div id="ppIssue"></div>
+    </section>
+
+    <!-- Ce que chaque marche a rendu. C'est la repartition que les cinq
+         colonies separees donnaient gratuitement : une colonie unique
+         doit la RENDRE, sinon on perd la seule chose qu'elles faisaient
+         mieux. -->
+    <section class="pp-carte">
+      <h2 id="ppTMarches">What each market gave back</h2>
+      <p class="sur" id="ppMarchesSous">&nbsp;</p>
+      <div id="ppMarches"></div>
+      <p class="sur" id="ppAppris">&nbsp;</p>
+      <p class="sur" id="ppJournal">&nbsp;</p>
+    </section>
+
+    <!-- La soupape de famine. Sans elle la colonie ne prend rien, et sans
+         rien de pris l'audit ne peut JAMAIS conclure : elle doit se voir,
+         et se juger. -->
+    <section class="pp-carte">
+      <h2 id="ppTSoupape">Famine valve</h2>
+      <p class="sur" id="ppSoupapeDit">&nbsp;</p>
+      <div id="ppSoupape"></div>
+    </section>
+
+    <section class="pp-carte">
+      <h2 id="ppTFlot">How the colony decides</h2>
+      <p class="sur" id="ppFlotSous">&nbsp;</p>
+      <ol class="ds-etapes" id="ppFlot"></ol>
+    </section>
+
+    <div class="ds-avis" role="note"><i>&#128221;</i><div><p id="ppAvisFin">&nbsp;</p></div></div>
 
   </div>
   </main>
@@ -345,5 +483,5 @@ var MARQUE_PAGE = '6f7a4c1a';
 <!-- La page ne lui dit que les marches suivis ; lequel est ouvert vient de
      `?m=`, et le serveur corrige la liste des la premiere reponse. -->
 <script>window.PERP_MARCHES = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "DOGEUSDT"];</script>
-<script src="perp.js?v=fb6cf914"></script>
+<script src="perp.js?v=cd85e098"></script>
 </html>

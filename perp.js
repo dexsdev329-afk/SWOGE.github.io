@@ -177,7 +177,61 @@ var PP_PHRASES = {
   attente: ["waiting for data", "en attente de donnees"],
   vieux: ["stale — the server has not answered", "perime — le serveur n'a pas repondu"],
   horizons: function(l, r){ return "Shadows are judged at " + l.join(", ") + " minutes; " + r + " minutes is the reference."; },
-  horizonsFr: function(l, r){ return "Les ombres sont jugees a " + l.join(", ") + " minutes ; " + r + " minutes fait reference."; }
+  horizonsFr: function(l, r){ return "Les ombres sont jugees a " + l.join(", ") + " minutes ; " + r + " minutes fait reference."; },
+  /* ---- LA REFONTE DU 01/10/2026 ----
+   * Quatre blocs de plus, tous lus sur /ai/perp : les marches en tete, la courbe de la
+   * tresorerie papier, la position en cours, et le chemin d'une decision — construit avec
+   * les agents, la barre et les plafonds que le serveur envoie, pas recopie d'une maquette. */
+  faits: [[["Paper money only", "No key, no order, no exchange account. Nothing is ever signed."],
+           ["Real prices, real costs", "Public Bitget prices; funding and Bitget's real fees are counted."],
+           ["Judged on what happened", "Every refusal is shadowed and scored later against what was taken."]],
+          [["Argent papier seulement", "Aucune cle, aucun ordre, aucun compte d'echange. Rien n'est jamais signe."],
+           ["Prix reels, couts reels", "Prix publics de Bitget ; le financement et les vrais frais Bitget sont comptes."],
+           ["Juge sur ce qui s'est passe", "Chaque refus laisse une ombre, notee plus tard contre ce qui a ete pris."]]],
+  tMarchesTete: ["Markets read every turn", "Marches lus a chaque tour"],
+  mtFermes: function(n, g){ return n ? n + " closed \u00b7 " + g : "no trade closed yet"; },
+  mtFermesFr: function(n, g){ return n ? n + " fermes \u00b7 " + g : "aucun trade ferme"; },
+  mtOuvert: function(s, p){ return s + " open \u00b7 now " + p; },
+  mtOuvertFr: function(s, p){ return s + " ouvert \u00b7 maintenant " + p; },
+  mtRien: ["no position", "aucune position"],
+  tCourbe: ["Paper treasury", "Tresorerie papier"],
+  courbeSous: ["The paper treasury after each closed trade. An open position counts only once it closes.",
+               "La tresorerie papier apres chaque trade ferme. Une position ouverte ne compte qu'une fois fermee."],
+  periodes: [["24H", "7D", "All"], ["24 h", "7 j", "Tout"]],
+  courbeDit: function(p, n, g, seuil, nTot){ return p + ": " + n + " trade" + (n === 1 ? "" : "s") + " closed \u00b7 " + g + " on paper" + (nTot < seuil ? " \u2014 not judgeable below " + seuil + " trades (" + nTot + " so far)." : "."); },
+  courbeDitFr: function(p, n, g, seuil, nTot){ return p + " : " + n + " trade" + (n === 1 ? "" : "s") + " ferme" + (n === 1 ? "" : "s") + " \u00b7 " + g + " sur le papier" + (nTot < seuil ? " \u2014 pas jugeable sous " + seuil + " trades (" + nTot + " a ce jour)." : "."); },
+  courbeNoms: function(h){ return h === 24 ? "Last 24 hours" : h === 168 ? "Last 7 days" : "Since the start"; },
+  courbeNomsFr: function(h){ return h === 24 ? "24 dernieres heures" : h === 168 ? "7 derniers jours" : "Depuis le debut"; },
+  courbeVide: ["No trade closed in this period.", "Aucun trade ferme sur cette periode."],
+  tCourante: ["Current position", "Position en cours"],
+  couranteAutres: function(k){ return k ? "+ " + k + " more open below" : ""; },
+  couranteAutresFr: function(k){ return k ? "+ " + k + " autre(s) ouverte(s) plus bas" : ""; },
+  gagnants: ["Wins", "Gagnants"], perdants: ["Losses", "Perdants"], tousMarches: ["All markets", "Tous les marches"],
+  filtreDit: function(k, n){ return k + " of " + n + " trades shown"; },
+  filtreDitFr: function(k, n){ return k + " trades montres sur " + n; },
+  tFlot: ["How the colony decides", "Comment la colonie decide"],
+  flotSous: ["One turn, every few minutes, built from the agents and limits the server reports right now.",
+             "Un tour, toutes les quelques minutes, construit avec les agents et les limites que le serveur donne en ce moment."],
+  flot: function(v, noms){
+    return [["Read", "Public Bitget data on " + (v.marches || []).length + " markets: price, funding, order book." + (noms.scout ? " " + noms.scout + " scout(s) first." : "") + (v.tours ? " " + v.tours + " turns so far." : "")],
+            ["Guard", (noms.garde || "The guards") + " can refuse a market outright: trading against the deeper trend, a dead market or a storm."],
+            ["Score", (noms.specialiste || "The specialists") + " each add their reading; a candidate below " + (v.seuil != null ? "a score of " + v.seuil : "the bar") + " is refused (\u201cscore below the bar\u201d)."],
+            ["Limits", (v.positionsMax ? "At most " + v.positionsMax + " positions at once, " : "") + (v.memeSensMax ? v.memeSensMax + " in the same direction, " : "") + "one per market."],
+            ["Size", (noms.banque || "The banker") + " stakes a fixed 10% of the paper treasury per position: nothing is learned there until it is measured."],
+            ["Exit", (noms.execution || "The closer") + " closes at the stop, the target or the 12-hour clock, at Bitget's real fees."],
+            ["Shadow", "Every refusal is followed as if taken and judged later" + ((v.horizons || []).length ? ", at " + v.horizons.join(", ") + " minutes" : "") + ", so each rule can be priced."]];
+  },
+  flotFr: function(v, noms){
+    return [["Lire", "Donnees publiques Bitget sur " + (v.marches || []).length + " marches : prix, financement, carnet." + (noms.scout ? " " + noms.scout + " eclaire(nt) d'abord." : "") + (v.tours ? " " + v.tours + " tours a ce jour." : "")],
+            ["Garder", (noms.garde || "Les gardes") + " peuvent refuser un marche d'emblee : contre la tendance profonde, un marche mort ou une tempete."],
+            ["Noter", (noms.specialiste || "Les specialistes") + " ajoutent chacun leur lecture ; un candidat sous " + (v.seuil != null ? "le score " + v.seuil : "la barre") + " est refuse (\u00ab score below the bar \u00bb)."],
+            ["Limiter", (v.positionsMax ? "Au plus " + v.positionsMax + " positions a la fois, " : "") + (v.memeSensMax ? v.memeSensMax + " dans le meme sens, " : "") + "une par marche."],
+            ["Miser", (noms.banque || "Le banquier") + " mise une part fixe de 10 % de la tresorerie papier par position : rien d'appris la tant que rien n'est mesure."],
+            ["Sortir", (noms.execution || "Le cloturier") + " ferme au stop, a la cible ou a l'echeance de 12 h, aux vrais frais Bitget."],
+            ["Ombre", "Chaque refus est suivi comme s'il avait ete pris et juge plus tard" + ((v.horizons || []).length ? ", a " + v.horizons.join(", ") + " minutes" : "") + ", pour chiffrer chaque regle."]];
+  },
+  avisFin: ["<b>Paper trading only.</b> Every position on this page is simulated with fake money at real prices. Nothing here is a profit, a promise or investment advice.",
+            "<b>Papier seulement.</b> Chaque position de cette page est simulee avec de l'argent fictif au prix reel. Rien ici n'est un gain, une promesse ou un conseil d'investissement."]
 };
 var PP_MIN = 12;
 var PP_PROFIL = 8;
@@ -359,7 +413,7 @@ function ppCarnet(v){
         + ppEch(pph("net")) + "</th><th>" + ppEch(pph("fraisReels")) + "</th><th>" + ppEch(pph("duree")) + "</th><th>" + ppEch(pph("pourquoi")) + "</th></tr>";
   /* Le carnet ENTIER : le serveur le sert en entier depuis le 27/09/2026. */
   v.carnet.forEach(function(t){
-    h += "<tr><td><b>" + ppEch(ppNom(t.sym)) + "</b></td>"
+    h += "<tr data-m='" + ppEch(ppNom(t.sym)) + "' data-r='" + (t.r > 0 ? "g" : t.r < 0 ? "p" : "0") + "'><td><b>" + ppEch(ppNom(t.sym)) + "</b></td>"
        + "<td><span class='pp-sens " + (t.sens > 0 ? "long'>LONG" : "short'>SHORT") + "</span></td>"
        + "<td class='num'>" + ppPrix(t.prix0) + "</td>"
        + "<td class='num'>" + ppPct(t.brut) + "</td>"
@@ -373,6 +427,30 @@ function ppCarnet(v){
        + "<td>" + ppEch(pphF("sortieNoms", t.pourquoi)) + "</td></tr>";
   });
   c.innerHTML = h + "</table>";
+  ppFiltreMarches(v);
+  ppFiltre();
+}
+
+/* ---- LES FILTRES DU CARNET (01/10) ----
+ * Gagnants, perdants (net comptabilise), et un marche. Rien n'est recalcule : les lignes
+ * ne font que se cacher, et la page dit combien elle en montre sur combien. */
+var PP_FILTRE = { r: "", m: "" };
+function ppFiltreMarches(v){
+  var s = $$("ppFiltreM"); if(!s) return;
+  var vus = {}, l = [];
+  (v.marches || []).concat((v.carnet || []).map(function(t){ return t.sym; })).forEach(function(x){ var n = ppNom(x); if(n && !vus[n]){ vus[n] = 1; l.push(n); } });
+  var garde = PP_FILTRE.m;
+  s.innerHTML = '<option value="">' + ppEch(pph("tousMarches")) + "</option>" + l.map(function(n){ return '<option value="' + ppEch(n) + '">' + ppEch(n) + "</option>"; }).join("");
+  s.value = l.indexOf(garde) >= 0 ? garde : "";
+  PP_FILTRE.m = s.value;
+}
+function ppFiltre(){
+  var lignes = document.querySelectorAll("#ppCarnet tr[data-m]"), k = 0;
+  [].forEach.call(lignes, function(tr){
+    var vu = (!PP_FILTRE.m || tr.getAttribute("data-m") === PP_FILTRE.m) && (!PP_FILTRE.r || tr.getAttribute("data-r") === PP_FILTRE.r);
+    tr.hidden = !vu; if(vu) k++;
+  });
+  var d = $$("ppFiltreDit"); if(d) d.textContent = lignes.length ? pphF("filtreDit", k, lignes.length) : "";
 }
 
 /* ---- LE ROLE EST UNE CLE, PAS UN MOT A MONTRER ----
@@ -533,11 +611,99 @@ function ppFlux(v){
   }).join("") + "</ul>";
 }
 
+/* ---- LES MARCHES EN TETE (01/10) ----
+ * Un marche par puce : ses trades fermes et ce qu'ils ont rendu (lus dans parMarche), et
+ * la position ouverte s'il y en a une, au dernier prix lu par le serveur. */
+function ppMarchesTete(v){
+  var c = $$("ppMarchesTete"); if(!c) return;
+  var par = {}; (v.parMarche || []).forEach(function(m){ par[m.sym] = m; });
+  var pos = {}; (v.positions || []).forEach(function(p){ pos[p.sym] = p; });
+  c.innerHTML = (v.marches || []).map(function(sym){
+    var m = par[sym] || {}, p = pos[sym];
+    return '<div class="pp-mt"><b>' + ppEch(ppNom(sym)) + "</b><span>" + ppEch(pphF("mtFermes", m.n || 0, m.n ? ppSigne(m.gain) : "")) + "</span>"
+      + (p ? '<span class="pp-sens ' + (p.sens > 0 ? 'long">' : 'short">') + ppEch(pphF("mtOuvert", p.sens > 0 ? "LONG" : "SHORT", p.prix == null ? "\u2014" : ppPrix(p.prix))) + "</span>"
+           : '<span class="pp-mt-rien">' + ppEch(pph("mtRien")) + "</span>") + "</div>";
+  }).join("");
+}
+
+/* ---- LA COURBE DE LA TRESORERIE PAPIER (01/10) ----
+ * Depart : la tresorerie moins tout ce que le carnet montre (vrai que le carnet porte
+ * tous les trades ou seulement les 200 derniers). Un point par trade ferme, dans l'ordre. */
+var PP_PERIODE = 0;
+function ppCourbe(v){
+  var g = $$("ppCourbe"), dit = $$("ppCourbeDit"); if(!g) return;
+  g.textContent = ""; if(dit) dit.textContent = "";
+  var l = (v.carnet || []).filter(function(t){ return typeof t.gain === "number" && t.t; }).slice().sort(function(a, b){ return a.t - b.t; });
+  var somme = 0; l.forEach(function(t){ somme += t.gain; });
+  var niveau = (typeof v.tresor === "number" ? v.tresor : (v.depart || 0)) - somme, pts = [];
+  var depuis = PP_PERIODE ? Date.now() - PP_PERIODE * 3600000 : 0, n = 0, gain = 0;
+  l.forEach(function(t){
+    if(t.t >= depuis){ if(!pts.length) pts.push({ t: Math.max(depuis, t.ouvert || t.t), y: niveau }); n++; gain += t.gain; }
+    niveau += t.gain;
+    if(t.t >= depuis) pts.push({ t: t.t, y: niveau });
+  });
+  var seuil = (v.bilan && v.bilan.seuil) || 143, nTot = (v.bilan && v.bilan.n) || v.trades || 0;
+  if(!n){ g.innerHTML = '<div class="vide">' + ppEch(pph("courbeVide")) + "</div>"; return; }
+  if(dit) dit.textContent = pphF("courbeDit", pphF("courbeNoms", PP_PERIODE), n, ppSigne(gain), seuil, nTot);
+  var W = Math.max(280, Math.min(900, (g.clientWidth || 600) - 22)), H = W < 480 ? 190 : 220, G = 72, D = 12, Hh = 12, B = 24;
+  var ys = pts.map(function(p){ return p.y; }), lo = Math.min.apply(null, ys), hi = Math.max.apply(null, ys);
+  var m = Math.max((hi - lo) * 0.12, 1); lo -= m; hi += m;
+  var t0 = pts[0].t, t1 = pts[pts.length - 1].t; if(t1 === t0){ t0 -= 1800000; t1 += 1800000; }
+  var X = function(t){ return G + (t - t0) / (t1 - t0) * (W - G - D); }, Y = function(y){ return Hh + (hi - y) / (hi - lo) * (H - Hh - B); };
+  var h = '<svg viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="' + ppEch(pph("tCourbe")) + '">';
+  for(var i = 0; i <= 4; i++){ var y = lo + (hi - lo) * i / 4;
+    h += '<line x1="' + G + '" x2="' + (W - D) + '" y1="' + Y(y).toFixed(1) + '" y2="' + Y(y).toFixed(1) + '" stroke="#E6EBF2"/>'
+       + '<text x="' + (G - 6) + '" y="' + (Y(y) + 4).toFixed(1) + '" text-anchor="end" font-size="11" fill="#5B6B86">' + ppEch(ppArgent(y)) + "</text>"; }
+  var dep = v.depart || 1000;
+  if(dep > lo && dep < hi) h += '<line x1="' + G + '" x2="' + (W - D) + '" y1="' + Y(dep).toFixed(1) + '" y2="' + Y(dep).toFixed(1) + '" stroke="#9AA6BA" stroke-dasharray="4 4"/>';
+  [t0, t1].forEach(function(t, j){ var d = new Date(t);
+    h += '<text x="' + X(t).toFixed(1) + '" y="' + (H - 6) + '" text-anchor="' + (j ? "end" : "start") + '" font-size="11" fill="#5B6B86">'
+       + ppEch(d.toISOString().slice(5, 10) + " " + d.toISOString().slice(11, 16) + (j ? " UTC" : "")) + "</text>"; });
+  var dPath = pts.map(function(p, j){ return (j ? "L" : "M") + X(p.t).toFixed(1) + " " + Y(p.y).toFixed(1); }).join(" ");
+  var fin = pts[pts.length - 1], coul = fin.y >= pts[0].y ? "#0E8A4F" : "#C8322B";
+  h += '<path d="' + dPath + ' L' + X(fin.t).toFixed(1) + " " + (H - B) + " L" + X(pts[0].t).toFixed(1) + " " + (H - B) + ' Z" fill="' + coul + '" opacity=".07"/>'
+     + '<path d="' + dPath + '" fill="none" stroke="#1652F0" stroke-width="2.4" stroke-linejoin="round"/>'
+     + '<circle cx="' + X(fin.t).toFixed(1) + '" cy="' + Y(fin.y).toFixed(1) + '" r="4" fill="#1652F0"/></svg>';
+  g.innerHTML = h;
+}
+
+/* ---- LA POSITION EN COURS (01/10) ----
+ * La plus recente des positions ouvertes, et ou en est son prix entre le stop et la cible.
+ * Les autres restent dans le tableau « Open positions ». */
+function ppCourante(v){
+  var c = $$("ppCourante"); if(!c) return;
+  var l = (v.positions || []).slice().sort(function(a, b){ return (b.depuis || 0) - (a.depuis || 0); });
+  if(!l.length){ c.innerHTML = '<div class="pp-vide">' + ppEch(pph("posVide")) + "</div>"; return; }
+  var p = l[0], cls = p.net > 0 ? "pp-vert" : p.net < 0 ? "pp-rouge" : "";
+  var bas = Math.min(p.stop, p.cible), haut = Math.max(p.stop, p.cible), x = p.prix == null ? null : Math.max(0, Math.min(1, (p.prix - bas) / ((haut - bas) || 1)));
+  var ligne = function(k, val){ return "<dt>" + ppEch(pph(k)) + "</dt><dd>" + val + "</dd>"; };
+  c.innerHTML = '<div class="pp-cour-t"><b>' + ppEch(p.nom || ppNom(p.sym)) + '</b><span class="pp-sens ' + (p.sens > 0 ? 'long">LONG' : 'short">SHORT') + "</span>"
+    + '<span class="pp-cour-g ' + cls + '">' + (p.net == null ? "\u2014" : ppEch(ppSigne(p.gain)) + " <i>" + ppEch(ppPct(p.net)) + "</i>") + "</span></div>"
+    + "<dl>" + ligne("entree", ppEch(ppPrix(p.prix0))) + ligne("maintenant", "<b>" + (p.prix == null ? "\u2014" : ppEch(ppPrix(p.prix))) + "</b>")
+    + ligne("stop", ppEch(ppPrix(p.stop))) + ligne("cible", ppEch(ppPrix(p.cible))) + ligne("mise", ppEch(ppArgent(p.mise)))
+    + ligne("depuis", ppEch(ppDuree((Date.now() - p.depuis) / 60000))) + "</dl>"
+    + (x == null ? "" : '<div class="pp-cour-barre"><span class="s">' + ppEch(p.stop < p.cible ? pph("stop") : pph("cible")) + '</span><div><i style="left:' + (x * 100).toFixed(1) + '%"></i></div><span class="c">'
+       + ppEch(p.stop < p.cible ? pph("cible") : pph("stop")) + "</span></div>")
+    + '<p class="sur">' + ppEch(pphF("couranteAutres", l.length - 1)) + "</p>";
+}
+
+/* ---- LE CHEMIN D'UNE DECISION (01/10) ----
+ * Les noms viennent de v.agents (par role), la barre de v.seuil, les plafonds de
+ * v.positionsMax / v.memeSensMax, les horizons de v.horizons. */
+function ppFlot(v){
+  var c = $$("ppFlot"); if(!c) return;
+  var noms = {};
+  (v.agents || []).forEach(function(a){ noms[a.role] = (noms[a.role] ? noms[a.role] + ", " : "") + a.nom; });
+  var etapes = (PP_LANGUE === "fr" ? PP_PHRASES.flotFr : PP_PHRASES.flot)(v, noms);
+  c.innerHTML = etapes.map(function(e){ return "<li><b>" + ppEch(e[0]) + "</b>" + ppEch(e[1]) + "</li>"; }).join("");
+}
+
 function ppPeint(v){
   PP_MIN = v.minObs || PP_MIN;
   PP_PROFIL = v.profilMinObs || PP_PROFIL;
 
   ppTete(v); ppBande(v); ppPositions(v); ppCarnet(v); ppAgents(v); ppAudit(v); ppIssue(v); ppParMarche(v); ppFlux(v);
+  ppMarchesTete(v); ppCourbe(v); ppCourante(v); ppFlot(v);
   $$("ppOmbres").textContent = pphF("ombres", v.ombres.enAttente, v.ombres.jugees);
   $$("ppHorizons").textContent = pphF("horizons", v.horizons, v.horizonRef);
 }
@@ -583,12 +749,40 @@ function ppStatique(){
   $$("ppMarchesSous").textContent = pph("marchesSous");
   $$("ppAppris").textContent = pphF("apprisDit", PP_PROFIL);
   $$("ppUne").textContent = pph("une");
+  /* La refonte (01/10) : les textes fixes des nouveaux blocs. */
+  var f = PP_PHRASES.faits[PP_LANGUE === "fr" ? 1 : 0];
+  [0, 1, 2].forEach(function(i){ var e = $$("ppFait" + i); if(e){ e.querySelector("b").textContent = f[i][0]; e.querySelector("span").textContent = f[i][1]; } });
+  [["ppTMarchesTete","tMarchesTete"],["ppTCourbe","tCourbe"],["ppCourbeSous","courbeSous"],["ppTCourante","tCourante"],["ppTFlot","tFlot"],["ppFlotSous","flotSous"]].forEach(function(p){
+    var e = $$(p[0]); if(e) e.textContent = pph(p[1]);
+  });
+  var per = PP_PHRASES.periodes[PP_LANGUE === "fr" ? 1 : 0];
+  [].forEach.call(document.querySelectorAll("#ppPeriodes button"), function(b, i){ b.textContent = per[i]; });
+  [["ppFTous","tous"],["ppFGagnants","gagnants"],["ppFPerdants","perdants"]].forEach(function(p){ var e = $$(p[0]); if(e) e.textContent = pph(p[1]); });
+  var af = $$("ppAvisFin"); if(af) af.innerHTML = pph("avisFin");
 }
 
 document.addEventListener("DOMContentLoaded", function(){
   ppStatique();
   $$("ppSym").textContent = PP_MARCHES.map(ppNom).join(" · ") || "PERPETUAL";
   $$("ppLangue").addEventListener("click", ppLangue);
+  /* La refonte (01/10) : periodes de la courbe, filtres du carnet, redessin a la largeur. */
+  [].forEach.call(document.querySelectorAll("#ppPeriodes button"), function(b){
+    b.addEventListener("click", function(){
+      PP_PERIODE = Number(b.getAttribute("data-h")) || 0;
+      [].forEach.call(document.querySelectorAll("#ppPeriodes button"), function(x){ x.setAttribute("aria-pressed", String(x === b)); });
+      if(PP_DERNIERE) ppCourbe(PP_DERNIERE);
+    });
+  });
+  [].forEach.call(document.querySelectorAll("#ppFiltreR button"), function(b){
+    b.addEventListener("click", function(){
+      PP_FILTRE.r = b.getAttribute("data-r") || "";
+      [].forEach.call(document.querySelectorAll("#ppFiltreR button"), function(x){ x.setAttribute("aria-pressed", String(x === b)); });
+      ppFiltre();
+    });
+  });
+  var fm = $$("ppFiltreM"); if(fm) fm.addEventListener("change", function(){ PP_FILTRE.m = fm.value; ppFiltre(); });
+  var largeur = window.innerWidth, minu = null;
+  window.addEventListener("resize", function(){ if(window.innerWidth === largeur) return; largeur = window.innerWidth; clearTimeout(minu); minu = setTimeout(function(){ if(PP_DERNIERE) ppCourbe(PP_DERNIERE); }, 200); });
   ppDemande();
   setInterval(function(){ ppDemande(); }, 30000);
 });

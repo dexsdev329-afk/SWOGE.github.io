@@ -562,6 +562,57 @@ const txt = (page, sel) => page.$eval(sel, (e) => (e.textContent || '').trim()).
     await page.close();
   }
 
+  /* 01/10 : la refonte (« blanc dominant, aucune fausse donnee, ne casse rien »). Les quatre blocs
+     nouveaux sont lus sur /ai/perp ; ce qui manque se tait ou dit « — ». */
+  console.log('\n-- la refonte : marches en tete, courbe, position en cours, filtres, chemin d une decision --');
+  {
+    const { page } = await ouvre(nav, port, 'swoge_perp.html');
+    const mt = await page.$$eval('#ppMarchesTete .pp-mt', (e) => e.map((x) => [...x.children].map((c) => c.textContent.trim()).join(' ')));
+    ok(mt.length === 5 && /^BTC 18 closed · \+\$40\.20 no position$/.test(mt[0]) && /^XRP no trade closed yet/.test(mt[3]),
+       'un marche par puce, ses trades fermes et ce qu ils ont rendu, sans zero invente [' + mt[0] + ' | ' + mt[3] + ']');
+    ok(/^DOGE 9 closed · -\$12\.50 LONG open · now 0\.2201$/.test(mt[4]), 'la position ouverte, au dernier prix lu : ' + mt[4]);
+    const dit = await txt(page, '#ppCourbeDit');
+    ok(/^Since the start: 2 trades closed · \+\$7\.30 on paper — not judgeable below 143 trades \(34 so far\)\.$/.test(dit), 'la courbe dit sur combien de trades elle porte, et qu elle n est pas jugeable : ' + dit);
+    /* Depart = tresorerie moins ce que le carnet montre (1 063,20 − 7,30 = 1 055,90 $) ; les etiquettes
+       de l axe encadrent le point le plus bas et le plus haut de la courbe. */
+    const ax = await page.$eval('#ppCourbe svg', (s) => [...s.querySelectorAll('text')].map((t) => t.textContent).filter((t) => /^\$/.test(t)).map((t) => Number(t.replace(/[$,]/g, ''))));
+    const pts = await page.$eval('#ppCourbe svg path[fill="none"]', (p) => p.getAttribute('d').split(/[ML]/).filter(Boolean).length);
+    ok(pts === 3 && Math.min(...ax) < 1043.8 && Math.min(...ax) > 1038 && Math.max(...ax) > 1063.2 && Math.max(...ax) < 1070,
+       'dans l ordre des trades : 1 055,90 $, puis 1 043,80 $ (SOL, −12,10 $), puis 1 063,20 $ (BTC, +19,40 $) [' + ax.join(' ') + ']');
+    await page.click('#ppPeriodes button[data-h="24"]');
+    ok(/^Last 24 hours: 2 trades closed/.test(await txt(page, '#ppCourbeDit')), 'les periodes : 24 h');
+    const cour = await txt(page, '#ppCourante');
+    ok(/DOGE\s*LONG\s*\+\$3\.22/.test(cour) && /Now\s*0\.2201/.test(cour) && /Stop\s*0\.2011/.test(cour) && /Target\s*0\.229/.test(cour), 'la position en cours : sens, gain latent, prix, stop, cible');
+    const pos = await page.$eval('#ppCourante .pp-cour-barre i', (e) => parseFloat(e.style.left));
+    ok(Math.abs(pos - (0.2201 - 0.2011) / (0.2290 - 0.2011) * 100) < 0.2, 'le curseur est place entre le stop et la cible au prix lu (' + pos + ' %)');
+    ok(/1 of 1|^$/.test(await txt(page, '#ppFiltreDit')) || /2 of 2 trades shown/.test(await txt(page, '#ppFiltreDit')), 'le carnet dit combien de lignes il montre');
+    await page.click('#ppFGagnants');
+    let vis = await page.$$eval('#ppCarnet tr[data-m]', (l) => l.filter((x) => !x.hidden).map((x) => x.cells[0].textContent.trim()));
+    ok(vis.join() === 'BTC' && /1 of 2 trades shown/.test(await txt(page, '#ppFiltreDit')), 'filtre « Wins » : seul le trade gagnant [' + vis + ']');
+    await page.click('#ppFTous');
+    await page.selectOption('#ppFiltreM', 'SOL');
+    vis = await page.$$eval('#ppCarnet tr[data-m]', (l) => l.filter((x) => !x.hidden).map((x) => x.cells[0].textContent.trim()));
+    ok(vis.join() === 'SOL', 'filtre par marche : SOL seulement');
+    const opts = await page.$$eval('#ppFiltreM option', (o) => o.map((x) => x.value));
+    ok(opts.join() === ',BTC,ETH,SOL,XRP,DOGE', 'les marches du filtre sont ceux que le serveur suit : ' + opts.join(' '));
+    const flot = await page.$$eval('#ppFlot li', (e) => e.map((x) => x.textContent));
+    ok(flot.length === 7 && /Trend/.test(flot.join(' ')) && /Banker/.test(flot.join(' ')) && /score of 1\.1/.test(flot[2]) && /At most 3 positions at once, one per market/.test(flot[3]),
+       'le chemin d une decision est construit avec les agents, la barre et les plafonds du serveur [' + flot[3] + ']');
+    ok(!/undefined|NaN/.test(flot.join(' ')), 'une donnee absente (memeSensMax) se tait, elle ne s ecrit pas « undefined »');
+    ok(/Paper trading only/.test(await txt(page, '#ppAvisFin')), 'l avis final : papier seulement');
+    await page.click('#ppLangue');
+    ok(/Comment la colonie decide/.test(await txt(page, '#ppTFlot')) && /Lire/.test(await page.$eval('#ppFlot li', (e) => e.textContent)) && /Gagnants/.test(await txt(page, '#ppFGagnants')),
+       'les nouveaux blocs suivent la langue');
+    await page.click('#ppLangue');
+    await page.close();
+  }
+  {
+    const { page } = await ouvre(nav, port, 'swoge_perp.html', { vue: { positions: [], carnet: [], trades: 0, bilan: null } });
+    ok(/No position open right now/.test(await txt(page, '#ppCourante')) && /No trade closed in this period/.test(await txt(page, '#ppCourbe')) && !(await page.$('#ppCourbe svg')),
+       'sans position ni trade : aucune courbe, aucune position inventee');
+    await page.close();
+  }
+
   await nav.close();
   await new Promise((r) => srv.close(r));
   console.log(rates ? `\nRATES : ${rates}/${n}` : `\nperp_page.test.js : ${n} verifications OK`);

@@ -169,7 +169,104 @@ video{ max-width:100%; }
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@600;700;800&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<!-- IA-DESIGN:debut (copie de outils/ia_design.css par outils/onglets_ia.js, ne pas editer ici) -->
+<style>
+/* ==================================================================
+ * LE STYLE COMMUN DES PAGES « AI TRADING » (01/10/2026)
+ * Polymarket AI, AI Perps et Predict portent ce meme bloc, recopie par
+ * outils/onglets_ia.js entre les marqueurs IA-DESIGN : une seule source,
+ * trois pages identiques (onglets_ia.test.js echoue si une copie derive).
+ * Demande du proprietaire : blanc dominant, #F7F9FC, marine #0B1736,
+ * bleu #1652F0, violet #7C3AED, bordures #E6EBF2, rayons 16-20, ombres legeres.
+ * Tout est prefixe « ds- » : rien ne touche au decor commun (sw-*).
+ * ================================================================== */
+:root{ --ds-blanc:#FFFFFF; --ds-fond:#F7F9FC; --ds-encre:#0B1736; --ds-pale:#5B6B86; --ds-bleu:#1652F0; --ds-violet:#7C3AED;
+  --ds-ligne:#E6EBF2; --ds-vert:#0E8A4F; --ds-rouge:#C8322B; --ds-ambre:#A15C00; --ds-r:18px; --ds-r2:14px;
+  --ds-ombre:0 1px 2px rgba(11,23,54,.05),0 10px 30px rgba(11,23,54,.05); }
+body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+.ds main{ min-width:0; }
+.ds-hero{ position:relative; overflow:hidden; background:var(--ds-blanc); border:1px solid var(--ds-ligne); border-radius:20px; box-shadow:var(--ds-ombre);
+  padding:24px; display:grid; grid-template-columns:minmax(0,1.5fr) minmax(0,1fr); gap:20px; align-items:center; }
+.ds-hero::before{ content:""; position:absolute; inset:0 0 auto 0; height:4px; background:linear-gradient(90deg,var(--ds-bleu),var(--ds-violet)); }
+.ds-hero h1{ font:800 34px/1.1 Inter,system-ui,sans-serif; letter-spacing:-.02em; margin:10px 0 8px; color:var(--ds-encre); }
+.ds-hero h1 em{ font-style:normal; background:linear-gradient(90deg,var(--ds-bleu),var(--ds-violet)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+.ds-hero p{ margin:0 0 10px; color:var(--ds-pale); max-width:640px; }
+.ds-hero .ds-faits{ display:grid; gap:8px; }
+.ds-fait{ display:flex; gap:10px; align-items:flex-start; padding:10px 12px; border:1px solid var(--ds-ligne); border-radius:var(--ds-r2); background:var(--ds-fond); font-size:13.5px; }
+.ds-fait b{ display:block; color:var(--ds-encre); }
+.ds-fait span{ color:var(--ds-pale); }
+.ds-fait i{ font-style:normal; font-size:18px; line-height:1.2; }
+@media (max-width:820px){ .ds-hero{ grid-template-columns:1fr; padding:18px; } .ds-hero h1{ font-size:28px; } }
+.ds-badges{ display:flex; flex-wrap:wrap; gap:6px; }
+.ds-badge{ display:inline-flex; align-items:center; gap:6px; font:800 11px/1 Inter,system-ui,sans-serif; letter-spacing:.08em; text-transform:uppercase;
+  padding:7px 10px; border-radius:999px; border:1px solid var(--ds-ligne); background:var(--ds-blanc); color:var(--ds-encre); }
+.ds-badge.papier{ background:#F1ECFE; border-color:#DCCFFC; color:var(--ds-violet); }
+.ds-badge.risque{ background:#FDECEB; border-color:#F6C9C6; color:var(--ds-rouge); }
+.ds-badge.reel{ background:#FFF4E0; border-color:#F2D9A8; color:var(--ds-ambre); }
+.ds-badge .pt{ width:7px; height:7px; border-radius:50%; background:#9AA6BA; }
+.ds-badge.vif .pt{ background:var(--ds-vert); box-shadow:0 0 0 3px rgba(14,138,79,.15); }
+.ds-badge.panne .pt{ background:var(--ds-rouge); }
+.ds-statut{ min-height:20px; color:var(--ds-pale); font-size:13px; margin:10px 2px; }
+.ds-statut.err{ color:var(--ds-rouge); }
+.ds-kpis{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin:14px 0 0; }
+.ds-kpis.quatre{ grid-template-columns:repeat(4,minmax(0,1fr)); }
+@media (max-width:900px){ .ds-kpis.quatre{ grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media (max-width:640px){ .ds-kpis{ grid-template-columns:repeat(2,minmax(0,1fr)); } }
+.ds-kpi{ background:var(--ds-blanc); border:1px solid var(--ds-ligne); border-radius:16px; padding:14px; box-shadow:var(--ds-ombre); min-width:0; }
+.ds-kpi small{ display:block; font:700 11px/1.3 Inter,system-ui,sans-serif; letter-spacing:.06em; text-transform:uppercase; color:var(--ds-pale); }
+.ds-kpi b{ display:block; font:800 22px/1.25 Inter,system-ui,sans-serif; margin:6px 0 2px; overflow-wrap:anywhere; font-variant-numeric:tabular-nums; }
+.ds-kpi span{ display:block; font-size:12.5px; color:var(--ds-pale); }
+.ds-carte{ background:var(--ds-blanc); border:1px solid var(--ds-ligne); border-radius:var(--ds-r); box-shadow:var(--ds-ombre); padding:20px; margin-top:16px; min-width:0; }
+.ds-carte > h2, .ds-tete h2{ font:800 19px/1.25 Inter,system-ui,sans-serif; margin:0; color:var(--ds-encre); }
+.ds-tete{ display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end; justify-content:space-between; margin-bottom:12px; }
+.ds-tete p, .ds-sous{ margin:4px 0 0; color:var(--ds-pale); font-size:13.5px; max-width:720px; }
+.ds-carte h3{ font:800 15px/1.3 Inter,system-ui,sans-serif; margin:18px 0 6px; }
+.ds-grille2{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
+.ds-grille3{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+@media (max-width:820px){ .ds-grille2, .ds-grille3{ grid-template-columns:1fr; } }
+.ds-seg{ display:inline-flex; gap:2px; padding:3px; border-radius:12px; background:#EEF2F8; border:1px solid var(--ds-ligne); flex-wrap:wrap; }
+.ds-seg button{ font:700 12.5px/1 Inter,system-ui,sans-serif; border:0; background:transparent; color:var(--ds-pale); padding:8px 12px; border-radius:9px; cursor:pointer; min-height:32px; }
+.ds-seg button[aria-pressed="true"], .ds-seg button[aria-selected="true"]{ background:var(--ds-blanc); color:var(--ds-encre); box-shadow:0 1px 2px rgba(11,23,54,.1); }
+.ds-seg button:focus-visible{ outline:2px solid var(--ds-bleu); outline-offset:1px; }
+.ds-table{ overflow-x:auto; border:1px solid var(--ds-ligne); border-radius:var(--ds-r2); }
+.ds-table table{ width:100%; border-collapse:collapse; font-size:13.5px; }
+.ds-table th, .ds-table td{ text-align:left; padding:9px 12px; border-top:1px solid var(--ds-ligne); white-space:nowrap; }
+.ds-table th{ border-top:0; background:var(--ds-fond); color:var(--ds-pale); font:700 11.5px/1.3 Inter,system-ui,sans-serif; letter-spacing:.04em; text-transform:uppercase; position:sticky; top:0; }
+.ds-table td.num, .ds-table th.num{ text-align:right; font-variant-numeric:tabular-nums; }
+.ds-table.haut{ max-height:440px; overflow:auto; }
+.ds-pos{ color:var(--ds-vert); } .ds-neg{ color:var(--ds-rouge); }
+.ds-pill{ display:inline-block; font:700 11.5px/1 Inter,system-ui,sans-serif; padding:5px 8px; border-radius:999px; background:#EEF2F8; color:var(--ds-pale); }
+.ds-pill.up{ background:#E6F5EC; color:var(--ds-vert); } .ds-pill.down{ background:#FDECEB; color:var(--ds-rouge); }
+.ds-pill.bleu{ background:#E9F0FF; color:var(--ds-bleu); } .ds-pill.violet{ background:#F1ECFE; color:var(--ds-violet); }
+.ds-verdict{ border-radius:var(--ds-r2); padding:12px 14px; font-weight:600; margin:10px 0; border:1px solid var(--ds-ligne); background:var(--ds-fond); }
+.ds-verdict.ok{ background:#E9F7EF; border-color:#BFE5CF; color:var(--ds-vert); }
+.ds-verdict.non{ background:#FDF0EF; border-color:#F3C9C5; color:var(--ds-rouge); }
+.ds-verdict.peu{ background:#FFF6E5; border-color:#F2DCAE; color:var(--ds-ambre); }
+.ds-graphe{ position:relative; border:1px solid var(--ds-ligne); border-radius:var(--ds-r2); background:var(--ds-blanc); padding:10px; }
+.ds-graphe svg{ display:block; width:100%; height:auto; }
+.ds-graphe .vide{ padding:46px 12px; text-align:center; color:var(--ds-pale); font-size:13.5px; }
+.ds-legende{ display:flex; flex-wrap:wrap; gap:14px; font-size:12.5px; color:var(--ds-pale); margin:8px 2px 0; }
+.ds-legende i{ display:inline-block; width:12px; height:3px; border-radius:2px; vertical-align:middle; margin-right:6px; }
+.ds-etapes{ counter-reset:e; list-style:none; padding:0; margin:0; display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:12px; }
+.ds-etapes li{ counter-increment:e; border:1px solid var(--ds-ligne); border-radius:16px; padding:14px; background:var(--ds-fond); font-size:13.5px; color:var(--ds-pale); }
+.ds-etapes li::before{ content:counter(e); display:grid; place-items:center; width:28px; height:28px; border-radius:9px; margin-bottom:8px;
+  background:linear-gradient(135deg,var(--ds-bleu),var(--ds-violet)); color:#fff; font:800 13px/1 Inter,system-ui,sans-serif; }
+.ds-etapes b{ display:block; color:var(--ds-encre); margin-bottom:4px; }
+.ds-avis{ display:flex; gap:12px; align-items:flex-start; border-radius:var(--ds-r); padding:16px 18px; border:1px solid #DCCFFC; background:#F7F3FF; color:var(--ds-encre); margin-top:16px; font-size:14px; }
+.ds-avis.risque{ border-color:#F6C9C6; background:#FFF5F4; }
+.ds-avis i{ font-style:normal; font-size:20px; line-height:1.2; }
+.ds-avis p{ margin:0 0 4px; }
+.ds-avis a{ color:var(--ds-bleu); }
+.ds-bouton{ font:700 13.5px/1 Inter,system-ui,sans-serif; border:1px solid var(--ds-ligne); background:var(--ds-blanc); color:var(--ds-bleu); border-radius:12px; padding:11px 16px; cursor:pointer; min-height:40px; }
+.ds-bouton:hover{ border-color:var(--ds-bleu); }
+.ds-bouton.plein{ background:var(--ds-bleu); border-color:var(--ds-bleu); color:#fff; }
+.ds-bouton:disabled{ opacity:.55; cursor:default; }
+.ds-note{ font-size:12.5px; color:var(--ds-pale); margin-top:10px; }
+.ds-vide{ padding:16px; text-align:center; color:var(--ds-pale); font-size:13.5px; border:1px dashed var(--ds-ligne); border-radius:var(--ds-r2); }
+@media (max-width:420px){ .ds-carte{ padding:16px; } .ds-kpi b{ font-size:19px; } }
+</style>
+<!-- IA-DESIGN:fin -->
 
 <style>
 /* ---- LA PALETTE PASSE AU CLAIR ----
@@ -644,6 +741,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
      et `swogeprofil.js` n auraient rien eu a afficher. Les quatre chiffres de
      la vitrine restent : ils viennent du vrai `/vitrine.json` et se cachent
      seuls quand la requete echoue. -->
+<body class="ds">
 <header class="sw-haut">
   <a class="sw-marque" href="nexus.html" id="gxMonde">
     <span class="sw-patte">&#128062;</span>
@@ -741,155 +839,257 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 <!-- ONGLETS-IA:fin -->
 <div class="wrap">
 <style>
-/* ---- SWOGE PREDICT — propre a cette page ---- */
-.pr-avert{border:1px solid var(--serpent);background:rgba(192,57,43,.05);color:var(--paper);
-  border-radius:var(--r);padding:11px 14px;margin-top:12px;font-size:12.5px}
-.pr-avert b{color:var(--serpent);font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.06em;text-transform:uppercase}
-.pr-tete{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin-top:18px}
-.pr-t{border:1px solid var(--line);background:var(--panel);border-radius:var(--r);padding:10px 12px}
-.pr-t .k{font-family:'Space Mono',monospace;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
-.pr-t .v{font-family:'Anton',sans-serif;font-size:20px;margin-top:3px;line-height:1}
-.pr-t .v small{font-family:'Space Mono',monospace;font-size:11px;color:var(--dim)}
-.pr-live{display:inline-flex;align-items:center;gap:6px;font-family:'Space Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:.06em}
-.pr-live .pt{width:8px;height:8px;border-radius:50%;background:var(--dim)}
-.pr-live.live{color:var(--believer)} .pr-live.live .pt{background:var(--believer);animation:prp 1.4s infinite}
-.pr-live.off{color:var(--serpent)} .pr-live.off .pt{background:var(--serpent)}
-@keyframes prp{0%,100%{opacity:1}50%{opacity:.3}}
-
-.pr-updown{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px}
-.pr-cote{border:2px solid var(--line);border-radius:var(--r);padding:18px;text-align:center}
-.pr-cote.up{border-color:var(--believer)} .pr-cote.down{border-color:var(--serpent)}
-.pr-cote.choisi.up{background:rgba(18,128,90,.08)} .pr-cote.choisi.down{background:rgba(192,57,43,.08)}
-.pr-cote .n{font-family:'Anton',sans-serif;font-size:26px}
-.pr-cote.up .n{color:var(--believer)} .pr-cote.down .n{color:var(--serpent)}
-.pr-cote .p{font-family:'Space Mono',monospace;font-size:22px;margin-top:6px}
-.pr-cote .l{font-family:'Space Mono',monospace;font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}
-
-.pr-verdict{border:1px solid var(--line);background:var(--panel);border-radius:var(--r);padding:14px;margin-top:12px}
-.pr-verdict .grand{font-family:'Anton',sans-serif;font-size:22px}
-.pr-conf{font-family:'Space Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:.08em;border:1px solid;border-radius:2px;padding:1px 7px;margin-left:8px}
-.pr-conf.HIGH{color:var(--believer);border-color:var(--believer)} .pr-conf.MEDIUM{color:var(--neutral);border-color:var(--neutral)} .pr-conf.LOW{color:var(--dim);border-color:var(--line)}
-.pr-raisons{margin-top:10px} .pr-raisons div{font-size:12.5px;padding:2px 0}
-.pr-raisons .ok{color:var(--believer)} .pr-raisons .no{color:var(--dim)} .pr-raisons .av{color:var(--neutral)}
+/* ---- SWOGE PREDICT — propre a cette page ----
+ * Refonte du 01/10/2026 (maquette du proprietaire) : le style commun aux pages AI Trading
+ * vient du bloc IA-DESIGN (outils/ia_design.css) ; ici, ce que le pilote et swogepancake.js
+ * peignent. Les noms de classes ne changent pas : les deux scripts et l'essai les lisent.
+ * Les regles generales plus haut (button en Anton majuscule, h1 en Anton) datent du scanner
+ * de detenteurs que cette page a ete : on les reprend ici pour les blocs de la refonte. */
+.wrap{max-width:1180px;padding:0 0 60px}
+.ds-hero h1{text-transform:none;letter-spacing:-.02em}
+.ds-seg button,.ds-bouton{text-transform:none;letter-spacing:0}
+.ds-seg button:hover,.ds-bouton:hover{transform:none;filter:none}
+.pr-live{display:inline-flex;align-items:center;gap:6px}
+.pr-live .pt{width:7px;height:7px;border-radius:50%;background:#9AA6BA}
+.pr-live.live{color:var(--ds-vert)} .pr-live.live .pt{background:var(--ds-vert);animation:prp 1.4s infinite}
+.pr-live.off{color:var(--ds-rouge)} .pr-live.off .pt{background:var(--ds-rouge)}
+@keyframes prp{0%,100%{opacity:1}50%{opacity:.35}}
+/* « Read this first » : en haut, en rouge, avant tout chiffre. */
+.pr-avert{border:1px solid #F6C9C6;background:#FFF5F4;color:var(--ds-encre);border-radius:18px;padding:16px 18px;margin-top:16px;font-size:14px;line-height:1.6}
+.pr-avert b{color:var(--ds-rouge)}
+.pr-avert .titre{display:block;font:800 12px/1.2 Inter,system-ui,sans-serif;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px}
+/* Le marche en direct. */
+.pr-tete{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+@media(max-width:820px){.pr-tete{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.pr-t{border:1px solid var(--ds-ligne);background:var(--ds-fond);border-radius:16px;padding:12px 14px;min-width:0}
+.pr-t .k{font:700 11px/1.3 Inter,system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--ds-pale)}
+.pr-t .v{font:800 22px/1.2 Inter,system-ui,sans-serif;margin-top:6px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.pr-t select{background:none;border:0;color:var(--ds-encre);font:800 22px/1.2 Inter,system-ui,sans-serif;padding:0;cursor:pointer;max-width:100%}
+/* UP / DOWN. */
+.pr-updown{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px}
+.pr-cote{border:1px solid var(--ds-ligne);background:var(--ds-blanc);border-radius:20px;padding:20px;text-align:center;box-shadow:var(--ds-ombre)}
+.pr-cote .n{font:800 22px/1.2 Inter,system-ui,sans-serif}
+.pr-cote.up .n{color:var(--ds-vert)} .pr-cote.down .n{color:var(--ds-rouge)}
+.pr-cote.choisi.up{border:2px solid var(--ds-vert);background:#F2FBF6} .pr-cote.choisi.down{border:2px solid var(--ds-rouge);background:#FFF6F5}
+.pr-cote .p{font:800 34px/1.1 Inter,system-ui,sans-serif;margin-top:6px;font-variant-numeric:tabular-nums}
+.pr-cote .l{font:700 10.5px/1.4 Inter,system-ui,sans-serif;color:var(--ds-pale);text-transform:uppercase;letter-spacing:.08em;margin-top:6px}
+/* Le signal et les indicateurs. */
+.pr-duo{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);gap:16px;align-items:start}
+@media(max-width:980px){.pr-duo{grid-template-columns:1fr}}
+.pr-verdict .grand{font:800 26px/1.1 Inter,system-ui,sans-serif}
+.pr-conf{font:700 11px/1 Inter,system-ui,sans-serif;text-transform:uppercase;letter-spacing:.05em;border:1px solid;border-radius:999px;padding:5px 9px;margin-left:8px;vertical-align:4px}
+.pr-conf.HIGH{color:var(--ds-vert);border-color:#BFE5CF} .pr-conf.MEDIUM{color:var(--ds-ambre);border-color:#F2DCAE} .pr-conf.LOW{color:var(--ds-pale);border-color:var(--ds-ligne)}
+.pr-score{display:block;font-size:12.5px;color:var(--ds-pale);margin-top:8px}
+.pr-mesure{font-size:13px;margin-top:10px;line-height:1.55;color:var(--ds-encre)}
+.pr-mesure .ref{font-size:12px;color:var(--ds-pale);margin-top:4px}
+.pr-raisons{margin-top:4px;display:grid;gap:6px}
+.pr-raisons div{font-size:13px;padding:8px 10px;border-radius:10px;background:var(--ds-fond)}
+.pr-raisons .ok{color:var(--ds-vert)} .pr-raisons .no{color:var(--ds-pale)} .pr-raisons .av{color:var(--ds-ambre);background:#FFF6E5}
 .pr-tf{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
-.pr-tf span{font-family:'Space Mono',monospace;font-size:11px;border:1px solid var(--line);border-radius:var(--r);padding:5px 9px}
-.pr-tf .up{color:var(--believer)} .pr-tf .down{color:var(--serpent)} .pr-tf .neu{color:var(--dim)}
-
-.pr-grille{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px}
-@media(max-width:760px){.pr-grille{grid-template-columns:1fr}.pr-updown{grid-template-columns:1fr}}
-.pr-carte{border:1px solid var(--line);background:var(--panel);border-radius:var(--r);padding:14px}
-.pr-carte h3{font-family:'Anton',sans-serif;font-size:15px;text-transform:uppercase;margin:0 0 10px}
-/* La carte PancakeSwap est LE sujet de la page : bordure or, un cran plus grosse. */
-.pr-carte.hero{border:2px solid var(--gold);background:linear-gradient(180deg,rgba(212,160,23,.06),transparent)}
-.pr-carte.hero h3{font-size:18px}
-.pr-mart{border:1px solid var(--line);border-radius:var(--r);padding:8px 11px;margin-top:10px;font-family:'Space Mono',monospace;font-size:11.5px;color:var(--paper)}
-.pr-mart b{color:var(--gold)} .pr-mart .bust{color:var(--serpent)}
-/* L'étage 2 : le portefeuille réel (swogepancake.js peint dans #pkReel). */
-.pr-boutons .stop{background:transparent;color:var(--serpent);border:1px solid var(--serpent)}
-.pk-lien{background:none;border:0;color:var(--pool);font-family:'Space Mono',monospace;font-size:11px;cursor:pointer;text-decoration:underline;padding:8px 4px}
-.pk-cle{border:1px solid var(--neutral);border-radius:var(--r);padding:10px;margin-top:10px}
-.pk-cle-in{width:100%;background:var(--void2);color:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:7px;font-family:'Space Mono',monospace;font-size:11px;word-break:break-all;resize:vertical}
-#pkReel code{font-family:'Space Mono',monospace;font-size:11px;color:var(--neutral)}
-.pr-stats{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.pr-s .k{font-family:'Space Mono',monospace;font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
-.pr-s .v{font-family:'Space Mono',monospace;font-size:14px;margin-top:2px}
+.pr-tf span{font:700 12px/1 'JetBrains Mono',ui-monospace,monospace;border:1px solid var(--ds-ligne);border-radius:999px;padding:7px 10px;background:var(--ds-blanc)}
+.pr-tf .up{color:var(--ds-vert)} .pr-tf .down{color:var(--ds-rouge)} .pr-tf .neu{color:var(--ds-pale)}
+/* La carte PancakeSwap et le portefeuille reel. */
+.pk-ronde{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin:12px 0}
+@media(max-width:900px){.pk-ronde{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:480px){.pk-ronde{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.pk-ronde div{border:1px solid var(--ds-ligne);border-radius:14px;padding:10px 12px;background:var(--ds-fond);min-width:0}
+.pk-ronde small{display:block;font:700 10.5px/1.3 Inter,system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--ds-pale)}
+.pk-ronde b{display:block;font:800 17px/1.25 Inter,system-ui,sans-serif;margin-top:4px;font-variant-numeric:tabular-nums}
+.pk-ronde .bull b{color:var(--ds-vert)} .pk-ronde .bear b{color:var(--ds-rouge)}
+.pr-carte{min-width:0}
+.pr-carte h3{font:800 15px/1.3 Inter,system-ui,sans-serif;margin:18px 0 8px;color:var(--ds-encre)}
+.pr-carte h3:first-child{margin-top:0}
+.pr-risque{display:inline-block;font:800 10.5px/1 Inter,system-ui,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:var(--ds-rouge);background:#FDECEB;border:1px solid #F6C9C6;border-radius:999px;padding:5px 9px;margin-left:8px;vertical-align:2px}
+.pr-mart{border:1px solid #F6C9C6;background:#FFF8F7;border-radius:14px;padding:11px 13px;margin-top:8px;font-size:13px;line-height:1.55;color:var(--ds-encre)}
+.pr-mart b{color:var(--ds-bleu)} .pr-mart .bust{color:var(--ds-rouge);font-weight:700}
+.pk-lien{background:none;border:0;color:var(--ds-bleu);font:600 12.5px/1.4 Inter,system-ui,sans-serif;text-transform:none;letter-spacing:0;cursor:pointer;text-decoration:underline;padding:8px 4px}
+.pk-lien:hover{transform:none;filter:none}
+.pk-cle{border:1px solid #F2DCAE;background:#FFF8EC;border-radius:14px;padding:12px;margin-top:10px}
+.pk-cle-in{width:100%;background:var(--ds-blanc);color:var(--ds-encre);border:1px solid var(--ds-ligne);border-radius:10px;padding:8px;font:12px/1.4 'JetBrains Mono',ui-monospace,monospace;word-break:break-all;resize:vertical}
+#pkReel code{font:12px 'JetBrains Mono',ui-monospace,monospace;color:var(--ds-ambre)}
+.pr-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:10px}
+@media(max-width:640px){.pr-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.pr-s{border:1px solid var(--ds-ligne);border-radius:14px;padding:10px 12px;background:var(--ds-blanc);min-width:0}
+.pr-s .k{font:700 10.5px/1.3 Inter,system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--ds-pale)}
+.pr-s .v{font:800 16px/1.3 Inter,system-ui,sans-serif;margin-top:4px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
 .pr-boutons{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
-.pr-boutons button{font-family:'Anton',sans-serif;font-size:14px;text-transform:uppercase;border:0;border-radius:var(--r);padding:10px 16px;cursor:pointer}
-.pr-boutons .go{background:var(--gold);color:#fff} .pr-boutons .stop{background:transparent;color:var(--dim);border:1px solid var(--line)}
-.pr-champs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
-.pr-champs label{font-family:'Space Mono',monospace;font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);display:block}
-.pr-champs input{width:100%;background:var(--void2);color:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:7px 9px;font-family:'Space Mono',monospace;font-size:12px}
-table.pr-h{width:100%;border-collapse:collapse;font-family:'Space Mono',monospace;font-size:11.5px;margin-top:6px}
-table.pr-h th{text-align:right;color:var(--dim);font-weight:400;font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;padding:4px 6px;border-bottom:1px solid var(--line)}
-table.pr-h td{text-align:right;padding:4px 6px;border-bottom:1px solid var(--line)}
+.pr-boutons button{font:800 13.5px/1 Inter,system-ui,sans-serif;text-transform:none;letter-spacing:0;border:0;border-radius:12px;padding:12px 18px;cursor:pointer;min-height:42px}
+.pr-boutons button:hover{transform:none;filter:brightness(1.05)}
+.pr-boutons .go{background:var(--ds-bleu);color:#fff} .pr-boutons .stop{background:var(--ds-blanc);color:var(--ds-rouge);border:1px solid #F6C9C6}
+.pr-champs{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+.pr-champs label{font:700 10.5px/1.3 Inter,system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--ds-pale);display:block}
+.pr-champs input{width:100%;background:var(--ds-blanc);color:var(--ds-encre);border:1px solid var(--ds-ligne);border-radius:10px;padding:9px 10px;font:13px 'JetBrains Mono',ui-monospace,monospace}
+table.pr-h{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:6px}
+table.pr-h th{text-align:right;color:var(--ds-pale);font:700 10.5px/1.3 Inter,system-ui,sans-serif;letter-spacing:.05em;text-transform:uppercase;padding:9px 10px;border-bottom:1px solid var(--ds-ligne);background:var(--ds-fond);white-space:nowrap}
+table.pr-h td{text-align:right;padding:9px 10px;border-bottom:1px solid #EEF2F7;font-variant-numeric:tabular-nums;white-space:nowrap}
 table.pr-h td:first-child,table.pr-h th:first-child{text-align:left}
-.pos{color:var(--believer)} .neg{color:var(--serpent)}
-.pr-note{font-size:11.5px;color:var(--dim);margin-top:12px} .pr-note a{color:var(--pool)}
-.pr-proto{border:1px dashed var(--neutral);border-radius:var(--r);padding:10px 12px;margin-top:12px;font-size:12px;color:var(--paper)}
-.pr-proto b{color:var(--neutral);font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.06em;text-transform:uppercase}
-/* Le taux MESURÉ par niveau d'accord, avec son n : c'est lui qui remplace
-   « 58.8% · HIGH confidence », qui ne disait rien du résultat. */
-.pr-score{font-family:'Space Mono',monospace;font-size:10.5px;color:var(--dim);margin-left:8px}
-.pr-mesure{font-size:12.5px;margin-top:10px;line-height:1.5}
-.pr-mesure .ref{font-size:11px;color:var(--dim)}
-/* La porte et les ombres de la carte PancakeSwap. */
-.pk-porte{border:1px solid var(--line);border-radius:var(--r);padding:8px 11px;margin-top:10px;font-size:12px;line-height:1.5}
-.pk-ombres{overflow-x:auto;margin-top:10px}
-.pk-ombres table.pr-h{min-width:560px}
-.pk-ombres .pied{font-size:11px;color:var(--dim);margin-top:6px}
-/* Le tournoi des strategies sur les vrais rounds (30/09). */
-.pk-tournoi{overflow-x:auto;margin-top:12px;font-size:12.5px;line-height:1.5}
-.pk-tournoi table.pr-h{min-width:620px}
-.pk-tournoi .pied{font-size:11px;color:var(--dim);margin-top:6px}
+.pos{color:var(--ds-vert)} .neg{color:var(--ds-rouge)}
+.pr-note{font-size:13px;color:var(--ds-pale);margin-top:10px;line-height:1.55} .pr-note a{color:var(--ds-bleu)}
+/* L'execution reelle, a part : elle ne se lit jamais comme la suite du papier. */
+.pr-proto{border:1px dashed #E2B866;background:#FFFBF2;border-radius:18px;padding:16px 18px;margin-top:16px;font-size:13.5px;line-height:1.6;color:var(--ds-encre)}
+.pr-proto b{color:var(--ds-ambre)}
+.pr-proto .titre{display:block;font:800 12px/1.2 Inter,system-ui,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:var(--ds-ambre);margin-bottom:6px}
+.pk-porte{border:1px solid var(--ds-ligne);background:var(--ds-fond);border-radius:14px;padding:11px 13px;margin-top:8px;font-size:13px;line-height:1.6}
+.pk-ombres,.pk-tournoi{overflow-x:auto;margin-top:8px;font-size:13px;line-height:1.55}
+.pk-ombres table.pr-h{min-width:600px} .pk-tournoi table.pr-h{min-width:660px}
+.pk-ombres .pied,.pk-tournoi .pied{font-size:12px;color:var(--ds-pale);margin-top:8px}
+#prHistorique td.sens{font-weight:800}
+@media(max-width:560px){ .pr-cote .p{font-size:28px} .pr-t .v,.pr-t select{font-size:19px} }
 </style>
 
-  <div class="top">
-    <div class="kick">SWOGE Predict · paper simulator · real market data</div>
-    <div class="mk-tete" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
-      <h1>Predict <em>UP / DOWN</em></h1>
-      <span class="pr-live" id="prLive"><span class="pt"></span><span id="prLiveTxt">Connecting…</span></span>
+  <section class="ds-hero" aria-labelledby="prTitre">
+    <div>
+      <div class="ds-badges">
+        <span class="ds-badge papier">&#128221; Paper simulator</span>
+        <span class="ds-badge pr-live" id="prLive"><span class="pt"></span><span id="prLiveTxt">Connecting…</span></span>
+      </div>
+      <h1 id="prTitre">Predict <em>UP / DOWN</em></h1>
+      <p>A paper simulator on <b>real</b> market prices and the <b>real</b> PancakeSwap Prediction rounds &mdash; no real money, no order sent. It scores the next move with technical indicators and shows the score and the reasons. It is <b>not</b> a predictive edge.</p>
     </div>
-    <div class="sub">
-      A paper simulator on <b>real</b> market prices — no real money, no order sent. It scores the next move
-      with technical indicators and shows a probability and the reasons. It is <b>not</b> a predictive edge.
+    <div class="ds-faits">
+      <div class="ds-fait"><i>&#129374;</i><div><b>Real PancakeSwap rounds</b><span>The live BNB round, its two pools and its payout odds, read on BNB Chain.</span></div></div>
+      <div class="ds-fait"><i>&#128221;</i><div><b>Paper by default</b><span>Nothing signs. The real wallet below is owner-only and needs an explicit Play.</span></div></div>
+      <div class="ds-fait"><i>&#9878;&#65039;</i><div><b>Measured, not promised</b><span>Every call is scored once the round closes, with how many rounds it rests on.</span></div></div>
     </div>
+  </section>
 
-    <div class="pr-avert">
-      <b>Read this first</b><br>
-      Short-term price direction is close to random. The probability below is a heuristic, not a real
-      win-chance — on real data, accuracy sits near 50%. The <b>martingale</b> is a very high-risk staking
-      method that <b>ruins a bankroll over ~50/50 outcomes</b> — the PancakeSwap card shows its stake and
-      its busts honestly. Everything here is paper until you arm the real wallet (owner-only, gated).
-      Nothing ever signs or places a trade on its own.
-    </div>
+  <div class="pr-avert" role="note">
+    <span class="titre">&#9888;&#65039; Read this first</span>
+    Short-term price direction is close to random. The score below is a heuristic, not a real
+    win-chance &mdash; on real data, accuracy sits near 50%. The <b>martingale</b> is a very high-risk staking
+    method that <b>ruins a bankroll over ~50/50 outcomes</b> &mdash; the PancakeSwap card shows its stake and
+    its busts honestly. Everything here is paper until you arm the real wallet (owner-only, gated).
+    Nothing ever signs or places a trade on its own.
+  </div>
 
+  <section class="ds-carte" aria-labelledby="prTMarche">
+    <div class="ds-tete"><div><h2 id="prTMarche">Live market</h2><p>Price from Hyperliquid, round and countdown from the real PancakeSwap round.</p></div></div>
     <div class="pr-tete">
-      <div class="pr-t"><div class="k">Market</div><div class="v"><select id="prMarche" style="background:none;border:0;color:var(--paper);font-family:inherit;font-size:20px"><option>BNB</option><option>CAKE</option></select></div></div>
+      <div class="pr-t"><div class="k">Market</div><div class="v"><select id="prMarche" aria-label="Market"><option>BNB</option><option>CAKE</option></select></div></div>
       <div class="pr-t"><div class="k">Round</div><div class="v" id="prRound">—</div></div>
       <div class="pr-t"><div class="k">Time left</div><div class="v" id="prTimer">—</div></div>
       <div class="pr-t"><div class="k">Price</div><div class="v" id="prPrix">—</div></div>
       <div class="pr-t"><div class="k">Change</div><div class="v" id="prChange">—</div></div>
     </div>
-  </div>
+  </section>
 
   <div class="pr-updown">
-    <div class="pr-cote up" id="prUp"><div class="n">🟢 UP</div><div class="p" id="prUpP">—</div><div class="l">indicator score · not a probability</div></div>
-    <div class="pr-cote down" id="prDown"><div class="n">🔴 DOWN</div><div class="p" id="prDownP">—</div><div class="l">indicator score · not a probability</div></div>
+    <div class="pr-cote up" id="prUp"><div class="n">&#9650; UP</div><div class="p" id="prUpP">—</div><div class="l">Indicator score &middot; not a guaranteed probability</div></div>
+    <div class="pr-cote down" id="prDown"><div class="n">&#9660; DOWN</div><div class="p" id="prDownP">—</div><div class="l">Indicator score &middot; not a guaranteed probability</div></div>
   </div>
 
-  <div class="pr-verdict">
-    <span class="grand" id="prSens">—</span><span class="pr-conf LOW" id="prConf">—</span><span class="pr-score" id="prScore"></span>
-    <div class="pr-mesure" id="prMesure"></div>
-    <div class="pr-tf" id="prTf"></div>
-    <div class="pr-raisons" id="prRaisons"></div>
+  <div class="pr-duo">
+    <section class="ds-carte pr-verdict" aria-labelledby="prTSignal">
+      <h2 id="prTSignal" style="margin-bottom:10px">The signal</h2>
+      <span class="grand" id="prSens">—</span><span class="pr-conf LOW" id="prConf">—</span><span class="pr-score" id="prScore"></span>
+      <div class="pr-mesure" id="prMesure"></div>
+      <h3 style="font:800 15px/1.3 Inter,system-ui,sans-serif;margin:16px 0 8px">Technical indicators actually used</h3>
+      <div class="pr-raisons" id="prRaisons"></div>
+      <div class="pr-tf" id="prTf"></div>
+    </section>
+    <section class="ds-carte" aria-labelledby="prTGraphe">
+      <div class="ds-tete">
+        <div><h2 id="prTGraphe">Price chart</h2><p id="prGrapheSous">Hyperliquid candles, the same ones the indicators read.</p></div>
+        <div class="ds-seg" role="group" aria-label="Interval" id="prIntervalles">
+          <button type="button" data-iv="1m" aria-pressed="false">1m</button>
+          <button type="button" data-iv="5m" aria-pressed="true">5m</button>
+          <button type="button" data-iv="15m" aria-pressed="false">15m</button>
+          <button type="button" data-iv="1h" aria-pressed="false">1h</button>
+        </div>
+      </div>
+      <div class="ds-graphe" id="prGraphe"><div class="vide">Loading candles…</div></div>
+    </section>
   </div>
 
-  <!-- LE SUJET DE LA PAGE : le vrai jeu PancakeSwap Prediction, en tête. -->
-  <div class="pr-carte hero" style="margin-top:16px">
-    <h3><span id="pkOnAir" style="display:inline-flex;align-items:center;gap:6px;vertical-align:middle"><span style="width:8px;height:8px;border-radius:50%;background:var(--believer);animation:prp 1.4s infinite"></span></span> PancakeSwap Prediction · the real game (paper)</h3>
-    <p class="pr-note" style="margin-top:0">This is the one that matters. It reads the <b>real</b> PancakeSwap Prediction rounds on BNB Chain — the live price, the two pools and their <b>payout odds</b> — and guesses BULL/BEAR. It only <b>would bet</b> when the odds make it positive-EV; when the payout is poor it <b>skips</b>. A <b>martingale</b> sizes the stake so a win can claw back the losing streak. Paper only, nothing signs — this measures whether the strategy survives before a real wallet plays it (stage 2).</p>
+  <section class="ds-carte" aria-labelledby="prTHisto">
+    <div class="ds-tete"><div><h2 id="prTHisto">Prediction history</h2><p id="prHistoSous">The paper predictor's last calls on BNB, scored when each 5-minute round closed.</p></div></div>
+    <div class="ds-table haut"><table>
+      <thead><tr><th>Round</th><th>Time</th><th>Call</th><th class="num">Score</th><th>Agreement</th><th>Result</th><th class="num">Paper P&amp;L</th></tr></thead>
+      <tbody id="prHistorique"><tr><td colspan="7">Loading…</td></tr></tbody>
+    </table></div>
+  </section>
+
+  <!-- LE SUJET DE LA PAGE : le vrai jeu PancakeSwap Prediction. -->
+  <section class="ds-carte pr-carte hero" aria-labelledby="pkTitre">
+    <h2 id="pkTitre" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span id="pkOnAir" style="display:inline-flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:var(--ds-vert);animation:prp 1.4s infinite"></span></span> PancakeSwap Prediction &middot; the real game (paper)</h2>
+    <p class="pr-note" style="margin-top:6px">This is the one that matters. It reads the <b>real</b> PancakeSwap Prediction rounds on BNB Chain &mdash; the live price, the two pools and their <b>payout odds</b> &mdash; and guesses BULL/BEAR. It only <b>would bet</b> when the odds make it positive-EV; when the payout is poor it <b>skips</b>. A <b>martingale</b> sizes the stake so a win can claw back the losing streak. Paper only, nothing signs &mdash; this measures whether the strategy survives before a real wallet plays it (stage 2).</p>
+    <div class="pk-ronde" id="pkRonde">
+      <div><small>Round</small><b id="pkREpoch">—</b></div>
+      <div><small>Time left</small><b id="pkRTemps">—</b></div>
+      <div class="bull"><small>Bull pool</small><b id="pkRBull">—</b></div>
+      <div class="bear"><small>Bear pool</small><b id="pkRBear">—</b></div>
+      <div class="bull"><small>Bull payout</small><b id="pkRCBull">—</b></div>
+      <div class="bear"><small>Bear payout</small><b id="pkRCBear">—</b></div>
+    </div>
     <div class="pr-note" id="pkLigne" style="margin:8px 0">Loading the live round…</div>
+    <h3>Bet or skip: the EV gate</h3>
     <div class="pk-porte" id="pkPorte" style="display:none"></div>
-    <div class="pr-stats" id="pkBank"></div>
+    <h3>Martingale <span class="pr-risque">High risk</span></h3>
     <div class="pr-mart" id="pkMart" style="display:none"></div>
+    <h3>Paper bank</h3>
+    <div class="pr-stats" id="pkBank"></div>
+    <h3>Shadow bets and the strategy tournament</h3>
     <div class="pk-ombres" id="pkOmbres" style="display:none"></div>
     <div class="pk-tournoi" id="pkTournoi" style="display:none"></div>
-    <div class="pr-note" id="pkMeta" style="margin-top:8px;font-size:11px;color:var(--dim)"></div>
-  </div>
+    <div class="pr-note" id="pkMeta" style="margin-top:10px;font-size:12px"></div>
+  </section>
+
+  <section class="ds-carte" aria-labelledby="prTBank">
+    <div class="ds-tete">
+      <div><h2 id="prTBank">Bankroll</h2><p id="prBankSous">Paper money only.</p></div>
+      <div class="ds-seg" role="group" aria-label="Bankroll" id="prBankChoix">
+        <button type="button" data-b="predicteur" aria-pressed="true">Predictor (paper)</button>
+        <button type="button" data-b="pancake" aria-pressed="false">PancakeSwap (paper)</button>
+      </div>
+    </div>
+    <p class="pr-note" id="prBankDit" style="margin-top:0"></p>
+    <div class="ds-graphe" id="prBankGraphe"><div class="vide">Loading…</div></div>
+  </section>
 
   <div class="pr-proto">
-    <b>Live execution — protocol adapter</b><br>
-    <span id="prProto">The card at the top reads the real PancakeSwap Prediction contract on BNB Chain and bets <b>nothing</b> — it measures whether the odds and the martingale are worth it. To play it for real, use the owner wallet below: it needs a wallet, the <code>EXECUTE</code> flag on the host, and your explicit Play. No private key is stored in this page.</span>
+    <span class="titre">Live execution &mdash; protocol adapter, kept separate</span>
+    <span id="prProto">The PancakeSwap card above reads the real PancakeSwap Prediction contract on BNB Chain and bets <b>nothing</b> &mdash; it measures whether the odds and the martingale are worth it. To play it for real, use the owner wallet below: it needs a wallet, the <code>EXECUTE</code> flag on the host, and your explicit Play. No private key is stored in this page.</span>
   </div>
 
   <!-- ÉTAGE 2 : le vrai portefeuille PancakeSwap (swogepancake.js peint ici). -->
-  <div class="pr-carte hero" style="margin-top:16px">
+  <section class="ds-carte pr-carte hero" aria-label="Prediction wallet">
+    <h2 style="margin-bottom:8px">Prediction wallet</h2>
     <div id="pkReel"><p class="pr-note" style="margin:0">Loading the real PancakeSwap wallet…</p></div>
-  </div>
+  </section>
+
+  <section class="ds-carte" aria-labelledby="prTComment">
+    <h2 id="prTComment">How it works</h2>
+    <ol class="ds-etapes" style="margin-top:12px">
+      <li><b>Read</b>Hyperliquid candles (1m, 5m, 15m, 1h) for the indicators, and the live PancakeSwap round on BNB Chain for the pools and odds.</li>
+      <li><b>Score</b>Four readings (EMA, momentum, RSI, MACD) are averaged into a score for UP or DOWN, capped between 32% and 68% so it never looks like a certainty.</li>
+      <li><b>Gate</b>A bet passes only if score &times; expected final payout beats 1 + gas + margin. Otherwise the round is skipped.</li>
+      <li><b>Stake</b>A martingale doubles after a loss up to a ceiling, then busts back to the base stake. It does not always recover.</li>
+      <li><b>Measure</b>Every call is scored when the round closes; nothing is judged below 1,700 rounds, and strategies need 500+ live rounds.</li>
+    </ol>
+  </section>
+
+  <section class="ds-carte texte" aria-labelledby="prTMoteur">
+    <h2 id="prTMoteur">The prediction engine</h2>
+    <div class="ds-grille2" style="margin-top:10px">
+      <div class="pr-note" style="margin:0">
+        <p style="margin:0 0 8px"><b>Trend:</b> EMA 9 against EMA 21. <b>Momentum:</b> the move over the last 5 candles. <b>RSI 14:</b> above 70 counts as overbought, below 30 as oversold. <b>MACD</b> (12/26): its sign.</p>
+        <p style="margin:0">Only those four move the score. <b>Volume</b> (the last candle against its 20-candle average) is shown as context and moves nothing. <b>Bollinger width</b> (20): when volatility is high, the engine warns that direction is less reliable and the agreement level cannot be HIGH.</p>
+      </div>
+      <div class="pr-note" style="margin:0">
+        <p style="margin:0 0 8px"><b>Signal agreement</b> (HIGH, MEDIUM, LOW) says how many of the four readings point the same way, not how likely the call is. Replayed on 1,500 rounds (Sep 26), the score averaged 57.3% for 47.7% of calls right.</p>
+        <p style="margin:0">The same engine runs on four intervals; when they disagree, that is shown as information, not hidden.</p>
+      </div>
+    </div>
+  </section>
 
   <div class="pr-note" id="prNote"></div>
 
+  <div class="ds-avis risque" role="note"><i>&#9888;&#65039;</i><div>
+    <p><b>Paper by default, and never a promise.</b> SWOGE Predict is a measurement tool on a near coin-flip game. No result on this page is a profit or a forecast you can rely on, and nothing here is financial advice.</p>
+  </div></div>
+
   </div>
+</main>
   <!-- LA COLONNE DE DROITE, sans la carte « YOUR BALANCE » : cette page ne
        suit pas de solde, il n y a pas de `#bal` a recopier — une carte de
        solde y afficherait un chiffre invente. Restent les deux affiches, qui
@@ -958,7 +1158,7 @@ document.addEventListener("DOMContentLoaded", function(){
   }
   function rafraichitCandles(){
     return Promise.all(["1m","5m","15m","1h"].map(function(iv){ return chargeCandles(etat.coin,iv).then(function(c){ etat.candles[iv]=c; }); }))
-      .then(recalcule)["catch"](function(){});
+      .then(function(){ recalcule(); peintGraphe(); })["catch"](function(){});
   }
 
   /* ---- LA PREDICTION ---- */
@@ -1002,6 +1202,7 @@ document.addEventListener("DOMContentLoaded", function(){
     var reste=Math.max(0, rd.tFerme-Date.now());
     var mm=Math.floor(reste/60000), ss=Math.ceil((reste%60000)/1000); if(ss===60){ss=0;mm++;}
     $("prTimer").textContent=(mm<10?"0":"")+mm+":"+(ss<10?"0":"")+ss;
+    var t2=$("pkRTemps"); if(t2) t2.textContent=reste>0?$("prTimer").textContent:"locked";
   }, 500);
   /* ---- LE TAUX MESURÉ PAR NIVEAU D'ACCORD, AVEC SON n ----
    * Le serveur note chaque appel du prédicteur papier (/predict/etat,
@@ -1028,7 +1229,7 @@ document.addEventListener("DOMContentLoaded", function(){
     el.innerHTML=h;
   }
   function chargeCalib(){
-    fetch(serveurP()+"/predict/etat",{cache:"no-store"}).then(function(r){return r.json();}).then(function(j){ if(j&&j.parConfiance){ etat.calib=j.parConfiance; peintMesure(); } })["catch"](function(){});
+    fetch(serveurP()+"/predict/etat",{cache:"no-store"}).then(function(r){return r.json();}).then(function(j){ if(j&&j.parConfiance){ etat.calib=j.parConfiance; peintMesure(); } if(j){ etat.predEtat=j; peintHistorique(j); peintBankroll(); } })["catch"](function(){});
   }
   chargeCalib();
   setInterval(chargeCalib, 60000);
@@ -1044,6 +1245,12 @@ document.addEventListener("DOMContentLoaded", function(){
     /* Le bandeau du haut (Round / Time left) se cale sur le VRAI round PancakeSwap. */
     if(r && r.epoch){ $("prRound").textContent="#"+r.epoch; if(r.lock) etat.serverRound={ tFerme: r.lock*1000 }; }
     else { $("prRound").textContent="—"; etat.serverRound=null; }
+    /* La grille du round (01/10) : pools et cotes tels que le contrat les donne. */
+    var bnb=function(x){ return x==null?"—":Number(x).toFixed(3)+" BNB"; }, cote=function(x){ return x==null?"—":Number(x).toFixed(2)+"x"; };
+    $("pkREpoch").textContent=r&&r.epoch?"#"+r.epoch:"—";
+    $("pkRBull").textContent=r&&r.epoch?bnb(r.bull):"—"; $("pkRBear").textContent=r&&r.epoch?bnb(r.bear):"—";
+    $("pkRCBull").textContent=r&&r.epoch?cote(r.coteBull):"—"; $("pkRCBear").textContent=r&&r.epoch?cote(r.coteBear):"—";
+    etat.pkEtat=j; peintBankroll();
     if(r && r.epoch){
       var cb=r.coteBull!=null?r.coteBull.toFixed(2)+"x":"—", cbe=r.coteBear!=null?r.coteBear.toFixed(2)+"x":"—";
       var dec=r.decision, act;
@@ -1131,6 +1338,103 @@ document.addEventListener("DOMContentLoaded", function(){
     h+='</tbody></table><div class="pied">Survivors ranked by their past t, then the controls. '+(t.liveSinceEpoch?'Live rounds: from round '+nb(t.liveSinceEpoch)+'. ':'')+esc(t.rule)+'</div>';
     el.innerHTML=h; el.style.display="";
   }
+  /* ==================== LA REFONTE (01/10/2026) ====================
+   * Quatre blocs de plus, tous lus sur des donnees reelles : le graphe des bougies
+   * Hyperliquid deja chargees pour les indicateurs, l'historique des appels du predicteur
+   * papier (/predict/etat, dernier), et la caisse : celle du predicteur (courbe) ou celle
+   * de PancakeSwap (le solde apres chaque round de /predict/pancake). Rien n'est estime. */
+  var SVG="http://www.w3.org/2000/svg", IV="5m", CAISSE="predicteur";
+  function svg(tag,at){ var e=document.createElementNS(SVG,tag); for(var k in at) e.setAttribute(k,at[k]); return e; }
+  function txt(s0,x,y,t,anc){ var e=svg("text",{x:x,y:y,"font-size":"11",fill:"#5B6B86","text-anchor":anc||"start"}); e.textContent=t; s0.appendChild(e); }
+  function cadre(g){ var W=Math.max(280,Math.min(900,(g.clientWidth||600)-22)); return { W:W, H:W<480?190:230 }; }
+  function peintGraphe(){
+    var g=$("prGraphe"); if(!g) return;
+    var c=(etat.candles[IV]||[]).filter(function(x){ return x && isFinite(x.c) && isFinite(x.h) && isFinite(x.l); });
+    g.textContent="";
+    if(c.length<2){ var v=document.createElement("div"); v.className="vide"; v.textContent="No candles from Hyperliquid yet."; g.appendChild(v); return; }
+    c=c.slice(-60);
+    var f=cadre(g), W=f.W, H=f.H, G=64, D=10, Hh=10, B=24;
+    var lo=Math.min.apply(null,c.map(function(x){return x.l;})), hi=Math.max.apply(null,c.map(function(x){return x.h;}));
+    var m=(hi-lo)*0.08||hi*0.001; lo-=m; hi+=m;
+    var pas=(W-G-D)/c.length, X=function(i){ return G+pas*(i+0.5); }, Y=function(v){ return Hh+(hi-v)/(hi-lo)*(H-Hh-B); };
+    var s0=svg("svg",{viewBox:"0 0 "+W+" "+H,role:"img","aria-label":etat.coin+" "+IV+" candles from Hyperliquid"});
+    for(var i=0;i<=4;i++){ var v2=lo+(hi-lo)*i/4; s0.appendChild(svg("line",{x1:G,x2:W-D,y1:Y(v2),y2:Y(v2),stroke:"#E6EBF2"})); txt(s0,G-6,Y(v2)+4,"$"+fmt(v2,v2<10?4:2),"end"); }
+    c.forEach(function(x,k){
+      var up=x.c>=x.o, col=up?"#0E8A4F":"#C8322B";
+      s0.appendChild(svg("line",{x1:X(k),x2:X(k),y1:Y(x.h),y2:Y(x.l),stroke:col,"stroke-width":"1"}));
+      var y1=Y(Math.max(x.o,x.c)), y2=Y(Math.min(x.o,x.c));
+      s0.appendChild(svg("rect",{x:X(k)-Math.max(1,pas*0.32),y:y1,width:Math.max(2,pas*0.64),height:Math.max(1,y2-y1),fill:col,rx:"1"}));
+    });
+    var t0=c[0].t, t1=c[c.length-1].t;
+    if(isFinite(t0)&&t0>1e11){ txt(s0,G,H-6,new Date(t0).toISOString().slice(11,16)); txt(s0,W-D,H-6,new Date(t1).toISOString().slice(11,16)+" UTC","end"); }
+    g.appendChild(s0);
+  }
+  [].forEach.call(document.querySelectorAll("#prIntervalles button"),function(b){
+    b.addEventListener("click",function(){ IV=b.getAttribute("data-iv");
+      [].forEach.call(document.querySelectorAll("#prIntervalles button"),function(x){ x.setAttribute("aria-pressed",String(x===b)); });
+      peintGraphe(); });
+  });
+
+  /* L'historique : chaque appel du predicteur papier, juge a la cloture du round. Texte seul. */
+  function peintHistorique(j){
+    var tb=$("prHistorique"); if(!tb) return;
+    var l=Array.isArray(j.dernier)?j.dernier:[];
+    tb.textContent="";
+    if(!l.length){ var tr0=document.createElement("tr"), td0=document.createElement("td"); td0.colSpan=7; td0.textContent="No call scored yet."; tr0.appendChild(td0); tb.appendChild(tr0); }
+    l.forEach(function(d){
+      var tr=document.createElement("tr");
+      var res=d.egal?"tie":(d.gagne===true?"right":d.gagne===false?"wrong":"open");
+      [["#"+(d.n==null?"—":d.n)],[d.t?new Date(d.t).toISOString().slice(11,16)+" UTC":"—"],[d.sens||"—","sens "+(d.sens==="UP"?"pos":d.sens==="DOWN"?"neg":"")],
+       [d.prob==null?"—":Number(d.prob).toFixed(1)+"%","num"],[d.confiance?String(d.confiance):"—"],[res,res==="right"?"pos":res==="wrong"?"neg":""],
+       [d.pl==null?"—":(d.pl>0?"+":"")+fmt(d.pl,2),"num "+(d.pl>0?"pos":d.pl<0?"neg":"")]].forEach(function(x){
+        var td=document.createElement("td"); td.textContent=x[0]; if(x[1]) td.className=x[1]; tr.appendChild(td); });
+      tb.appendChild(tr);
+    });
+    var T=j.toutesCaisses, so=$("prHistoSous");
+    if(so) so.textContent="The paper predictor's last "+l.length+" calls on "+(j.coin||"BNB")+", scored when each 5-minute round closed."
+      +(T&&T.trades?" In all: "+Number(T.trades).toLocaleString("en-US")+" calls, "+T.winRate+"% right"+(T.wilson?" (95% CI "+T.wilson[0]+"–"+T.wilson[1]+"%)":"")
+        +" against "+((j.parConfiance&&j.parConfiance.pointMort)||51.5)+"% needed to break even on PancakeSwap.":"");
+  }
+
+  /* La caisse : celle du predicteur (sa courbe de session) ou celle de PancakeSwap. */
+  function courbe(g, pts, unite){
+    g.textContent="";
+    var f=cadre(g), W=f.W, H=f.H, G=70, D=10, Hh=10, B=12;
+    var lo=Math.min.apply(null,pts), hi=Math.max.apply(null,pts), m=(hi-lo)*0.1||Math.abs(hi)*0.01||1; lo-=m; hi+=m;
+    var X=function(i){ return G+(W-G-D)*i/Math.max(1,pts.length-1); }, Y=function(v){ return Hh+(hi-v)/(hi-lo)*(H-Hh-B); };
+    var s0=svg("svg",{viewBox:"0 0 "+W+" "+H,role:"img","aria-label":"Paper bankroll"});
+    for(var i=0;i<=4;i++){ var v=lo+(hi-lo)*i/4; s0.appendChild(svg("line",{x1:G,x2:W-D,y1:Y(v),y2:Y(v),stroke:"#E6EBF2"})); txt(s0,G-6,Y(v)+4,fmt(v,unite==="BNB"?4:0)+(unite?" "+unite:""),"end"); }
+    var d=pts.map(function(v,k){ return (k?"L":"M")+X(k).toFixed(1)+" "+Y(v).toFixed(1); }).join(" ");
+    s0.appendChild(svg("path",{d:d,fill:"none",stroke:"#1652F0","stroke-width":"2.4","stroke-linejoin":"round"}));
+    s0.appendChild(svg("circle",{cx:X(pts.length-1),cy:Y(pts[pts.length-1]),r:"4",fill:"#1652F0"}));
+    g.appendChild(s0);
+  }
+  function peintBankroll(){
+    var g=$("prBankGraphe"), dit=$("prBankDit"); if(!g||!dit) return;
+    var vide=function(t){ g.textContent=""; var v=document.createElement("div"); v.className="vide"; v.textContent=t; g.appendChild(v); };
+    if(CAISSE==="predicteur"){
+      var j=etat.predEtat; if(!j){ dit.textContent=""; return vide("Loading…"); }
+      var b=j.banque||{}, T=j.toutesCaisses, pts=(Array.isArray(j.courbe)?j.courbe:[]).filter(function(x){ return isFinite(x); });
+      if(b.depart!=null && pts.length) pts=[b.depart].concat(pts);
+      dit.textContent="Current paper session"+(j.sessions?" (#"+j.sessions+")":"")+": "+fmt(b.solde,0)+" from "+fmt(b.depart,0)+" paper units over "+(b.trades||0)+" calls, with the martingale"
+        +(b.drawdownMax!=null?" \u00b7 worst drawdown "+Number(b.drawdownMax).toFixed(1)+"%":"")+"."
+        +(T&&T.ruines!=null?" "+T.ruines+" paper bankroll"+(T.ruines===1?"":"s")+" ruined since "+new Date(T.depuis).toISOString().slice(0,10)+" \u2014 the martingale does not always recover.":"");
+      return pts.length>1?courbe(g,pts,""):vide("No call settled in this session yet.");
+    }
+    var k=etat.pkEtat; if(!k){ dit.textContent=""; return vide("Loading…"); }
+    var bk=k.banque||{}, l=(Array.isArray(k.dernier)?k.dernier.slice():[]).filter(function(x){ return isFinite(x.bank); }).sort(function(a,b2){ return (a.t||0)-(b2.t||0); });
+    dit.textContent="PancakeSwap paper bank: "+fmt(bk.solde,4)+" BNB from "+fmt(bk.depart,4)+" \u00b7 "+(bk.mises||0)+" paper bet"+(bk.mises===1?"":"s")+", "+(bk.skips||0)+" round"+(bk.skips===1?"":"s")+" skipped by the EV gate.";
+    if(!bk.mises) return vide("No paper bet placed yet: the EV gate skipped every round, so the bank has not moved.");
+    return l.length>1?courbe(g,l.map(function(x){ return x.bank; }),"BNB"):vide("Not enough rounds to draw.");
+  }
+  [].forEach.call(document.querySelectorAll("#prBankChoix button"),function(b){
+    b.addEventListener("click",function(){ CAISSE=b.getAttribute("data-b");
+      [].forEach.call(document.querySelectorAll("#prBankChoix button"),function(x){ x.setAttribute("aria-pressed",String(x===b)); });
+      peintBankroll(); });
+  });
+  var largeurVue=window.innerWidth, redim=null;
+  window.addEventListener("resize",function(){ if(window.innerWidth===largeurVue) return; largeurVue=window.innerWidth; clearTimeout(redim); redim=setTimeout(function(){ peintGraphe(); peintBankroll(); },200); });
+
   chargePancake();
   setInterval(chargePancake, 15000);
 

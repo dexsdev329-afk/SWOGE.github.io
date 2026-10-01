@@ -184,7 +184,11 @@ var T={'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'ap
     ok(/NOT CONNECTED|PROTOCOL/i.test(body),'le protocole live est NOT CONNECTED, pas invente');
     ok(/paper/i.test(body) && /no real money|nothing signs|no order/i.test(body),'papier, aucun ordre');
     var src=fs.readFileSync(path.join(SITE,'swoge_predict.html'),'utf8')+fs.readFileSync(path.join(SITE,'predict_moteur.js'),'utf8');
-    ok(!/guaranteed|sure win|privateKey|sendTransaction|signTransaction/i.test(src),'aucun « garanti », aucune signature, aucune cle');
+    /* 01/10 : le proprietaire demande l etiquette « indicator score · not a guaranteed probability ».
+       L intention de l essai reste entiere : la page ne PRETEND jamais a une garantie — la negation
+       « not a guaranteed » est permise, tout autre « guaranteed » ne l est pas. */
+    ok(!/(?<!not a )guaranteed|sure win|privateKey|sendTransaction|signTransaction/i.test(src),'aucun « garanti » (sauf pour le nier), aucune signature, aucune cle');
+    ok((await page.$$eval('.pr-cote .l',function(l){return l.map(function(x){return x.textContent;});})).every(function(t){return /not a guaranteed probability/i.test(t);}),'les cartes UP/DOWN disent « not a guaranteed probability »');
   }
 
   console.log('-- 6. étage 1 PancakeSwap : vrais rounds, côtes, porte EV (papier) --');
@@ -302,6 +306,31 @@ var T={'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'ap
     var deborde=await page.evaluate(function(){ return document.documentElement.scrollWidth>document.documentElement.clientWidth+1; });
     ok(!deborde,'à 320 px, la page ne défile pas de côté (le tableau défile dans sa boîte)');
     await page.setViewportSize({width:1200,height:1200});
+  }
+
+  /* 01/10 : la refonte (« blanc dominant, ne casse rien, aucune fausse donnee »). Chaque bloc
+     nouveau lit une donnee reelle — bougies, round, appels du predicteur, caisse — ou se tait. */
+  console.log('-- 11. la refonte : graphe, round, historique, caisse --');
+  {
+    await page.waitForFunction(function(){ return document.querySelectorAll('#prGraphe svg rect').length>0 && document.querySelectorAll('#prHistorique tr').length===2; },null,{timeout:8000});
+    var bougies=await page.$$eval('#prGraphe svg rect',function(r){return r.length;});
+    ok(bougies===60,'le graphe : les 60 dernieres bougies Hyperliquid, celles que lisent les indicateurs ['+bougies+']');
+    await page.click('#prIntervalles button[data-iv="1h"]');
+    ok((await page.getAttribute('#prIntervalles button[data-iv="1h"]','aria-pressed'))==='true' && (await page.$$('#prGraphe svg rect')).length===60,'les intervalles 1m/5m/15m/1h se choisissent');
+    var ronde=await page.$$eval('#pkRonde b',function(b){return b.map(function(x){return x.textContent;});});
+    ok(ronde[0]==='#517724' && ronde[2]==='0.100 BNB' && ronde[3]==='0.500 BNB' && ronde[4]==='5.40x' && ronde[5]==='1.16x','le round PancakeSwap : numero, pools BULL/BEAR et cotes, tels que le contrat les donne ['+ronde.join(' | ')+']');
+    ok(ronde[1]==='—','un round sans heure de verrou (lock) n a pas de compte a rebours invente ['+ronde[1]+']');
+    var h=await page.$$eval('#prHistorique tr',function(t){return t.map(function(r){return [].map.call(r.cells,function(c){return c.textContent;});});});
+    ok(h[0][0]==='#42' && h[0][2]==='UP' && h[0][5]==='right' && h[0][6]==='+10' && h[1][5]==='wrong' && h[1][6]==='-10','l historique : chaque appel du predicteur, juste ou faux, et son P&L papier ['+h[0].join(' | ')+']');
+    ok(h[0][4]==='—','un niveau d accord absent du serveur s ecrit « — », pas invente');
+    var bank=await page.textContent('#prBankDit');
+    ok(/^Current paper session \(#1\): 1,030 from 1,000 paper units over 20 calls/.test(bank) && (await page.$$('#prBankGraphe svg path')).length===1,'la caisse du predicteur : sa session, son effectif, et sa courbe ['+bank.slice(0,70)+']');
+    await page.click('#prBankChoix button[data-b="pancake"]');
+    bank=await page.textContent('#prBankDit');
+    ok(/^PancakeSwap paper bank: 1\.05 BNB from 1 · 5 paper bets, 7 rounds skipped by the EV gate\.$/.test(bank) && /Not enough rounds to draw/.test(await page.textContent('#prBankGraphe')),'la caisse PancakeSwap : sans historique de rounds, aucune courbe inventee ['+bank+']');
+    ok(/High risk/i.test(await page.textContent('.pr-risque')),'la martingale porte le badge « High risk »');
+    ok(/Paper by default, and never a promise/.test(await page.textContent('body')),'l avis final : papier, jamais une promesse');
+    ok((await page.$eval('.sw-lat',function(e){return e.parentElement.className;}))==='sw-corps','la colonne de droite est a cote du contenu, plus dedans (main se fermait apres elle)');
   }
 
   await nav.close(); await new Promise(function(s){srv.close(s);});

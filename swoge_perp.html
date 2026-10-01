@@ -38,7 +38,7 @@
  * Meme garde que `swoge_ai.html` : sans elle, un joueur garde des semaines
  * une version corrigee depuis longtemps, et ici cela voudrait dire une
  * colonie qui a l'air arretee alors qu'elle tourne. */
-var MARQUE_PAGE = '0307f543';
+var MARQUE_PAGE = '999d7e02';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -314,8 +314,8 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
          quatre blocs nouveaux (marches en tete, courbe, position en cours, chemin d'une
          decision) sont lus sur /ai/perp ; rien n'y vient de la maquette. -->
     <section class="ds-hero avec-fond pp-tete" aria-labelledby="ppTitre">
-    <!-- Le fond du heros (01/10) : un film de l accueil, sans texte ni chiffre ; mouvement reduit : il reste sur sa premiere image. -->
-    <video class="ds-hero-fond" src="media/accueil_ia.mp4" poster="img/site/accueil/ia.webp" muted autoplay loop playsinline disablepictureinpicture aria-hidden="true"></video>
+    <!-- Le film du heros (01/10) : propre a cette page, sans texte ni chiffre ; mouvement reduit : il reste sur sa premiere image. -->
+    <video class="ds-hero-fond" src="media/ia_perp.mp4" poster="img/site/ia/perp.webp" muted autoplay loop playsinline disablepictureinpicture aria-hidden="true"></video>
     <div class="ds-hero-voile"></div>
     <script>try{ if (matchMedia("(prefers-reduced-motion: reduce)").matches){ var v = document.currentScript.parentNode.querySelector(".ds-hero-fond"); v.removeAttribute("autoplay"); v.pause(); } }catch(e){}</script>
       <div>

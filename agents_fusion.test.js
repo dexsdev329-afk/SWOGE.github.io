@@ -87,7 +87,8 @@ let chromium = null; try { chromium = require('playwright').chromium; } catch (e
   /* 30/09 : OSINT et eSIM rejoignent la page (« une fusion pour gagner de la place »). */
   console.log('\n-- OSINT et eSIM, deux onglets de plus --');
   ({ p, ctx, erreurs } = await ouvre(''));
-  ok((await p.$$('.onglets [role="tab"]')).length === 5, 'cinq onglets : Chat, Agent, Browse, OSINT, eSIM');
+  /* 01/10 : l Agent Store fait le sixieme. */
+  ok((await p.$$('.onglets [role="tab"]')).length === 6, 'six onglets : Chat, Agent, Browse, OSINT, eSIM, Store');
   await p.click('#ongletOsint');
   ok(await visible(p, 'os-q') && !(await visible(p, 'question')) && !(await visible(p, 'es-pays')), 'OSINT s affiche seul');
   await p.fill('#os-q', 'example.com');
@@ -173,7 +174,24 @@ let chromium = null; try { chromium = require('playwright').chromium; } catch (e
     await ctx.close();
   }
 
-  for (const m of ['chat', 'agent', 'browse', 'osint', 'esim']) {
+  /* 01/10 : l Agent Store devient le sixieme onglet. */
+  console.log('\n-- Store : l Agent Store, dans Agents --');
+  {
+    ({ p, ctx, erreurs } = await ouvre('?mode=store', 1280));
+    await p.waitForTimeout(300);
+    ok(await visible(p, 'st-grilleSwoge') && !(await visible(p, 'question')) && (await p.getAttribute('#ongletStore', 'aria-selected')) === 'true',
+       '?mode=store ouvre l Agent Store, seul, l onglet marque');
+    await p.click('#st-ongletX402');
+    ok(await visible(p, 'st-rayonX402') && !(await visible(p, 'st-rayonSwoge')), 'ses deux rayons (SWOGE agents / x402) se basculent dans l onglet');
+    ok(erreurs.length === 0, erreurs.length ? 'erreurs : ' + erreurs.slice(0, 2).join(' | ') : 'aucune erreur de script');
+    await ctx.close();
+    ({ p, ctx, erreurs } = await ouvre('?tab=x402', 1280));
+    await p.waitForTimeout(300);
+    ok((await p.getAttribute('#ongletStore', 'aria-selected')) === 'true' && await visible(p, 'st-rayonX402'), 'l ancien lien ?tab=x402 rouvre le rayon x402 du Store');
+    await ctx.close();
+  }
+
+  for (const m of ['chat', 'agent', 'browse', 'osint', 'esim', 'store']) {
     ({ p, ctx, erreurs } = await ouvre('?mode=' + m, 360));
     const large = await p.evaluate(() => document.documentElement.scrollWidth);
     ok(large <= 360, 'onglet ' + m + ' a 360 px : rien ne deborde (' + large + ' px)');

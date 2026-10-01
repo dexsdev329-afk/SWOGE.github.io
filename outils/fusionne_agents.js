@@ -180,6 +180,32 @@ function esim() {
   return { html: '<div class="es-cadre">\n' + prefixeIds(html, 'es-') + '</div>\n', css, js: scripte(js) };
 }
 
+/* ---- AGENT STORE (01/10, « met le dans Agents ») ----
+   agent_store.html reste en ligne (le serveur et des liens exterieurs la citent) ; l onglet en
+   reprend le contenu de <main>, ses identifiants prefixes `st-`, ses regles bornees a
+   #modeStore. Ses variables de couleur (--fond, --pale…) existent aussi dans le chat avec
+   d autres valeurs : elles sont posees sur #modeStore et non sur :root. */
+function store() {
+  const src = lis('agent_store.html');
+  const v0 = position(src, '<style>\n:root{ --fond:', 0, 'store styles') + '<style>\n'.length;
+  const v1 = position(src, '\n', v0, 'store fin des variables');
+  const vars = src.slice(v0 + ':root{'.length, v1).replace(/\}\s*$/, '');
+  const c0 = position(src, 'main{ max-width:1080px;', v1, 'store regles');
+  const c1 = position(src, '/* ==================== LA NOUVELLE BARRE', c0, 'store fin des regles');
+  /* Sa barre a deux rayons s appelle `.onglets`, comme celle de la page : renommee, sinon la
+     grille a six colonnes d Agents s y applique. */
+  const css = '#modeStore{' + vars + '}\n' + borne(remplace(src.slice(c0, c1), '.onglets', '.st-onglets', 3, 'store : classe des rayons'), '#modeStore');
+  const a = position(src, '\n<main>\n', 0, 'store <main>') + '\n<main>\n'.length;
+  let html = src.slice(a, position(src, '\n</main>', a, 'store </main>'));
+  equilibre(html, 'store');
+  html = remplace(html, 'class="onglets"', 'class="st-onglets"', 1, 'store : barre des rayons');
+  const i = position(src, '<script>\n(function(){\n  "use strict";\n  var $ = function(id){ return document.getElementById(id); };', 0, 'store script');
+  let js = src.slice(i + '<script>\n'.length, position(src, '</script>', i, 'store fin du script'));
+  js = remplace(js, 'var $ = function(id){ return document.getElementById(id); };', 'var $ = function(id){ return document.getElementById("st-" + id); };', 1, 'store : $');
+  if ((js.match(/getElementById\(/g) || []).length !== 1 || /querySelector/.test(js)) throw new Error('store : une requete contourne $()');
+  return { html: '<div class="st-cadre">\n' + prefixeIds(html, 'st-') + '</div>\n', css, js: '<script>\n' + js + '</script>\n' };
+}
+
 const TITRE = 'SWOGE Agents · AI chat and AI agent tasks';
 const RESUME = 'SWOGE Agents: chat with Claude, ChatGPT and Grok, create images and videos, or give an AI agent a task — it reads tokens, the SWOGE AI colony and the web, then answers with sources.';
 const LIEN = '<a href="swoge_agents.html" class="on" aria-current="page"><span class="ic">&#129504;</span>Agents</a>';
@@ -190,7 +216,8 @@ const ONGLETS_CSS = `
  * qu il fait : le joueur choisit sans connaitre les anciens noms. Le bouton
  * general de la page (Anton, majuscules, fond bleu) est entierement repris. */
 .onglets-cadre{max-width:780px;margin:0 auto;padding:12px 16px 0}
-.onglets{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px;padding:4px;background:var(--panel2);border-radius:16px}
+.onglets{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:4px;padding:4px;background:var(--panel2);border-radius:16px}
+@media (max-width:900px){ .onglets{grid-template-columns:repeat(3,minmax(0,1fr))} }
 @media (max-width:560px){ .onglets{grid-template-columns:1fr 1fr} }
 .onglets button{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;min-width:0;
   font:inherit;text-transform:none;letter-spacing:0;background:transparent;color:var(--dim);
@@ -221,6 +248,11 @@ const ONGLETS_CSS = `
 #modeEsim h1{font-family:inherit;text-transform:none;letter-spacing:0}
 #modeEsim button{text-transform:none;letter-spacing:0}
 #modeEsim button:hover{transform:none;filter:none}
+/* Agent Store (01/10) : sa typographie et ses boutons a lui. */
+#modeStore .st-cadre{max-width:1080px;margin:0 auto;font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:var(--encre)}
+#modeStore h1{font-family:inherit;text-transform:none;letter-spacing:-.01em}
+#modeStore button{text-transform:none;letter-spacing:0}
+#modeStore button:hover{transform:none;filter:none}
 `;
 
 const ONGLETS_HTML = `<div class="onglets-cadre">
@@ -235,6 +267,8 @@ const ONGLETS_HTML = `<div class="onglets-cadre">
       <b>&#128269; OSINT</b><small>Domain, IP, site or address, from public sources</small></button>
     <button type="button" role="tab" id="ongletEsim" aria-controls="modeEsim" aria-selected="false" tabindex="-1">
       <b>&#128246; eSIM</b><small>Travel data, paid in USDC from your wallet</small></button>
+    <button type="button" role="tab" id="ongletStore" aria-controls="modeStore" aria-selected="false" tabindex="-1">
+      <b>&#129513; Store</b><small>Measured agents and paid tools, per task</small></button>
   </div>
 </div>
 `;
@@ -248,12 +282,12 @@ const BROWSE = () => lis('outils/browse_onglet.html');
 const ONGLETS_JS = `<script>
 (function(){
   "use strict";
-  var ordre = ["chat", "agent", "browse", "osint", "esim"];
+  var ordre = ["chat", "agent", "browse", "osint", "esim", "store"];
   var onglets = { chat: document.getElementById("ongletChat"), agent: document.getElementById("ongletAgent"), browse: document.getElementById("ongletBrowse"),
-                  osint: document.getElementById("ongletOsint"), esim: document.getElementById("ongletEsim") };
+                  osint: document.getElementById("ongletOsint"), esim: document.getElementById("ongletEsim"), store: document.getElementById("ongletStore") };
   /* Browse (30/09) : un vrai navigateur, sur un service a part (outils/browse_onglet.html). */
   var vues = { chat: document.getElementById("modeChat"), agent: document.getElementById("modeAgent"), browse: document.getElementById("modeBrowse"),
-               osint: document.getElementById("modeOsint"), esim: document.getElementById("modeEsim") };
+               osint: document.getElementById("modeOsint"), esim: document.getElementById("modeEsim"), store: document.getElementById("modeStore") };
   var saisies = { chat: "question", agent: "ag-question" };
   var courant = "chat";
   function montre(m, garde){
@@ -274,7 +308,9 @@ const ONGLETS_JS = `<script>
   /* Les liens des anciennes pages rouvrent leur onglet : ?q= (enquete OSINT partagee),
      ?order= (le lien de commande eSIM, seul moyen de revoir son code d activation). */
   try { var u0 = new URLSearchParams(location.search); depart = u0.get("mode") || (u0.get("order") ? "esim" : u0.get("q") ? "osint" : null); } catch (e) {}
-  if (!depart && /^#(agent|browse|chat|osint|esim)$/.test(location.hash)) depart = location.hash.slice(1);
+  /* ?tab=x402 : l ancien lien du rayon « x402 services » de l Agent Store. */
+  try { if (!depart && new URLSearchParams(location.search).get("tab") === "x402") depart = "store"; } catch (e) {}
+  if (!depart && /^#(agent|browse|chat|osint|esim|store)$/.test(location.hash)) depart = location.hash.slice(1);
   if (!depart) try { depart = localStorage.getItem("swogeAgentsVue"); } catch (e) {}
   montre(depart || "chat", false);
   Object.keys(onglets).forEach(function(k){
@@ -326,7 +362,7 @@ function fusionne() {
   const cssAgent = ag.styles.map((s) => borne(s, '#modeAgent')).join('');
 
   /* ---- le chat : sa seule requete globale qui aurait pris les boutons de l agent ---- */
-  const os = osint(), es = esim();
+  const os = osint(), es = esim(), st = store();
   const jsChat = remplace(chat.script, 'document.querySelectorAll(".suggestion")', 'document.querySelectorAll("#accueil .suggestion")', 1, 'chat : suggestions');
 
   return tete +
@@ -336,6 +372,7 @@ function fusionne() {
     '<style>\n/* ==== SWOGEAGENTIC, borne a #modeAgent (genere) ==== */\n' + cssAgent + '</style>\n' +
     '<style>\n/* ==== OSINT, borne a #modeOsint (genere) ==== */\n' + os.css + '</style>\n' +
     '<style>\n/* ==== eSIM, borne a #modeEsim (genere) ==== */\n' + es.css + '</style>\n' +
+    '<style>\n/* ==== Agent Store, borne a #modeStore (genere) ==== */\n' + st.css + '</style>\n' +
     '<style>' + ONGLETS_CSS + '</style>\n' +
     ONGLETS_HTML +
     '<section class="ag-mode" id="modeChat" role="tabpanel" aria-labelledby="ongletChat">\n' + chat.html + '</section>\n' +
@@ -343,9 +380,10 @@ function fusionne() {
     '<section class="ag-mode" id="modeBrowse" role="tabpanel" aria-labelledby="ongletBrowse" hidden>\n' + BROWSE() + '</section>\n' +
     '<section class="ag-mode" id="modeOsint" role="tabpanel" aria-labelledby="ongletOsint" hidden>\n' + os.html + '</section>\n' +
     '<section class="ag-mode" id="modeEsim" role="tabpanel" aria-labelledby="ongletEsim" hidden>\n' + es.html + '</section>\n' +
+    '<section class="ag-mode" id="modeStore" role="tabpanel" aria-labelledby="ongletStore" hidden>\n' + st.html + '</section>\n' +
     ONGLETS_JS +
     jsChat + '\n' +
-    js + '\n' + os.js + es.js +
+    js + '\n' + os.js + es.js + st.js +
     '</main>' + chat.queue;
 }
 

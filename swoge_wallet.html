@@ -68,7 +68,7 @@
      A savoir : cela ne sauve pas la page DEJA en cache chez quelqu'un, qui ne
      contient pas ces lignes. Ce garde-fou vaut a partir de celle-ci. -->
 <script>
-var MARQUE_PAGE = '99dd9f0d';
+var MARQUE_PAGE = '79e16a13';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -98,7 +98,7 @@ var MARQUE_PAGE = '99dd9f0d';
 <!-- Les MEMES polices que le reste du site : Anton, Archivo, Space Mono.
      Jamais Inter — je l'avais suppose, et la relecture du chrome existant
      m'a montre que c'etait faux. -->
-<link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@600;700;800;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 
 <!-- ethers v5 en global, comme sur toutes les pages qui touchent a la chaine.
      Il doit etre la AVANT tout appel a la chaine. -->
@@ -1386,32 +1386,78 @@ a.sg-logo:focus-visible{ outline:2px solid var(--accent); outline-offset:2px }
  * Les colonnes, elles, sont en `display:none` a cette taille : elles ne
  * reapparaissent dans le flux qu'avec la rangee, au-dessus du seuil. */
 .wl-page{ display:contents }
-.wl-cote{ display:none }
+.wl-cote, .vt-cartes, .vt-liens, .vt-halo, .vt-rail, .vt-vitrine,
+.wl-nav, .vt-hdroite{ display:none }
+/* ---- LA VITRINE, AU-DESSUS DE 520 PIXELS ----
+ * En dessous, l'ecran EST le portefeuille (`body` a la hauteur de la fenetre,
+ * sans defilement) : rien ne s'ajoute sous lui. Entre 521 et 1059, elle
+ * vient SOUS le telephone, qui garde sa place en haut — la feuille de
+ * connexion doit rester atteignable sans faire defiler la page. */
+@media (min-width:521px){
+  .vt-vitrine{ display:block; width:100%; max-width:780px; padding:12px 22px 0 }
+}
+/* ---- AU-DESSUS DE 1060 : UNE VITRINE AUTOUR DU TELEPHONE ----
+ * Le titre a gauche, le telephone, les cartes de l'echange, du pont et du
+ * coffre a droite ; les sections passent dessous.
+ * 80 = 56 de bandeau (hauteur FIXEE ici, pour que le calcul ne soit pas une
+ * supposition) + 12 de marge haute + 12 de marge basse. Le cadre en faisait
+ * 73 de moins que la fenetre avant ; il en fait 80, et `wallet_page.test.js`
+ * refait la mesure a cinq hauteurs de fenetre, feuille de connexion ouverte. */
 @media (min-width:1060px){
   .wl-page{
-    display:flex; width:100%; align-items:flex-start; justify-content:center;
-    gap:18px; padding:0 14px 18px;
+    display:grid; position:relative; width:100%; max-width:1480px; margin:0 auto;
+    padding:12px 24px 0; column-gap:20px;
+    grid-template-columns:minmax(260px,1fr) 390px 40px 232px;
+    grid-template-areas:"texte tel . droite" "cartes cartes cartes cartes" "vitrine vitrine vitrine vitrine";
   }
-  .wl-cote{
-    display:flex; flex-direction:column; gap:12px;
-    position:sticky; top:14px; flex:0 0 auto;
-  }
-  .wl-cote.gauche{ width:208px }
-  .wl-cote.droite{ width:268px }
+  .wl-cote{ display:flex; flex-direction:column; min-width:0 }
+  .wl-cote.gauche{ grid-area:texte; align-self:center; padding:24px 0 }
+  .wl-cote.droite{ grid-area:droite; gap:14px; align-self:center }
+  .wl-tel{ grid-area:tel; z-index:2; max-height:calc(100dvh - 80px) }
+  .vt-halo{ display:block; grid-area:tel }
+  .vt-liens{ display:block }
+  .vt-cartes{ display:grid; grid-area:cartes; grid-template-columns:repeat(3,1fr);
+    gap:14px; margin-top:30px }
+  .vt-vitrine{ grid-area:vitrine; max-width:none; padding:12px 0 0 }
 }
-.wl-nav{ background:var(--carte); border:1px solid var(--bord);
-  border-radius:var(--rayon); padding:8px }
+/* ---- ET AU-DESSUS DE 1340 : LE TELEPHONE SUIT LA LECTURE ----
+ * Il occupe ses deux rangees et reste colle sous le bandeau pendant que les
+ * sections defilent a sa gauche ; a sa droite, sous les cartes, le rail dit
+ * quel ecran il montre. Les deux gouttieres de 40 pixels de part et d'autre
+ * du telephone portent les liens des cartes : a 1240, sans elles, ces liens
+ * mesuraient une dizaine de pixels et ne se voyaient pas. 1340 est la largeur
+ * ou le titre garde ses 300 pixels avec elles. */
+@media (min-width:1340px){
+  .wl-page{
+    grid-template-columns:minmax(300px,1fr) 200px 40px 390px 40px 232px;
+    grid-template-rows:minmax(calc(100dvh - 68px), auto) auto;
+    grid-template-areas:"texte cartes . tel . droite" "vitrine vitrine vitrine tel . rail";
+  }
+  .wl-tel{ position:sticky; top:68px; align-self:start }
+  .vt-halo{ grid-area:1 / 4 / 2 / 5 }
+  .vt-cartes{ display:flex; flex-direction:column; grid-template-columns:none;
+    margin-top:0; align-self:center }
+  .vt-rail{ display:flex; grid-area:rail; position:sticky; top:68px; align-self:start;
+    margin-top:56px }
+  .vt-vitrine{ padding-right:4px }
+}
+/* Dans le voile d'une autre page, le portefeuille seul — jamais la vitrine. */
+html.wl-encadre .wl-page{ display:contents }
+html.wl-encadre .wl-cote, html.wl-encadre .vt-cartes, html.wl-encadre .vt-liens,
+html.wl-encadre .vt-halo, html.wl-encadre .vt-rail, html.wl-encadre .vt-vitrine,
+html.wl-encadre .wl-nav, html.wl-encadre .vt-hdroite{ display:none }
+
+/* ---- LE MENU DU SITE, DANS LE BANDEAU ---- */
 .wl-nav a{
-  display:flex; align-items:center; gap:11px; padding:11px 12px; border-radius:10px;
-  font:600 13.5px/1 'Archivo',system-ui,sans-serif; color:var(--texte);
-  text-decoration:none;
+  display:flex; align-items:center; gap:7px; padding:9px 13px; border-radius:999px;
+  font:700 13.5px/1 'Archivo',system-ui,sans-serif; color:var(--doux);
+  text-decoration:none; white-space:nowrap;
 }
-.wl-nav a .ic{ width:20px; text-align:center; font-size:15px; opacity:.75 }
-.wl-nav a:hover{ background:var(--nuit) }
+.wl-nav a .ic{ display:none }
+.wl-nav a:hover{ color:var(--texte); background:var(--carte2) }
 /* La page courante se marque, et reste cliquable : une entree « ici » qu'on
    ne peut pas cliquer se lit comme desactivee. */
-.wl-nav a.on{ background:var(--carte2); color:var(--accent) }
-.wl-nav a.on .ic{ opacity:1 }
+.wl-nav a.on{ color:var(--texte); background:var(--carte2) }
 .wl-reseaux{ display:flex; gap:8px; justify-content:center }
 .wl-reseaux a{
   width:34px; height:34px; border-radius:10px; background:var(--carte);
@@ -1453,6 +1499,323 @@ a.sg-logo:focus-visible{ outline:2px solid var(--accent); outline-offset:2px }
   color:var(--accent); text-decoration:none }
 .wl-lien:hover{ text-decoration:underline }
 
+/* ==================== LA VITRINE ====================
+ * Blanc, bleu SWOGE, une touche de violet et un or tres pale — reserve au
+ * coffre du casino, pour qu'on le reconnaisse d'un coup d'oeil. Aucune
+ * couleur de casino ailleurs : c'est un portefeuille. */
+:root{
+  --vt-bleu:#1652F0; --vt-violet:#7C3AED; --vt-or:#B8913A; --vt-orPale:#FBF5E6;
+  --vt-orBord:#EEDDB0; --vt-fond:#F7F9FC; --vt-ombre:0 1px 2px rgba(11,23,54,.04), 0 14px 34px rgba(11,23,54,.07);
+}
+:root[data-theme="sombre"]{
+  --vt-orPale:#221D12; --vt-orBord:#4A3D1E; --vt-fond:#0B0A0F;
+  --vt-ombre:0 1px 2px rgba(0,0,0,.3), 0 14px 34px rgba(0,0,0,.35);
+}
+@media (min-width:1060px){
+  body{ background:
+    radial-gradient(900px 560px at 62% -6%, rgba(22,82,240,.08), rgba(22,82,240,0) 70%),
+    radial-gradient(700px 520px at 6% 24%, rgba(124,58,237,.05), rgba(124,58,237,0) 70%),
+    var(--vt-fond); }
+  :root[data-theme="sombre"] body{ background:var(--decor), var(--decor2) }
+  html{ scroll-padding-top:72px }
+  /* Le bandeau : hauteur FIXE — le cadre du telephone se calcule dessus. */
+  .wl-haut{ position:sticky; top:0; z-index:40; height:56px; padding:0 24px;
+    justify-content:flex-start; gap:18px;
+    background:color-mix(in srgb, var(--carte) 84%, transparent);
+    -webkit-backdrop-filter:saturate(1.4) blur(14px); backdrop-filter:saturate(1.4) blur(14px);
+    border-bottom:1px solid var(--bord) }
+  .wl-nav{ display:flex; gap:2px; margin:0 auto }
+  .vt-hdroite{ display:flex; align-items:center; gap:10px; flex:0 0 auto }
+  .wl-retour{ display:none }
+}
+html.wl-encadre .wl-haut{ position:static; height:auto }
+.vt-chaine{ display:flex; align-items:center; gap:7px; padding:7px 12px 7px 7px;
+  border:1px solid var(--bord); border-radius:999px; background:var(--carte);
+  font:700 12.5px/1 'Archivo',sans-serif; color:var(--texte); white-space:nowrap }
+.vt-chaine img{ width:20px; height:20px; border-radius:50% }
+.vt-chaine::after{ content:''; width:7px; height:7px; border-radius:50%; background:var(--bord) }
+.vt-chaine.on::after{ background:var(--vert); box-shadow:0 0 0 3px color-mix(in srgb, var(--vert) 22%, transparent) }
+.vt-connecte{ padding:10px 16px; border-radius:999px; border:0; cursor:pointer;
+  background:var(--texte); color:var(--carte); font:800 12.5px/1 'Archivo',sans-serif;
+  letter-spacing:.3px; white-space:nowrap }
+.vt-connecte:hover{ background:var(--vt-bleu); color:#fff }
+.vt-connecte.on{ background:var(--carte2); color:var(--texte); border:1px solid var(--bord);
+  font-family:'Space Mono',monospace; font-weight:700 }
+
+/* ---- LE TITRE ---- */
+.vt-sur{ display:inline-flex; align-items:center; gap:8px; align-self:flex-start;
+  padding:7px 12px; border-radius:999px; font:800 11px/1 'Archivo',sans-serif;
+  letter-spacing:2px; color:var(--vt-bleu);
+  background:color-mix(in srgb, var(--vt-bleu) 7%, transparent);
+  border:1px solid color-mix(in srgb, var(--vt-bleu) 16%, transparent) }
+.vt-sur img{ width:20px; height:20px; border-radius:50%; margin-left:-5px }
+.vt-hero{ display:flex; flex-direction:column; container-type:inline-size }
+/* La taille suit la COLONNE, pas la fenetre : « YOUR WALLET. » fait 6,7 fois
+   sa hauteur de large, et la colonne va de 260 a 470 pixels selon l'ecran. */
+.vt-hero h1{ margin:20px 0 16px; font:900 clamp(40px,4.3vw,66px)/.96 'Archivo',sans-serif;
+  font-size:clamp(34px,12.8cqi,66px); letter-spacing:-1.6px; color:var(--texte) }
+.vt-hero h1 em{ font-style:normal; color:var(--vt-bleu);
+  background:linear-gradient(92deg, var(--vt-bleu) 10%, var(--vt-violet) 90%);
+  -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent }
+.vt-hero p{ margin:0; max-width:430px; font:400 17px/1.55 'Archivo',sans-serif; color:var(--doux) }
+.vt-boutons{ display:flex; flex-wrap:wrap; gap:10px; margin:28px 0 34px }
+.vt-b{ display:inline-flex; align-items:center; justify-content:center; gap:8px;
+  padding:14px 20px; border-radius:999px; cursor:pointer; text-decoration:none;
+  border:1px solid var(--bord); background:var(--carte); color:var(--texte);
+  font:800 12.5px/1 'Archivo',sans-serif; letter-spacing:1px; text-transform:uppercase;
+  transition:transform .2s, box-shadow .2s, border-color .2s }
+.vt-b:hover{ transform:translateY(-1px); border-color:var(--vt-bleu) }
+.vt-b.plein{ border-color:transparent; color:#fff;
+  background:linear-gradient(135deg, var(--vt-bleu), #3A6EF6);
+  box-shadow:0 10px 24px rgba(22,82,240,.26) }
+.vt-b.plein:hover{ box-shadow:0 14px 30px rgba(22,82,240,.32) }
+.vt-b.rouge{ color:var(--rouge) }
+.vt-b.rouge:hover{ border-color:var(--rouge) }
+.vt-b[aria-disabled="true"]{ opacity:.55 }
+.vt-faits{ list-style:none; margin:0; padding:0; display:flex; flex-wrap:wrap; row-gap:12px }
+.vt-faits li{ padding:0 18px; border-left:1px solid var(--bord) }
+.vt-faits li:first-child{ padding-left:0; border-left:0 }
+.vt-faits b{ display:block; font:800 17px/1.1 'Archivo',sans-serif; color:var(--texte) }
+.vt-faits span{ display:block; margin-top:4px; font:400 12px/1.3 'Archivo',sans-serif; color:var(--doux) }
+
+/* ---- LE HALO DERRIERE LE TELEPHONE ---- */
+.vt-halo{ align-self:center; justify-self:center; width:620px; height:620px; z-index:0;
+  pointer-events:none; border-radius:50%;
+  background:radial-gradient(closest-side, rgba(22,82,240,.15), rgba(124,58,237,.07) 58%, rgba(124,58,237,0) 100%) }
+.wl-tel.vt-pulse{ animation:vt-pulse 1.1s ease-out }
+@keyframes vt-pulse{
+  0%{ box-shadow:0 0 0 10px var(--coque1), 0 0 0 11px var(--coque2), 0 0 0 11px rgba(22,82,240,.45), var(--ombre) }
+  100%{ box-shadow:0 0 0 10px var(--coque1), 0 0 0 11px var(--coque2), 0 0 0 34px rgba(22,82,240,0), var(--ombre) }
+}
+
+/* ---- LES CARTES AUTOUR DU TELEPHONE ---- */
+.vt-cartes.gauche{ gap:14px }
+.vt-carte{ position:relative; z-index:1; background:var(--carte); border:1px solid var(--bord);
+  border-radius:18px; padding:13px 14px 12px; box-shadow:var(--vt-ombre); cursor:pointer;
+  transition:transform .25s ease, box-shadow .25s ease, border-color .25s ease }
+.vt-carte:hover, .vt-carte.on{ transform:translateY(-2px); border-color:color-mix(in srgb, var(--vt-bleu) 40%, var(--bord)) }
+.vt-carte.or{ background:linear-gradient(180deg, var(--vt-orPale), var(--carte) 46%); border-color:var(--vt-orBord) }
+.vt-ct{ display:flex; align-items:center; gap:9px; margin-bottom:8px }
+.vt-ct b{ flex:1 1 auto; font:800 11px/1.2 'Archivo',sans-serif; letter-spacing:1.3px; color:var(--texte) }
+.vt-ct i{ font-style:normal; color:var(--doux); font-size:13px; transition:transform .2s, color .2s }
+.vt-carte:hover .vt-ct i{ transform:translateX(3px); color:var(--vt-bleu) }
+.vt-ic{ flex:0 0 auto; width:28px; height:28px; border-radius:9px; display:grid; place-items:center;
+  font:700 14px/1 system-ui,sans-serif }
+.vt-ic.bleu{ color:var(--vt-bleu); background:color-mix(in srgb, var(--vt-bleu) 10%, transparent) }
+.vt-ic.violet{ color:var(--vt-violet); background:color-mix(in srgb, var(--vt-violet) 10%, transparent) }
+.vt-ic.vert{ color:var(--vert); background:color-mix(in srgb, var(--vert) 11%, transparent) }
+.vt-ic.or{ color:var(--vt-or); background:color-mix(in srgb, var(--vt-or) 14%, transparent) }
+.vt-r{ display:flex; justify-content:space-between; align-items:baseline; gap:10px; padding:6px 0;
+  border-top:1px dashed var(--bord); font:400 12px/1.3 'Archivo',sans-serif; color:var(--doux) }
+.vt-r b{ font:700 12px/1.3 'Space Mono',monospace; color:var(--texte); text-align:right;
+  min-width:0; overflow-wrap:anywhere }
+.vt-paire{ display:flex; align-items:center; gap:6px; margin:0 0 8px }
+.vt-paire span{ flex:1 1 0; min-width:0; display:flex; align-items:center; gap:5px; padding:6px 6px;
+  border-radius:10px; background:var(--carte2); border:1px solid var(--bord);
+  font:700 11px/1 'Archivo',sans-serif; color:var(--texte); white-space:nowrap; overflow:hidden;
+  text-overflow:ellipsis }
+.vt-paire img{ width:16px; height:16px; border-radius:50%; flex:0 0 auto }
+.vt-paire em{ font-style:normal; color:var(--doux); font-size:12px }
+.vt-adr{ display:flex; align-items:center; gap:8px; margin:0 0 6px; padding:8px 9px;
+  border-radius:10px; background:var(--carte2); border:1px solid var(--bord) }
+.vt-adr code{ flex:1 1 auto; font:700 12px/1 'Space Mono',monospace; color:var(--texte) }
+.vt-mini{ padding:6px 9px; border-radius:8px; border:1px solid var(--bord); background:var(--carte);
+  color:var(--vt-bleu); font:800 10.5px/1 'Archivo',sans-serif; cursor:pointer }
+.vt-mini:disabled{ color:var(--doux); cursor:default }
+.vt-qr{ font-size:18px; line-height:1 }
+.vt-puces{ display:flex; gap:5px; margin-bottom:8px }
+.vt-puces span{ padding:5px 8px; border-radius:999px; background:var(--carte2); border:1px solid var(--bord);
+  font:700 10.5px/1 'Archivo',sans-serif; color:var(--doux) }
+.vt-puces span:first-child{ color:var(--vt-bleu); border-color:color-mix(in srgb, var(--vt-bleu) 30%, var(--bord)) }
+.vt-vide{ margin:0; padding:10px 0 2px; text-align:center; font:600 11.5px/1.4 'Archivo',sans-serif; color:var(--doux) }
+.vt-actions{ display:flex; flex-wrap:wrap; gap:6px; margin:8px 0 2px }
+.vt-actions button{ flex:1 1 auto; padding:8px 8px; border-radius:9px; cursor:pointer;
+  border:1px solid var(--vt-orBord); background:var(--carte); color:var(--texte);
+  font:800 10.5px/1.1 'Archivo',sans-serif }
+.vt-actions button:hover{ border-color:var(--vt-or) }
+.vt-lieux{ display:grid; grid-template-columns:1fr 1fr; gap:7px; margin-top:10px }
+.vt-lieux .wl-vers{ height:62px; border-radius:11px }
+.vt-lieux .wl-vers.monde{ grid-column:1 / -1; height:74px }
+.vt-lieux .wl-vers .dit{ left:9px; bottom:7px }
+.vt-lieux .wl-vers .dit b{ font-size:11px }
+.vt-carte .wl-tous{ margin-top:8px; padding:9px; border-radius:11px }
+
+/* ---- LES LIENS VERS LE TELEPHONE ----
+ * Des courbes fines, en pointilles qui avancent vers lui : on lit d'ou vient
+ * chaque ecran. Elles ne prennent jamais le pointeur. */
+.vt-liens{ position:absolute; left:0; top:0; z-index:1; pointer-events:none; overflow:visible;
+  transition:opacity .2s }
+.vt-liens path{ fill:none; stroke:color-mix(in srgb, var(--vt-bleu) 32%, transparent); stroke-width:1.4;
+  stroke-dasharray:3 6; animation:vt-file 1.6s linear infinite }
+.vt-liens path.on{ stroke:var(--vt-bleu); stroke-width:1.8 }
+.vt-liens circle{ fill:var(--carte); stroke:var(--vt-bleu); stroke-width:1.6 }
+@keyframes vt-file{ to{ stroke-dashoffset:-18 } }
+
+/* ---- LE RAIL : CE QUE MONTRE LE TELEPHONE ---- */
+.vt-rail{ flex-direction:column; gap:2px; padding:14px; background:var(--carte);
+  border:1px solid var(--bord); border-radius:18px; box-shadow:var(--vt-ombre) }
+.vt-rail > b{ margin:0 0 8px 4px; font:800 10.5px/1 'Archivo',sans-serif; letter-spacing:1.6px; color:var(--doux) }
+.vt-rail a{ display:flex; align-items:center; gap:10px; padding:9px 10px; border-radius:10px;
+  color:var(--doux); text-decoration:none; font:700 13px/1 'Archivo',sans-serif }
+.vt-rail a i{ width:8px; height:8px; border-radius:50%; background:var(--bord); transition:background .2s, box-shadow .2s }
+.vt-rail a:hover{ color:var(--texte) }
+.vt-rail a.on{ color:var(--texte); background:var(--carte2) }
+.vt-rail a.on i{ background:var(--vt-bleu); box-shadow:0 0 0 4px color-mix(in srgb, var(--vt-bleu) 16%, transparent) }
+.vt-rail p{ margin:10px 4px 0; font:400 11px/1.45 'Archivo',sans-serif; color:var(--doux) }
+
+/* ---- LES SECTIONS ---- */
+.vt-sec{ padding:64px 0; border-top:1px solid var(--bord) }
+.vt-sec:first-child{ border-top:0 }
+.vt-sec h2{ margin:14px 0 12px; font:900 clamp(28px,2.9vw,40px)/1.06 'Archivo',sans-serif;
+  letter-spacing:-.9px; color:var(--texte) }
+.vt-sec p{ margin:0; max-width:540px; font:400 15.5px/1.6 'Archivo',sans-serif; color:var(--doux) }
+.vt-sec .vt-sur{ display:inline-flex }
+.vt-sec > .vt-b{ margin-top:22px }
+.vt-deux{ display:grid; grid-template-columns:1fr 1fr; gap:34px; align-items:center }
+.vt-deux.egal{ align-items:stretch; margin-top:18px; gap:16px }
+.vt-note{ margin-top:14px !important; font-size:12.5px !important }
+.vt-lien{ display:inline-block; margin-top:12px; padding:0; border:0; background:none; cursor:pointer;
+  font:800 13px/1 'Archivo',sans-serif; color:var(--vt-bleu); text-decoration:none }
+.vt-lien:hover{ text-decoration:underline }
+
+/* l'orbite */
+.vt-orbite{ position:relative; width:300px; height:300px; justify-self:center; margin:20px }
+.vt-orb-anneau{ position:absolute; inset:0; border-radius:50%;
+  border:1px dashed color-mix(in srgb, var(--vt-bleu) 30%, transparent) }
+.vt-orb-anneau.a2{ inset:62px; border:1px solid var(--bord) }
+.vt-orb-coeur{ position:absolute; inset:104px; border-radius:50%; display:grid; place-content:center;
+  justify-items:center; gap:4px; background:var(--carte); box-shadow:var(--vt-ombre), 0 0 0 8px color-mix(in srgb, var(--vt-bleu) 6%, transparent) }
+.vt-orb-coeur img{ width:44px; height:44px; border-radius:50% }
+.vt-orb-coeur b{ font:800 10px/1 'Archivo',sans-serif; letter-spacing:1.6px; color:var(--texte) }
+.vt-orb-tour{ position:absolute; inset:0; animation:vt-tourne 70s linear infinite }
+.vt-orb-tour button{ position:absolute; left:50%; top:50%; width:84px; height:32px; margin:-16px 0 0 -42px;
+  padding:0; border:0; background:none; cursor:pointer;
+  transform:rotate(var(--a)) translate(150px) rotate(calc(-1 * var(--a))) }
+.vt-orb-tour span{ display:flex; align-items:center; justify-content:center; width:100%; height:100%;
+  border-radius:999px; background:var(--carte); border:1px solid var(--bord); box-shadow:var(--vt-ombre);
+  font:800 11.5px/1 'Archivo',sans-serif; color:var(--texte); animation:vt-tourne 70s linear infinite reverse }
+.vt-orb-tour button:hover span{ border-color:var(--vt-bleu); color:var(--vt-bleu) }
+.vt-orbite:hover .vt-orb-tour, .vt-orbite:hover .vt-orb-tour span{ animation-play-state:paused }
+@keyframes vt-tourne{ to{ transform:rotate(360deg) } }
+
+/* la table des jetons */
+.vt-table{ position:relative; margin-top:24px; background:var(--carte); border:1px solid var(--bord);
+  border-radius:18px; overflow:hidden; box-shadow:var(--vt-ombre) }
+.vt-tl{ display:grid; grid-template-columns:minmax(0,1.7fr) repeat(3, minmax(0,1fr)); gap:12px;
+  align-items:center; padding:14px 18px; border-top:1px solid var(--bord) }
+.vt-tl.tete{ border-top:0; padding:11px 18px; background:var(--carte2);
+  font:800 10.5px/1 'Archivo',sans-serif; letter-spacing:1.4px; text-transform:uppercase; color:var(--doux) }
+.vt-tl > span{ text-align:right; font:700 13px/1.3 'Space Mono',monospace; color:var(--texte);
+  overflow-wrap:anywhere }
+.vt-tl > span:first-child{ text-align:left }
+.vt-tl.tete > span{ font:inherit; color:inherit }
+.vt-tok{ display:flex; align-items:center; gap:11px; font-family:'Archivo',sans-serif }
+.vt-tok img, .vt-tok em{ width:32px; height:32px; border-radius:50%; flex:0 0 auto }
+.vt-tok em{ display:grid; place-items:center; font:800 11px/1 'Archivo',sans-serif; font-style:normal;
+  background:var(--puce2); color:var(--puceTx) }
+.vt-tok b{ display:block; font:800 14px/1.2 'Archivo',sans-serif }
+.vt-tok small{ display:block; font:400 11.5px/1.3 'Archivo',sans-serif; color:var(--doux) }
+.vt-table.ferme #vtLignes{ filter:blur(.4px); opacity:.55 }
+.vt-voile{ position:absolute; left:50%; top:calc(50% + 18px); transform:translate(-50%,-50%);
+  padding:14px 22px; border-radius:999px; border:0; cursor:pointer; white-space:nowrap;
+  background:var(--texte); color:var(--carte); font:800 12px/1 'Archivo',sans-serif; letter-spacing:1.4px;
+  box-shadow:0 12px 30px rgba(11,23,54,.22) }
+.vt-voile:hover{ background:var(--vt-bleu); color:#fff }
+.vt-voile[hidden]{ display:none }
+
+/* la chaine */
+.vt-chaine-faits{ display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:22px }
+.vt-chaine-faits div{ padding:14px; border-radius:14px; background:var(--carte); border:1px solid var(--bord) }
+.vt-chaine-faits span{ display:block; font:400 11.5px/1.2 'Archivo',sans-serif; color:var(--doux) }
+.vt-chaine-faits b{ display:block; margin-top:6px; font:800 14.5px/1.2 'Archivo',sans-serif; color:var(--texte) }
+.vt-chaine-faits a{ color:var(--vt-bleu); text-decoration:none }
+/* L'echange et le pont l'un SOUS l'autre, pas cote a cote : chacun ouvre son
+   ecran quand il passe au milieu de la fenetre, et deux blocs a la meme
+   hauteur y passeraient ensemble — le second ecrasait le premier. */
+.vt-deux.egal{ grid-template-columns:1fr }
+.vt-bloc{ display:grid; grid-template-columns:auto 1fr; column-gap:16px; padding:20px;
+  border-radius:18px; background:var(--carte); border:1px solid var(--bord); box-shadow:var(--vt-ombre) }
+.vt-bloc > .vt-ic{ grid-row:1 / span 3; width:40px; height:40px; border-radius:12px; font-size:18px }
+.vt-bloc h3{ margin:2px 0 6px; font:800 18px/1.2 'Archivo',sans-serif; color:var(--texte) }
+.vt-bloc .vt-lien{ justify-self:start }
+.vt-bloc p{ font-size:13.5px }
+
+/* le casino */
+.vt-flux{ display:flex; align-items:stretch; gap:8px; margin:26px 0 14px }
+.vt-etape{ flex:1 1 0; min-width:0; display:flex; flex-direction:column; align-items:center; gap:7px;
+  padding:16px 8px; border-radius:16px; text-align:center; background:var(--carte); border:1px solid var(--bord) }
+.vt-etape b{ font:800 11.5px/1.2 'Archivo',sans-serif; letter-spacing:1.2px; color:var(--texte) }
+.vt-etape i{ font:400 11.5px/1.3 'Archivo',sans-serif; font-style:normal; color:var(--doux) }
+.vt-etape.or{ background:linear-gradient(180deg, var(--vt-orPale), var(--carte)); border-color:var(--vt-orBord) }
+.vt-fl{ flex:0 0 22px; align-self:center; height:2px; background-size:11px 2px;
+  background-image:linear-gradient(90deg, var(--vt-bleu) 0 5px, transparent 5px 11px);
+  animation:vt-coule .9s linear infinite }
+@keyframes vt-coule{ to{ background-position:11px 0 } }
+.vt-retour{ display:flex; gap:10px; align-items:flex-start; padding:13px 15px; border-radius:14px;
+  background:var(--carte2); border:1px solid var(--bord); font:400 13px/1.5 'Archivo',sans-serif; color:var(--doux) }
+.vt-retour span{ color:var(--vt-bleu); font-size:16px; line-height:1.2 }
+
+/* l'activite */
+.vt-fil{ margin-top:24px; border-radius:18px; background:var(--carte); border:1px solid var(--bord);
+  box-shadow:var(--vt-ombre); overflow:hidden }
+.vt-fil-vide{ display:flex; flex-direction:column; align-items:center; gap:12px; padding:40px 20px; text-align:center }
+.vt-fil-vide[hidden]{ display:none }
+.vt-fil-vide > span{ font-size:26px; color:var(--doux) }
+.vt-fil-vide b{ font:800 12.5px/1.3 'Archivo',sans-serif; letter-spacing:1.5px; color:var(--texte) }
+#vtFilLignes{ padding:6px 10px }
+#vtFilLignes:empty{ display:none }
+#vtFilLignes .wl-jeton{ margin:6px 0 }
+.vt-fil-attente{ padding:18px 8px; text-align:center; font:400 13px/1.5 'Archivo',sans-serif; color:var(--doux) }
+
+/* les cles */
+.vt-cles{ margin-top:24px; padding:8px 18px 18px; border-radius:18px; background:var(--carte);
+  border:1px solid var(--bord); box-shadow:var(--vt-ombre) }
+.vt-cles .vt-r{ padding:12px 0; font-size:13px }
+.vt-cles .vt-r:first-child{ border-top:0 }
+.vt-cles .vt-r b{ font-size:12.5px }
+.vt-cles-b{ display:flex; flex-wrap:wrap; gap:8px; margin-top:12px }
+.vt-cles-b .vt-b{ padding:11px 16px; font-size:11.5px }
+.vt-cles-b [hidden]{ display:none }
+.vt-alerte{ margin-top:14px; padding:14px 16px; border-radius:14px; background:var(--vt-orPale);
+  border:1px solid var(--vt-orBord); font:400 13px/1.55 'Archivo',sans-serif; color:var(--texte) }
+.vt-alerte b{ display:block; margin-bottom:3px }
+
+/* sans application */
+.vt-email{ padding:20px; border-radius:18px; background:var(--carte); border:1px solid var(--bord); box-shadow:var(--vt-ombre) }
+.vt-email label{ display:block; margin-bottom:7px; font:800 10.5px/1 'Archivo',sans-serif; letter-spacing:1.4px; color:var(--doux) }
+.vt-email-l{ display:flex; gap:8px }
+.vt-email-l input{ flex:1 1 auto; min-width:0; padding:13px 14px; border-radius:12px; border:1px solid var(--bord);
+  background:var(--carte2); color:var(--texte); font:400 16px/1.2 'Archivo',sans-serif }
+.vt-email-l input:focus{ outline:2px solid var(--vt-bleu); outline-offset:1px }
+.vt-email-l .vt-b{ padding:13px 16px; white-space:nowrap; flex:0 0 auto }
+.vt-code{ display:flex; gap:7px; margin:14px 0 0 }
+.vt-code i{ flex:1 1 0; height:42px; border-radius:10px; border:1px dashed var(--bord); background:var(--carte2) }
+.vt-ou{ display:flex; align-items:center; gap:10px; margin:14px 0; font:700 11px/1 'Archivo',sans-serif; color:var(--doux) }
+.vt-ou::before, .vt-ou::after{ content:''; flex:1; height:1px; background:var(--bord) }
+.vt-email > .vt-b{ width:100% }
+
+/* le pied */
+.vt-pied{ display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;
+  padding:30px 0 40px; border-top:1px solid var(--bord) }
+
+/* ---- PLUS ETROIT ---- */
+@media (max-width:1059px){
+  .vt-deux{ grid-template-columns:1fr }
+  .vt-chaine-faits{ grid-template-columns:repeat(2,1fr) }
+  .vt-sec{ padding:44px 0 }
+}
+@media (max-width:700px){
+  .vt-flux{ flex-direction:column }
+  .vt-fl{ width:2px; height:16px; flex:0 0 16px; background-size:2px 11px;
+    background-image:linear-gradient(180deg, var(--vt-bleu) 0 5px, transparent 5px 11px) }
+  .vt-tl{ grid-template-columns:minmax(0,1.5fr) repeat(2, minmax(0,1fr)) }
+  .vt-tl > span:nth-child(4){ display:none }
+}
+@media (prefers-reduced-motion:reduce){
+  .vt-liens path, .vt-orb-tour, .vt-orb-tour span, .vt-fl, .wl-tel.vt-pulse{ animation:none }
+  .vt-carte, .vt-b{ transition:none }
+}
+
 @media (prefers-reduced-motion:reduce){
   .wl-toast{ transition:none }
 }
@@ -1465,6 +1828,27 @@ a.sg-logo:focus-visible{ outline:2px solid var(--accent); outline-offset:2px }
     <img src="img/wallet/tok_swoge.webp" alt="">
     <span><b>SWOGE</b><i>WALLET</i></span>
   </a>
+  <!-- ---- LE MENU DU SITE, EN HAUT, ET SEULEMENT AU-DESSUS DE 1060 PIXELS ----
+       Il vivait dans une colonne a gauche du telephone. La page est devenue
+       une vitrine autour du telephone : cette colonne porte maintenant le
+       titre, et le menu monte dans le bandeau, comme sur les autres pages.
+       Memes destinations, meme ordre, memes pictogrammes — voir
+       `wallet_page.test.js`, qui relit la liste exacte. -->
+  <nav class="wl-nav" aria-label="Site">
+    <a href="index.html"><span class="ic">&#127968;</span>Home</a>
+    <a href="games.html"><span class="ic">&#127920;</span>Casino</a>
+    <a href="swogebet.html"><span class="ic">&#9917;</span>Sports</a>
+    <a href="swoge_wallet.html" class="on"><span class="ic">&#129433;</span>Wallet</a>
+    <a href="swoge_ai.html"><span class="ic">&#129302;</span>AI Trading</a>
+    <a href="swoge_agents.html"><span class="ic">&#129504;</span>Agents</a>
+    <a href="whitepaper.html"><span class="ic">&#128220;</span>Docs</a>
+  </nav>
+  <!-- La pastille dit la chaine que le telephone lit, pas une promesse : elle
+       s'allume quand un compte est connecte, comme celle de l'ecran. -->
+  <div class="vt-hdroite">
+    <span class="vt-chaine" id="vtChaine"><img src="img/wallet/ch/robinhood.webp" alt="">Robinhood Chain</span>
+    <button type="button" class="vt-connecte" data-vt-connecte id="vtConnecte">Connect Wallet</button>
+  </div>
   <!-- ---- LE CHOIX DU COMPTE, EN HAUT ----
        Il vivait au fond de l'ecran « Account », a trois gestes. Un joueur qui
        a plusieurs portefeuilles change de compte souvent — c'est un geste de
@@ -1502,25 +1886,48 @@ a.sg-logo:focus-visible{ outline:2px solid var(--accent); outline-offset:2px }
      l'ecran EST le portefeuille, et une colonne de plus n'y tiendrait pas.
      « Wallet » y porte la marque de page courante, comme ailleurs : une
      entree marquee « ici » reste cliquable, sinon elle se lit desactivee. -->
-<aside class="wl-cote gauche" aria-label="Site">
-  <nav class="wl-nav">
-    <a href="index.html"><span class="ic">&#127968;</span>Home</a>
-    <a href="games.html"><span class="ic">&#127920;</span>Casino</a>
-    <a href="swogebet.html"><span class="ic">&#9917;</span>Sports</a>
-    <a href="swoge_wallet.html" class="on"><span class="ic">&#129433;</span>Wallet</a>
-    <a href="swoge_ai.html"><span class="ic">&#129302;</span>AI Trading</a>
-    <a href="swoge_agents.html"><span class="ic">&#129504;</span>Agents</a>
-    <a href="whitepaper.html"><span class="ic">&#128220;</span>Docs</a>
-  </nav>
-  <div class="wl-reseaux">
-    <a href="https://x.com/SwoleDogeSwoge" target="_blank" rel="noopener"
-       title="X — @SwoleDogeSwoge">&#120143;</a>
-    <a href="https://t.me/swoleswoge" target="_blank" rel="noopener"
-       title="Telegram — t.me/swoleswoge">&#9992;</a>
-    <a href="https://dexscreener.com/robinhood/0x2dc0fb72d9284228046cc95910eeaabebfe48456"
-       target="_blank" rel="noopener" title="Dexscreener — $SWOGE chart">&#128200;</a>
+<aside class="wl-cote gauche" aria-label="SWOGE Wallet" data-ecran="ecAccueil">
+  <div class="vt-hero">
+    <span class="vt-sur"><img src="img/wallet/tok_swoge.webp" alt="">SWOGE WALLET</span>
+    <h1>YOUR WALLET.<br><em>YOUR WORLD.</em></h1>
+    <p>Manage your assets, send, receive, swap and bridge from one wallet.</p>
+    <div class="vt-boutons">
+      <button type="button" class="vt-b plein" id="vtOuvrir">Open wallet</button>
+      <button type="button" class="vt-b" data-vt-connecte>Connect wallet</button>
+    </div>
+    <!-- Trois faits, pas des chiffres de vitrine : chacun se verifie dans la
+         page meme (la chaine, la connexion, les jetons de la maison). -->
+    <ul class="vt-faits">
+      <li><b>4663</b><span>Robinhood Chain ID</span></li>
+      <li><b>Email</b><span>or browser wallet</span></li>
+      <li><b>$SWOGE</b><span>&amp; $SWOGEBET</span></li>
+    </ul>
   </div>
 </aside>
+
+<!-- ================== LES CARTES DE GAUCHE ==================
+     Chacune est un ecran du telephone, vu de cote. Un clic l'OUVRE dans le
+     telephone — c'est le meme `va` que la barre d'onglets. Aucune ne montre
+     un montant qu'elle n'a pas lu : un champ vide s'ecrit « -- ». -->
+<div class="vt-cartes gauche" aria-label="What the wallet does">
+  <div class="vt-carte" data-vt-va="ecEnvoyer" data-lien="g1">
+    <div class="vt-ct"><span class="vt-ic bleu">&#8599;</span><b>SEND</b><i>&rarr;</i></div>
+    <div class="vt-r"><span>Amount</span><b>--</b></div>
+    <div class="vt-r"><span>Recipient</span><b>--</b></div>
+    <div class="vt-r"><span>Network fee</span><b>--</b></div>
+  </div>
+  <div class="vt-carte" data-vt-va="ecRecevoir" data-lien="g2">
+    <div class="vt-ct"><span class="vt-ic vert">&#8601;</span><b>RECEIVE</b><i>&rarr;</i></div>
+    <div class="vt-adr"><code id="vtRecAdr">--</code>
+      <button type="button" class="vt-mini" id="vtCopier" disabled>Copy</button></div>
+    <div class="vt-r"><span>QR code</span><b class="vt-qr" aria-hidden="true">&#9638;</b></div>
+  </div>
+  <div class="vt-carte" data-vt-va="ecActivite" data-lien="g3">
+    <div class="vt-ct"><span class="vt-ic violet">&#8635;</span><b>ACTIVITY</b><i>&rarr;</i></div>
+    <div class="vt-puces"><span>Transfers</span><span>Swaps</span><span>Bridge</span></div>
+    <p class="vt-vide" id="vtActVide">Connect your wallet to see activity</p>
+  </div>
+</div>
 
 <div class="wl-tel" id="tel">
 
@@ -2551,43 +2958,245 @@ a.sg-logo:focus-visible{ outline:2px solid var(--accent); outline-offset:2px }
   </div>
 </div>
 
-<!-- ================== LA COLONNE DE DROITE ==================
-     Elle ne montre RIEN qui ne soit deja lu ailleurs dans la page : les deux
-     prix viennent de `lisPrix`, et ils sont peints par `peintAccueil`, au meme
-     moment et depuis les memes variables que l'ecran. Deux rendus du meme
-     chiffre finiraient par diverger, et c'est toujours celui qu'on ne regarde
-     pas qui reste faux.
-     Un prix non lu s'ecrit « — », comme partout ici : jamais zero. -->
-<aside class="wl-cote droite" aria-label="Where to play">
-  <!-- ================== OU DEPENSER ==================
-       Elle a d'abord porte les prix, le reseau et un paragraphe sur ce que
-       fait ce portefeuille. Reponse du joueur : « ça on s'en fout — mets des
+<aside class="wl-cote droite" aria-label="Swap, bridge and the casino vault">
+  <!-- ================== LES CARTES DE DROITE ==================
+       L'echange, le pont et le coffre du casino. La carte du coffre garde ce
+       que portait cette colonne avant elle — OU DEPENSER : « mets des
        éléments pour aller sur SWOGE World, une table de blackjack, des trucs
-       où on peut dépenser ses sous, pas des stats. » Il a raison : les prix
-       sont deja sur l'ecran, l'adresse du noeud est dans les reglages, et
-       personne n'ouvre son portefeuille pour lire une adresse de RPC. Ce qui
-       manque a cote d'un solde, c'est OU LE DEPENSER.
-       Les trois destinations existent, et ce sont celles du site : meme
-       video, meme affiche, memes liens que `games.html`. -->
-  <a class="wl-vers monde" href="nexus.html">
-    <video src="media/monde_carte.mp4" poster="img/site/monde_carte_poster.webp"
-           muted autoplay loop playsinline disablepictureinpicture
-           aria-hidden="true"></video>
-    <span class="voile"></span>
-    <span class="dit"><b>SWOGE WORLD</b><i>Meet. Explore. Own.</i></span>
-  </a>
-  <a class="wl-vers" href="swoge_blackjack.html?table=or">
-    <img src="img/site/jeu_blackjack.webp" alt="" loading="lazy">
-    <span class="voile"></span>
-    <span class="dit"><b>BLACKJACK</b><i>Live tables, $SWOGE stakes</i></span>
-  </a>
-  <a class="wl-vers" href="swoge_pusher_live.html">
-    <img src="img/site/jeu_crazytime.webp" alt="" loading="lazy">
-    <span class="voile"></span>
-    <span class="dit"><b>COIN PUSHER</b><i>The live table</i></span>
-  </a>
-  <a class="wl-tous" href="games.html">All games &rarr;</a>
+       où on peut dépenser ses sous, pas des stats. » Memes lieux, memes
+       films, memes liens que `games.html`. -->
+  <div class="vt-carte" data-vt-va="ecSwap" data-lien="d1">
+    <div class="vt-ct"><span class="vt-ic bleu">&#8644;</span><b>SWAP</b><i>&rarr;</i></div>
+    <div class="vt-paire"><span><img src="img/wallet/tok_swoge.webp" alt="">$SWOGE</span><em>&rarr;</em>
+      <span><img src="img/wallet/tok_eth.webp" alt="">ETH (RH)</span></div>
+    <div class="vt-r"><span>Amount</span><b>--</b></div>
+    <div class="vt-r"><span>Price impact</span><b>--</b></div>
+    <div class="vt-r"><span>Minimum received</span><b>--</b></div>
+    <div class="vt-r"><span>1 $SWOGE</span><b id="vtPrixSwoge">--</b></div>
+  </div>
+  <div class="vt-carte" data-vt-va="ecPont" data-lien="d2">
+    <div class="vt-ct"><span class="vt-ic violet">&#8669;</span><b>BRIDGE</b><i>&rarr;</i></div>
+    <div class="vt-paire"><span><img src="img/wallet/ch/ethereum.webp" alt="">Ethereum</span><em>&rarr;</em>
+      <span><img src="img/wallet/ch/robinhood.webp" alt="">Robinhood</span></div>
+    <div class="vt-r"><span>Amount</span><b>--</b></div>
+    <div class="vt-r"><span>Bridge fee</span><b>--</b></div>
+    <div class="vt-r"><span>Network fee</span><b>--</b></div>
+  </div>
+  <div class="vt-carte or" data-vt-va="ecCasino" data-lien="d3">
+    <div class="vt-ct"><span class="vt-ic or">&#9824;</span><b>CASINO GAME VAULT</b><i>&rarr;</i></div>
+    <div class="vt-r"><span>In the game vault</span><b id="vtCoffre">--</b></div>
+    <div class="vt-actions">
+      <button type="button" data-vt-va="ecCasino">Deposit to play</button>
+      <button type="button" data-vt-va="ecCasino">Withdraw to wallet</button>
+      <button type="button" data-vt-va="ecCasino">Claim</button>
+    </div>
+    <div class="vt-lieux">
+      <a class="wl-vers monde" href="nexus.html">
+        <video data-src="media/monde_carte.mp4" poster="img/site/monde_carte_poster.webp"
+               muted loop playsinline disablepictureinpicture preload="none"
+               aria-hidden="true"></video>
+        <span class="voile"></span>
+        <span class="dit"><b>SWOGE WORLD</b><i>Meet. Explore. Own.</i></span>
+      </a>
+      <a class="wl-vers" href="swoge_blackjack.html?table=or">
+        <img src="img/site/jeu_blackjack.webp" alt="" loading="lazy">
+        <span class="voile"></span>
+        <span class="dit"><b>BLACKJACK</b></span>
+      </a>
+      <a class="wl-vers" href="swoge_pusher_live.html">
+        <img src="img/site/jeu_crazytime.webp" alt="" loading="lazy">
+        <span class="voile"></span>
+        <span class="dit"><b>COIN PUSHER</b></span>
+      </a>
+    </div>
+    <a class="wl-tous" href="games.html">All games &rarr;</a>
+  </div>
 </aside>
+<!-- ================== LA VITRINE ==================
+     Tout ce qui suit RACONTE le portefeuille ; rien n'y est un second
+     portefeuille. Chaque chiffre est lu par `window.SwogeWallet.etat()` —
+     c'est-a-dire ce que le telephone a deja lu sur la chaine — et chaque
+     bouton fait un geste du telephone (ouvrir un ecran, la feuille de
+     connexion). Un solde non lu s'ecrit « -- », jamais zero.
+     Elle n'existe qu'au-dessus de 520 pixels et jamais dans le cadre d'une
+     autre page : la, l'ecran EST le portefeuille. -->
+<svg class="vt-liens" id="vtLiens" aria-hidden="true"></svg>
+<span class="vt-halo" aria-hidden="true"></span>
+
+<nav class="vt-rail" id="vtRail" aria-label="On the phone">
+  <b>ON THE PHONE</b>
+  <a href="#vtUn" data-etape="ecAccueil"><i></i>Home</a>
+  <a href="#vtJetons" data-etape="ecJetons"><i></i>Tokens</a>
+  <a href="#vtSwap" data-etape="ecSwap"><i></i>Swap</a>
+  <a href="#vtPont" data-etape="ecPont"><i></i>Bridge</a>
+  <a href="#vtActivite" data-etape="ecActivite"><i></i>Activity</a>
+  <a href="#vtCles" data-etape="ecCompte"><i></i>Account</a>
+  <p id="vtRailNote">The phone follows your scroll until you use it.</p>
+</nav>
+
+<main class="vt-vitrine" id="vitrine">
+
+  <!-- 1. UN SEUL PORTEFEUILLE -->
+  <section class="vt-sec" id="vtUn" data-ecran="ecAccueil">
+    <div class="vt-deux">
+      <div>
+        <span class="vt-sur">ONE WALLET</span>
+        <h2>One wallet.<br>Everything SWOGE.</h2>
+        <p>Your tokens, the casino vault, swaps and the bridge sit behind one address on
+          Robinhood Chain. Tap any of them to open it on the phone.</p>
+      </div>
+      <div class="vt-orbite" aria-label="Wallet screens">
+        <span class="vt-orb-anneau a1"></span><span class="vt-orb-anneau a2"></span>
+        <span class="vt-orb-coeur"><img src="img/wallet/tok_swoge.webp" alt=""><b>SWOGE</b></span>
+        <div class="vt-orb-tour">
+          <button type="button" style="--a:0deg"   data-vt-va="ecEnvoyer"><span>Send</span></button>
+          <button type="button" style="--a:45deg"  data-vt-va="ecRecevoir"><span>Receive</span></button>
+          <button type="button" style="--a:90deg"  data-vt-va="ecSwap"><span>Swap</span></button>
+          <button type="button" style="--a:135deg" data-vt-va="ecPont"><span>Bridge</span></button>
+          <button type="button" style="--a:180deg" data-vt-va="ecJetons"><span>Tokens</span></button>
+          <button type="button" style="--a:225deg" data-vt-va="ecCasino"><span>Casino</span></button>
+          <button type="button" style="--a:270deg" data-vt-va="ecActivite"><span>Activity</span></button>
+          <button type="button" style="--a:315deg" data-vt-va="ecCompte"><span>Account</span></button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. LES JETONS — lus, jamais ecrits -->
+  <section class="vt-sec" id="vtJetons" data-ecran="ecJetons">
+    <span class="vt-sur">YOUR TOKENS</span>
+    <h2>Everything you hold, read from the chain.</h2>
+    <div class="vt-table" id="vtTable">
+      <div class="vt-tl tete"><span>Token</span><span>Balance</span><span>Value</span><span>Price</span></div>
+      <div id="vtLignes"></div>
+      <button type="button" class="vt-voile" id="vtVoileJetons" data-vt-connecte>CONNECT WALLET TO VIEW ASSETS</button>
+    </div>
+    <p class="vt-note">Balances are read live from Robinhood Chain. A price that could not be read shows
+      <b>--</b>, never zero. Tokens you add on the phone appear here once you hold some.</p>
+  </section>
+
+  <!-- 3. LA CHAINE : l'echange et le pont -->
+  <section class="vt-sec" id="vtChaine">
+    <span class="vt-sur">BUILT AROUND ROBINHOOD CHAIN</span>
+    <h2>Made for one chain, open to the others.</h2>
+    <div class="vt-chaine-faits">
+      <div><span>Network</span><b>Robinhood Chain</b></div>
+      <div><span>Chain ID</span><b>4663</b></div>
+      <div><span>Gas paid in</span><b>ETH (RH)</b></div>
+      <div><span>Explorer</span><b><a href="https://robinhoodchain.blockscout.com" target="_blank" rel="noopener">Blockscout &#8599;</a></b></div>
+    </div>
+    <div class="vt-deux egal">
+      <div class="vt-bloc" id="vtSwap" data-ecran="ecSwap">
+        <span class="vt-ic bleu">&#8644;</span>
+        <h3>Swap</h3>
+        <p>$SWOGE, $SWOGEBET and ETH (RH) on the chain's own pools. You see the price impact and
+          the minimum you receive before you sign.</p>
+        <button type="button" class="vt-lien" data-vt-va="ecSwap">Open swap on the phone &rarr;</button>
+      </div>
+      <div class="vt-bloc" id="vtPont" data-ecran="ecPont">
+        <span class="vt-ic violet">&#8669;</span>
+        <h3>Bridge</h3>
+        <p>Bring ETH in from Ethereum and other chains, or send it back. The bridge fee and the
+          network fee are quoted before anything is signed.</p>
+        <button type="button" class="vt-lien" data-vt-va="ecPont">Open bridge on the phone &rarr;</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4. LE CASINO : l'aller et le retour -->
+  <section class="vt-sec" id="vtCasino">
+    <span class="vt-sur">THE CASINO, CONNECTED</span>
+    <h2>Deposit to play. Withdraw to your wallet.</h2>
+    <div class="vt-flux">
+      <div class="vt-etape"><span class="vt-ic bleu">&#9673;</span><b>WALLET</b><i>Your $SWOGE</i></div>
+      <span class="vt-fl" aria-hidden="true"></span>
+      <div class="vt-etape"><span class="vt-ic bleu">&#8595;</span><b>DEPOSIT</b><i>Signed on the phone</i></div>
+      <span class="vt-fl" aria-hidden="true"></span>
+      <div class="vt-etape or"><span class="vt-ic or">&#9824;</span><b>GAME VAULT</b><i id="vtCoffre2">--</i></div>
+      <span class="vt-fl" aria-hidden="true"></span>
+      <div class="vt-etape"><span class="vt-ic violet">&#9654;</span><b>PLAY</b><i>Every SWOGE table</i></div>
+    </div>
+    <div class="vt-retour"><span aria-hidden="true">&#8634;</span>
+      Withdraw from the vault and the $SWOGE comes back to this wallet. A withdrawal the server
+      signed but you have not claimed yet stays claimable on the phone.</div>
+    <button type="button" class="vt-b plein" data-vt-va="ecCasino">Open the vault on the phone</button>
+  </section>
+
+  <!-- 5. L'ACTIVITE -->
+  <section class="vt-sec" id="vtActivite" data-ecran="ecActivite">
+    <span class="vt-sur">ACTIVITY</span>
+    <h2>Every transfer, swap and bridge.</h2>
+    <div class="vt-fil" id="vtFil">
+      <div class="vt-fil-vide" id="vtFilVide">
+        <span aria-hidden="true">&#9202;</span>
+        <b>CONNECT YOUR WALLET TO SEE ACTIVITY</b>
+        <button type="button" class="vt-b" data-vt-connecte>Connect wallet</button>
+      </div>
+      <div id="vtFilLignes"></div>
+    </div>
+    <p class="vt-note">Read from the last 30 days of Robinhood Chain. A plain ETH (RH) send leaves no
+      event on the chain, so it only shows if this device sent it.</p>
+  </section>
+
+  <!-- 6. LES CLES -->
+  <section class="vt-sec" id="vtCles" data-ecran="ecCompte">
+    <span class="vt-sur">YOUR KEYS. YOUR CONTROL.</span>
+    <h2>Your account, in plain sight.</h2>
+    <div class="vt-cles">
+      <div class="vt-r"><span>Wallet address</span><b><code id="vtAdr">--</code></b></div>
+      <div class="vt-r"><span>Network</span><b>Robinhood Chain</b></div>
+      <div class="vt-r"><span>Chain ID</span><b>4663</b></div>
+      <div class="vt-r"><span>Connected with</span><b id="vtMethode">--</b></div>
+      <div class="vt-cles-b">
+        <a class="vt-b" id="vtExplorer" href="https://robinhoodchain.blockscout.com" target="_blank" rel="noopener" aria-disabled="true">View on explorer &#8599;</a>
+        <button type="button" class="vt-b" data-vt-va="ecCompte">Account on the phone</button>
+        <button type="button" class="vt-b rouge" id="vtSortir" hidden>Disconnect</button>
+      </div>
+    </div>
+    <div class="vt-alerte">
+      <b>Never share your private key or your 6-digit code.</b>
+      SWOGE will never ask for them. A wallet created by email can export its key from
+      Account: it opens on its own page, only for you, and this site never stores it.
+      Whoever holds that key controls the funds.
+    </div>
+  </section>
+
+  <!-- 7. SANS APPLICATION -->
+  <section class="vt-sec" id="vtSansApp" data-ecran="ecCompte">
+    <div class="vt-deux">
+      <div>
+        <span class="vt-sur">NO APP REQUIRED</span>
+        <h2>Sign in with your email.</h2>
+        <p>A wallet is created for you on the spot. No extension, no app to install —
+          or connect the browser wallet you already use.</p>
+      </div>
+      <div class="vt-email">
+        <label for="vtEmail">EMAIL</label>
+        <div class="vt-email-l">
+          <input id="vtEmail" type="email" placeholder="you@example.com" autocomplete="email">
+          <button type="button" class="vt-b plein" id="vtEnvoyer">Send code</button>
+        </div>
+        <div class="vt-code" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        <p class="vt-note" id="vtEmailNote">Then type the 6-digit code from your inbox on the phone.</p>
+        <div class="vt-ou"><span>or</span></div>
+        <button type="button" class="vt-b" id="vtNavigateur">Use a browser wallet</button>
+      </div>
+    </div>
+  </section>
+
+  <footer class="vt-pied">
+    <a class="wl-marque" href="index.html"><img src="img/wallet/tok_swoge.webp" alt=""><span><b>SWOGE</b><i>WALLET</i></span></a>
+    <div class="wl-reseaux">
+      <a href="https://x.com/SwoleDogeSwoge" target="_blank" rel="noopener"
+         title="X — @SwoleDogeSwoge">&#120143;</a>
+      <a href="https://t.me/swoleswoge" target="_blank" rel="noopener"
+         title="Telegram — t.me/swoleswoge">&#9992;</a>
+      <a href="https://dexscreener.com/robinhood/0x2dc0fb72d9284228046cc95910eeaabebfe48456"
+         target="_blank" rel="noopener" title="Dexscreener — $SWOGE chart">&#128200;</a>
+    </div>
+    <a class="vt-lien" href="games.html">Back to the arcade &rarr;</a>
+  </footer>
+</main>
 
 </div>
 
@@ -4516,6 +5125,7 @@ function majCompte(){
   $('cpDevise2').textContent = ETH_AFF;
   $('hReseau').classList.toggle('on', !!moi);
   peintProfil();
+  signale();
 }
 
 var VAULT_ABI = [
@@ -4556,6 +5166,7 @@ function peintCasino(){
     }
   }
   var sous = $('acCasinoSous'); if(sous) sous.textContent = 'Casino in $SWOGE · bets in $SWOGEBET';
+  signale();
   [].forEach.call(document.querySelectorAll('#caOnglets button'), function(b){
     b.classList.toggle('on', b.getAttribute('data-coffre') === CASINO.coffre);
   });
@@ -10147,6 +10758,371 @@ reprend();
   $(id).addEventListener('click', function(){ if(!moi) ouvreConnexion(); });
 });
 
+/* ==================== CE QUE LA VITRINE A LE DROIT DE VOIR ====================
+ *
+ * Autour du telephone, sur grand ecran, la page raconte le portefeuille : six
+ * cartes, une table des jetons, le coffre, les cles. Elle ne doit RIEN
+ * inventer — un solde, un prix, une transaction qu'elle n'a pas lus. Elle lit
+ * donc ici, et nulle part ailleurs, ce que le telephone a deja lu.
+ *
+ * Ce qui sort est une COPIE mise en forme, jamais une variable : la vitrine ne
+ * peut ni changer d'adresse, ni ecrire un solde, ni signer. Ses seuls gestes
+ * sont ceux d'un doigt sur le telephone — ouvrir un ecran (`va`), ou la
+ * feuille de connexion — et ce sont les memes fonctions, donc les memes
+ * gardes. Aucune cle, aucun signataire ne passent par ici. */
+function signale(){
+  try{ document.dispatchEvent(new CustomEvent('swoge-wallet')); }catch(e){}
+}
+function etatVitrine(){
+  var pret = CASINO.etat === 'pret';
+  var f = function(v){ return (pret && v !== null && v !== undefined)
+    ? nombre(ethers.utils.parseUnits(String(v),18),18) : null; };
+  var prix = function(cle){
+    if(cle==='eth') return ethUsd;
+    if(cle==='swoge') return prixUsd;
+    if(cle==='swogebet') return (prixUsd && tauxBet) ? tauxBet*prixUsd : null;
+    return null;
+  };
+  var l = [];
+  for(var i=0;i<JETONS.length;i++){
+    var j = JETONS[i], s = soldes[j.cle];
+    if(j.solNatif || j.pont) continue;
+    if(j.chaine && j.chaine !== CHAINE.id) continue;
+    /* La meme regle que l'accueil : un jeton ajoute ou distant n'a sa ligne
+       que s'il est reellement detenu. */
+    if((j.perso || j.distant) && !(s && !s.isZero())) continue;
+    l.push({ cle:j.cle, sym:j.sym, nom:j.nom, logo:j.logo || null,
+             solde: !moi ? null : (s === undefined ? undefined : (s === null ? null : nombre(s, j.dec))),
+             valeur: moi ? valeur(j.cle) : null, prix: prix(j.cle) });
+  }
+  return {
+    adresse: moi, methode: methode, verrouille: !!VERROUILLE,
+    chaine: { id:CHAINE.id, nom:CHAINE.nom, scan:CHAINE.scan,
+              rpc:CHAINE.rpc.replace(/^https:\/\//,''), gaz:ETH_AFF },
+    jetons: l,
+    coffre: { pret: pret, swoge: f(CASINO.solde), bet: f(CASINO.betSolde) }
+  };
+}
+window.SwogeWallet = Object.freeze({
+  etat: etatVitrine,
+  va: function(id){
+    var e = document.getElementById(id);
+    if(e && e.classList.contains('wl-ecran')) va(id);
+  },
+  connecte: function(){ if(moi) va('ecCompte'); else ouvreConnexion(); },
+  ouvreConnexion: ouvreConnexion
+});
+signale();
+
+})();
+</script>
+<script>
+/* ==================== LA VITRINE AUTOUR DU TELEPHONE ====================
+ *
+ * Elle ne lit que `window.SwogeWallet.etat()` et ne fait que les gestes d'un
+ * doigt sur le telephone : `va` (ouvrir un ecran) et la feuille de connexion.
+ * Aucune variable du portefeuille n'est touchee d'ici ; aucune cle, aucun
+ * signataire n'y passe.
+ *
+ * ---- LE TELEPHONE SUIT LA LECTURE, TANT QU'ON NE S'EN SERT PAS ----
+ * Au-dessus de 1340 pixels il reste colle sous le bandeau, et chaque section
+ * qui passe au milieu de la fenetre ouvre l'ecran dont elle parle (Tokens,
+ * Swap, Bridge, Activity, Account). Ce n'est qu'un `va`, le meme que la barre
+ * d'onglets — rien n'est rempli, rien n'est signe. Et cela s'ARRETE au premier
+ * geste dans le telephone, ou au premier clic sur une carte : changer l'ecran
+ * sous le doigt de quelqu'un qui tape un montant serait pire que tout. Jamais
+ * non plus quand une feuille est ouverte (connexion, revue avant signature),
+ * ni pendant l'animation d'ouverture.
+ * Le coffre du casino n'est PAS dans la visite : son ecran ouvre une liaison
+ * avec le serveur pour un joueur connecte, et un defilement n'a pas a le faire.
+ */
+(function(){
+'use strict';
+var W = window.SwogeWallet;
+if(!W || document.documentElement.classList.contains('wl-encadre')) return;
+var $ = function(id){ return document.getElementById(id); };
+var tel = $('tel'), page = document.querySelector('.wl-page');
+var grand = window.matchMedia('(min-width:1340px)');
+var cote = window.matchMedia('(min-width:1060px)');
+
+function court(a){ return a ? a.slice(0,6) + '…' + a.slice(-4) : '--'; }
+function dollars(v){
+  if(v === null || v === undefined || !isFinite(v)) return '--';
+  return '$' + v.toLocaleString('en-US', { minimumFractionDigits:2, maximumFractionDigits:2 });
+}
+/* Un prix de jeton peut valoir un cent-millieme : deux decimales l'ecriraient
+   « $0.00 », c'est-a-dire zero. On garde quatre chiffres significatifs. */
+function prix(v){
+  if(v === null || v === undefined || !isFinite(v) || v <= 0) return '--';
+  if(v >= 1) return dollars(v);
+  return '$' + v.toLocaleString('en-US', { maximumSignificantDigits:4 });
+}
+function el(tag, cls, txt){
+  var e = document.createElement(tag);
+  if(cls) e.className = cls;
+  if(txt !== undefined) e.textContent = txt;
+  return e;
+}
+
+/* ---- PEINDRE ----
+ * Tout est ecrit en `textContent` : le nom et le symbole d'un jeton ajoute
+ * viennent de son contrat, donc de n'importe qui. */
+var prevu = false;
+function planifie(){
+  if(prevu) return; prevu = true;
+  requestAnimationFrame(function(){ prevu = false; peint(); });
+}
+function peint(){
+  var e = W.etat(), c = !!e.adresse;
+  var bh = $('vtConnecte');
+  bh.textContent = c ? court(e.adresse) : 'Connect Wallet';
+  bh.classList.toggle('on', c);
+  $('vtChaine').classList.toggle('on', c);
+  [].forEach.call(document.querySelectorAll('.vt-b[data-vt-connecte]'), function(b){
+    b.textContent = c ? 'My account' : 'Connect wallet';
+  });
+
+  $('vtRecAdr').textContent = c ? court(e.adresse) : '--';
+  $('vtCopier').disabled = !c;
+  $('vtActVide').textContent = c ? 'Your history opens on the phone' : 'Connect your wallet to see activity';
+
+  var sw = null;
+  for(var i=0;i<e.jetons.length;i++) if(e.jetons[i].cle === 'swoge') sw = e.jetons[i];
+  $('vtPrixSwoge').textContent = sw ? prix(sw.prix) : '--';
+  /* Le coffre n'est connu qu'une fois l'ecran du casino ouvert : avant, on
+     ne sait pas, et on ne l'ecrit pas « 0 ». */
+  $('vtCoffre').textContent = e.coffre.swoge ? e.coffre.swoge + ' $SWOGE' : '--';
+  $('vtCoffre2').textContent = e.coffre.swoge ? e.coffre.swoge + ' $SWOGE' : 'Your playing balance';
+
+  /* la table */
+  var L = $('vtLignes');
+  L.textContent = '';
+  e.jetons.forEach(function(j){
+    var r = el('div', 'vt-tl');
+    var t = el('span', 'vt-tok');
+    if(j.logo){ var im = el('img'); im.src = j.logo; im.alt = ''; t.appendChild(im); }
+    else t.appendChild(el('em', '', String(j.sym || '?').slice(0,2)));
+    var n = el('span'); n.appendChild(el('b', '', j.sym)); n.appendChild(el('small', '', j.nom));
+    t.appendChild(n); r.appendChild(t);
+    r.appendChild(el('span', '', !c ? '--' : (j.solde === undefined ? '…' : (j.solde === null ? 'unknown' : j.solde))));
+    r.appendChild(el('span', '', c ? dollars(j.valeur) : '--'));
+    r.appendChild(el('span', '', prix(j.prix)));
+    L.appendChild(r);
+  });
+  $('vtVoileJetons').hidden = c;
+  $('vtTable').classList.toggle('ferme', !c);
+
+  /* les cles */
+  $('vtAdr').textContent = c ? e.adresse : '--';
+  $('vtMethode').textContent = e.methode === 'email' ? 'Email' : e.methode === 'wallet' ? 'Browser wallet' : '--';
+  var ex = $('vtExplorer');
+  ex.href = c ? e.chaine.scan + '/address/' + e.adresse : e.chaine.scan;
+  ex.setAttribute('aria-disabled', c ? 'false' : 'true');
+  $('vtSortir').hidden = !c;
+
+  /* l'activite */
+  $('vtFilVide').hidden = c;
+  if(c) miroir(); else $('vtFilLignes').textContent = '';
+
+  $('vtEmailNote').textContent = c
+    ? 'Connected as ' + court(e.adresse) + '.'
+    : 'Then type the 6-digit code from your inbox on the phone.';
+}
+document.addEventListener('swoge-wallet', planifie);
+
+/* ---- L'ACTIVITE : CE QUE LE TELEPHONE A LU, RECOPIE ----
+ * Pas de seconde lecture de la chaine : la liste est celle de l'ecran
+ * « Activity », recopiee quand il la peint. Le clic sur une ligne est deja
+ * delegue au document par le portefeuille — la copie ouvre la meme
+ * transaction sur le meme explorateur. */
+function miroir(){
+  var src = $('acvCorps'), dst = $('vtFilLignes');
+  var l = src ? src.querySelectorAll('.wl-tx') : [];
+  dst.textContent = '';
+  if(!l.length){
+    var p = el('div', 'vt-fil-attente', 'Your history is read from the chain on the phone. ');
+    var b = el('button', 'vt-lien', 'Open activity →');
+    b.type = 'button'; b.setAttribute('data-vt-va', 'ecActivite');
+    p.appendChild(b); dst.appendChild(p);
+    return;
+  }
+  for(var i=0;i<l.length && i<6;i++){
+    var k = l[i].cloneNode(true);
+    k.removeAttribute('id');
+    [].forEach.call(k.querySelectorAll('[id]'), function(x){ x.removeAttribute('id'); });
+    dst.appendChild(k);
+  }
+}
+if($('acvCorps')) new MutationObserver(planifie).observe($('acvCorps'), { childList:true });
+
+/* ---- MONTRER LE TELEPHONE APRES UN GESTE ---- */
+function montreTel(){
+  var r = tel.getBoundingClientRect();
+  if(r.top < 56 || r.bottom > window.innerHeight)
+    tel.scrollIntoView({ behavior:'smooth', block:'center' });
+  tel.classList.remove('vt-pulse'); void tel.offsetWidth; tel.classList.add('vt-pulse');
+}
+tel.addEventListener('animationend', function(ev){
+  if(ev.target === tel) tel.classList.remove('vt-pulse');
+});
+
+/* ---- LES GESTES ---- */
+var touche = false;
+function arreteVisite(){
+  if(touche) return;
+  touche = true;
+  var n = $('vtRailNote');
+  if(n) n.textContent = 'You are using the phone, so scrolling no longer changes its screen.';
+}
+['pointerdown', 'keydown'].forEach(function(t){
+  tel.addEventListener(t, arreteVisite, { passive:true });
+});
+
+document.addEventListener('click', function(ev){
+  var t = ev.target;
+  if(!t.closest) return;
+  if(t.closest('#vtCopier')){
+    var a = W.etat().adresse;
+    if(a && navigator.clipboard) navigator.clipboard.writeText(a).then(function(){
+      $('vtCopier').textContent = 'Copied';
+      setTimeout(function(){ $('vtCopier').textContent = 'Copy'; }, 1400);
+    })['catch'](function(){});
+    return;
+  }
+  if(t.closest('[data-vt-connecte]')){ arreteVisite(); W.connecte(); montreTel(); return; }
+  var v = t.closest('[data-vt-va]');
+  if(v && !t.closest('a')){
+    arreteVisite();
+    W.va(v.getAttribute('data-vt-va'));
+    montreTel();
+  }
+});
+$('vtOuvrir').addEventListener('click', function(){ arreteVisite(); W.va('ecAccueil'); montreTel(); });
+$('vtSortir').addEventListener('click', function(){ var b = $('cpSortir'); if(b) b.click(); });
+$('vtExplorer').addEventListener('click', function(ev){
+  if(!W.etat().adresse){ ev.preventDefault(); W.connecte(); montreTel(); }
+});
+
+/* ---- LE COURRIEL : LA MEME FEUILLE, LE MEME ENVOI ----
+ * Le champ d'ici ne fait que pre-remplir celui du telephone et appuyer sur
+ * son « Send code » : la verification, Privy et la memoire du courriel sont
+ * celles du portefeuille, pas une copie. */
+function envoieCode(){
+  var m = $('vtEmail').value.trim();
+  if(!/.+@.+\..+/.test(m)){ $('vtEmailNote').textContent = 'Enter a valid email address.'; return; }
+  arreteVisite();
+  W.ouvreConnexion();
+  $('cnEmail').value = m;
+  $('cnEnvoyer').click();
+  $('vtEmailNote').textContent = 'Code sent to ' + m + ' — type it on the phone.';
+  montreTel();
+}
+$('vtEnvoyer').addEventListener('click', envoieCode);
+$('vtEmail').addEventListener('keydown', function(ev){ if(ev.key === 'Enter') envoieCode(); });
+$('vtNavigateur').addEventListener('click', function(){ arreteVisite(); $('cnExtension').click(); montreTel(); });
+
+/* ---- LES LIENS ENTRE LES CARTES ET LE TELEPHONE ----
+ * Traces depuis les vraies positions, a chaque changement de taille. Le
+ * telephone est colle sous le bandeau : quand on descend, il ne bouge plus
+ * alors que les cartes montent — les liens s'effacent donc des les
+ * premieres centaines de pixels plutot que de pointer dans le vide. */
+var NS = 'http://www.w3.org/2000/svg';
+function trace(){
+  var svg = $('vtLiens');
+  while(svg.firstChild) svg.removeChild(svg.firstChild);
+  if(!cote.matches) return;
+  var P = page.getBoundingClientRect(), T = tel.getBoundingClientRect();
+  svg.setAttribute('width', Math.round(P.width));
+  svg.setAttribute('height', Math.round(P.height));
+  [].forEach.call(document.querySelectorAll('[data-lien]'), function(c){
+    var r = c.getBoundingClientRect();
+    /* Seulement les cartes A COTE du telephone : sous 1340 pixels, celles de
+       gauche passent en rangee sous lui, et un lien n'y dirait rien. */
+    if(!r.width || r.top >= T.bottom || (r.right > T.left && r.left < T.right)) return;
+    var aGauche = r.right <= T.left;
+    var x1 = (aGauche ? r.right : r.left) - P.left;
+    var y1 = r.top + Math.min(r.height / 2, 60) - P.top;
+    var x2 = (aGauche ? T.left - 16 : T.right + 16) - P.left;
+    var y2 = Math.max(T.top + 90, Math.min(T.bottom - 90, r.top + r.height / 2)) - P.top;
+    var mx = (x1 + x2) / 2;
+    var p = document.createElementNS(NS, 'path');
+    p.setAttribute('d', 'M' + x1 + ' ' + y1 + ' C' + mx + ' ' + y1 + ' ' + mx + ' ' + y2 + ' ' + x2 + ' ' + y2);
+    p.setAttribute('data-pour', c.getAttribute('data-lien'));
+    svg.appendChild(p);
+    var o = document.createElementNS(NS, 'circle');
+    o.setAttribute('cx', x2); o.setAttribute('cy', y2); o.setAttribute('r', 3.5);
+    svg.appendChild(o);
+  });
+  efface();
+}
+function efface(){
+  $('vtLiens').style.opacity = String(Math.max(0, 1 - window.scrollY / 220));
+}
+[].forEach.call(document.querySelectorAll('[data-lien]'), function(c){
+  c.addEventListener('mouseenter', function(){
+    var p = document.querySelector('.vt-liens path[data-pour="' + c.getAttribute('data-lien') + '"]');
+    if(p) p.classList.add('on');
+  });
+  c.addEventListener('mouseleave', function(){
+    var p = document.querySelector('.vt-liens path[data-pour="' + c.getAttribute('data-lien') + '"]');
+    if(p) p.classList.remove('on');
+  });
+});
+var enAttente = false;
+window.addEventListener('scroll', function(){
+  if(enAttente) return; enAttente = true;
+  requestAnimationFrame(function(){ enAttente = false; if(window.scrollY < 300) trace(); else efface(); });
+}, { passive:true });
+if(window.ResizeObserver) new ResizeObserver(function(){ trace(); }).observe(page);
+window.addEventListener('resize', trace);
+if(document.fonts && document.fonts.ready) document.fonts.ready.then(trace);
+
+/* ---- LA VISITE AU DEFILEMENT ---- */
+var dernierAct = 0, enCours = null;
+function feuilleOuverte(){
+  return !!document.querySelector('.wl-voile:not([hidden])')
+      || ($('wlIntro') && !$('wlIntro').hidden);
+}
+function marqueRail(id){
+  [].forEach.call(document.querySelectorAll('.vt-rail a'), function(a){
+    a.classList.toggle('on', a.getAttribute('data-etape') === id);
+  });
+}
+function visite(id){
+  marqueRail(id);
+  if(!grand.matches || touche || feuilleOuverte() || id === enCours) return;
+  /* L'historique relit la chaine (getLogs sur trente jours) : une fois par
+     minute au plus, quel que soit le nombre d'allers-retours du lecteur. */
+  if(id === 'ecActivite'){
+    if(Date.now() - dernierAct < 60000) return;
+    dernierAct = Date.now();
+  }
+  enCours = id;
+  W.va(id);
+}
+if(window.IntersectionObserver){
+  var io = new IntersectionObserver(function(es){
+    es.forEach(function(e){ if(e.isIntersecting) visite(e.target.getAttribute('data-ecran')); });
+  }, { rootMargin:'-48% 0px -48% 0px' });
+  [].forEach.call(document.querySelectorAll('[data-ecran]'), function(s){ io.observe(s); });
+
+  /* Le film de SWOGE World, dans la carte du coffre : charge seulement s'il
+     se voit, et jamais pour qui a demande moins de mouvement. */
+  var calme = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var vo = new IntersectionObserver(function(es){
+    es.forEach(function(e){
+      var v = e.target;
+      if(e.isIntersecting){
+        if(!v.src && v.dataset.src && !calme){ v.src = v.dataset.src; }
+        if(v.src && !calme){ var p = v.play(); if(p && p['catch']) p['catch'](function(){}); }
+      }else if(v.src) v.pause();
+    });
+  });
+  [].forEach.call(document.querySelectorAll('.vt-lieux video[data-src]'), function(v){ vo.observe(v); });
+}
+
+peint();
+trace();
 })();
 </script>
 </body>

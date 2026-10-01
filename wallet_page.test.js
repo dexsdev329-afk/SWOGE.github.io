@@ -2911,7 +2911,12 @@ function servir(q, r, f, type) {
                hors: ['cnEmail', 'cnEnvoyer', 'cnExtension', 'cnFermer', 'pied'].filter((i) => !dedans(i)),
                telBas: Math.round(document.getElementById('tel').getBoundingClientRect().bottom),
                fenetre: window.innerHeight,
-               defile: doc.scrollHeight > doc.clientHeight + 1 };
+               /* 01/10 : la page est devenue une vitrine qui se lit en descendant — elle
+                  DEFILE, et c est voulu (« le téléphone doit rester l'élément central »,
+                  les sections passent dessous). L intention reste entiere : arriver a la
+                  feuille sans avoir a faire defiler. On mesure donc cela, directement :
+                  rien n a defile, et tout est deja dans la fenetre (`hors`, ci-dessus). */
+               defile: window.scrollY > 0 || doc.scrollLeft > 0 };
     });
     console.log(`   ${w}x${h} : ` + JSON.stringify(m));
     ok(m.vue, `${w}x${h} : le formulaire s ouvre`);

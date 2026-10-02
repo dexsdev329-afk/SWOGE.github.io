@@ -40,7 +40,7 @@
  * une fois par session pour savoir si le serveur en a une plus recente.
  * Sans ca, un joueur garde des semaines une version corrigee depuis
  * longtemps — et ici, cela voudrait dire un agent qui a cesse d'apprendre. */
-var MARQUE_PAGE = '0ed2cd50';
+var MARQUE_PAGE = '654f3e9b';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -1994,6 +1994,14 @@ const PHRASES = {
                  (n, g) => 'sur les ' + n + ' qu on aurait achetes : ' + g + ' % finissent en hausse'],
   bancEcartes:  [(n, m) => n + ' set aside: ' + (m >= 0 ? '+' : '') + m + '%',
                  (n, m) => n + ' ecartes : ' + (m >= 0 ? '+' : '') + m + ' %'],
+  /* Le banc apparie et net (serveur, `bancMesure`, 02/10/2026). */
+  bancApparie:  [(n, d, c) => 'Paired test since ' + d + ': ' + n + ' tokens we would have bought, every rule on the same token' + (c != null ? ', net of the measured ' + c + '% round trip' : ''),
+                 (n, d, c) => 'Test apparie depuis le ' + d + ' : ' + n + ' jetons qu on aurait achetes, chaque jeu sur le meme jeton' + (c != null ? ', net de l aller-retour mesure (' + c + ' %)' : '')],
+  bancEcart:    [(cle, e, t, a, b, net) => cle + ': ' + (e >= 0 ? '+' : '') + e + ' pts vs trading today (t ' + t + ', halves ' + a + ' / ' + b + ')' + (net != null ? ' · net ' + (net >= 0 ? '+' : '') + net + '%' : ''),
+                 (cle, e, t, a, b, net) => cle + ' : ' + (e >= 0 ? '+' : '') + e + ' pts face a la regle du jour (t ' + t + ', moities ' + a + ' / ' + b + ')' + (net != null ? ' · net ' + (net >= 0 ? '+' : '') + net + ' %' : '')],
+  bancMeilleur: ['better, proven', 'meilleur, prouve'],
+  bancApparieAssez: [(n, m, b) => 'Nothing is decided below ' + m + ' tokens (' + n + ' so far), and a rule only counts as better above t ' + b + ' with both halves positive. Replays read the price at a few checkpoints, not in between: treat any gap with care.',
+                     (n, m, b) => 'Rien ne se decide sous ' + m + ' jetons (' + n + ' a ce jour), et un jeu ne compte comme meilleur qu au-dessus de t ' + b + ' avec les deux moities positives. Le rejeu lit le prix a quelques jalons, pas entre eux : tout ecart se lit avec prudence.'],
   bancPasSepare:['not split yet between bought and set aside',
                  'pas encore separe entre achetes et ecartes'],
   bancDecide:   ['The figure that decides is the one on what we would have BOUGHT. What the filters set aside is another population entirely — 4% of it goes up, against 36% of what is bought — and an exit tuned on rubbish is tuned on rubbish. The comparison itself is sound in both columns: every rule replays the same milestones of the same token, so nothing separates them but the exit.',
@@ -3186,7 +3194,26 @@ function peintBancs(){
       + '</span></span></div>';
   }).join("")
     + '<div class="mini" style="padding:6px 0 0">'
-      + echappe(assez ? ph("bancDecide") : ph("bancAssez")) + '</div>';
+      + echappe(assez ? ph("bancDecide") : ph("bancAssez")) + '</div>'
+    + bancApparie();
+}
+/* ---- LE BANC APPARIE (02/10/2026) ----
+ * Les moyennes ci-dessus n'ont ni ecart-type ni ordre dans le temps : elles ne
+ * peuvent rien decider. Le serveur garde maintenant, jeton par jeton, les
+ * quatre sorties sur le MEME jeton achete ; on montre l'ecart avec la regle du
+ * jour, son t et ses deux moities, et le net de l'aller-retour mesure. Absent
+ * d'un serveur d'avant : rien n'est affiche, surtout pas un zero. */
+function bancApparie(){
+  const M = VUE && VUE.bancMesure;
+  if(!M || !M.n) return '';
+  const d = M.depuis ? new Date(M.depuis).toLocaleDateString(LANGUE === 'fr' ? 'fr-FR' : 'en-US', { day:'numeric', month:'short' }) : '—';
+  const lignes = (M.jeux || []).filter(j=>j.ecart).map(j=>
+    '<div class="mini">' + echappe(ph("bancEcart", j.cle, j.ecart.net, j.ecart.t == null ? '—' : j.ecart.t,
+                                       j.ecart.moitie1, j.ecart.moitie2, j.net ? j.net.net : null))
+    + (j.meilleur ? ' <b style="color:var(--gain,#12B76A)">' + echappe(ph("bancMeilleur")) + '</b>' : '') + '</div>').join('');
+  return '<div id="bancsApparie" style="margin-top:10px;padding-top:8px;border-top:1px dashed #E1E9F6">'
+    + '<div class="mini"><b>' + echappe(ph("bancApparie", M.n, d, M.cout)) + '</b></div>' + lignes
+    + '<div class="mini" style="padding:4px 0 0">' + echappe(ph("bancApparieAssez", M.n, M.min, M.barre)) + '</div></div>';
 }
 
 /* Sous 40 cas sur 7 jours, les decisions du serveur gardent le cumul

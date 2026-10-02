@@ -246,6 +246,8 @@ function vueFausse(o) {
       { sym: 'DFC', adr: '0x2', r: 51.1, papier: 58.0, glissement: -0.6, pont: false, t: now },
     ] },
     /* Les jeux de regles qui rejouent les memes ombres sans en trader aucune. */
+    /* Le banc apparie et net (02/10/2026) : absent d un serveur d avant. */
+    bancMesure: o.bancMesure,
     bancs: o.bancs || [
       /* Le lot ET la separation : ce sont deux populations, et seule celle des
          achetes decide d'un changement de sortie. Le classement est ici
@@ -1820,6 +1822,36 @@ async function auditDesVetos() {
        'et c est le gagnant SUR LES ACHETES qui est marque, pas celui du lot');
     ok(/The figure that decides is the one on what we would have BOUGHT/.test(b.txt),
        'la carte dit laquelle des deux colonnes decide, et pourquoi l autre ne decide pas');
+    ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
+    await page.context().close();
+  }
+
+  /* ---- LE BANC APPARIE (02/10/2026) ----
+     Releve du 2 octobre : « laisser courir » +13,1 % contre -4,9 % en vigueur
+     sur 195 achetes, mais sans t. Le serveur rend maintenant l ecart APPARIE
+     (memes jetons), son t, ses deux moities et le net de l aller-retour. */
+  console.log('\n-- le banc apparie : ecart, t, moities, net — et rien sous le seuil --');
+  {
+    const sans = await ouvre(nav, port, {});
+    await sans.page.waitForTimeout(1000);
+    ok(!(await sans.page.$('#bancsApparie')), 'sans mesure appariee servie : aucun bloc, aucun zero');
+    await sans.page.context().close();
+    const BM = { depuis: Date.parse('2026-10-02T08:00:00Z'), n: 31, cout: 4.7, min: 50, barre: 2.13, jeux: [
+      { cle: 'en vigueur', n: 31, brut: -4.1, net: { n: 31, net: -8.8, t: -2.1 }, ecart: null, meilleur: false },
+      { cle: 'laisser courir', n: 31, brut: 9.2, net: { n: 31, net: 4.5, t: 0.6 },
+        ecart: { n: 31, net: 13.3, t: 1.4, moitie1: 22.1, moitie2: 4.9 }, meilleur: false } ] };
+    const { page, boum } = await ouvre(nav, port, { vueOpts: { bancMesure: BM } });
+    await page.waitForTimeout(1000);
+    await onglet(page, 'tm-colony');
+    const t = await page.evaluate(() => (document.getElementById('bancsApparie') || {}).textContent || '');
+    console.log('   ' + t.replace(/\s+/g, ' ').slice(0, 260));
+    ok(/Paired test since Oct 2: 31 tokens we would have bought/.test(t) && /4\.7% round trip/.test(t),
+       'le bloc dit depuis quand, sur combien de jetons, et de quel aller-retour il est net');
+    ok(/laisser courir: \+13\.3 pts vs trading today \(t 1\.4, halves 22\.1 \/ 4\.9\) · net \+4\.5%/.test(t),
+       'l ecart apparie, son t, ses deux moities et le net sont ecrits tels que le serveur les sert');
+    ok(!/better, proven/.test(t) && /Nothing is decided below 50 tokens \(31 so far\)/.test(t),
+       'sous 50 jetons, aucun jeu n est designe — et la page dit pourquoi');
+    ok(/few checkpoints/.test(t), 'et elle rappelle la limite du rejeu : quelques jalons, pas ce qui se passe entre eux');
     ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
     await page.context().close();
   }

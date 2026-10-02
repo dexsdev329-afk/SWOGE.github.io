@@ -67,6 +67,8 @@ function vueFausse(o) {
       net: -0.377, se: 0.227, netReel: -0.449, seReel: 0.231, jours: 3, seuil: 143, jugeable: false, manquants: 0,
       parSortie: { stop: { n: 19, moyenne: -1.44, moyenneReel: -1.52 }, target: { n: 8, moyenne: 1.92, moyenneReel: 1.88 },
                    time: { n: 7, moyenne: 0.13, moyenneReel: 0.05 } } } : o.bilan,
+    /* Le trade miroir (02/10/2026) : absent d un serveur d avant. */
+    inverse: o.inverse,
     /* Ce que chaque marche a rendu : la repartition que les cinq colonies
        separees donnaient gratuitement. */
     soupape: o.soupape === undefined ? { soupape: { n: 4, moyenne: -0.82, partGagnantes: 25 },
@@ -528,7 +530,26 @@ const txt = (page, sel) => page.$eval(sel, (e) => (e.textContent || '').trim()).
     ok(/not judgeable \(34\/143\)/.test(iss[0][0]), 'avec « not judgeable » tant qu il le faut');
     ok(iss.some((r) => r[0] === 'clock' && r[1] === '7') && iss.some((r) => r[0] === 'target'), 'et par sortie : stop, cible, echeance');
     ok(/fixed 4 hours/.test(await txt(page, '#ppIssue')), 'la page dit pourquoi cette ligne est a part');
+    ok(!(await page.$('#ppMiroir')), 'sans miroir servi (serveur d avant), aucune ligne miroir — rien d invente');
     await page.close();
+    /* ---- LE MEME TRADE, PRIS DANS L AUTRE SENS (02/10/2026) ----
+       Une hypothese trouvee en cherchant dans le passe : la page la montre sur
+       une ligne a part, avec sa date et son seuil, sans couleur sous le seuil. */
+    const sous = await ouvre(nav, port, 'swoge_perp.html', { vue: { inverse: { depuis: Date.parse('2026-10-02T08:00:00Z'), n: 12,
+      gagnants: 8, part: 66.7, net: 0.31, se: 0.2, t: 1.55, jours: 1, seuil: 143, jugeable: false, verdict: 'collecting' } } });
+    const m1 = await sous.page.$eval('#ppMiroir', (r) => ({ cells: [...r.cells].map((c) => c.textContent.trim()), cls: r.cells[2].className }));
+    ok(/taken the other way/.test(m1.cells[0]) && /since Oct 2/.test(m1.cells[0]) && /not judgeable \(12\/143\)/.test(m1.cells[0]),
+       'la ligne miroir dit ce qu elle est, depuis quand, et qu elle n est pas jugeable : ' + m1.cells[0]);
+    ok(m1.cells[1] === '12' && /\+0\.31% ± 0\.20/.test(m1.cells[2]) && !/pp-vert|pp-rouge/.test(m1.cls),
+       'son effectif et son net ± erreur-type, sans couleur sous le seuil : ' + m1.cells[2]);
+    ok(/A hypothesis, not a result/.test(await txt(sous.page, '#ppIssue')) && /Nothing is traded on it/.test(await txt(sous.page, '#ppIssue')),
+       'et la page dit que c est une hypothese, sur laquelle rien n est trade');
+    await sous.page.close();
+    const au = await ouvre(nav, port, 'swoge_perp.html', { vue: { inverse: { depuis: Date.parse('2026-10-02T08:00:00Z'), n: 150,
+      gagnants: 80, part: 53.3, net: -0.05, se: 0.09, t: -0.56, jours: 12, seuil: 143, jugeable: true, verdict: 'no difference' } } });
+    const m2 = await au.page.$eval('#ppMiroir', (r) => r.cells[0].textContent.trim());
+    ok(/no difference/.test(m2), 'au seuil, le verdict du serveur est ecrit tel quel : ' + m2);
+    await au.page.close();
   }
 
   console.log('\n-- a 320 px, rien ne deborde --');

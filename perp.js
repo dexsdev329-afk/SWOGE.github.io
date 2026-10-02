@@ -96,6 +96,14 @@ var PP_PHRASES = {
   tauxSurRecents: function(n, lo, hi){ return "on the " + n + " most recent" + (lo == null ? "" : " \u00b7 95% CI " + lo + "\u2013" + hi + "%"); },
   tauxSurRecentsFr: function(n, lo, hi){ return "sur les " + n + " plus recents" + (lo == null ? "" : " \u00b7 IC 95 % " + lo + "\u2013" + hi + " %"); },
   issue: ["What taking actually did", "Ce que prendre a vraiment rapporte"],
+  /* Le meme trade pris dans l'autre sens (serveur, `noteInverse`, 02/10) : une
+     hypothese trouvee en cherchant dans le passe, mesuree sur les trades A VENIR. */
+  miroir: function(d){ return "The same trades, taken the other way" + (d ? " · counted since " + d : ""); },
+  miroirFr: function(d){ return "Les memes trades, pris dans l'autre sens" + (d ? " · comptes depuis le " + d : ""); },
+  miroirDit: function(s){ return "A hypothesis, not a result: on the first 114 trades the score looked backwards (+0.21% a trade the other way, t 1.65), but that was found by searching the past. It is now counted on every NEW trade, at the real fees of the opposite exit, and judged only at " + s + " trades. Nothing is traded on it."; },
+  miroirDitFr: function(s){ return "Une hypothese, pas un resultat : sur les 114 premiers trades, la note semblait a l'envers (+0,21 % par trade dans l'autre sens, t 1,65), mais c'etait trouve en cherchant dans le passe. Elle est maintenant comptee sur chaque NOUVEAU trade, aux frais reels de la sortie inverse, et jugee seulement a " + s + " trades. Rien n'est trade dessus."; },
+  miroirVerdict: function(v){ return v === "opposite side wins" ? "the other way wins" : v === "opposite side loses" ? "the other way loses too" : v === "no difference" ? "no difference" : ""; },
+  miroirVerdictFr: function(v){ return v === "opposite side wins" ? "l'autre sens gagne" : v === "opposite side loses" ? "l'autre sens perd aussi" : v === "no difference" ? "aucune difference" : ""; },
   issueDit: function(n, s){ return "The shadows above are judged at a fixed 4 hours. Trades exit at their stop, their target or the 12-hour clock: this is what they actually returned, at real fees, on its own line. Not judgeable below " + s + " trades."; },
   issueDitFr: function(n, s){ return "Les ombres ci-dessus sont jugees a 4 h fixes. Les trades sortent a leur stop, leur cible ou a l'echeance de 12 h : voici ce qu'ils ont vraiment rendu, aux frais reels, sur une ligne a part. Pas jugeable sous " + s + " trades."; },
   sortie: ["Exit", "Sortie"], moyenne: ["Mean", "Moyenne"],
@@ -537,7 +545,17 @@ function ppIssue(v){
     var o = b.parSortie[k];
     h += "<tr><td>" + ppEch(pphF("sortieNoms", k)) + "</td>" + cel(o.n, o.moyenneReel, null) + "</tr>";
   });
-  c.innerHTML = h + "</table>";
+  /* Le miroir : une ligne a part, sa propre date, son propre seuil. Sous le
+     seuil, le chiffre s'affiche sans couleur — il n'a encore rien prouve. */
+  var mi = v.inverse;
+  if(mi && mi.n){
+    var d = mi.depuis ? new Date(mi.depuis).toLocaleDateString(PP_LANGUE === "fr" ? "fr-FR" : "en-US", { day:"numeric", month:"short" }) : "";
+    var lab = mi.jugeable ? pphF("miroirVerdict", mi.verdict) : pphF("pasJugeable", mi.n, mi.seuil);
+    h += "<tr id='ppMiroir'><td><b>" + ppEch(pphF("miroir", d)) + "</b> <i class='pp-n'>" + ppEch(lab) + "</i></td>"
+       + "<td class='num'>" + mi.n + "</td><td class='num " + (mi.jugeable ? (mi.net > 0 ? "pp-vert" : mi.net < 0 ? "pp-rouge" : "") : "") + "'>"
+       + ppPct(mi.net) + (mi.se != null ? " \u00b1 " + mi.se.toFixed(2) : "") + "</td></tr>";
+  }
+  c.innerHTML = h + "</table>" + (mi && mi.n ? '<p class="sur">' + ppEch(pphF("miroirDit", mi.seuil)) + "</p>" : "");
 }
 
 /* ---- CE QUE CHAQUE MARCHE A RENDU ----

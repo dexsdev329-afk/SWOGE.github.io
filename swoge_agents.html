@@ -1758,6 +1758,8 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 #modeBrowse .bw-cadre.charge::after{content:"";position:absolute;left:0;top:0;height:3px;width:35%;background:var(--accent,#1652F0);animation:bwCourt 1s linear infinite}
 @keyframes bwCourt{from{left:-35%}to{left:100%}}
 @media (prefers-reduced-motion:reduce){ #modeBrowse .bw-cadre.charge::after{animation:none;left:0;width:100%;opacity:.5} }
+/* 02/10 : l'ecran arrive en direct (flux d'images de Chromium) : une pastille le dit. */
+#modeBrowse .bw-cadre.direct::before{content:"LIVE";position:absolute;right:8px;top:8px;z-index:2;padding:3px 7px;border-radius:999px;background:rgba(18,161,80,.92);color:#fff;font:800 10px/1 system-ui,sans-serif;letter-spacing:1px;pointer-events:none}
 #modeBrowse .bw-vide{padding:40px 18px;text-align:center;color:var(--dim);font-size:14px;line-height:1.5}
 #modeBrowse .bw-statut{font-size:12.5px;color:var(--dim);margin-top:6px;min-height:18px}
 #modeBrowse .bw-statut.mal{color:#c0392b}
@@ -1820,7 +1822,10 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   var CERVEAU = "Analyse this screen for me: what it is, the key facts and numbers, anything suspicious or risky, and what I should look at next.";
   var MEMOIRE = 12;   /* messages gardes comme memoire (6 questions et leurs reponses) */
   var etat = { actif: null, image: null, url: "", titre: "", ecran: lis("swogeBrowserEcran", "bureau") === "telephone" ? "telephone" : "bureau",
-               l: 1280, h: 800, occupe: false, analyse: false, fil: lis("swogeBrowserFil", []) };
+               l: 1280, h: 800, occupe: false, analyse: false, fil: lis("swogeBrowserFil", []),
+               /* 02/10 : le flux d'images. `flux` : null tant qu'on ne sait pas si le serveur le
+                  sert, false s'il ne le sert pas (on revient alors aux captures de suivi). */
+               flux: null, seq: 0, boucle: false };
   if (!Array.isArray(etat.fil)) etat.fil = [];
   $("cerveau").value = lis("swogeBrowserCerveau", CERVEAU);
   $("cerveau").addEventListener("change", function(){ ecris("swogeBrowserCerveau", $("cerveau").value.trim() || CERVEAU); });
@@ -1860,6 +1865,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     clearTimeout(suivi);
     etat.occupe = true; if (!discret) { statut("Loading…"); if (cadre()) cadre().classList.add("charge"); }
     o.ecran = etat.ecran;
+    if (etat.flux !== false && o.action !== "capture") o.flux = true;
     fetch(serveur() + "/navigateur/geste", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + j }, body: JSON.stringify(o) })
       .then(function(r){ return r.json().then(function(x){ return { code: r.status, x: x }; }, function(){ return { code: r.status, x: null }; }); })
       .then(function(r){
@@ -1867,11 +1873,43 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
         if (!r.x || !r.x.ok) { if (!discret) statut((r.x && r.x.raison) || "The browser did not answer.", true); if (apres) apres(false); return suite(); }
         if (discret && !r.x.image) return suite();
         peins(r.x); if (apres) apres(true);
-        if (!discret && SUIVI[o.action]) suivi = setTimeout(function(){ geste({ action: "capture" }, null, true); }, 1500);
+        /* En flux CONFIRME, la suite de la page arrive en images : plus de capture de suivi. Tant
+           que le serveur ne l'a pas confirme (ou s'il ne le sert pas), la capture de suivi reste. */
+        if (etat.flux !== true && !discret && SUIVI[o.action]) suivi = setTimeout(function(){ geste({ action: "capture" }, null, true); }, 1500);
+        if (etat.flux !== false) boucle();
         suite();
       })["catch"](function(){ libre(); if (!discret) statut("The browser is not reachable right now.", true); if (apres) apres(false); suite(); });
   }
   function libre(){ etat.occupe = false; if (cadre()) cadre().classList.remove("charge"); }
+
+  /* ---- LE FLUX (02/10/2026) ----
+     « Le navigateur est vraiment lent. » Chaque geste attendait le chargement et une capture,
+     puis on en redemandait une 1,5 s plus tard : on voyait la page par a-coups, en retard. Le
+     serveur diffuse maintenant l'ecran de Chromium ; on lui demande la derniere image en
+     « longue attente » (il repond des qu'une plus recente existe). Une seule demande a la fois,
+     donc toujours l'image la plus recente, au rythme que le reseau permet. Elle s'arrete quand
+     l'onglet est cache, et quand la session se ferme (cinq minutes sans geste). */
+  function visible(){ var e = $("ecran"); return !document.hidden && !!(e && e.offsetParent !== null); }
+  function boucle(){
+    if (etat.boucle || etat.flux === false) return;
+    var j = jeton(); if (!j) return;
+    if (!visible()) { setTimeout(function(){ if (visible()) boucle(); }, 2000); return; }
+    etat.boucle = true;
+    fetch(serveur() + "/navigateur/image", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + j },
+      body: JSON.stringify({ apres: etat.seq, attente: 8000 }) })
+      .then(function(r){ return r.json().then(function(x){ return { code: r.status, x: x }; }, function(){ return { code: r.status, x: null }; }); })
+      .then(function(r){
+        etat.boucle = false;
+        if (r.code === 404 && !(r.x && /no browser session/.test(r.x.raison || ""))) { etat.flux = false; if (cadre()) cadre().classList.remove("direct"); return; }
+        if (r.code === 404) { if (cadre()) cadre().classList.remove("direct"); return; }   /* session fermee : le prochain geste la rouvre */
+        if (!r.x || !r.x.ok) { setTimeout(boucle, 1500); return; }
+        etat.flux = true; if (cadre()) cadre().classList.add("direct");
+        if (typeof r.x.seq === "number") etat.seq = r.x.seq;
+        if (r.x.image) { r.x.note = null; peins(r.x); if (etat.occupe === false && cadre()) cadre().classList.remove("charge"); }
+        boucle();
+      })["catch"](function(){ etat.boucle = false; setTimeout(boucle, 2000); });
+  }
+  document.addEventListener("visibilitychange", function(){ if (!document.hidden && etat.flux && etat.url) boucle(); });
   function suite(){ if (attente) { var a = attente; attente = null; geste(a[0], a[1]); } }
   function va(){ var u = $("adresse").value.trim(); if (u) geste({ action: "goto", url: u }); }
   $("va").addEventListener("click", va);

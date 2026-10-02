@@ -174,6 +174,68 @@ let chromium = null; try { chromium = require('playwright').chromium; } catch (e
     await ctx.close();
   }
 
+  /* 02/10 : « le navigateur est vraiment lent ». L ecran arrive maintenant en direct : le client
+     demande la derniere image en longue attente (/navigateur/image) et les gestes n attendent plus. */
+  console.log('\n-- Browse en direct : le flux d images --');
+  {
+    const ctx = await nav.newContext({ viewport: { width: 1280, height: 900 } });
+    const p = await ctx.newPage(), erreurs = [];
+    p.on('pageerror', (e) => erreurs.push(String(e.message || e)));
+    const img = async (c) => (await p.screenshot({ type: 'jpeg', quality: 40, clip: { x: c, y: 0, width: 64, height: 40 } })).toString('base64');
+    const vues = [await img(0), await img(64), await img(128)];
+    const gestes = [], demandes = [];
+    let seq = 0, mode = 'flux';
+    await p.addInitScript(() => { try { localStorage.setItem('swogeSession', 'jeton-essai'); } catch (e) {} });
+    await p.route('**/*', (r) => r.request().url().startsWith(base) ? r.continue() : r.abort());
+    await p.route('**/navigateur/etat', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, actif: true }) }));
+    await p.route('**/navigateur/geste', (r) => { const b = JSON.parse(r.request().postData()); gestes.push(b);
+      r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, url: 'https://example.org/', titre: 'Example', image: b.flux ? null : vues[0], ecran: { width: 1280, height: 800 }, note: null, seq }) }); });
+    await p.route('**/navigateur/image', async (r) => { const b = JSON.parse(r.request().postData()); demandes.push(b);
+      if (mode === 'ancien') return r.fulfill({ status: 404, contentType: 'text/plain', body: 'not found' });
+      if (seq >= 3) { await new Promise((s2) => setTimeout(s2, 300)); return r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, seq, image: null, url: 'https://example.org/page', titre: 'Page' }) }); }
+      seq++; r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, seq, image: vues[seq - 1], url: 'https://example.org/page', titre: 'Page ' + seq, ecran: { width: 1280, height: 800 } }) }); });
+    await p.goto(base + CIBLE + '?mode=browse', { waitUntil: 'load' });
+    await p.waitForTimeout(300);
+    await p.fill('#bw-adresse', 'example.org'); await p.click('#bw-va');
+    await p.waitForFunction(() => /Page 3/.test(document.getElementById('bw-statut').textContent), null, { timeout: 5000 });
+    const etat1 = await p.evaluate(() => ({ src: document.getElementById('bw-ecran').src.slice(-40), direct: document.getElementById('bw-ecran').parentNode.classList.contains('direct'),
+                                            adresse: document.getElementById('bw-adresse').value }));
+    ok(gestes[0].flux === true && gestes[0].action === 'goto', 'le geste annonce au serveur que la page recoit le flux');
+    ok(etat1.src === vues[2].slice(-40) && etat1.adresse === 'https://example.org/page', 'les images arrivent seules, sans geste : la troisieme est a l ecran, avec son adresse');
+    ok(demandes.length >= 3 && demandes[1].apres === 1 && demandes[2].apres === 2 && demandes.every((d) => d.attente === 8000),
+       'chaque demande dit la derniere image vue : on ne recoit que plus recent (apres ' + demandes.slice(0, 3).map((d) => d.apres).join(',') + ')');
+    ok(etat1.direct, 'la pastille LIVE dit que l ecran est en direct');
+    const nG = gestes.length;
+    const box = await p.$eval('#bw-ecran', (i) => { const r = i.getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height }; });
+    await p.mouse.click(box.x + 20, box.y + 20);
+    await p.waitForTimeout(2000);
+    ok(gestes.slice(nG).map((g) => g.action).join() === 'clic', 'flux confirme : plus de capture de suivi apres un clic [' + gestes.slice(nG).map((g) => g.action).join() + ']');
+    ok(erreurs.length === 0, erreurs.length ? 'erreurs : ' + erreurs.slice(0, 2).join(' | ') : 'aucune erreur de script');
+    await ctx.close();
+
+    /* Un serveur d avant : /navigateur/image n existe pas. On revient aux captures de suivi. */
+    const ctx2 = await nav.newContext({ viewport: { width: 1280, height: 900 } });
+    const p2 = await ctx2.newPage();
+    gestes.length = 0; demandes.length = 0; mode = 'ancien';
+    await p2.addInitScript(() => { try { localStorage.setItem('swogeSession', 'jeton-essai'); } catch (e) {} });
+    await p2.route('**/*', (r) => r.request().url().startsWith(base) ? r.continue() : r.abort());
+    await p2.route('**/navigateur/etat', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, actif: true }) }));
+    await p2.route('**/navigateur/geste', (r) => { const b = JSON.parse(r.request().postData()); gestes.push(b);
+      r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, url: 'https://example.org/', titre: 'Example', image: vues[0], ecran: { width: 1280, height: 800 }, note: null }) }); });
+    await p2.route('**/navigateur/image', (r) => { demandes.push(1); r.fulfill({ status: 404, contentType: 'text/plain', body: 'not found' }); });
+    await p2.goto(base + CIBLE + '?mode=browse', { waitUntil: 'load' });
+    await p2.waitForTimeout(300);
+    await p2.fill('#bw-adresse', 'example.org'); await p2.click('#bw-va');
+    await p2.waitForTimeout(2200);
+    const b2 = await p2.$eval('#bw-ecran', (i) => { const r = i.getBoundingClientRect(); return { x: r.left, y: r.top }; });
+    await p2.mouse.click(b2.x + 20, b2.y + 20);
+    await p2.waitForTimeout(2200);
+    ok(demandes.length === 1, 'sans route d images (serveur d avant) : une seule demande, puis plus rien (' + demandes.length + ')');
+    ok(gestes.map((g) => g.action).join() === 'goto,capture,clic,capture', 'et les captures de suivi reprennent [' + gestes.map((g) => g.action).join() + ']');
+    ok(!gestes.slice(1).some((g) => g.flux), 'les gestes cessent d annoncer le flux');
+    await ctx2.close();
+  }
+
   /* 01/10 : l Agent Store devient le sixieme onglet. */
   console.log('\n-- Store : l Agent Store, dans Agents --');
   {

@@ -6,6 +6,9 @@
      (navigateur_serveur.js), la page montre sa capture et lui renvoie les gestes
      (/navigateur/geste). « Screen » envoie la capture au chat (/studio/chat : vision,
      historique, credit) avec la question de base. Insere par outils/fusionne_agents.js.
+     02/10 : « Screen » passe par Sonnet 5 en effort bas, quel que soit le modele du chat (plus
+     rapide) ; et le PILOTE (Autopilot) : le joueur ecrit un but, le modele qu'il choisit — Claude,
+     ChatGPT ou Grok — joue seul dans ce navigateur (/navigateur/pilote, navigateur_pilote.js).
      ============================================================================ -->
 <style>
 #modeBrowse .bw{max-width:1100px;margin:0 auto;padding:12px 16px 24px;display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:14px}
@@ -41,6 +44,25 @@
 #modeBrowse .bw-msg img{display:block;max-width:160px;border-radius:6px;margin-bottom:6px}
 #modeBrowse .bw-msg small{display:block;color:var(--dim);font-size:11.5px;margin-top:4px}
 #modeBrowse .bw-pied{font-size:11.5px;color:var(--dim);line-height:1.45}
+/* 02/10 : deux panneaux a droite — demander (Screen) ou laisser jouer (Autopilot). */
+#modeBrowse .bw-modes{display:flex;gap:4px;padding:3px;border:1px solid var(--line);border-radius:12px;background:var(--panel2)}
+#modeBrowse .bw-modes button{flex:1;font:inherit;font-size:13px;font-weight:700;text-transform:none;letter-spacing:0;padding:8px 6px;border-radius:9px;border:0;background:transparent;color:var(--dim);cursor:pointer;min-height:36px}
+#modeBrowse .bw-modes button[aria-pressed="true"]{background:var(--panel);color:var(--paper);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+#modeBrowse .bw-modes button:hover{transform:none;filter:none}
+#modeBrowse .bw-pan{display:flex;flex-direction:column;gap:8px;min-width:0}
+#modeBrowse .bw-pan[hidden],#modeBrowse .bw-reglages[hidden]{display:none}
+#modeBrowse .bw-reglages{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:6px}
+#modeBrowse .bw-reglages label{display:flex;flex-direction:column;gap:3px}
+#modeBrowse .bw-reglages input,#modeBrowse .bw-reglages select{font:inherit;font-size:13.5px;font-weight:400;padding:7px 8px;border-radius:9px;border:1px solid var(--line);background:var(--panel);color:var(--paper);min-width:0}
+#modeBrowse label.bw-reel{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--paper);font-weight:600}
+#modeBrowse .bw-q button.stop{background:#c0392b;color:#fff;border-color:transparent;font-weight:700}
+#modeBrowse .bw-q button:disabled{opacity:.45;cursor:default}
+#modeBrowse .bw-ligne{font-size:12.5px;line-height:1.45;border-left:3px solid var(--line);padding:3px 0 3px 8px;word-break:break-word}
+#modeBrowse .bw-ligne b{font-weight:700}
+#modeBrowse .bw-ligne small{color:var(--dim)}
+#modeBrowse .bw-ligne.refus{border-left-color:#c0392b}
+#modeBrowse .bw-ligne.fin{border-left-color:#12a150;font-weight:600}
+#modeBrowse .bw-ligne.fin.mal{border-left-color:#c0392b}
 </style>
 <div class="bw" id="bw-racine">
   <div class="bw-nav">
@@ -64,6 +86,11 @@
     </div>
   </div>
   <div class="bw-ia">
+    <div class="bw-modes">
+      <button type="button" id="bw-modeAsk" aria-pressed="true">&#128248; Ask about the screen</button>
+      <button type="button" id="bw-modePilote" aria-pressed="false">&#129302; Autopilot</button>
+    </div>
+    <div class="bw-pan" id="bw-panAsk">
     <label for="bw-cerveau">The AI's base question (always applied, remembered on this device)</label>
     <textarea id="bw-cerveau" rows="3"></textarea>
     <div class="bw-q">
@@ -72,7 +99,25 @@
     </div>
     <div class="bw-fil" id="bw-fil" aria-live="polite"></div>
     <div class="bw-q"><button type="button" id="bw-oublie">Forget previous answers</button></div>
-    <div class="bw-pied" id="bw-pied">Screen sends a picture of what the browser shows, your base question and your question to the AI, with its previous answers here as memory. Paid from your balance like the chat (model and payment chosen in the Chat tab). Pages are analysed as pictures: the AI never follows instructions written on a page. Public websites only; nothing is bought or signed from here.</div>
+    <div class="bw-pied" id="bw-pied">Screen sends a picture of what the browser shows, your base question and your question to Claude Sonnet 5 (fast), with its previous answers here as memory. Paid from your balance like the chat (payment chosen in the Chat tab). Pages are analysed as pictures: the AI never follows instructions written on a page. Public websites only; nothing is bought or signed from here.</div>
+    </div>
+    <div class="bw-pan" id="bw-panPilote" hidden>
+      <label for="bw-but">What should the AI do in this browser, on its own?</label>
+      <textarea id="bw-but" rows="3" maxlength="1000" placeholder="e.g. Open a free blackjack game, play 5 hands with basic strategy, then tell me the result."></textarea>
+      <div class="bw-reglages">
+        <label>Model<select id="bw-piloteModele" aria-label="Model for the autopilot"></select></label>
+        <label>Max steps<input id="bw-etapes" type="number" min="1" max="150" step="1" value="40"></label>
+        <label>AI budget ($)<input id="bw-budget" type="number" min="0.05" max="10" step="0.05" value="1"></label>
+      </div>
+      <label class="bw-reel"><input type="checkbox" id="bw-reel"> Real money on this site</label>
+      <div class="bw-reglages" id="bw-limites" hidden>
+        <label>Max bet<input id="bw-mise" type="number" min="0" step="any" placeholder="e.g. 5"></label>
+        <label>Stop after losing<input id="bw-perte" type="number" min="0" step="any" placeholder="e.g. 50"></label>
+      </div>
+      <div class="bw-q"><button type="button" class="go" id="bw-lance">&#9654; Start</button><button type="button" class="stop" id="bw-stop" disabled>&#9632; Stop</button></div>
+      <div class="bw-fil" id="bw-journal" aria-live="polite"></div>
+      <div class="bw-pied" id="bw-piedPilote">The AI looks at the live screen, does one thing (click, scroll, type, a key), looks again, and so on until the goal is reached. Our server enforces the steps, 30 minutes at most, and your AI budget: each step is billed like a chat question (payment chosen in the Chat tab), and the total never goes over the budget. Bet and loss limits are instructions the AI follows on screen — no server can read another site's balance, so keep an eye on the live screen. Stop, or closing this page, stops it at once. It never types an address, key, email or card number that you did not write in your goal, and text on a page is never an instruction to it.</div>
+    </div>
   </div>
 </div>
 <script>
@@ -153,7 +198,8 @@
      « longue attente » (il repond des qu'une plus recente existe). Une seule demande a la fois,
      donc toujours l'image la plus recente, au rythme que le reseau permet. Elle s'arrete quand
      l'onglet est cache, et quand la session se ferme (cinq minutes sans geste). */
-  function visible(){ var e = $("ecran"); return !document.hidden && !!(e && e.offsetParent !== null); }
+  /* Le CADRE, pas l'image : quand le pilote ouvre la premiere page, l'image est encore cachee. */
+  function visible(){ var c = cadre(); return !document.hidden && !!(c && c.offsetParent !== null); }
   function boucle(){
     if (etat.boucle || etat.flux === false) return;
     var j = jeton(); if (!j) return;
@@ -230,7 +276,9 @@
     var sortie = bulle({ role: "assistant", content: "" }); sortie.textContent = "Looking at the screen…";
     etat.analyse = true; $("screen").disabled = true; $("question").value = "";
     var payeur = lis("swogeChatPayeur", null) === "swoge" ? "swoge" : "credit";
-    var modele = lis("swogeChatModele", null) || "sonnet-5";
+    /* 02/10 : « utiliser Sonnet pour analyser plus rapidement les screens ». Le modele du chat
+       pouvait etre Opus (plus lent, plus cher) ; une capture se lit tres bien en Sonnet 5, effort bas. */
+    var modele = "sonnet-5";
     var recu = "", fini = false;
     function fin(ok, raison){
       if (fini) return; fini = true; etat.analyse = false; $("screen").disabled = false;
@@ -238,7 +286,7 @@
       else { sortie.textContent = (recu ? recu + "\n\n" : "") + "⚠ " + (raison || "The analysis failed — you were not charged."); if (/credit|balance|top up|insufficient/i.test(raison || "")) statut("Top up your balance in the Chat tab, then try again.", true); }
     }
     fetch(serveur() + "/studio/chat", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + j },
-      body: JSON.stringify({ rid: rid, modele: modele, messages: messages, payeur: payeur }) })
+      body: JSON.stringify({ rid: rid, modele: modele, effort: "low", messages: messages, payeur: payeur }) })
       .then(function(rep){
         if (!rep.ok || !rep.body) return rep.json().then(function(e){ fin(false, e && e.raison); }, function(){ fin(false, "HTTP " + rep.status); });
         var lecteur = rep.body.getReader(), dec = new TextDecoder(), tampon = "";
@@ -262,5 +310,119 @@
   }
   $("screen").addEventListener("click", analyse);
   $("question").addEventListener("keydown", function(e){ if (e.key === "Enter") { e.preventDefault(); analyse(); } });
+
+  /* ---- LE PILOTE (02/10/2026) ----
+     « Ecrire une requete a l'IA et qu'elle joue au blackjack toute seule sur le navigateur, avec un
+     modele different de Claude. » La page ne fait que montrer : le serveur lit la session, borne
+     les etapes, la duree et le budget d'IA, et refuse de taper ce que le joueur n'a pas ecrit. */
+  function panneau(p){
+    var pilote = p === "pilote";
+    $("panAsk").hidden = pilote; $("panPilote").hidden = !pilote;
+    $("modeAsk").setAttribute("aria-pressed", String(!pilote)); $("modePilote").setAttribute("aria-pressed", String(pilote));
+    ecris("swogeBrowserPanneau", pilote ? "pilote" : "ask");
+  }
+  $("modeAsk").addEventListener("click", function(){ panneau("ask"); });
+  $("modePilote").addEventListener("click", function(){ panneau("pilote"); });
+  panneau(lis("swogeBrowserPanneau", "ask"));
+  $("but").value = lis("swogeBrowserBut", "");
+  $("but").addEventListener("change", function(){ ecris("swogeBrowserBut", $("but").value.trim()); });
+  /* L'argent reel se coche a chaque fois : jamais garde d'une visite a l'autre. */
+  $("reel").checked = false;
+  $("reel").addEventListener("change", function(){ $("limites").hidden = !$("reel").checked; });
+
+  /* Les modeles allumes sur le serveur. Par defaut : ChatGPT, puis Grok, puis Claude — un modele
+     Claude peut refuser de jouer de l'argent reel, d'ou le choix. */
+  var PREFERES = ["gpt-6-sol", "grok-4-3", "gpt-6-luna", "grok-4-7", "sonnet-5"];
+  function remplisModeles(liste){
+    var sel = $("piloteModele"), garde = lis("swogeBrowserPiloteModele", null), ids = [];
+    sel.innerHTML = "";
+    liste.forEach(function(m){
+      var o = document.createElement("option"); o.value = m.id; o.textContent = m.nom + (m.nomFournisseur ? " (" + m.nomFournisseur + ")" : "");
+      sel.appendChild(o); ids.push(m.id);
+    });
+    var choix = garde && ids.indexOf(garde) >= 0 ? garde : (PREFERES.filter(function(x){ return ids.indexOf(x) >= 0; })[0] || ids[0]);
+    if (choix) sel.value = choix;
+  }
+  fetch(serveur() + "/studio/chat/catalogue", { cache: "no-store" }).then(function(r){ return r.json(); }).then(function(c){
+    var l = (c && c.modeles || []).filter(function(m){ return m.actif; });
+    remplisModeles(l.length ? l : [{ id: "sonnet-5", nom: "Sonnet 5", nomFournisseur: "Claude" }]);
+  })["catch"](function(){ remplisModeles([{ id: "gpt-6-sol", nom: "GPT-6 Sol", nomFournisseur: "ChatGPT" }, { id: "grok-4-3", nom: "Grok 4.3", nomFournisseur: "Grok" }, { id: "sonnet-5", nom: "Sonnet 5", nomFournisseur: "Claude" }]); });
+  $("piloteModele").addEventListener("change", function(){ ecris("swogeBrowserPiloteModele", $("piloteModele").value); });
+
+  var pil = { actif: false };
+  function ligne(html, classe){
+    var d = document.createElement("div"); d.className = "bw-ligne" + (classe ? " " + classe : "");
+    html.forEach(function(x){ var e = document.createElement(x[0]); e.textContent = x[1]; d.appendChild(e); });
+    $("journal").appendChild(d); $("journal").scrollTop = $("journal").scrollHeight;
+  }
+  function dollars(x){ return "$" + (Number(x) || 0).toFixed(Number(x) < 0.1 ? 4 : 2); }
+  var FINS = { done: "Done", stuck: "The AI is stuck", budget: "Stopped: the AI budget is spent", steps: "Stopped: step limit reached",
+               time: "Stopped: 30-minute limit reached", stopped: "Stopped", refused: "Refused", error: "Stopped on an error" };
+  function etatPilote(on){
+    pil.actif = on; $("lance").disabled = on; $("stop").disabled = !on; $("screen").disabled = on || etat.analyse;
+    ["but", "piloteModele", "etapes", "budget", "reel", "mise", "perte"].forEach(function(k){ $(k).disabled = on; });
+  }
+  function lancePilote(){
+    var j = jeton();
+    if (!j) { statut("Sign in with your wallet (top right) first.", true); return; }
+    if (pil.actif) return;
+    var but = $("but").value.trim();
+    if (but.length < 3) { statut("Write what the autopilot should do.", true); $("but").focus(); return; }
+    var corps = { but: but, modele: $("piloteModele").value, etapesMax: Number($("etapes").value) || 40, budgetUsd: Number($("budget").value) || 1,
+                  payeur: lis("swogeChatPayeur", null) === "swoge" ? "swoge" : "credit", ecran: etat.ecran };
+    if ($("reel").checked) {
+      var mise = Number($("mise").value), perte = Number($("perte").value);
+      if (!(mise > 0 && perte > 0)) { statut("Real money: set a max bet and when to stop.", true); return; }
+      corps.argentReel = true; corps.miseMax = mise; corps.perteMax = perte;
+    }
+    /* Aucune page ouverte : le pilote ouvre l'adresse tapee dans la barre. */
+    if (!etat.image && $("adresse").value.trim()) corps.url = $("adresse").value.trim();
+    ecris("swogeBrowserBut", but);
+    $("journal").innerHTML = "";
+    ligne([["b", "Goal: "], ["span", but]]);
+    etatPilote(true);
+    var fini = false, total = 0;
+    function fin(x, mal){
+      if (fini) return; fini = true; etatPilote(false);
+      var r = x || {}, titre = FINS[r.raison] || (mal ? "Stopped" : "Finished");
+      ligne([["b", titre + (r.detail ? ": " : ".")], ["span", r.detail || ""], ["small", "  " + (r.etapes || 0) + " steps · " + dollars(r.totalUsd != null ? r.totalUsd : total) + " of AI"]],
+            "fin" + (mal || r.raison === "error" || r.raison === "refused" ? " mal" : ""));
+      if (/credit|balance|top up|insufficient/i.test(r.raison + " " + (r.detail || ""))) statut("Top up your balance in the Chat tab, then try again.", true);
+    }
+    fetch(serveur() + "/navigateur/pilote", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + j }, body: JSON.stringify(corps) })
+      .then(function(rep){
+        if (!rep.ok || !rep.body) return rep.json().then(function(e){ fin({ raison: "error", detail: e && e.raison }, true); }, function(){ fin({ raison: "error", detail: "HTTP " + rep.status }, true); });
+        var lecteur = rep.body.getReader(), dec = new TextDecoder(), tampon = "";
+        function lit(){
+          return lecteur.read().then(function(r){
+            if (r.done) { fin({ raison: "error", detail: "the connection was cut" }, true); return; }
+            tampon += dec.decode(r.value, { stream: true });
+            var blocs = tampon.split("\n\n"); tampon = blocs.pop();
+            blocs.forEach(function(b){
+              var type = (b.match(/^event: (.+)$/m) || [])[1], data = (b.match(/^data: (.+)$/m) || [])[1], x = null;
+              try { x = data ? JSON.parse(data) : null; } catch (e) {}
+              if (type === "debut") setTimeout(boucle, 800);
+              else if (type === "etape" && x) {
+                total = x.totalUsd || total;
+                ligne([["b", "#" + x.n + " " + (x.action || "—")], ["span", x.pourquoi ? " — " + x.pourquoi : ""], ["small", (x.note ? "  [" + x.note + "]" : "") + "  " + dollars(x.factureUsd)]],
+                      x.note && /^refused/.test(x.note) ? "refus" : "");
+                boucle();
+              }
+              else if (type === "fin") fin(x);
+              else if (type === "erreur") fin(x, true);
+            });
+            return lit();
+          });
+        }
+        return lit();
+      })["catch"](function(){ fin({ raison: "error", detail: "the server is not reachable right now" }, true); });
+  }
+  function stopPilote(){
+    var j = jeton(); if (!j || !pil.actif) return;
+    $("stop").disabled = true;
+    fetch(serveur() + "/navigateur/pilote/stop", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + j }, body: "{}" })["catch"](function(){});
+  }
+  $("lance").addEventListener("click", lancePilote);
+  $("stop").addEventListener("click", stopPilote);
 })();
 </script>

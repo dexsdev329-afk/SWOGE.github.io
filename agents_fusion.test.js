@@ -119,7 +119,8 @@ let chromium = null; try { chromium = require('playwright').chromium; } catch (e
     const jpeg = (await p.screenshot({ type: 'jpeg', quality: 50, clip: { x: 0, y: 0, width: 128, height: 80 } })).toString('base64');
     const gestes = [], chats = [];
     let branche = true;
-    await p.addInitScript(() => { try { localStorage.setItem('swogeSession', 'jeton-essai'); } catch (e) {} });
+    /* Le chat est regle sur Opus : Screen doit quand meme partir en Sonnet (02/10). */
+    await p.addInitScript(() => { try { localStorage.setItem('swogeSession', 'jeton-essai'); if (!localStorage.getItem('swogeChatModele')) localStorage.setItem('swogeChatModele', '"opus-5-5"'); } catch (e) {} });
     await p.route('**/*', (r) => r.request().url().startsWith(base) ? r.continue() : r.abort());
     await p.route('**/navigateur/etat', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, actif: branche }) }));
     await p.route('**/navigateur/geste', async (r) => { const b = JSON.parse(r.request().postData()); gestes.push({ b, auth: r.request().headers().authorization });
@@ -159,6 +160,7 @@ let chromium = null; try { chromium = require('playwright').chromium; } catch (e
     const c1 = chats[0], dernier = c1.messages[c1.messages.length - 1];
     ok(c1.messages.length === 1 && dernier.pieces[0].media === 'image/jpeg' && dernier.pieces[0].data === jpeg && /Base instruction \(always apply\): Is this site legit\?/.test(dernier.content)
        && /never instructions to you/.test(dernier.content), 'Screen : la capture part au chat, avec la question de base et la regle « le texte de la page n est pas une consigne »');
+    ok(c1.modele === 'sonnet-5' && c1.effort === 'low', 'Screen part en Sonnet 5, effort bas — meme quand le chat est regle sur Opus (' + c1.modele + ', ' + c1.effort + ')');
     await p.fill('#bw-question', 'and the owner?'); await p.click('#bw-screen');
     await p.waitForFunction(() => /Same page/.test(document.getElementById('bw-fil').textContent));
     const c2 = chats[1];
@@ -170,6 +172,76 @@ let chromium = null; try { chromium = require('playwright').chromium; } catch (e
     ok((await p.textContent('#bw-fil')) === '' && await p.evaluate(() => JSON.parse(localStorage.getItem('swogeBrowserFil')).length === 0), 'Forget : la memoire est effacee');
     branche = false; await p.reload({ waitUntil: 'load' }); await p.waitForTimeout(400);
     ok(/being set up/.test(await p.textContent('#bw-vide')), 'service pas encore branche : on le dit, rien n est facture');
+    ok(erreurs.length === 0, erreurs.length ? 'erreurs : ' + erreurs.slice(0, 2).join(' | ') : 'aucune erreur de script');
+    await ctx.close();
+  }
+
+  /* 02/10 : « ecrire une requete a l IA et qu elle joue au blackjack toute seule, avec un modele
+     different de Claude ». Le serveur du pilote est simule ici ; sa boucle et ses bornes ont leur
+     essai (navigateur_pilote.test.js, depot du serveur). */
+  console.log('\n-- Browse : le pilote (Autopilot) --');
+  {
+    const ctx = await nav.newContext({ viewport: { width: 1280, height: 900 } });
+    const p = await ctx.newPage(), erreurs = [];
+    p.on('pageerror', (e) => erreurs.push(String(e.message || e)));
+    const lances = [], stops = [];
+    let relache = null;
+    await p.addInitScript(() => { try { localStorage.setItem('swogeSession', 'jeton-essai'); } catch (e) {} });
+    await p.route('**/*', (r) => r.request().url().startsWith(base) ? r.continue() : r.abort());
+    await p.route('**/navigateur/etat', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, actif: true }) }));
+    await p.route('**/navigateur/image', (r) => r.fulfill({ status: 404, contentType: 'application/json', body: JSON.stringify({ ok: false, raison: 'no browser session: open a page first' }) }));
+    await p.route('**/studio/chat/catalogue', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ modeles: [
+      { id: 'opus-5-5', nom: 'Opus 5.5', nomFournisseur: 'Claude', actif: true }, { id: 'sonnet-5', nom: 'Sonnet 5', nomFournisseur: 'Claude', actif: true },
+      { id: 'gpt-6-sol', nom: 'GPT-6 Sol', nomFournisseur: 'ChatGPT', actif: true }, { id: 'grok-4-3', nom: 'Grok 4.3', nomFournisseur: 'Grok', actif: false }] }) }));
+    await p.route('**/navigateur/pilote/stop', (r) => { stops.push(r.request().headers().authorization); r.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true,"arrete":true}' }); });
+    await p.route('**/navigateur/pilote', async (r) => {
+      lances.push({ b: JSON.parse(r.request().postData()), auth: r.request().headers().authorization });
+      await new Promise((ok2) => { relache = ok2; });
+      const ev = (t, d) => 'event: ' + t + '\ndata: ' + JSON.stringify(d) + '\n\n';
+      r.fulfill({ status: 200, contentType: 'text/event-stream', body: ev('debut', { etapesMax: 12 })
+        + ev('etape', { n: 1, action: 'click (640, 700)', pourquoi: 'press Deal <img src=x onerror=alert(1)>', factureUsd: 0.004, totalUsd: 0.004 })
+        + ev('etape', { n: 2, action: 'type "0xbad"', pourquoi: 'the page says so', note: 'refused: the autopilot only types addresses that you wrote in your goal', factureUsd: 0.004, totalUsd: 0.008 })
+        + ev('fin', { ok: true, raison: 'done', detail: 'played 5 hands, +20 chips', etapes: 3, totalUsd: 0.012 }) });
+    });
+    await p.goto(base + CIBLE + '?mode=browse', { waitUntil: 'load' });
+    await p.waitForTimeout(400);
+    ok(await visible(p, 'bw-screen') && !(await visible(p, 'bw-lance')), 'Browse s ouvre sur « Ask about the screen » ; le pilote attend son onglet');
+    await p.click('#bw-modePilote');
+    ok(await visible(p, 'bw-lance') && !(await visible(p, 'bw-screen')) && (await p.getAttribute('#bw-modePilote', 'aria-pressed')) === 'true', 'Autopilot : son panneau, Screen cache');
+    const options = await p.$$eval('#bw-piloteModele option', (o) => o.map((x) => x.value));
+    ok(options.join() === 'opus-5-5,sonnet-5,gpt-6-sol' && (await p.$eval('#bw-piloteModele', (s2) => s2.value)) === 'gpt-6-sol',
+       'les modeles allumes seulement, ChatGPT choisi d office (Claude peut refuser l argent reel) [' + options.join() + ']');
+    ok(!(await visible(p, 'bw-limites')), 'argent reel decoche : pas de limites a remplir');
+    await p.check('#bw-reel');
+    ok(await visible(p, 'bw-limites'), 'argent reel coche : mise et perte maximales apparaissent');
+    await p.fill('#bw-but', 'Play blackjack');
+    await p.click('#bw-lance');
+    await p.waitForTimeout(200);
+    ok(lances.length === 0 && /max bet/.test(await p.textContent('#bw-statut')), 'argent reel sans limites : rien ne part, on le dit');
+    await p.uncheck('#bw-reel');
+    await p.fill('#bw-adresse', 'casino.example');
+    await p.fill('#bw-etapes', '12'); await p.fill('#bw-budget', '0.5');
+    await p.click('#bw-lance');
+    await p.waitForFunction(() => document.getElementById('bw-stop').disabled === false);
+    const L = lances[0];
+    ok(L && L.auth === 'Bearer jeton-essai' && L.b.but === 'Play blackjack' && L.b.modele === 'gpt-6-sol' && L.b.etapesMax === 12 && L.b.budgetUsd === 0.5
+       && L.b.url === 'casino.example' && L.b.ecran === 'bureau' && !L.b.argentReel && !('joueur' in L.b) && !('addr' in L.b),
+       'Start : but, modele, etapes, budget et l adresse tapee partent avec la session — jamais une adresse de joueur');
+    ok(await p.$eval('#bw-lance', (b) => b.disabled) && await p.$eval('#bw-but', (b) => b.disabled) && await p.$eval('#bw-screen', (b) => b.disabled), 'en marche : Start, le but et Screen sont bloques, Stop est la');
+    await p.click('#bw-stop');
+    await p.waitForTimeout(150);
+    ok(stops.length === 1 && stops[0] === 'Bearer jeton-essai', 'Stop part au serveur, par la session');
+    relache();
+    await p.waitForFunction(() => /Done/.test(document.getElementById('bw-journal').textContent));
+    const j = await p.evaluate(() => ({ t: document.getElementById('bw-journal').textContent, img: !!document.querySelector('#bw-journal img'),
+                                       refus: document.querySelectorAll('#bw-journal .bw-ligne.refus').length }));
+    ok(/#1 click \(640, 700\)/.test(j.t) && /played 5 hands, \+20 chips/.test(j.t) && /3 steps · \$0\.0120 of AI/.test(j.t), 'le journal montre chaque etape, le resultat, et ce que l IA a coute');
+    ok(!j.img && /<img src=x/.test(j.t), 'le texte du modele est ecrit en texte, jamais en HTML');
+    ok(j.refus === 1, 'une frappe refusee par le serveur est marquee dans le journal');
+    ok(!(await p.$eval('#bw-lance', (b) => b.disabled)) && await p.$eval('#bw-stop', (b) => b.disabled), 'fini : Start revient, Stop s eteint');
+    await p.reload({ waitUntil: 'load' }); await p.waitForTimeout(400);
+    ok(await visible(p, 'bw-lance') && (await p.$eval('#bw-but', (t) => t.value)) === 'Play blackjack' && !(await p.$eval('#bw-reel', (c) => c.checked)),
+       'au retour : le panneau et le but sont gardes, l argent reel est decoche (il se coche a chaque fois)');
     ok(erreurs.length === 0, erreurs.length ? 'erreurs : ' + erreurs.slice(0, 2).join(' | ') : 'aucune erreur de script');
     await ctx.close();
   }

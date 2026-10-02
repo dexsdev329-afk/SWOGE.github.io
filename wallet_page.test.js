@@ -2500,7 +2500,7 @@ function servir(q, r, f, type) {
        deux de ses onglets, Polymarket Edge retire ; Perp, Predict, Agent Store, Polymarket AI ajoutes.
        01/10 : SWOGE AI, Perp, Predict et Polymarket AI reunis sous « AI Trading » (onglets en tete). */
     ok(col.liens.join(',') === 'index.html,games.html,swogebet.html,swoge_wallet.html*,'
-         + 'swoge_ai.html,swoge_agents.html,whitepaper.html',   /* 01/10 : l Agent Store est un onglet d Agents */
+         + 'swoge_ai.html,swoge_agents.html,launchpad.html,whitepaper.html',   /* 01/10 : l Agent Store est un onglet d Agents ; 02/10 : le Launchpad entre au menu */
        'le menu de gauche est celui du site, dans le meme ordre, et « Wallet » y est'
        + ' marque page courante (' + col.liens.join(', ') + ')');
     ok(col.reseaux === 3, 'les trois liens du site sont sous le menu');

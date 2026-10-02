@@ -68,7 +68,7 @@
      A savoir : cela ne sauve pas la page DEJA en cache chez quelqu'un, qui ne
      contient pas ces lignes. Ce garde-fou vaut a partir de celle-ci. -->
 <script>
-var MARQUE_PAGE = '8ab37a15';
+var MARQUE_PAGE = 'bb458a81';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -1529,6 +1529,17 @@ html.wl-encadre .wl-nav, html.wl-encadre .vt-hdroite{ display:none }
   .wl-retour{ display:none }
 }
 html.wl-encadre .wl-haut{ position:static; height:auto }
+/* ---- HUIT ENTREES DANS LE BANDEAU (02/10) ----
+ * Le Launchpad est entre au menu commun : huit liens au lieu de sept. Mesure :
+ * le bandeau faisait 1 125 pixels de large, donc debordait sous 1 130. Entre
+ * 1 060 et 1 239, les liens se resserrent et la pastille de la chaine ne garde
+ * que son logo et son point (le nom reste dans son `title`). */
+@media (min-width:1060px) and (max-width:1239px){
+  .wl-haut{ gap:10px; padding:0 14px }
+  .wl-nav a{ padding:8px 8px; font-size:12.5px }
+  .vt-chaine{ font-size:0; gap:5px; padding:5px 8px 5px 5px }
+  .vt-connecte{ padding:10px 12px }
+}
 .vt-chaine{ display:flex; align-items:center; gap:7px; padding:7px 12px 7px 7px;
   border:1px solid var(--bord); border-radius:999px; background:var(--carte);
   font:700 12.5px/1 'Archivo',sans-serif; color:var(--texte); white-space:nowrap }
@@ -1846,12 +1857,13 @@ html.wl-encadre .wl-haut{ position:static; height:auto }
     <a href="swoge_wallet.html" class="on"><span class="ic">&#129433;</span>Wallet</a>
     <a href="swoge_ai.html"><span class="ic">&#129302;</span>AI Trading</a>
     <a href="swoge_agents.html"><span class="ic">&#129504;</span>Agents</a>
+    <a href="launchpad.html"><span class="ic">&#128640;</span>Launchpad</a>
     <a href="whitepaper.html"><span class="ic">&#128220;</span>Docs</a>
   </nav>
   <!-- La pastille dit la chaine que le telephone lit, pas une promesse : elle
        s'allume quand un compte est connecte, comme celle de l'ecran. -->
   <div class="vt-hdroite">
-    <span class="vt-chaine" id="vtChaine"><img src="img/wallet/ch/robinhood.webp" alt="">Robinhood Chain</span>
+    <span class="vt-chaine" id="vtChaine" title="Robinhood Chain"><img src="img/wallet/ch/robinhood.webp" alt="">Robinhood Chain</span>
     <button type="button" class="vt-connecte" data-vt-connecte id="vtConnecte">Connect Wallet</button>
   </div>
   <!-- ---- LE CHOIX DU COMPTE, EN HAUT ----

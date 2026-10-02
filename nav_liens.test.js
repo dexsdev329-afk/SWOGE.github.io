@@ -34,7 +34,8 @@ const ok = (c, m) => { n++; if (c) console.log('  ok   ' + m); else { rates++; c
     /* 01/10 : SWOGE AI, AI Perps, Predict et Polymarket AI ne font plus qu une entree, « AI Trading »
        (outils/onglets_ia.js) ; on passe de l une a l autre par les onglets en tete des quatre pages. */
     /* 01/10 : « met le dans Agents » — l Agent Store est un onglet d Agents (?mode=store), plus une entree a part. */
-    const MENU = 'index.html,games.html,swogebet.html,swoge_wallet.html,swoge_ai.html,swoge_agents.html,whitepaper.html';
+    /* 02/10 : « rajoute le launchpad dans menu » — entre Agents et Docs. */
+    const MENU = 'index.html,games.html,swogebet.html,swoge_wallet.html,swoge_ai.html,swoge_agents.html,launchpad.html,whitepaper.html';
     ok(menu.map((x) => x.h).join(',') === MENU && !morts.length, f + ' a ' + w + ' px : les ' + menu.length + ' entrees du menu commun, dans l ordre, recoivent le clic' + (morts.length ? ' [mortes : ' + morts.join(', ') + ']' : '') + (menu.map((x) => x.h).join(',') === MENU ? '' : ' [menu : ' + menu.map((x) => x.h).join(', ') + ']'));
     await ctx.close();
   }

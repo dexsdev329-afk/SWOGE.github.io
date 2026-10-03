@@ -108,7 +108,11 @@ const RPC = 'https://rpc.mainnet.chain.robinhood.com';
    * Plus de simulation ici : le frais affiche vient de `creationFee()` lu sur
    * la chaine. Si quelqu'un redeploie avec un autre frais, cet essai le voit. */
   console.log('\n-- lancement : la page lit le contrat V3 deploye --');
-  await pg.waitForFunction(() => /SWOGE/.test(document.querySelector('#feeSummary').textContent || ''),
+  /* 03/10 : le formulaire s'ouvre sur le pool V4 $SWOGE ; le V3 est derriere « Classic (V3) ».
+     L'intention ne change pas : ce que la page affiche pour le V3 vient du contrat V3. */
+  await pg.click('.lp-pool[data-pool="v3"]');
+  /* On attend la lecture du V3 lui-meme : le resume du pool V4 parle aussi de $SWOGE. */
+  await pg.waitForFunction(() => /token holders|Could not read/.test(document.querySelector('#feeSummary').textContent || ''),
     { timeout: 30000 }).catch(() => {});
   const fee = (await pg.textContent('#feeSummary')) || '';
   ok(/\$SWOGE/.test(fee), 'le frais est libelle en $SWOGE : ' + fee.slice(0, 60));
@@ -135,6 +139,8 @@ const RPC = 'https://rpc.mainnet.chain.robinhood.com';
   });
   await pgVide.goto(`http://127.0.0.1:${srv.port}/launchpad.html`, { waitUntil: 'load' });
   await pgVide.waitForTimeout(1500);
+  await pgVide.click('.lp-pool[data-pool="v3"]');
+  await pgVide.waitForTimeout(300);
   ok(await (await pgVide.$('#createBtn')).isDisabled(), 'sans adresse, le bouton reste desactive');
   const feeVide = (await pgVide.textContent('#feeSummary')) || '';
   ok(/not open yet|not deployed/i.test(feeVide), 'sans adresse, la page annonce que le lancement n est pas ouvert');

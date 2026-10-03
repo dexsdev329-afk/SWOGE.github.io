@@ -11,7 +11,7 @@
  * un autre contrat, ou un autre montant, est refusee avant toute signature.
  *
  *   SwogeLance.carte(offre)             → l'element a inserer sous la reponse de l'agent
- *   SwogeLance.lance(offre, { statut, chaine? }) → { token, pool, tx }
+ *   SwogeLance.lance(offre, { statut, chaine?, fournisseur? }) → { token, pool, tx }
  *   (chaine : les operations de portefeuille ; injectable pour les essais)
  * ======================================================================== */
 (function (racine) {
@@ -53,8 +53,10 @@
   }
 
   /* ---- le portefeuille reel (ethers 5, deja charge par la page) ---- */
-  function chaineEthers() {
-    var eth = racine.ethereum, E = racine.ethers;
+  function chaineEthers(fournisseur) {
+    /* 03/10 : la page du launchpad passe le portefeuille que le joueur y a choisi (EIP-6963,
+       WalletConnect) ; sans lui, celui que le navigateur expose. */
+    var eth = fournisseur || racine.ethereum, E = racine.ethers;
     if (!eth) return Promise.reject(erreur("No wallet found in this browser - open this page inside your wallet app."));
     if (!E) return Promise.reject(erreur("the wallet library is still loading - try again in a second"));
     return eth.request({ method: "eth_requestAccounts" }).then(function () {
@@ -101,7 +103,7 @@
     var lp = LAUNCHPADS[o.pool], frais = lp.feeWei, C;
     var p = { name: String(o.name), symbol: String(o.symbol), salt: o.salt, telegram: lienSur(o.telegram), twitter: lienSur(o.twitter), website: lienSur(o.website), logo: "" };
     statut("Connecting your wallet on Robinhood Chain…");
-    return Promise.resolve(opts.chaine ? opts.chaine() : chaineEthers()).then(function (c) {
+    return Promise.resolve(opts.chaine ? opts.chaine() : chaineEthers(opts.fournisseur)).then(function (c) {
       C = c;
       return C.reseau();
     }).then(function (id) {

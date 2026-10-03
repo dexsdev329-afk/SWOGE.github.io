@@ -74,8 +74,10 @@ const T = { '.html': 'text/html', '.js': 'application/javascript', '.json': 'app
      chaque balayage depuis le bloc 0 echouait en silence et la grille restait VIDE. */
   console.log('\n-- la grille de tous les jetons se remplit (lecture par tranches) --');
   await pg.click('.tab[data-tab="explore"]');
-  await pg.waitForFunction(() => document.querySelectorAll('#list > *').length > 0, { timeout: 120000 }).catch(() => {});
-  const nGrille = await pg.evaluate(() => document.querySelectorAll('#list > *').length);
+  /* 03/10 : on compte les CARTES. « #list > * » comptait aussi la note « No token matches. » que la
+     page posait pendant la lecture (un taux arrive avant les jetons) : 1 « jeton », essai rouge. */
+  await pg.waitForFunction(() => document.querySelectorAll('#list .tcard').length > 0, { timeout: 120000 }).catch(() => {});
+  const nGrille = await pg.evaluate(() => document.querySelectorAll('#list .tcard').length);
   ok(nGrille >= 10, nGrille + ' jetons dans la grille (V2 et V3, lus sur la vraie chaine)');
 
   console.log('\n-- le createur reel se connecte, onglet Portfolio --');

@@ -139,7 +139,7 @@ video{ max-width:100%; }
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
-<script src="lance_v4.js?v=f745e1a0"></script>
+<script src="lance_v4.js?v=836cf91c"></script>
 <script src="https://cdn.jsdelivr.net/npm/@walletconnect/ethereum-provider@2.13.3/dist/index.umd.js"></script>
 <style>
 /* ==================== LA PALETTE PASSE AU CLAIR ====================
@@ -211,6 +211,25 @@ input:focus,select:focus{border-color:var(--gold)}
 .btn.full{width:100%}.btn:disabled{opacity:.45;cursor:not-allowed}
 .btnrow{display:flex;gap:10px;flex-wrap:wrap}
 .seg{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+/* 03/10 : le choix du pool, la fiche securite, le kit du createur */
+.lp-pools{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:4px 0 12px}
+@media (max-width:640px){ .lp-pools{grid-template-columns:1fr} }
+.lp-pool{display:flex;flex-direction:column;gap:4px;text-align:left;padding:12px 13px;border-radius:12px;border:1px solid var(--line);background:var(--void2);color:var(--cream);cursor:pointer}
+.lp-pool b{font-size:14px}
+.lp-pool span{font-size:11.5px;line-height:1.35;color:var(--dim)}
+.lp-pool.on{background:color-mix(in srgb, var(--gold) 7%, var(--void2));border-color:var(--gold);box-shadow:0 0 0 2px color-mix(in srgb, var(--gold) 35%, transparent)}
+.lp-fiche{border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:12px;font-size:12.5px;line-height:1.5}
+.lp-fiche h3{margin:0 0 8px;font-size:13px;letter-spacing:.5px}
+.lp-fiche ul{margin:0;padding-left:18px}
+.lp-fiche li{margin:2px 0}
+.lp-fiche .gp{margin-top:8px;padding-top:8px;border-top:1px dashed var(--line)}
+.lp-fiche .ok{color:#12a150;font-weight:700}
+.lp-fiche .att{color:#b7791f;font-weight:700}
+.lp-kit{margin-top:12px;border:1px solid #12a150;border-radius:12px;padding:12px 14px;background:color-mix(in srgb, #12a150 7%, transparent);font-size:13px;line-height:1.5}
+.lp-kit h3{margin:0 0 6px;font-size:15px}
+.lp-kit code{word-break:break-all}
+.lp-kit .liens{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.lp-kit .liens a,.lp-kit .liens button{font-size:12.5px;padding:7px 10px;border-radius:9px;border:1px solid var(--line);background:var(--void2);color:var(--cream);text-decoration:none;cursor:pointer}
 .seg button{flex:1;font-family:'Space Mono',monospace;font-size:12px;padding:10px;background:transparent;color:var(--dim);border:0;cursor:pointer}
 .seg button.on{background:var(--gold);color:var(--ink)}
 .presets button{font-family:'Space Mono',monospace;font-size:11px;padding:5px 10px;border:1px solid var(--line);background:var(--void);color:var(--fur);border-radius:8px;cursor:pointer}
@@ -613,12 +632,23 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   <section id="tab-create">
     <div class="panel">
       <h2>Launch a token ⚡</h2>
+      <!-- 03/10 : « je vois pas le bouton pour choisir de lancer avec un pool WETH ou $SWOGE ».
+           Les deux launchpads V4 (deployes et relus sur la chaine le 30/09) et l'ancien V3. -->
+      <div class="lp-pools" role="radiogroup" aria-label="Launch pool">
+        <button type="button" class="lp-pool on" data-pool="swoge" role="radio" aria-checked="true">
+          <b>$SWOGE pool</b><span>Paired with $SWOGE · fee 10,000 $SWOGE, burned</span></button>
+        <button type="button" class="lp-pool" data-pool="eth" role="radio" aria-checked="false">
+          <b>ETH pool (WETH)</b><span>Paired with ETH · fee 0.0001 ETH</span></button>
+        <button type="button" class="lp-pool" data-pool="v3" role="radio" aria-checked="false">
+          <b>Classic (V3)</b><span>Logo on-chain · 70% holders / 30% treasury</span></button>
+      </div>
+      <div class="lp-fiche" id="lpFiche" aria-live="polite"></div>
       <div class="note" id="modeInfo" style="margin-bottom:12px"></div>
       <div class="two">
         <div class="field"><label>Name</label><input id="cName" placeholder="Swoge Inu" maxlength="40"></div>
         <div class="field"><label>Symbol</label><input id="cSym" placeholder="SWINU" maxlength="12"></div>
       </div>
-      <div class="field">
+      <div class="field" id="cLogoChamp">
         <label>Logo (optional)</label>
         <input type="file" id="cLogoFile" accept="image/*">
         <div style="display:flex;align-items:center;gap:10px;margin-top:8px">
@@ -636,6 +666,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       <div class="note" id="feeSummary"></div>
       <button class="btn primary full" id="createBtn" style="margin-top:8px" disabled>⚡ Launch on Uniswap</button>
       <div class="note" id="createNote">Connect a wallet first.</div>
+      <div class="lp-kit" id="lpKit" hidden></div>
     </div>
   </section>
 
@@ -738,7 +769,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     </div>
   </section>
 
-  <div class="foot">$SWOGE FUN · Instant Uniswap launches, paired with $SWOGE · 70% of the 1% fee to holders, 30% to the treasury · <a href="index.html">swoleeswoge.dog</a></div>
+  <div class="foot">$SWOGE FUN · Instant Uniswap launches, paired with $SWOGE or ETH · liquidity locked forever · no owner, no tax · <a href="index.html">swoleeswoge.dog</a></div>
 </div>
 </main>
 
@@ -911,8 +942,9 @@ async function connectWith(eth){
        du V2. Sans cette distinction, connecter un portefeuille reactivait le
        bouton que `updateFeeSummary` venait de desactiver, et le lancement
        partait vers une adresse vide. */
-    $("#createBtn").disabled=!v3Live();
-    $("#createNote").textContent=v3Live()?"Ready.":"The V3 launchpad is not deployed yet.";
+    /* 03/10 : les deux V4 ne dependent pas du V3. */
+    $("#createBtn").disabled=poolChoisi==="v3" && !v3Live();
+    $("#createNote").textContent=(poolChoisi!=="v3"||v3Live())?"Ready.":"The V3 launchpad is not deployed yet.";
     if(curToken) refreshTrade();                 // stay on Trade, just refresh
     if(!$("#tab-mine").classList.contains("hidden")) loadMine();
     // soft account/chain handlers — no page reload (keeps you on the current tab)
@@ -922,7 +954,7 @@ async function connectWith(eth){
         if(!accs||!accs.length){ account=null; signer=null; $("#walletBtn").textContent="Connect wallet"; $("#createBtn").disabled=true; if(!$("#tab-mine").classList.contains("hidden")) loadMine(); return; }
         account=accs[0]; try{ signer=provider.getSigner(); }catch(e){}
         $("#walletBtn").textContent=account.slice(0,6)+"…"+account.slice(-4);
-        $("#createBtn").disabled=!v3Live();
+        $("#createBtn").disabled=poolChoisi==="v3" && !v3Live();
         if(curToken) refreshTrade();
         if(!$("#tab-mine").classList.contains("hidden")) loadMine();
       });
@@ -1112,7 +1144,67 @@ function fmtQty(n){
    `createToken` n'y est plus propose : le V3 est le contrat sans proprietaire,
    et c'est celui sur lequel on veut que les nouveaux jetons naissent. */
 var creationFeeWei=null;
+/* ---------- 03/10 : LE CHOIX DU POOL (V4 $SWOGE, V4 ETH, ou l'ancien V3) ----------
+   Les deux V4 : 1 milliard de jetons, tout dans le pool, liquidite enfermee pour toujours dans le
+   launchpad, ni proprietaire, ni frappe, ni taxe (contrats/SwogeFunV4.sol, verifies sur Sourcify).
+   L'offre est preparee par le serveur (/launchpad/v4/offre : memes refus de copies que l'agent) et
+   signee par le portefeuille du joueur (lance_v4.js) — le serveur ne signe rien. */
+var poolChoisi="swoge";
+function lpServeur(){
+  try{ var q=new URLSearchParams(location.search).get("server"); if(q) return String(q).replace(/^ws/,"http"); }catch(e){}
+  return "https://web-production-220a3.up.railway.app";
+}
+function choisisPool(p){
+  poolChoisi=p;
+  [].forEach.call(document.querySelectorAll(".lp-pool"),function(b){ var on=b.getAttribute("data-pool")===p; b.classList.toggle("on",on); b.setAttribute("aria-checked",String(on)); });
+  $("#cLogoChamp").style.display = p==="v3" ? "" : "none";   /* le V4 ne porte pas de logo on-chain */
+  $("#lpKit").hidden=true;
+  updateFeeSummary(); fiche();
+}
+[].forEach.call(document.querySelectorAll(".lp-pool"),function(b){ b.addEventListener("click",function(){ choisisPool(b.getAttribute("data-pool")); }); });
+/* La fiche securite : les faits du contrat, et ce que GoPlus a LU sur notre jeton de test de ce
+   pool (le serveur le relit toutes les 30 min, /launchpad/v4 et /launchpad/v4weth). */
+var GOPLUS_CASES={is_honeypot:"Honeypot",is_mintable:"Mintable",hidden_owner:"Hidden owner",can_take_back_ownership:"Can take back ownership",
+  external_call:"External call",is_proxy:"Proxy",transfer_pausable:"Transfers can be paused",is_blacklisted:"Blacklist"};
+function fiche(){
+  var f=$("#lpFiche");
+  if(poolChoisi==="v3"){
+    f.innerHTML="<h3>⚠️ Classic (V3)</h3>Still available, but scanners flag it: GoPlus reads <b>external call: yes</b> and the launchpad as owner on V3 tokens. "
+      +"Prefer a V4 pool for a token that reads clean.";
+    return;
+  }
+  var eth=poolChoisi==="eth";
+  f.innerHTML="<h3>🛡️ Security sheet — "+(eth?"ETH pool":"$SWOGE pool")+"</h3><ul>"
+    +"<li><b>1,000,000,000</b> supply, <b>all of it in the pool</b> — no team bag, nothing for the creator either</li>"
+    +"<li>Liquidity <b>locked forever</b>: the pool position stays in the launchpad contract, which has no function to withdraw it</li>"
+    +"<li><b>No owner, no mint, no tax, no blacklist</b> — the token is a bare ERC-20</li>"
+    +"<li>Trading fee 1%: <b>50% to you, the creator</b> (in "+(eth?"WETH":"$SWOGE")+"), 50% to the SWOGE treasury</li>"
+    +"<li>Copies are refused: no official Robinhood stock token names, no major tickers (BTC, ETH, USDC…), no \"SWOGE\"</li></ul>"
+    +"<div class=\"gp\" id=\"lpGoplus\">Reading GoPlus on our test token…</div>";
+  fetch(lpServeur()+"/launchpad/"+(eth?"v4weth":"v4"),{cache:"no-store"}).then(function(r){ return r.json(); }).then(function(d){
+    var g=d&&d.goplus, el=$("#lpGoplus"); if(!el) return;
+    if(!g){ el.textContent="GoPlus has not read our test token yet."; return; }
+    var alertes=Object.keys(GOPLUS_CASES).filter(function(k){ return String(g[k])==="1"; }).map(function(k){ return GOPLUS_CASES[k]; });
+    var taxes = g.buy_tax==="" || g.sell_tax===""
+      ? '<span class="att">taxes not readable</span> (GoPlus cannot simulate trades against $SWOGE; the contract has no tax)'
+      : (Number(g.buy_tax)===0 && Number(g.sell_tax)===0 ? '<span class="ok">0% buy / 0% sell tax</span>' : '<span class="att">tax '+esc(g.buy_tax)+' / '+esc(g.sell_tax)+'</span>');
+    var quand = d.goplusReadAt ? " · read "+new Date(d.goplusReadAt).toISOString().slice(0,16).replace("T"," ")+" UTC" : "";
+    el.innerHTML="GoPlus on our "+(eth?"ETH-pool":"$SWOGE-pool")+' test token: '
+      +(alertes.length ? '<span class="att">'+alertes.length+' alert(s): '+esc(alertes.join(", "))+'</span>' : '<span class="ok">0 alerts</span> on '+Object.keys(GOPLUS_CASES).length+' risk checks')
+      +" · "+taxes+" · owner "+(g.owner_address==="0x0000000000000000000000000000000000000000"?'<span class="ok">none</span>':esc(String(g.owner_address||"?")))
+      +quand+(d.testToken?' · <a href="https://gopluslabs.io/token-security/4663/'+esc(d.testToken)+'" target="_blank" rel="noopener">see it on GoPlus ↗</a>':"");
+  })["catch"](function(){ var el=$("#lpGoplus"); if(el) el.textContent="GoPlus reading unavailable right now."; });
+}
 async function updateFeeSummary(){
+  if(poolChoisi!=="v3"){
+    var eth=poolChoisi==="eth";
+    $("#modeInfo").innerHTML="A real Uniswap pool is created at launch, paired with <b>"+(eth?"ETH (WETH)":"$SWOGE")+"</b>. "
+      +(eth?"ETH pools read clean on every scanner.":"Every launch creates real demand for $SWOGE.");
+    $("#feeSummary").innerHTML="Launch fee: <b>"+(eth?"0.0001 ETH</b>, to the SWOGE treasury":"10,000 $SWOGE</b> — <b>burned</b>, not pocketed")+". "
+      +"You sign with your own wallet; SWOGE never holds your keys.";
+    var b=$("#createBtn"); b.disabled=false; b.innerHTML="🚀 Launch on Uniswap ("+(eth?"ETH pool":"$SWOGE pool")+")";
+    return;
+  }
   $("#modeInfo").innerHTML="A real Uniswap pool is created at launch — <b>visible on DexScreener immediately</b>. "
     +"The pool is paired with <b>$SWOGE</b>, so every launch creates real demand for it. "
     +"The entire supply goes into the pool: <b>no team bag, no allocation, not even for you</b>.";
@@ -1123,10 +1215,13 @@ async function updateFeeSummary(){
     $("#createNote").textContent="";
     return;
   }
+  var b3=$("#createBtn"); b3.innerHTML="⚡ Launch on Uniswap"; b3.disabled=!signer;
+  $("#feeSummary").textContent="Reading the launch fee from the contract…";   /* jamais le frais du pool d'avant */
   try{
     creationFeeWei=await readFun(3).creationFee();
     var n=+ethers.utils.formatEther(creationFeeWei);
     var usd=await getSwogeUsd();
+    if(poolChoisi!=="v3") return;   /* le joueur a change de pool pendant la lecture */
     var cost = n===0 ? "free" : ("<b>"+fmtQty(n)+" $SWOGE</b>"+(usd!=null?" (~"+fmtUsd(n*usd)+")":""));
     $("#feeSummary").innerHTML="Launch fee: "+cost+(n===0?"":" — <b>burned</b>, not pocketed.")
       +"<br>Uniswap trade fee 1%: <b>70% → token holders</b> · <b>30% → SWOGE treasury</b>. "
@@ -1137,7 +1232,50 @@ async function updateFeeSummary(){
 }
 updateFeeSummary();
 
+/* ---------- 03/10 : LE LANCEMENT V4, ET LE KIT DU CREATEUR ---------- */
+async function lanceV4(){
+  var name=$("#cName").value.trim(), sym=$("#cSym").value.trim().replace(/^\$/,"").toUpperCase();
+  var btn=$("#createBtn"), note=$("#createNote");
+  if(!name||!sym){ note.className="note err"; note.textContent="Name and symbol required."; return; }
+  if(!window.SwogeLance){ note.className="note err"; note.textContent="The launch module is still loading - try again in a second."; return; }
+  btn.disabled=true; btn.innerHTML='<span class="spin"></span> preparing…'; note.className="note"; note.textContent="Checking the name against copies…";
+  $("#lpKit").hidden=true;
+  try{
+    var r=await fetch(lpServeur()+"/launchpad/v4/offre",{method:"POST",headers:{"content-type":"application/json"},
+      body:JSON.stringify({pool:poolChoisi,name:name,symbol:sym,website:$("#cWeb").value.trim(),twitter:$("#cTw").value.trim(),telegram:$("#cTg").value.trim()})});
+    var d=await r.json().catch(function(){ return null; });
+    if(!d||!d.ok){ note.className="note err"; note.textContent=(d&&d.raison)||"The launch could not be prepared right now."; return; }
+    var o=d.offre;
+    var res=await window.SwogeLance.lance(o,{fournisseur:rawEth,statut:function(t){ note.className="note"; note.textContent=t; }});
+    note.className="note ok"; note.textContent="🎉 $"+o.symbol+" is live on Robinhood Chain.";
+    kit(o,res);
+    toast("Token launched 🚀");
+  }catch(e){
+    var m=String((e&&(e.reason||(e.data&&e.data.message)||e.message))||e||"the launch failed");
+    if(/user rejected|denied|4001/i.test(m)||(e&&(e.code===4001||e.code==="ACTION_REJECTED"))) m="You cancelled in your wallet - nothing was launched.";
+    note.className="note err"; note.textContent=m.slice(0,220);
+  }finally{ btn.disabled=false; updateFeeSummary(); }
+}
+/* Le kit du createur : tout ce qu'il faut pour le partager tout de suite. */
+function kit(o,res){
+  var k=$("#lpKit"), dex="https://dexscreener.com/robinhood/"+String(res.pool).toLowerCase();
+  var tweet="I just launched $"+o.symbol+" ("+o.name+") on Robinhood Chain with SWOGE FUN 🚀\nLiquidity locked forever, no owner, no tax.\nCA: "+res.token;
+  k.innerHTML="<h3>🎉 $"+esc(o.symbol)+" is live — your creator kit</h3>"
+    +"<div>Contract: <code>"+esc(res.token)+"</code></div>"
+    +"<div class=\"liens\">"
+    +'<button type="button" data-copy="'+esc(res.token)+'">📋 Copy address</button>'
+    +'<a href="'+esc(CHAIN.scan)+'/token/'+esc(res.token)+'" target="_blank" rel="noopener">🔎 Explorer</a>'
+    +'<a href="'+esc(dex)+'" target="_blank" rel="noopener">📊 DexScreener</a>'
+    +'<a href="https://gopluslabs.io/token-security/4663/'+esc(res.token)+'" target="_blank" rel="noopener">🛡️ GoPlus check</a>'
+    +'<a href="https://x.com/intent/tweet?text='+encodeURIComponent(tweet)+'" target="_blank" rel="noopener">𝕏 Share on X</a>'
+    +'<a href="'+esc(CHAIN.scan)+'/tx/'+esc(res.tx)+'" target="_blank" rel="noopener">Launch transaction ↗</a>'
+    +"</div><div style=\"margin-top:8px\">Your 50% of the trading fees ("+(o.pool==="eth"?"WETH":"$SWOGE")+") is claimable any time in <b>Portfolio</b> → Collect. "
+    +"DexScreener shows the chart after the first trade. Add your logo there (Enhanced Token Info) — the V4 contract keeps no logo.</div>";
+  k.hidden=false;
+}
+
 $("#createBtn").onclick=async function(){
+  if(poolChoisi!=="v3"){ if(!signer){ openWalletPicker(); return; } return lanceV4(); }
   if(!v3Live()) return toast("Launchpad not deployed yet");
   if(!signer){ openWalletPicker(); return; }
   var name=$("#cName").value.trim(), sym=$("#cSym").value.trim();
@@ -1195,6 +1333,7 @@ $("#createBtn").onclick=async function(){
   }
   finally{ btn.disabled=false; if(v3Live()) btn.innerHTML="⚡ Launch on Uniswap"; }
 };
+choisisPool("swoge");
 
 /* ---------- token logos (off-chain, from logos.json in the repo) ---------- */
 var logoMap = {};
@@ -1427,8 +1566,11 @@ async function loadList(){
   try{
     /* Les taux servent a comparer les deux lanceurs dans la meme unite. Ils
        arrivent en arriere-plan : la grille s'affiche sans les attendre. */
-    getEthUsd().then(function(eu){ exploreEu=eu; if(!$("#tab-explore").classList.contains("hidden")) renderList(); });
-    getSwogeUsd().then(function(su){ exploreSu=su; if(!$("#tab-explore").classList.contains("hidden")) renderList(); });
+    /* 03/10 : un taux arrive souvent AVANT les jetons ; redessiner a ce moment-la affichait
+       « No token matches. » pendant la lecture de la chaine. On ne redessine qu'une grille lue. */
+    var grilleLue=false;
+    getEthUsd().then(function(eu){ exploreEu=eu; if(grilleLue && !$("#tab-explore").classList.contains("hidden")) renderList(); });
+    getSwogeUsd().then(function(su){ exploreSu=su; if(grilleLue && !$("#tab-explore").classList.contains("hidden")) renderList(); });
 
     var both=await Promise.all([readVenue(3), readVenue(2)]);
     /* V3 d'abord a egalite de bloc : c'est le lanceur courant. Sinon, du plus
@@ -1437,7 +1579,7 @@ async function loadList(){
     var total=rows.length;
     rows=rows.slice(0,60);                             // meme plafond qu'avant
     rows.forEach(function(r,k){ r.idx=total-k; });     // pour le tri « Oldest »
-    allCache=rows; renderList();                       // show the grid immediately
+    allCache=rows; grilleLue=true; renderList();       // show the grid immediately
     $("#listInfo").textContent=total+" launched";
     loadMarketCaps(rows);                              // fill market caps in the background
     loadVolumes(rows);                                 // 🔥 trending: 24h volumes in the background

@@ -356,7 +356,7 @@ let chromium = null; try { chromium = require('playwright').chromium; } catch (e
      clavier va a la page ; les lettres tapees vite ne se perdent plus (file, regroupees). */
   console.log('\n-- Browse : ecrire au clavier, directement dans la page --');
   {
-    const ctx = await nav.newContext({ viewport: { width: 1280, height: 900 } });
+    const ctx = await nav.newContext({ viewport: { width: 1280, height: 900 }, permissions: ['clipboard-read', 'clipboard-write'] });
     const p = await ctx.newPage(), erreurs = [];
     p.on('pageerror', (e) => erreurs.push(String(e.message || e)));
     const vue = (await p.screenshot({ type: 'jpeg', quality: 40, clip: { x: 0, y: 0, width: 64, height: 40 } })).toString('base64');
@@ -370,7 +370,7 @@ let chromium = null; try { chromium = require('playwright').chromium; } catch (e
       /* Le serveur prend son temps, et refuse UNE fois pour la cadence : rien ne doit se perdre. */
       await new Promise((s2) => setTimeout(s2, 150));
       if (b.action === 'tape' && premierTape) { premierTape = false; return r.fulfill({ status: 429, contentType: 'application/json', body: JSON.stringify({ ok: false, raison: 'slow down' }) }); }
-      r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, url: 'https://www.google.com/', titre: 'Google', image: vue, ecran: { width: 1280, height: 800 }, note: null }) }); });
+      r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, url: 'https://www.google.com/', titre: 'Google', image: b.action === 'copie' ? null : vue, ecran: { width: 1280, height: 800 }, note: null, copie: b.action === 'copie' ? 'texte copie la-bas' : undefined }) }); });
     await p.goto(base + CIBLE + '?mode=browse', { waitUntil: 'load' });
     await p.waitForTimeout(300);
     await p.fill('#bw-adresse', 'google.com'); await p.click('#bw-va');
@@ -399,6 +399,16 @@ let chromium = null; try { chromium = require('playwright').chromium; } catch (e
     ok(iBack > 0 && iEnter > iBack && texte[texte.length - 1].endsWith('e') && iE < iEnter, 'Retour arriere puis « e » puis Entree, dans cet ordre [' + suite.join(',') + ']');
     ok(texte[0] === texte[1], 'un envoi refuse pour la cadence (429) est renvoye, pas perdu');
     ok(apres.every((g) => g.action !== 'tape' || g.texte.length <= 500) && apres.length <= 8, 'pas un geste par lettre : ' + apres.length + ' gestes pour 13 frappes');
+    /* 03/10 : « Ctrl+A pour tout selectionner et copier ne fonctionne pas ». */
+    const nAvant = gestes.length;
+    await p.keyboard.press('Control+a');
+    await p.keyboard.press('Control+c');
+    for (let k = 0; k < 30 && !gestes.slice(nAvant).some((g) => g.action === 'copie'); k++) await p.waitForTimeout(100);
+    await p.waitForTimeout(400);
+    const rac = gestes.slice(nAvant).map((g) => g.action === 'touche' ? g.touche : g.action);
+    ok(rac[0] === 'Control+a' && rac.includes('copie'), 'Ctrl+A part au navigateur distant, Ctrl+C lui demande la selection [' + rac.join(',') + ']');
+    const presse = await p.evaluate(() => navigator.clipboard.readText().catch(() => null));
+    ok(presse === 'texte copie la-bas', 'et la selection arrive dans le presse-papiers d ici (« ' + presse + ' »)');
     await p.mouse.click(box.x - 5 > 0 ? 5 : 2, 5);
     ok(await p.evaluate(() => !document.querySelector('#bw-ecran').parentNode.classList.contains('clavier')), 'cliquer hors de l ecran rend le clavier a la page SWOGE');
     ok(erreurs.length === 0, erreurs.length ? 'erreurs : ' + erreurs.slice(0, 2).join(' | ') : 'aucune erreur de script');

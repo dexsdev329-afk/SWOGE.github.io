@@ -1923,8 +1923,8 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       .then(function(r){
         libre();
         if (!r.x || !r.x.ok) { if (!discret) statut((r.x && r.x.raison) || "The browser did not answer.", true); if (apres) apres(false); return suite(); }
-        if (discret && !r.x.image) { if (apres) apres(true); return suite(); }
-        peins(r.x); if (apres) apres(true);
+        if (discret && !r.x.image) { if (apres) apres(true, r.x); return suite(); }
+        peins(r.x); if (apres) apres(true, r.x);
         /* En flux CONFIRME, la suite de la page arrive en images : plus de capture de suivi. Tant
            que le serveur ne l'a pas confirme (ou s'il ne le sert pas), la capture de suivi reste. */
         if (etat.flux !== true && !discret && SUIVI[o.action]) suivi = setTimeout(function(){ geste({ action: "capture" }, null, true); }, 1500);
@@ -2019,7 +2019,11 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
      Les lettres sont mises en FILE et regroupees : le serveur accepte un geste toutes les 250 ms, et
      un geste pendant un chargement remplacait le precedent — une lettre tapee vite etait perdue.
      Entree, Retour arriere, Tab, Echap et les fleches partent comme touches ; un collage part en texte. */
-  var TOUCHES_CLAVIER = { Enter: 1, Backspace: 1, Tab: 1, Escape: 1, ArrowUp: 1, ArrowDown: 1, ArrowLeft: 1, ArrowRight: 1, PageUp: 1, PageDown: 1, Home: 1, End: 1 };
+  var TOUCHES_CLAVIER = { Enter: 1, Backspace: 1, Delete: 1, Tab: 1, Escape: 1, ArrowUp: 1, ArrowDown: 1, ArrowLeft: 1, ArrowRight: 1, PageUp: 1, PageDown: 1, Home: 1, End: 1 };
+  /* 03/10 : « Ctrl+A pour tout selectionner et copier ne fonctionne pas ». Les raccourcis partent
+     au navigateur distant (Cmd sur Mac devient Control) ; copier LIT la selection la-bas et l'ecrit
+     dans le presse-papiers d'ici ; coller passe par la zone de saisie, comme une frappe. */
+  var SELECTION = /^(ArrowUp|ArrowDown|ArrowLeft|ArrowRight|Home|End|Backspace|Delete|Tab)$/;
   var clav = $("clavier"), compose = false, fileClavier = [], frappeEnCours = false;
   function prendClavier(){ try { clav.focus({ preventScroll: true }); } catch (e) { clav.focus(); } }
   function frappe(op){
@@ -2032,17 +2036,36 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     if (frappeEnCours || !fileClavier.length) return;
     if (etat.occupe) { setTimeout(vidange, 120); return; }
     var op = fileClavier[0]; op.parti = true; frappeEnCours = true;
-    geste(op.texte ? { action: "tape", texte: op.texte } : { action: "touche", touche: op.touche }, function(ok){
+    var o = op.texte ? { action: "tape", texte: op.texte } : op.copie ? { action: "copie" } : { action: "touche", touche: op.touche };
+    geste(o, function(ok, x){
       /* Refuse pour la cadence (ou un reseau qui hoquette) : on reessaie, deux fois au plus. */
       if (ok || (op.essais = (op.essais || 0) + 1) > 2) fileClavier.shift();
-      setTimeout(function(){ frappeEnCours = false; vidange(); }, ok ? 260 : 450);
+      if (ok && op.copie) copieIci(x && x.copie, op.couper);
+      /* 03/10 : « ca ecrit super lentement ». Le serveur accepte une frappe toutes les 30 ms
+         (contre 250 pour un geste qui charge) : on n'attend plus 260 ms entre deux envois. */
+      setTimeout(function(){ frappeEnCours = false; vidange(); }, ok ? 35 : 450);
     }, true);
   }
   function videClavier(){ var t = clav.value; clav.value = ""; if (t) frappe({ texte: t }); }
+  function copieIci(t, couper){
+    if (typeof t !== "string" || !t) { statut("Nothing is selected on the page."); return; }
+    var ok = function(){ statut((couper ? "Cut " : "Copied ") + t.length + " character" + (t.length > 1 ? "s" : "") + "."); if (couper) frappe({ touche: "Backspace" }); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(ok, function(){ statut("Your browser blocked the clipboard — select the text in the Type box instead.", true); $("texte").value = t; });
+    else { $("texte").value = t; statut("Copied into the Type box below."); }
+  }
   clav.addEventListener("compositionstart", function(){ compose = true; });
   clav.addEventListener("compositionend", function(){ compose = false; videClavier(); });
   clav.addEventListener("keydown", function(e){
-    if (compose || e.isComposing || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (compose || e.isComposing || e.altKey) return;
+    if (e.ctrlKey || e.metaKey) {
+      var k = String(e.key || "").toLowerCase();
+      if (k === "v") return;   /* coller : la zone recoit le texte, l'evenement « input » l'envoie */
+      if (k === "a" || k === "z" || k === "y") { e.preventDefault(); videClavier(); frappe({ touche: "Control+" + k }); }
+      else if (k === "c" || k === "x") { e.preventDefault(); videClavier(); frappe({ copie: true, couper: k === "x" }); }
+      else if (SELECTION.test(e.key)) { e.preventDefault(); videClavier(); frappe({ touche: "Control+" + (e.shiftKey ? "Shift+" : "") + e.key }); }
+      return;
+    }
+    if (e.shiftKey && SELECTION.test(e.key)) { e.preventDefault(); videClavier(); frappe({ touche: "Shift+" + e.key }); return; }
     if (TOUCHES_CLAVIER[e.key]) { e.preventDefault(); videClavier(); frappe({ touche: e.key }); }
   });
   /* Telephone : Retour arriere et Entree arrivent souvent ainsi plutot qu'en touche. */

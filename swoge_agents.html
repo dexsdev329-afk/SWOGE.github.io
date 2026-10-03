@@ -1911,7 +1911,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     etat.occupe = true; if (!discret) { statut("Loading…"); if (cadre()) cadre().classList.add("charge"); }
     o.ecran = etat.ecran;
     if (etat.flux !== false && o.action !== "capture") o.flux = true;
-    fetch(serveur() + "/navigateur/geste", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + j }, body: JSON.stringify(o) })
+    nav("geste", o)
       .then(function(r){ return r.json().then(function(x){ return { code: r.status, x: x }; }, function(){ return { code: r.status, x: null }; }); })
       .then(function(r){
         libre();
@@ -1927,6 +1927,38 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   }
   function libre(){ etat.occupe = false; if (cadre()) cadre().classList.remove("charge"); }
 
+  /* ---- LA LIAISON DIRECTE (02/10/2026) ----
+     Le navigateur est a Amsterdam, le serveur du jeu en Californie. Passer par le serveur du jeu
+     ferait traverser l'Atlantique deux fois a chaque image ; la page parle donc au navigateur
+     directement, avec un TICKET que le serveur du jeu signe pour la session (15 min). Le jeton de
+     session ne part jamais au navigateur. Au moindre echec du direct (reseau, ticket refuse,
+     serveur d'avant sans /navigateur/ticket), on repasse par le relais, comme avant. */
+  var direct = { url: null, ticket: null, fin: 0, non: false, demande: null };
+  function relais(chemin, corps){
+    return fetch(serveur() + "/navigateur/" + chemin, { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + jeton() }, body: JSON.stringify(corps) });
+  }
+  function acces(){
+    if (direct.non) return Promise.resolve(null);
+    if (direct.ticket && direct.fin - Date.now() > 60000) return Promise.resolve(direct);
+    if (direct.demande) return direct.demande;
+    direct.demande = relais("ticket", {}).then(function(r){ return r.json(); }).then(function(x){
+      direct.demande = null;
+      if (!(x && x.ok && x.url && x.ticket)) { direct.non = true; return null; }
+      /* L'echeance se compte sur l'horloge de CET appareil (dureeMs), pas sur celle du serveur. */
+      direct.url = String(x.url).replace(/\/$/, ""); direct.ticket = x.ticket; direct.fin = Date.now() + (Number(x.dureeMs) || 600000);
+      return direct;
+    })["catch"](function(){ direct.demande = null; direct.non = true; return null; });
+    return direct.demande;
+  }
+  function nav(chemin, corps){
+    return acces().then(function(d){
+      if (!d) return relais(chemin, corps);
+      return fetch(d.url + "/p/" + chemin, { method: "POST", headers: { "content-type": "application/json", authorization: "Ticket " + d.ticket }, body: JSON.stringify(corps) })
+        .then(function(r){ if (r.status === 401) { direct.ticket = null; return relais(chemin, corps); } return r; },
+              function(){ direct.non = true; return relais(chemin, corps); });
+    });
+  }
+
   /* ---- LE FLUX (02/10/2026) ----
      « Le navigateur est vraiment lent. » Chaque geste attendait le chargement et une capture,
      puis on en redemandait une 1,5 s plus tard : on voyait la page par a-coups, en retard. Le
@@ -1941,8 +1973,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     var j = jeton(); if (!j) return;
     if (!visible()) { setTimeout(function(){ if (visible()) boucle(); }, 2000); return; }
     etat.boucle = true;
-    fetch(serveur() + "/navigateur/image", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + j },
-      body: JSON.stringify({ apres: etat.seq, attente: 8000 }) })
+    nav("image", { apres: etat.seq, attente: 8000 })
       .then(function(r){ return r.json().then(function(x){ return { code: r.status, x: x }; }, function(){ return { code: r.status, x: null }; }); })
       .then(function(r){
         etat.boucle = false;

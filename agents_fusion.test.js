@@ -308,6 +308,50 @@ let chromium = null; try { chromium = require('playwright').chromium; } catch (e
     await ctx2.close();
   }
 
+  /* 02/10 : le navigateur part a Amsterdam ; la page lui parle DIRECTEMENT avec un ticket signe par
+     le serveur du jeu (navigateur_direct.js), et repasse par le relais au moindre echec. */
+  console.log('\n-- Browse : la liaison directe avec le navigateur --');
+  {
+    const ctx = await nav.newContext({ viewport: { width: 1280, height: 900 } });
+    const p = await ctx.newPage(), erreurs = [];
+    p.on('pageerror', (e) => erreurs.push(String(e.message || e)));
+    const vue = (await p.screenshot({ type: 'jpeg', quality: 40, clip: { x: 0, y: 0, width: 64, height: 40 } })).toString('base64');
+    const directs = [], relaies = [], tickets = [];
+    let panne = false;
+    await p.addInitScript(() => { try { localStorage.setItem('swogeSession', 'jeton-essai'); } catch (e) {} });
+    await p.route('**/*', (r) => r.request().url().startsWith(base) ? r.continue() : r.abort());
+    await p.route('**/navigateur/etat', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, actif: true }) }));
+    await p.route('**/navigateur/ticket', (r) => { tickets.push(r.request().headers().authorization);
+      r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, url: 'https://nav.example/', ticket: 'TICKET-ESSAI', dureeMs: 900000 }) }); });
+    const repond = (r, b) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, url: 'https://example.org/', titre: 'Example', image: vue, ecran: { width: 1280, height: 800 }, seq: 1, note: null }) });
+    await p.route('**/navigateur/geste', (r) => { relaies.push(JSON.parse(r.request().postData()).action); repond(r); });
+    await p.route('**/navigateur/image', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, seq: 1, image: null }) }));
+    await p.route('https://nav.example/p/**', async (r) => {
+      if (panne) return r.abort();
+      const h = r.request().headers(), u = r.request().url();
+      directs.push({ chemin: u.split('/p/')[1], auth: h.authorization, corps: JSON.parse(r.request().postData() || '{}') });
+      if (/\/p\/image/.test(u)) { await new Promise((s2) => setTimeout(s2, 300)); return r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, seq: 1, image: null }) }); }
+      repond(r);
+    });
+    await p.goto(base + CIBLE + '?mode=browse', { waitUntil: 'load' });
+    await p.waitForTimeout(300);
+    await p.fill('#bw-adresse', 'example.org'); await p.click('#bw-va');
+    await p.waitForFunction(() => !document.getElementById('bw-ecran').hidden);
+    await p.waitForTimeout(400);
+    const g = directs.find((d) => d.chemin === 'geste');
+    ok(tickets.length === 1 && tickets[0] === 'Bearer jeton-essai', 'le ticket se demande au serveur du jeu, avec la session');
+    ok(g && g.auth === 'Ticket TICKET-ESSAI' && g.corps.action === 'goto' && !('joueur' in g.corps) && relaies.length === 0,
+       'le geste part DIRECTEMENT au navigateur avec le ticket — jamais le jeton de session, jamais une adresse de joueur');
+    ok(directs.some((d) => d.chemin === 'image' && d.auth === 'Ticket TICKET-ESSAI'), 'les images aussi arrivent en direct');
+    panne = true;
+    const box = await p.$eval('#bw-ecran', (i) => { const r = i.getBoundingClientRect(); return { x: r.left, y: r.top }; });
+    await p.mouse.click(box.x + 20, box.y + 20);
+    await p.waitForTimeout(600);
+    ok(relaies.includes('clic'), 'le direct ne repond plus : le geste repasse par le relais, il n est pas perdu [' + relaies.join() + ']');
+    ok(erreurs.length === 0, erreurs.length ? 'erreurs : ' + erreurs.slice(0, 2).join(' | ') : 'aucune erreur de script');
+    await ctx.close();
+  }
+
   /* 01/10 : l Agent Store devient le sixieme onglet. */
   console.log('\n-- Store : l Agent Store, dans Agents --');
   {

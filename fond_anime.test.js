@@ -50,7 +50,12 @@ const srv = http.createServer((q, r) => {
   for (const p of PAGES) {
     const t = (f) => { try { return fs.statSync(path.join(SITE, f)).size; } catch (e) { return -1; } };
     const mp4 = t('media/fond_' + p.nom + '.mp4'), webm = t('media/fond_' + p.nom + '.webm'), af = t('img/site/fonds/' + p.nom + '.webp');
-    ok(mp4 > 0 && mp4 <= 130000 && webm > 0 && webm <= 60000 && af > 0 && af <= 12000,
+    /* 03/10 : « un fond plus rempli » pour le portefeuille (maquette du proprietaire : une ville
+       claire, des plantes). Un decor PLEIN ne tient pas dans le budget d'un fond qui s'efface :
+       mesure a l'encodage (960 x 540, 16 s en aller-retour, CRF 34 / VP9 CRF 50) 296 Ko en mp4,
+       228 Ko en webm, affiche 49 Ko. Il ne se charge qu'au-dessus de 700 pixels, apres la page. */
+    const plein = p.nom === 'wallet';
+    ok(mp4 > 0 && mp4 <= (plein ? 320000 : 130000) && webm > 0 && webm <= (plein ? 240000 : 60000) && af > 0 && af <= (plein ? 52000 : 12000),
        p.nom + ' : film ' + mp4 + ' o (mp4) / ' + webm + ' o (webm), affiche ' + af + ' o — dans le budget');
   }
 

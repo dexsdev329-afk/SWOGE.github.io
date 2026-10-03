@@ -526,7 +526,9 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px}
 /* Une BANNIERE sous les quatre cartes, pas une cinquieme carte : mesure a
    1440 px, cinq cartes faisaient 136 px chacune et trois boutons etaient
    coupes (« SEE THE AGE », « ENTER THE A », « BUY ON DEX »). */
-.uni.ia{grid-column:1/-1;min-height:168px;justify-content:center;
+/* 03/10 : un film (SWOGE a droite, ecrans au centre) : un peu plus haut, cadre sur SWOGE. */
+.uni.ia .film{object-position:72% 12%}
+.uni.ia{grid-column:1/-1;min-height:240px;justify-content:center;
   background:radial-gradient(120% 140% at 90% 0%,#1B5FE0 0%,#123468 40%,#0A1F44 80%)}
 .uni.ia .voile{background:linear-gradient(90deg,rgba(8,24,58,.94) 0%,rgba(8,24,58,.7) 42%,rgba(8,24,58,0) 78%)}
 .uni.ia .dit{text-align:left;max-width:520px;padding:20px 22px}
@@ -1047,27 +1049,20 @@ body{ background:#F7F9FC; }
              DexScreener, dans un nouvel onglet — la meme paire que l icone du
              graphique dans la barre du haut. Pas de panneau, pas de promesse
              de prix : une porte. -->
+        <!-- 03/10 : « buy swoge pareil, anime la video ». Refaite avec xAI : l'ancienne image tenait la
+             piece avec des doigts humains ; SWOGE a des pattes de chien. -->
         <article class="uni">
-          <img src="img/site/buy_swoge.webp" alt="" width="440" height="440"
-               loading="lazy" decoding="async"><div class="voile"></div>
+          <video class="film" data-src="media/buy_swoge.mp4" data-webm="media/buy_swoge.webm" poster="img/site/buy_swoge.webp"
+                 muted loop playsinline disablepictureinpicture preload="none" aria-hidden="true" width="440" height="440"></video><div class="voile"></div>
           <div class="dit"><b>BUY $SWOGE</b><i>Grab the token. Enter the world.</i>
             <a class="sw-b vif" href="https://dexscreener.com/robinhood/0x2dc0fb72d9284228046cc95910eeaabebfe48456"
                target="_blank" rel="noopener">BUY ON DEX &#8599;</a></div>
         </article>
+        <!-- 03/10 : « anime en video et refais l'image de fond, elle est pas belle ». Le dessin de
+             courbe laisse la place a un film xAI : SWOGE (pattes de chien) devant ses ecrans de marche. -->
         <article class="uni ia">
-          <svg viewBox="0 0 600 170" preserveAspectRatio="xMaxYMid slice" aria-hidden="true">
-            <g stroke="rgba(255,255,255,.07)" stroke-width="1">
-              <path d="M0 34H600M0 68H600M0 102H600M0 136H600"/>
-              <path d="M300 0V170M360 0V170M420 0V170M480 0V170M540 0V170"/>
-            </g>
-            <g fill="rgba(255,255,255,.18)">
-              <rect x="326" y="104" width="8" height="30" rx="1.5"/><rect x="376" y="92" width="8" height="26" rx="1.5"/>
-              <rect x="426" y="98" width="8" height="22" rx="1.5"/><rect x="476" y="70" width="8" height="30" rx="1.5"/>
-              <rect x="526" y="52" width="8" height="28" rx="1.5"/><rect x="566" y="34" width="8" height="26" rx="1.5"/>
-            </g>
-            <path class="trace" d="M280 132 L330 120 L380 106 L430 112 L480 86 L530 68 L570 50 L600 40" fill="none" stroke="#F5B301" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
-            <circle cx="600" cy="40" r="5" fill="#F5B301"/>
-          </svg>
+          <video class="film" data-src="media/uni_ia.mp4" data-webm="media/uni_ia.webm" poster="img/site/uni_ia_poster.webp"
+                 muted loop playsinline disablepictureinpicture preload="none" aria-hidden="true" width="960" height="540"></video>
           <div class="voile"></div>
           <div class="dit"><b>SWOGE AI</b><i>AI agents trade crypto at real prices &mdash; measured in public, losses included.</i>
             <span class="boutons"><a class="sw-b vif" href="swoge_ai.html">SWOGE AI &nbsp;&rarr;</a>
@@ -1673,7 +1668,8 @@ body{ background:#F7F9FC; }
   var films = [].slice.call(document.querySelectorAll("main.acc video.film"));
   if (calme) { films.forEach(function(v){ v.removeAttribute("autoplay"); try { v.pause(); } catch (e) {} }); return; }
   var lazy = films.filter(function(v){ return v.hasAttribute("data-src"); });
-  function joue(v){ if (!v.getAttribute("src")) { v.src = v.getAttribute("data-src"); } var p = v.play(); if (p && p["catch"]) p["catch"](function(){}); }
+  /* 03/10 : un film qui a un jumeau VP9 (`data-webm`) le prend la ou H.264 ne se lit pas. */
+  function joue(v){ if (!v.getAttribute("src")) { var w = v.getAttribute("data-webm"); v.src = (w && !v.canPlayType('video/mp4; codecs="avc1.42E01E"')) ? w : v.getAttribute("data-src"); } var p = v.play(); if (p && p["catch"]) p["catch"](function(){}); }
   if (!("IntersectionObserver" in window)) { lazy.forEach(joue); return; }
   var vu = new IntersectionObserver(function(l){
     l.forEach(function(x){ if (x.isIntersecting) joue(x.target); else if (x.target.getAttribute("src")) { try { x.target.pause(); } catch (e) {} } });

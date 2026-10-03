@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Solana &amp; Ethereum colonies — new tokens, observed and measured</title>
 <link rel="canonical" href="https://swoleeswoge.dog/swoge_colonies.html">
-<meta name="description" content="Every new token on Solana, Ethereum and Robinhood Chain, read at its first price and again 30 minutes later, with its traits. Observation only: nothing is bought until a trait is measured to pay. Every number shows how many tokens it rests on.">
+<meta name="description" content="Every new token on Solana, Ethereum and Robinhood Chain, read at its first price and again 30 minutes later, with its traits. Then a paper bank buys them at real quotes, fees included. No real money until a case is measured to pay. Every number shows how many tokens it rests on.">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="SWOGE WORLD">
 <meta property="og:locale" content="en_US">
@@ -63,6 +63,8 @@ main{ max-width:1180px; margin:0 auto; padding:18px 16px 48px; }
 #cases td, #devs td, #derniers td{ font-variant-numeric:tabular-nums; }
 /* Les libelles longs (« first token we see from this dev », l adresse d un lanceur en case) passent a la
    ligne : le tableau tient dans la colonne, le t reste visible sans defiler. */
+.bk-h{ font:800 15px/1.3 Archivo,system-ui,sans-serif; margin:16px 0 6px; }
+#bkBras td:first-child{ white-space:normal; overflow-wrap:anywhere; min-width:120px; }
 #cases td:nth-child(-n+2){ white-space:normal; overflow-wrap:anywhere; min-width:90px; }
 #cases td, .ds-table th{ padding:9px 8px; }
 
@@ -494,15 +496,15 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
   <section class="ds-hero" aria-labelledby="t-titre">
     <div>
       <div class="ds-badges">
-        <span class="ds-badge papier">&#128065;&#65039; Observation only</span>
+        <span class="ds-badge papier">&#128065;&#65039; Observation &middot; paper bank</span>
         <span class="ds-badge" id="pastille"><span class="pt"></span><span id="pastilleTxt">Connecting</span></span>
       </div>
       <h1 id="t-titre">Solana &amp; Ethereum <em>colonies</em></h1>
-      <p>Before a colony trades a new chain, it watches it. Every new token on <b>Solana</b> and <b>Ethereum</b> is read at its first price and again <b>30 minutes later</b>, with its traits: pool size, market cap, venue, security, holders. Nothing is bought, not even in paper money, until a trait shows it pays &mdash; measured, with the number of tokens it rests on.</p>
+      <p>Before a colony trades a new chain, it watches it. Every new token on <b>Solana</b> and <b>Ethereum</b> is read at its first price and again <b>30 minutes later</b>, with its traits: pool size, market cap, venue, security, holders. A <b>paper bank</b> then buys some of them at the venue&rsquo;s real quotes, fees included &mdash; no real money until a case is measured to pay, with the number of buys it rests on.</p>
       <p class="ds-sous" id="depuis"></p>
     </div>
     <div class="ds-faits">
-      <div class="ds-fait"><i>&#128065;&#65039;</i><div><b>No buy, no paper, no key</b><span>Step 1 only reads. It cannot spend anything.</span></div></div>
+      <div class="ds-fait"><i>&#128065;&#65039;</i><div><b>No key, no signature</b><span>Step 1 reads; step 2 buys in paper at real quotes. Neither can spend anything.</span></div></div>
       <div class="ds-fait"><i>&#128207;</i><div><b>Same rules as the Robinhood colony</b><span>Rise = +20% or more in 30 min, collapse = &minus;30% or worse.</span></div></div>
       <div class="ds-fait"><i>&#128202;</i><div><b>Every number with its count</b><span>Under 30 tokens, a case does not conclude.</span></div></div>
     </div>
@@ -525,6 +527,28 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
       <p>A case stands out only if its average 30-minute move is above zero <b>beyond chance</b>: its t must clear a bar that rises with the number of cases tested (many tries make lucky ones). Each move is capped at +300% first &mdash; a token first read at a near-zero price would otherwise count for billions of %. This is <b>before fees</b>: a case that stands out is a lead for step 2, not a trade.</p>
     </div></div>
     <div class="ds-verdict" id="verdict"></div>
+  </section>
+
+  <section class="ds-carte" aria-labelledby="t-banque" id="carteBanque" hidden>
+    <div class="ds-tete"><div>
+      <h2 id="t-banque">The paper bank <span class="ds-badge papier" style="vertical-align:middle">Paper only &middot; real quotes</span></h2>
+      <p>Step 2 has started. Each buy is priced like a real order: a buy quote <b>and</b> a sell-back quote for the tokens received &mdash; no sell route, no buy. The same buy is then priced for sale at 10, 30 and 60 minutes; the bank settles at 30, net of price impact, DEX fees and network costs. Nothing is signed, no key exists, and the real-money mirror never follows this bank.</p>
+    </div></div>
+    <div class="ds-kpis quatre" id="bkKpis"></div>
+    <div class="ds-verdict" id="bkVerdict"></div>
+    <h3 class="bk-h">Control and arms</h3>
+    <p class="ds-note" style="margin-top:0">The control buys the first token after every 15 minutes without looking at it. Each arm buys only the tokens of one case standing out above. An arm losing beyond chance is retired; one only &ldquo;holds in paper&rdquo; with 100+ buys, t above the bar and both halves positive.</p>
+    <div class="ds-table"><table>
+      <thead><tr><th>Bought by</th><th>State</th><th class="num">Buys</th><th class="num">Net avg</th><th class="num">t</th><th class="num">1st / 2nd half</th><th class="num">Winners</th></tr></thead>
+      <tbody id="bkBras"></tbody>
+    </table></div>
+    <p class="ds-note" id="bkBanc"></p>
+    <p class="ds-note" id="bkRefus"></p>
+    <h3 class="bk-h">Last paper buys</h3>
+    <div class="ds-table"><table>
+      <thead><tr><th>Token</th><th>Bought by</th><th class="num">Entry cost</th><th class="num">Net at 30 min</th></tr></thead>
+      <tbody id="bkRecents"></tbody>
+    </table></div>
   </section>
 
   <section class="ds-carte" aria-labelledby="t-cases">
@@ -565,7 +589,7 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
     <h2 id="t-etapes">How a chain earns a colony</h2>
     <ol class="ds-etapes">
       <li><b>Observe</b>Every new token, its traits, its move at 30 min. Running now.</li>
-      <li><b>Paper, with real fees</b>Only for cases that stand out here: paper trades that pay the venue fee, priority fees and the quoted slippage.</li>
+      <li><b>Paper, with real quotes</b>Running now: a control and one arm per standing-out case, every buy and sale priced by the venue&rsquo;s own quote, fees and network costs included.</li>
       <li><b>Real mirror, small stakes</b>Only if paper stays positive after fees, on enough trades &mdash; and only for players who turn it on.</li>
     </ol>
   </section>
@@ -625,6 +649,53 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
     q=p-0.5; r=q*q; return (((((a[0]*r+a[1])*r+a[2])*r+a[3])*r+a[4])*r+a[5])*q/(((((b[0]*r+b[1])*r+b[2])*r+b[3])*r+b[4])*r+1);
   }
   function kpi(titre, val, sous){ var k=el("div","ds-kpi"); k.appendChild(el("small",null,titre)); k.appendChild(el("b",null,val)); k.appendChild(el("span",null,sous)); return k; }
+
+  /* La banque papier (etape 2, 03/10) : lue telle quelle sur /ai/observatoire (chaine.bank). La page ne
+     juge rien de plus que ce que le serveur a juge ; sous 30 achats regles, elle refuse de conclure. */
+  function peintBanque(S){
+    var b=S.bank, carte=$("carteBanque");
+    carte.hidden=!b; if(!b) return;
+    var usd=function(x,signe){ if(x==null||!isFinite(x)) return "--"; return (signe&&x>0?"+":"")+(x<0?"−$":"$")+Math.abs(x).toLocaleString("en-US",{maximumFractionDigits:2}); };
+    var k=$("bkKpis"); k.textContent="";
+    var pnlPct=b.startUsd ? b.pnlUsd/b.startUsd*100 : null;
+    k.appendChild(kpi("Bank value", usd(b.valueUsd), "started at "+usd(b.startUsd)+" · "+usd(b.stakeUsd)+" per buy"));
+    k.appendChild(kpi("Profit / loss", usd(b.pnlUsd,true), (pnlPct==null?"--":pct(pnlPct,true))+" of the bank · "+nb(b.open)+" open"));
+    k.appendChild(kpi("Settled buys", nb(b.all&&b.all.n), "net avg "+pct(b.all&&b.all.net,true)+(b.all&&b.all.t!=null?" · t "+b.all.t:"")));
+    k.appendChild(kpi("Entry cost (median)", b.entryCost&&b.entryCost.medianPct!=null?b.entryCost.medianPct+"%":"--", "round trip at the buy · quoted by "+(b.quoter||"--")));
+    var v=$("bkVerdict"), c=b.control||{}, n=b.all?b.all.n:0;
+    if(n<30){ v.className="ds-verdict peu"; v.textContent="Too early: "+nb(n)+" settled buy"+(n===1?"":"s")+". The bank concludes nothing under 30, and an arm nothing under 100."; }
+    else if((b.arms||[]).some(function(a){ return a.state==="holds in paper"; })){ v.className="ds-verdict ok"; v.textContent="An arm holds in paper: "+b.arms.filter(function(a){ return a.state==="holds in paper"; }).map(function(a){ return a.case+" ("+pct(a.net,true)+" net, t "+a.t+", "+nb(a.n)+" buys)"; }).join(" · ")+". Still paper: real money is the owner’s decision, after more data."; }
+    else { v.className="ds-verdict "+((b.all.net||0)>0?"peu":"non"); v.textContent="No arm holds yet. All paper buys: "+pct(b.all.net,true)+" net on average over "+nb(n)+" (t "+(b.all.t==null?"--":b.all.t)+"); the control alone: "+pct(c.net,true)+" over "+nb(c.n)+"."; }
+    var tb=$("bkBras"); tb.textContent="";
+    var lignes=[{ case:"Control (any token)", state:"control", n:c.n, net:c.net, t:c.t, moitie1:c.moitie1, moitie2:c.moitie2, gagnants:c.gagnants }].concat(b.arms||[]);
+    lignes.forEach(function(a){
+      var tr=el("tr"); if(a.state==="control") tr.style.fontWeight="700";
+      tr.appendChild(el("td",null,a.case)); tr.appendChild(el("td",null,a.state));
+      tr.appendChild(el("td","num",nb(a.n)));
+      var peu=!(a.n>=30);
+      tr.appendChild(el("td","num",a.n?pct(a.net,true)+(peu?" *":""):"--"));
+      var tt=el("td","num",a.t==null?"--":String(a.t)); if(a.state==="holds in paper"){ tt.style.color="#0E8A4F"; tt.style.fontWeight="800"; } tr.appendChild(tt);
+      tr.appendChild(el("td","num",a.n>=2?pct(a.moitie1,true)+" / "+pct(a.moitie2,true):"--"));
+      tr.appendChild(el("td","num",a.gagnants==null?"--":a.gagnants+"%"));
+      tb.appendChild(tr);
+    });
+    var bc=b.bench||{};
+    $("bkBanc").textContent=bc.n ? "Same buys, three exits ("+nb(bc.n)+" fully read): sold at 10 min "+pct(bc.at10&&bc.at10.net,true)+", at 30 min "+pct(bc.at30&&bc.at30.net,true)+", at 60 min "+pct(bc.at60&&bc.at60.net,true)+" net on average. 60 vs 30 min: "+pct(bc.min60vs30&&bc.min60vs30.net,true)+" (t "+(bc.min60vs30&&bc.min60vs30.t!=null?bc.min60vs30.t:"--")+"). * under 30 buys: no conclusion." : "* under 30 buys: no conclusion. The three-exit bench fills in as buys reach 60 minutes.";
+    var r=(b.counts&&b.counts.refused)||{}, parts=[];
+    Object.keys(r).sort(function(x,y){ return r[y]-r[x]; }).forEach(function(x){ parts.push(x+" "+nb(r[x])); });
+    var pl=b.refusedByVenue||{}, top=Object.keys(pl).sort(function(x,y){ return pl[y]-pl[x]; }).slice(0,3).map(function(x){ return x+" ("+nb(pl[x])+")"; });
+    $("bkRefus").textContent="Not bought: "+(parts.length?parts.join(" · "):"none yet")+(b.entryCost&&b.entryCost.refusedMedianPct!=null?" · median cost of the refused round trips "+b.entryCost.refusedMedianPct+"%":"")+(top.length?". By venue: "+top.join(", "):"")+". "+nb(b.counts&&b.counts.proposed)+" first prices proposed, "+nb(b.counts&&b.counts.quotes)+" quotes asked"+(b.counts&&b.counts.rateLimited?", "+nb(b.counts.rateLimited)+" rate-limited":"")+".";
+    var tr3=$("bkRecents"); tr3.textContent="";
+    if(!(b.recent||[]).length){ var r0=el("tr"), c0=el("td",null,"No settled paper buy yet."); c0.colSpan=4; r0.appendChild(c0); tr3.appendChild(r0); }
+    (b.recent||[]).slice(0,10).forEach(function(p){
+      var tr=el("tr"), t1=el("td");
+      if(CH[etat.c].re.test(String(p.addr||""))){ var a=el("a",null,court(p.addr)); a.href=CH[etat.c].dex+p.addr; a.target="_blank"; a.rel="noopener"; t1.appendChild(a); } else t1.textContent=court(p.addr);
+      tr.appendChild(t1); tr.appendChild(el("td",null,p.control?"control":(p.arm||"--")));
+      tr.appendChild(el("td","num",p.entryCostPct==null?"--":p.entryCostPct+"%"));
+      var rr=el("td","num",p.unsellable?"unsellable":pct(p.r30,true)); if(p.r30!=null) rr.style.color=p.r30>0?"#0E8A4F":"#D2433E"; tr.appendChild(rr);
+      tr3.appendChild(tr);
+    });
+  }
 
   function peint(){
     var d=etat.d; if(!d) return;
@@ -700,6 +771,8 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
       });
       $("devsNote").textContent=nb(dv.recorded)+" devs recorded, "+nb(dv.withThreePlausibleLaunches)+" with 3 plausible launches or more (the table shows the first "+L.length+"). Their last 30 launches at most are kept per dev.";
     }
+
+    peintBanque(S);
 
     var tb3=$("derniers"); tb3.textContent="";
     (S.derniers||[]).slice(0,12).forEach(function(x){

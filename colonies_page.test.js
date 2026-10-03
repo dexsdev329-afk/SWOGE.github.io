@@ -34,11 +34,24 @@ const SOL_A = '7GCihgDB8fe6KNjn2MYtkzZcRjQy3t9GHdC8uHYmW2hr', ETH_A = '0x' + 'ab
 const chaine = (nom, cases, extra) => Object.assign({ nom, depuis: '2026-09-27T10:00:00.000Z', cycles: 2970, recompute: { depuis: Date.parse('2026-10-03T16:00:00Z'), relus: 28000 },
   enCours: 40, compte: { decouverts: 30782, observes: 29730, jamaisIndexes: 512, disparus: 300, pleins: 0, erreurs: {} }, holders: null, cases, jev: null, devs: null,
   derniers: [] }, extra || {});
+/* La banque papier (03/10) : Solana trop tot (4 achats regles), Robinhood avec un bras qui tient. */
+const serieB = (n, net, t, m1, m2, g) => ({ n, net, t, moitie1: m1, moitie2: m2, gagnants: g });
+const BANQUE_SOL = { quoter: 'Jupiter', since: '2026-10-03T19:00:00.000Z', stakeUsd: 25, startUsd: 1000, cashUsd: 912.5, openUsd: 100, valueUsd: 1012.5, pnlUsd: 12.5,
+  open: 4, closed: 0, all: serieB(4, -3.1, -0.8, -2, -4.2, 25), control: serieB(3, -2, -0.5, -1, -3, 33), bar: 2.13,
+  arms: [Object.assign({ case: 'Pool size = pool $20-100k', state: 'testing', since: '2026-10-03T19:00:00.000Z', retiredBecause: null }, serieB(1, 5, null, null, 5, 100)),
+         Object.assign({ case: PIEGE, state: 'retired', since: '2026-10-03T19:00:00.000Z', retiredBecause: 'losing beyond chance' }, serieB(0, null, null, null, null, null))],
+  bench: { n: 0 }, entryCost: { n: 4, medianPct: 4.3, refusedMedianPct: 21 }, refusedByVenue: { 'cannot sell · Pump.fun': 2 },
+  counts: { proposed: 40, bought: 8, control: 3, refused: { 'cannot sell': 2, 'round trip too costly': 1 }, quotes: 30, rateLimited: 1, errors: 0, lastError: null },
+  recent: [{ addr: SOL_A, dex: 'pumpswap', control: true, arm: null, entryCostPct: 4.3, r30: -2.1, unsellable: false, t: 1 },
+           { addr: 'javascript:alert(1)', dex: PIEGE, control: false, arm: PIEGE, entryCostPct: 4, r30: -100, unsellable: true, t: 2 }] };
+const BANQUE_RH = Object.assign({}, BANQUE_SOL, { quoter: 'Robinhood quoters', all: serieB(200, 1.2, 1.1, 0.8, 1.6, 48), control: serieB(60, -4.1, -2.2, -4, -4.2, 30),
+  arms: [Object.assign({ case: 'Quoted in = ETH', state: 'holds in paper', since: '2026-10-03T19:00:00.000Z', retiredBecause: null }, serieB(120, 6.2, 3.4, 5.9, 6.5, 58))],
+  bench: { n: 150, at10: serieB(150, 0.5, 0.3), at30: serieB(150, 1.2, 1), at60: serieB(150, -0.8, -0.4), min60vs30: serieB(150, -2, -1.5), min10vs30: serieB(150, -0.7, -0.6) }, recent: [] });
 const ETAT = { actif: true, note: 'Observation only.', horizonMin: 30, chaines: {
-  robinhood: chaine('Robinhood Chain', [kase('all tokens', 'all tokens', 12310, 9.4, 16.82, {}), kase('Quoted in', 'ETH', 8090, 16.5, 25.86, {}), kase('Venue', 'uniswap', 12299, 9.5, 16.84, {})].concat([kase('Launcher', '0x221A6239E40709792b0d4bdc140fA36158CD41C7', 400, -3, -1, {})]), { devs: { recorded: 8301, withThreeTokensOrMore: 422, withThreePlausibleLaunches: 2,
+  robinhood: chaine('Robinhood Chain', [kase('all tokens', 'all tokens', 12310, 9.4, 16.82, {}), kase('Quoted in', 'ETH', 8090, 16.5, 25.86, {}), kase('Venue', 'uniswap', 12299, 9.5, 16.84, {})].concat([kase('Launcher', '0x221A6239E40709792b0d4bdc140fA36158CD41C7', 400, -3, -1, {})]), { bank: BANQUE_RH, devs: { recorded: 8301, withThreeTokensOrMore: 422, withThreePlausibleLaunches: 2,
     pushers: [{ dev: RH_DEV, tokens: 9, plausibleLaunches: 5, doubled: 3, medianMultiple: 2.1, vanished: 1, reached100k: 1 },
       { dev: PIEGE, tokens: 4, plausibleLaunches: 3, doubled: 1, medianMultiple: 0.8, vanished: 2 }], bestAvgPeak: [], mostVanished: [] } }),
-  solana: chaine('Solana', casesSol, { holders: 'unknown: the public Solana node refuses holder reads — set SOLANA_RPC_URL',
+  solana: chaine('Solana', casesSol, { bank: BANQUE_SOL, holders: 'unknown: the public Solana node refuses holder reads — set SOLANA_RPC_URL',
     derniers: [{ addr: SOL_A, dex: 'pumpswap', r: 42.4, t: Date.parse('2026-10-03T15:12:00Z') }, { addr: 'javascript:alert(1)', dex: PIEGE, r: -55, t: Date.parse('2026-10-03T15:10:00Z') },
       { addr: SOL_A, dex: 'meteora', r: null, t: Date.parse('2026-10-03T15:09:00Z') }] }),
   eth: chaine('Ethereum', casesEth, { devs: { recorded: 40, withThreeTokensOrMore: 1, withThreePlausibleLaunches: 0, pushers: [], bestAvgPeak: [], mostVanished: [] }, derniers: [{ addr: ETH_A, dex: 'uniswap', r: 3, t: Date.parse('2026-10-03T15:00:00Z') }] }) } };
@@ -75,7 +88,11 @@ for (const c of Object.values(VIDE.chaines)) c.cases = c.cases.map((x) => kase(x
       devsCache: $('#carteDevs').hidden, devs: [...document.querySelectorAll('#devs tr')].map((tr) => [...tr.children].map((td) => td.textContent)),
       devsNote: t('#devsNote'), derniers: [...document.querySelectorAll('#derniers tr')].map((tr) => tr.textContent),
       liens: [...document.querySelectorAll('main a[href]')].map((a) => a.getAttribute('href')), presses: [...document.querySelectorAll('#chaines [aria-pressed="true"]')].map((b) => b.dataset.c),
-      statut: t('#statut'), pastille: t('#pastilleTxt'), casesNote: t('#casesNote'), pirate: window.pirate, imgs: document.querySelectorAll('main img').length };
+      statut: t('#statut'), pastille: t('#pastilleTxt'), casesNote: t('#casesNote'), pirate: window.pirate, imgs: document.querySelectorAll('main img').length,
+      bkCache: $('#carteBanque').hidden, bkKpis: [...document.querySelectorAll('#bkKpis .ds-kpi')].map((k) => k.textContent), bkVerdict: t('#bkVerdict'), bkVcls: $('#bkVerdict').className,
+      bkBras: [...document.querySelectorAll('#bkBras tr')].map((tr) => [...tr.children].map((td) => td.textContent)), bkBanc: t('#bkBanc'), bkRefus: t('#bkRefus'),
+      bkRecents: [...document.querySelectorAll('#bkRecents tr')].map((tr) => [...tr.children].map((td) => td.textContent)),
+      bkLiens: [...document.querySelectorAll('#bkRecents a[href]')].map((a) => a.getAttribute('href')) };
   });
   const SURS = /^(https:\/\/dexscreener\.com\/(solana|ethereum|robinhood)\/|https:\/\/etherscan\.io\/address\/|https:\/\/robinhoodchain\.blockscout\.com\/address\/|[a-z_]+\.html)/;
 
@@ -99,11 +116,21 @@ for (const c of Object.values(VIDE.chaines)) c.cases = c.cases.map((x) => kase(x
   ok(r.lignes[0][0] === 'all tokens' && ts.length === 11 && ts.every((x, i) => i === 0 || ts[i - 1] >= x), 'la reference d abord, puis les cases triees par t decroissant (' + ts.slice(0, 4).join(', ') + '…)');
   ok(/Bar for 11 cases: t ≥ 2\.84/.test(r.casesNote) && /recomputed on 28,000 saved tokens on 2026-10-03/.test(r.casesNote), 'la note dit la barre et le recalcul (28 000 jetons relus le 03/10)');
   ok(r.devsCache === true, 'Solana : pas de carte des devs (aucun dev releve sur cette chaine)');
-  const lienSol = r.liens.filter((h) => /dexscreener\.com\/solana\//.test(h));
+  const lienSol = await p.$$eval('#derniers a[href]', (l) => l.map((a) => a.getAttribute('href')));
   ok(lienSol.length === 2 && lienSol.every((h) => h === 'https://dexscreener.com/solana/' + SOL_A) && !r.liens.some((h) => /javascript/i.test(h)), 'derniers jetons : lien DexScreener pour une adresse Solana valide, aucun pour « javascript:… »');
   ok(r.derniers.some((t) => /vanished/.test(t)) && r.derniers.some((t) => /\+42\.4%/.test(t)), 'un jeton disparu dit « vanished », jamais -100 %');
   ok(r.pirate === undefined && r.imgs === 0, 'les noms pieges restent du texte : aucune image injectee, aucun script lance');
   ok(r.liens.every((h) => SURS.test(h)), 'aucun lien hors de DexScreener, des explorateurs connus et du site (' + r.liens.length + ' liens)');
+
+  console.log('\n-- 1b. la banque papier (Solana : trop tot) --');
+  ok(r.bkCache === false && r.bkKpis.length === 4 && /\$1,012\.5/.test(r.bkKpis[0]) && /\+\$12\.5/.test(r.bkKpis[1]) && /4.3%/.test(r.bkKpis[3]) && /Jupiter/.test(r.bkKpis[3]),
+     'la banque : valeur 1 012,5 $, +12,5 $, cout d entree median 4,3 % chiffre par Jupiter');
+  ok(/^ds-verdict peu$/.test(r.bkVcls) && /Too early: 4 settled buys/.test(r.bkVerdict) && /nothing under 30/.test(r.bkVerdict), 'sous 30 achats regles : « Too early », aucune conclusion');
+  ok(r.bkBras[0][0] === 'Control (any token)' && r.bkBras[0][2] === '3' && /\*/.test(r.bkBras[0][3]) && r.bkBras.some((l) => l[0] === PIEGE && l[1] === 'retired'), 'le temoin d abord, avec son effectif et l asterisque sous 30 ; un bras retire le dit ; un nom piege reste du texte');
+  ok(/cannot sell 2/.test(r.bkRefus) && /round trip too costly 1/.test(r.bkRefus) && /median cost of the refused round trips 21%/.test(r.bkRefus) && /By venue: cannot sell · Pump\.fun \(2\)/.test(r.bkRefus) && /1 rate-limited/.test(r.bkRefus),
+     'les refus dits, avec leur place et le cout median des allers-retours refuses : ' + r.bkRefus.slice(0, 90));
+  ok(r.bkLiens.length === 1 && r.bkLiens[0] === 'https://dexscreener.com/solana/' + SOL_A && r.bkRecents[1][3] === 'unsellable' && r.bkRecents[0][1] === 'control', 'derniers achats : lien seulement pour une adresse valide ; « unsellable » dit, jamais un prix');
+  ok(/three-exit bench fills in/.test(r.bkBanc), 'le banc des trois sorties : dit qu il se remplit');
 
   console.log('\n-- 2. Ethereum : rien ne sort --');
   await p.click('#chaines button[data-c="eth"]');
@@ -112,6 +139,7 @@ for (const c of Object.values(VIDE.chaines)) c.cases = c.cases.map((x) => kase(x
   ok(/^ds-verdict non$/.test(r.vcls) && /Nothing stands out on Ethereum/.test(r.verdict) && /none of the 2 cases/.test(r.verdict) && /-7\.4%/.test(r.verdict),
      'rien ne sort : dit, avec le nombre de cases et la reference (-7,4 %) : ' + r.verdict.slice(0, 110));
   ok(r.devsCache === false && r.devs.length === 1 && /No dev has 3 plausible launches yet/.test(r.devs[0][0]), 'aucun pousseur sur Ethereum : dit, aucune ligne inventee');
+  ok(r.bkCache === true, 'Ethereum sans banque dans la vue : la carte de la banque se cache');
   await ctx.close();
 
   console.log('\n-- 3. Robinhood : qui pousse --');
@@ -125,6 +153,9 @@ for (const c of Object.values(VIDE.chaines)) c.cases = c.cases.map((x) => kase(x
      'Robinhood : la reference elle-meme monte (+9,4 %) — la page previent que le premier prix lu n est pas celui d un acheteur');
   ok(r.liens.includes('https://robinhoodchain.blockscout.com/address/' + RH_DEV) && r.liens.filter((h) => /blockscout/.test(h)).length === 1, 'lien Blockscout pour l adresse valide, aucun pour le nom piege');
   ok(/8,301 devs recorded, 2 with 3 plausible launches/.test(r.devsNote), 'la note dit sur combien de devs : ' + r.devsNote.slice(0, 80));
+  ok(/^ds-verdict ok$/.test(r.bkVcls) && /An arm holds in paper: Quoted in = ETH \(\+6\.2% net, t 3\.4, 120 buys\)/.test(r.bkVerdict) && /Still paper/.test(r.bkVerdict), 'Robinhood : un bras « holds in paper » est dit, avec son effectif — et « Still paper »');
+  ok(/at 10 min \+0\.5%, at 30 min \+1\.2%, at 60 min -0\.8%/.test(r.bkBanc) && /60 vs 30 min: -2% \(t -1\.5\)/.test(r.bkBanc), 'le banc : les memes achats a 10/30/60 min, et l ecart apparie 60 contre 30 avec son t');
+  ok(r.bkRecents.length === 1 && /No settled paper buy yet/.test(r.bkRecents[0][0]), 'sans achat regle recent : dit, aucune ligne inventee');
   ok(r.pirate === undefined && r.imgs === 0, 'un dev au nom piege reste du texte');
   await ctx.close();
 

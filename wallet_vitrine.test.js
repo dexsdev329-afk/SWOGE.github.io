@@ -121,8 +121,11 @@ const srv = http.createServer((q, r) => {
         surLeTel: cartes.filter((c) => chevauche(c.getBoundingClientRect())).length,
         liens: document.querySelectorAll('#vtLiens path').length,
         auTel: !!(ici && ici.closest('#tel')),
-        /* (le carre de la ligne « QR code » est un pictogramme, pas une valeur) */
-        valeurs: [...document.querySelectorAll('.vt-carte .vt-r b:not(.vt-qr), #vtRecAdr')].map((b) => b.textContent.trim()),
+        /* 03/10 : les valeurs des cartes autour du telephone (marche, chaine, coffre, jetons) */
+        valeurs: [...document.querySelectorAll('.vt-carte .vt-r b, .vt-carte .vt-grille b, #vtMPrix, .vt-jl .v')].map((b) => b.textContent.trim()),
+        menu: [...document.querySelectorAll('.wl-menu .wl-nav a')].map((a) => a.lastChild.textContent.trim()),
+        menuG: (() => { const r = document.querySelector('.wl-menu').getBoundingClientRect(); return r.right <= tel.left && r.width > 150; })(),
+        tuiles: [...document.querySelectorAll('.vt-tuiles [data-vt-va], .vt-tuiles a')].map((b) => b.getAttribute('data-vt-va') || b.getAttribute('href')),
         table: [...document.querySelectorAll('#vtLignes .vt-tl')].map((l) =>
           [...l.children].slice(1).map((c) => c.textContent.trim())),
         voile: !document.getElementById('vtVoileJetons').hidden,
@@ -136,15 +139,19 @@ const srv = http.createServer((q, r) => {
     console.log('   ' + JSON.stringify({ noms: m.noms, liens: m.liens, valeurs: m.valeurs, table: m.table }));
     ok(m.titre === 'YOUR WALLET. YOUR WORLD.',
        'le titre dit « YOUR WALLET. YOUR WORLD. » (' + m.titre + ')');
-    ok(m.noms.join(',') === 'SEND,RECEIVE,ACTIVITY,SWAP,BRIDGE,CASINO GAME VAULT',
-       'les six cartes sont la, dans l ordre (' + m.noms.join(', ') + ')');
-    ok(m.cible.join(',') === 'ecEnvoyer,ecRecevoir,ecActivite,ecSwap,ecPont,ecCasino',
-       'et chacune mene a son ecran du telephone');
+    /* 03/10 : « le menu, tu nous l as change de place [...] des blocs avec des trous ». */
+    ok(m.menuG && m.menu.join(',') === 'Home,Casino,Sports,Wallet,AI Trading,Agents,Launchpad,Docs',
+       'le menu du site est revenu dans sa colonne, a gauche du telephone (' + m.menu.join(', ') + ')');
+    ok(m.noms.join(',') === '$SWOGE MARKET,ROBINHOOD CHAIN,TOKENS,CASINO GAME VAULT',
+       'les cartes autour du telephone disent quelque chose a tout visiteur (' + m.noms.join(', ') + ')');
+    ok(m.cible.join(',') === 'ecSwap,ecAccueil,ecJetons,ecCasino', 'et chacune mene a un ecran du telephone');
+    ok(m.tuiles.join(',') === 'ecEnvoyer,ecRecevoir,ecSwap,ecPont,ecSwap,ecActivite,launchpad.html,swoge_agents.html',
+       'les huit actions rapides ouvrent un ecran du telephone ou une page du site');
     ok(m.surLeTel === 0, 'aucune carte ne couvre le telephone (' + m.surLeTel + ')');
-    ok(m.liens === 6, 'six liens relient les cartes au telephone (' + m.liens + ')');
+    ok(m.liens === 5, 'cinq liens relient les cartes au telephone (' + m.liens + ')');
     ok(m.auTel, 'un clic au centre du telephone arrive au telephone — les liens ne prennent pas le pointeur');
-    ok(m.valeurs.length >= 12 && m.valeurs.every((v) => v === '--'),
-       'deconnecte et sans chaine, chaque chiffre des cartes s ecrit « -- » — rien d invente');
+    ok(m.valeurs.length >= 10 && !m.valeurs.includes('--') && m.valeurs.every((v) => /^(unavailable|Unavailable|…|Loading…|measuring…|4663|Connect to see|Price loading…)$/.test(v)),
+       'deconnecte et sans reseau : aucun « -- » (plus de trous), et aucun chiffre invente — seulement « unavailable » ou ce qu il faut faire');
     ok(m.table.length >= 3 && m.table.every((l) => l.every((v) => v === '--')),
        'la table des jetons aussi : solde, valeur et prix a « -- » (' + m.table.length + ' lignes)');
     ok(m.voile, 'et « CONNECT WALLET TO VIEW ASSETS » est pose dessus');
@@ -155,12 +162,12 @@ const srv = http.createServer((q, r) => {
     ok(m.largeur, 'rien ne deborde horizontalement');
 
     /* ---- UNE CARTE OUVRE SON ECRAN ---- */
-    await page.click('.wl-cote.droite .vt-carte[data-vt-va="ecSwap"] .vt-ct');
+    await page.click('.vt-tuiles button[data-vt-va="ecSwap"]');
     await page.waitForTimeout(300);
-    ok((await ecran(page)) === 'ecSwap', 'la carte SWAP ouvre l ecran d echange du telephone');
-    await page.click('.vt-cartes .vt-carte[data-vt-va="ecPont"], .wl-cote.droite .vt-carte[data-vt-va="ecPont"] .vt-ct');
+    ok((await ecran(page)) === 'ecSwap', 'l action SWAP ouvre l ecran d echange du telephone');
+    await page.click('.vt-tuiles button[data-vt-va="ecPont"]');
     await page.waitForTimeout(300);
-    ok((await ecran(page)) === 'ecPont', 'la carte BRIDGE ouvre le pont');
+    ok((await ecran(page)) === 'ecPont', 'l action BRIDGE ouvre le pont');
     await page.click('#vtOuvrir');
     await page.waitForTimeout(300);
     ok((await ecran(page)) === 'ecAccueil', '« OPEN WALLET » ramene le telephone a l accueil');
@@ -178,46 +185,30 @@ const srv = http.createServer((q, r) => {
     await page.close();
   }
 
-  /* ==================== 2. LE TELEPHONE SUIT LA LECTURE ==================== */
-  console.log('\n-- la visite au defilement --');
+  /* ==================== 2. LES SECTIONS EN PLEINE LARGEUR (03/10) ====================
+   * Le telephone suivait la lecture et gardait sa colonne sur toute la hauteur : les sections
+   * n avaient plus que ~480 pixels (« des blocs avec des trous »). Il reste en haut ; l intention
+   * qui demeure de l ancienne visite : le defilement ne change JAMAIS l ecran du telephone. */
+  console.log('\n-- les sections sous le telephone --');
   {
     const { page, boum } = await ouvre(1440, 900, false);
-    const va = async (sel) => {
-      await page.evaluate((s) => document.querySelector(s).scrollIntoView({ block: 'center' }), sel);
-      await page.waitForTimeout(500);
-    };
-    await va('#vtJetons');
+    for (const sel of ['#vtJetons', '#vtSwap', '#vtPont', '#vtCles']) {
+      await page.evaluate((s2) => document.querySelector(s2).scrollIntoView({ block: 'center' }), sel);
+      await page.waitForTimeout(350);
+    }
     const a = await page.evaluate(() => {
-      const t = document.getElementById('tel').getBoundingClientRect();
-      return { top: Math.round(t.top), bas: Math.round(t.bottom), h: innerHeight,
-               rail: (document.querySelector('.vt-rail a.on') || {}).textContent };
+      const t = document.getElementById('tel').getBoundingClientRect(), v = document.getElementById('vitrine').getBoundingClientRect();
+      const m = document.querySelector('.wl-menu').getBoundingClientRect();
+      return { pos: getComputedStyle(document.getElementById('tel')).position, vitrineL: Math.round(v.width), dessous: v.top >= t.bottom - 1,
+               rail: getComputedStyle(document.getElementById('vtRail')).display, menuColle: Math.round(m.top) };
     });
-    ok((await ecran(page)) === 'ecJetons', 'la section des jetons montre l ecran « Tokens »');
-    ok(a.rail && /Tokens/.test(a.rail), 'et le rail le dit (' + a.rail + ')');
-    ok(a.top === 68 && a.bas <= a.h, 'le telephone reste entier dans la fenetre pendant la lecture (' + a.top + '–' + a.bas + ')');
-    await va('#vtSwap');
-    ok((await ecran(page)) === 'ecSwap', 'puis l echange');
-    await va('#vtPont');
-    ok((await ecran(page)) === 'ecPont', 'puis le pont');
-    await va('#vtCasino');
-    ok((await ecran(page)) === 'ecPont',
-       'le coffre du casino n est PAS ouvert par un defilement — son ecran ouvre une liaison avec le serveur');
-
-    /* ---- UNE FEUILLE OUVERTE ARRETE TOUT ---- */
-    await page.evaluate(() => window.SwogeWallet.ouvreConnexion());
-    await va('#vtCles');
-    ok((await ecran(page)) === 'ecPont', 'feuille de connexion ouverte : le defilement ne change pas l ecran');
-    await page.click('#cnFermer');
-
-    /* ---- LE PREMIER GESTE DANS LE TELEPHONE ARRETE LA VISITE ---- */
-    await page.evaluate(() => document.getElementById('tel')
-      .dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })));
-    await va('#vtJetons');
-    await va('#vtCles');
-    const note = await page.evaluate(() => document.getElementById('vtRailNote').textContent);
-    ok((await ecran(page)) === 'ecPont',
-       'apres un geste dans le telephone, le defilement ne change plus jamais son ecran');
-    ok(/no longer/.test(note), 'et le rail le dit (« ' + note + ' »)');
+    ok((await ecran(page)) === 'ecAccueil', 'en lisant les sections, le telephone garde son ecran — le defilement ne le change jamais');
+    ok(a.pos !== 'sticky' && a.dessous && a.vitrineL >= 1000, 'les sections passent SOUS le telephone, sur toute la largeur a droite du menu (' + a.vitrineL + ' px)');
+    ok(a.rail === 'none', 'le rail de la visite n a plus de raison d etre : il est range');
+    ok(a.menuColle === 68, 'le menu reste colle sous le bandeau pendant la lecture (' + a.menuColle + ')');
+    await page.click('.vt-tuiles button[data-vt-va="ecPont"]');
+    await page.waitForTimeout(300);
+    ok((await ecran(page)) === 'ecPont', 'une action rapide ouvre toujours son ecran, meme en bas de page');
     ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
     await page.close();
   }
@@ -237,7 +228,7 @@ const srv = http.createServer((q, r) => {
     });
     ok(m.pos !== 'sticky', 'sous 1340 pixels le telephone ne colle pas — il n y a pas la place a cote des sections');
     ok((await ecran(page)) === 'ecAccueil', 'et le defilement ne change donc pas son ecran (on ne le voit plus)');
-    ok(m.cartesDessous, 'les trois cartes de gauche passent en rangee sous lui');
+    ok(m.cartesDessous, 'le titre et les cartes de gauche passent sous lui (pas la place de trois colonnes a cote du menu)');
     ok(m.largeur, 'rien ne deborde horizontalement');
     ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
     await page.close();
@@ -250,11 +241,11 @@ const srv = http.createServer((q, r) => {
     const m = await page.evaluate(() => ({
       vitrine: getComputedStyle(document.getElementById('vitrine')).display,
       cartes: getComputedStyle(document.querySelector('.vt-cartes')).display,
-      menu: getComputedStyle(document.querySelector('.wl-nav')).display,
+      menu: getComputedStyle(document.querySelector('.wl-menu')).display,
       haut: document.documentElement.scrollHeight <= innerHeight + 1
     }));
     ok(m.vitrine === 'none' && m.cartes === 'none' && m.menu === 'none',
-       'ni vitrine, ni cartes, ni menu du bandeau (' + [m.vitrine, m.cartes, m.menu].join('/') + ')');
+       'ni vitrine, ni cartes, ni colonne du menu (' + [m.vitrine, m.cartes, m.menu].join('/') + ')');
     ok(m.haut, 'et la page ne defile pas : le portefeuille tient l ecran');
     ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
     await page.close();
@@ -272,7 +263,7 @@ const srv = http.createServer((q, r) => {
     const f = page.frames().find((x) => /swoge_wallet/.test(x.url()));
     const m = await f.evaluate(() => ({
       cadre: document.documentElement.classList.contains('wl-encadre'),
-      caches: ['#vitrine', '.vt-cartes', '.wl-cote.droite', '.wl-nav', '.vt-hdroite']
+      caches: ['#vitrine', '.vt-cartes', '.wl-cote.droite', '.wl-menu', '.vt-hdroite']
         .filter((s) => getComputedStyle(document.querySelector(s)).display !== 'none')
     }));
     ok(m.cadre && m.caches.length === 0,
@@ -291,7 +282,8 @@ const srv = http.createServer((q, r) => {
         bandeau: document.getElementById('vtConnecte').textContent,
         adr: document.getElementById('vtAdr').textContent,
         methode: document.getElementById('vtMethode').textContent,
-        recoit: document.getElementById('vtRecAdr').textContent,
+        jl: ([...document.querySelectorAll('.vt-jl .l')].map((x) => x.textContent.replace(/\s+/g, ' ').trim()).find((x) => /^ETH \(RH\)/.test(x)) || ''),
+        jlConnect: document.getElementById('vtJlConnect').hidden,
         eth: (l.find((x) => /^ETH \(RH\)/.test(x[0])) || [])[1],
         surLeTel: (document.querySelector('#acJetons .wl-jeton .val b') || {}).textContent,
         voile: document.getElementById('vtVoileJetons').hidden,
@@ -302,8 +294,8 @@ const srv = http.createServer((q, r) => {
     });
     console.log('   ' + JSON.stringify(m));
     ok(m.adr === MOI, 'l adresse est celle de la session (' + m.adr + ')');
-    ok(m.bandeau === MOI.slice(0, 6) + '…' + MOI.slice(-4) && m.recoit === m.bandeau,
-       'le bandeau et la carte RECEIVE la montrent en court (' + m.bandeau + ')');
+    ok(m.bandeau === MOI.slice(0, 6) + '…' + MOI.slice(-4), 'le bandeau la montre en court (' + m.bandeau + ')');
+    ok(/0\.005/.test(m.jl) && m.jlConnect, 'la carte des jetons montre le solde lu par le telephone, et l invitation a se connecter s efface (' + m.jl + ')');
     ok(m.methode === 'Browser wallet', 'la methode de connexion est dite (' + m.methode + ')');
     ok(m.eth === '0.005' && m.eth === m.surLeTel,
        'le solde ETH (RH) de la table est celui que le telephone a lu (' + m.eth + ' / ' + m.surLeTel + ')');
@@ -334,14 +326,51 @@ const srv = http.createServer((q, r) => {
     await page.route((u) => !u.href.startsWith(BASE), (r) => r.abort());
     await page.goto(BASE + '/swoge_wallet.html', { waitUntil: 'domcontentloaded' });
     await page.waitForTimeout(1500);
-    await page.click('.wl-cote.droite .vt-carte[data-vt-va="ecPont"] .vt-ct');
+    await page.click('.vt-tuiles button[data-vt-va="ecPont"]');
     await page.waitForTimeout(300);
     const m = await page.evaluate(() => ({
       api: !!window.SwogeWallet,
-      valeurs: [...document.querySelectorAll('.vt-carte .vt-r b:not(.vt-qr), #vtLignes .vt-tl > span:not(.vt-tok)')]
+      valeurs: [...document.querySelectorAll('.vt-carte .vt-r b, .vt-carte .vt-grille b, #vtMPrix, .vt-jl .v, #vtLignes .vt-tl > span:not(.vt-tok)')]
         .map((b) => b.textContent.trim()) }));
-    ok(m.api && (await ecran(page)) === 'ecPont', 'la vitrine reste vivante : la carte BRIDGE ouvre le pont');
-    ok(m.valeurs.length > 0 && m.valeurs.every((v) => v === '--'), 'et rien ne s y ecrit d autre que « -- »');
+    ok(m.api && (await ecran(page)) === 'ecPont', 'la vitrine reste vivante : l action BRIDGE ouvre le pont');
+    ok(m.valeurs.length > 0 && m.valeurs.every((v) => /^(--|unavailable|Unavailable|…|Loading…|measuring…|4663|Connect to see|Price loading…)$/.test(v)),
+       'et rien ne s y ecrit d invente : « -- », « unavailable » ou ce qu il faut faire');
+    ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
+    await page.close();
+  }
+
+  /* ==================== 8. LE MARCHE ET LA CHAINE, EN DIRECT (03/10) ====================
+   * Les valeurs relevees le 03/10 (DexScreener, paire $SWOGE / WETH ; noeud public) : la carte
+   * les ecrit telles quelles, et le temps de bloc se MESURE entre deux lectures. */
+  console.log('\n-- le marche et la chaine, en direct --');
+  {
+    const page = await nav.newPage({ viewport: { width: 1536, height: 1024 } });
+    const boum = [];
+    page.on('pageerror', (e) => boum.push(String(e).slice(0, 160)));
+    await page.addInitScript(() => { try { sessionStorage.setItem('swogeWalletIntroVue', '1'); } catch (e) {} });
+    await page.route((u) => !u.href.startsWith(BASE) && !/dexscreener|rpc\.mainnet\.chain\.robinhood/.test(u.href), (r) => r.abort());
+    let demandesDex = 0;
+    await page.route('**/api.dexscreener.com/**', (r) => { demandesDex++; r.fulfill({ contentType: 'application/json', headers: { 'access-control-allow-origin': '*' },
+      body: JSON.stringify({ pairs: [{ priceUsd: '0.00002127', priceChange: { h24: -16.43 }, liquidity: { usd: 12236.9 }, volume: { h24: 766.52 }, marketCap: 20993, txns: { h24: { buys: 1, sells: 4 } } }] }) }); });
+    let bloc = 0x1c26000, t = 1759460000;
+    await page.route('**/rpc.mainnet.chain.robinhood.com/**', (r) => {
+      const q = JSON.parse(r.request().postData() || '{}');
+      if (q.method === 'eth_getBlockByNumber') { bloc += 20; t += 5; }
+      const res = q.method === 'eth_gasPrice' ? '0x1c260e0' : q.method === 'eth_getBlockByNumber' ? { number: '0x' + bloc.toString(16), timestamp: '0x' + t.toString(16) } : null;
+      r.fulfill({ contentType: 'application/json', headers: { 'access-control-allow-origin': '*' },
+        body: JSON.stringify(res === null ? { jsonrpc: '2.0', id: q.id, error: { code: -32000, message: 'nope' } } : { jsonrpc: '2.0', id: q.id, result: res }) });
+    });
+    await page.goto(BASE + '/swoge_wallet.html', { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(5500);
+    const v = await page.evaluate(() => Object.fromEntries(['vtMPrix', 'vtMVar', 'vtMLiq', 'vtMVol', 'vtMTx', 'vtMCap', 'vtRBloc', 'vtRGaz', 'vtRTemps', 'vtRDirect']
+      .map((i) => [i, document.getElementById(i).textContent.trim()])));
+    const jeton = await page.evaluate(() => [...document.querySelectorAll('.vt-jl .l')].map((l) => l.innerText.replace(/\s+/g, ' ').trim()).find((x) => /^SWOGE Swole/.test(x)) || '');
+    ok(v.vtMPrix === '$0.00002127' && v.vtMVar === '-16.43% 24h' && v.vtMLiq === '$12.2K' && v.vtMVol === '$767' && v.vtMTx === '5' && v.vtMCap === '$21.0K',
+       'la carte du marche ecrit ce que DexScreener rend (' + [v.vtMPrix, v.vtMVar, v.vtMLiq, v.vtMVol, v.vtMTx, v.vtMCap].join(' · ') + ')');
+    ok(/^#29,5\d\d,\d{3}$/.test(v.vtRBloc) && v.vtRGaz === '0.03 gwei' && v.vtRTemps === '0.25 s' && v.vtRDirect === 'LIVE',
+       'la carte de la chaine : bloc, gaz, et un temps de bloc MESURE entre deux lectures (' + [v.vtRBloc, v.vtRGaz, v.vtRTemps].join(' · ') + ')');
+    ok(/\$0\.00002127/.test(jeton), 'le $SWOGE a son prix de marche dans la carte des jetons, avant que le telephone ait le sien (' + jeton + ')');
+    ok(demandesDex === 1, 'une seule lecture du marche au chargement (' + demandesDex + ') — puis toutes les 30 s');
     ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
     await page.close();
   }

@@ -2470,7 +2470,8 @@ function servir(q, r, f, type) {
       return { gauche: vu(g), droite: vu(d),
                liens: [].map.call(document.querySelectorAll('.wl-nav a'),
                  (a) => a.getAttribute('href') + (a.classList.contains('on') ? '*' : '')),
-               reseaux: document.querySelectorAll('.wl-reseaux a').length,
+               /* 03/10 : le pied de page a aussi les siens ; on compte ceux SOUS LE MENU. */
+               reseaux: document.querySelectorAll('.wl-menu .wl-reseaux a').length,
                /* ---- LA COLONNE DE DROITE DIT OU DEPENSER ----
                 * Elle a d'abord porte les prix, le reseau et un paragraphe sur
                 * ce que fait ce portefeuille. Reponse du joueur : « ça on s'en

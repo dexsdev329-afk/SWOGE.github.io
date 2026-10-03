@@ -68,7 +68,7 @@
      A savoir : cela ne sauve pas la page DEJA en cache chez quelqu'un, qui ne
      contient pas ces lignes. Ce garde-fou vaut a partir de celle-ci. -->
 <script>
-var MARQUE_PAGE = 'bb458a81';
+var MARQUE_PAGE = '84e1a488';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -1387,7 +1387,7 @@ a.sg-logo:focus-visible{ outline:2px solid var(--accent); outline-offset:2px }
  * reapparaissent dans le flux qu'avec la rangee, au-dessus du seuil. */
 .wl-page{ display:contents }
 .wl-cote, .vt-cartes, .vt-liens, .vt-halo, .vt-rail, .vt-vitrine,
-.wl-nav, .vt-hdroite{ display:none }
+.wl-menu, .vt-hdroite{ display:none }
 /* ---- LA VITRINE, AU-DESSUS DE 520 PIXELS ----
  * En dessous, l'ecran EST le portefeuille (`body` a la hauteur de la fenetre,
  * sans defilement) : rien ne s'ajoute sous lui. Entre 521 et 1059, elle
@@ -1403,61 +1403,71 @@ a.sg-logo:focus-visible{ outline:2px solid var(--accent); outline-offset:2px }
  * supposition) + 12 de marge haute + 12 de marge basse. Le cadre en faisait
  * 73 de moins que la fenetre avant ; il en fait 80, et `wallet_page.test.js`
  * refait la mesure a cinq hauteurs de fenetre, feuille de connexion ouverte. */
+/* ---- 03/10 : LE MENU A GAUCHE, LE TELEPHONE AU CENTRE DE CE QUI RESTE ----
+ * « Le menu tu nous l'as change de place [...] le wallet au centre et des decors utiles
+ * autour. » Le menu du site revient dans sa colonne de gauche (comme sur toutes les
+ * pages), collee sous le bandeau ; le telephone est au milieu de l'espace a sa droite,
+ * entre le titre et les cartes du marche (a gauche) et les actions, les jetons et le
+ * coffre (a droite). Entre 1060 et 1339 il n'y a pas la place de trois colonnes a cote
+ * du menu : le titre et les cartes de gauche passent en rangee sous le telephone. */
 @media (min-width:1060px){
   .wl-page{
-    display:grid; position:relative; width:100%; max-width:1480px; margin:0 auto;
-    padding:12px 24px 0; column-gap:20px;
-    grid-template-columns:minmax(260px,1fr) 390px 40px 232px;
-    grid-template-areas:"texte tel . droite" "cartes cartes cartes cartes" "vitrine vitrine vitrine vitrine";
+    display:grid; position:relative; width:100%; max-width:1640px; margin:0 auto;
+    padding:12px 20px 0; column-gap:18px;
+    grid-template-columns:190px 390px minmax(250px,1fr);
+    grid-template-areas:"menu tel droite" "menu texte texte" "menu vitrine vitrine";
   }
+  .wl-menu{ display:flex; flex-direction:column; gap:12px; grid-area:menu; grid-row:1 / -1;
+    position:sticky; top:68px; align-self:start }
   .wl-cote{ display:flex; flex-direction:column; min-width:0 }
-  .wl-cote.gauche{ grid-area:texte; align-self:center; padding:24px 0 }
+  .wl-cote.gauche{ grid-area:texte; padding:24px 0 6px; gap:18px }
   .wl-cote.droite{ grid-area:droite; gap:14px; align-self:center }
   .wl-tel{ grid-area:tel; z-index:2; max-height:calc(100dvh - 80px) }
   .vt-halo{ display:block; grid-area:tel }
   .vt-liens{ display:block }
-  .vt-cartes{ display:grid; grid-area:cartes; grid-template-columns:repeat(3,1fr);
-    gap:14px; margin-top:30px }
+  .vt-cartes{ display:grid; grid-template-columns:repeat(2,1fr); gap:14px }
   .vt-vitrine{ grid-area:vitrine; max-width:none; padding:12px 0 0 }
 }
-/* ---- ET AU-DESSUS DE 1340 : LE TELEPHONE SUIT LA LECTURE ----
- * Il occupe ses deux rangees et reste colle sous le bandeau pendant que les
- * sections defilent a sa gauche ; a sa droite, sous les cartes, le rail dit
- * quel ecran il montre. Les deux gouttieres de 40 pixels de part et d'autre
- * du telephone portent les liens des cartes : a 1240, sans elles, ces liens
- * mesuraient une dizaine de pixels et ne se voyaient pas. 1340 est la largeur
- * ou le titre garde ses 300 pixels avec elles. */
+/* 03/10 : le telephone ne suit plus la lecture. Il gardait une colonne sur toute la hauteur, et
+ * les sections n'avaient plus que 480 pixels a cote de lui et du rail — d'ou des blocs tasses et
+ * des trous. Elles prennent maintenant toute la largeur sous le telephone. */
 @media (min-width:1340px){
   .wl-page{
-    grid-template-columns:minmax(300px,1fr) 200px 40px 390px 40px 232px;
+    grid-template-columns:190px minmax(250px,1fr) 36px 390px 36px minmax(270px,1fr);
     grid-template-rows:minmax(calc(100dvh - 68px), auto) auto;
-    grid-template-areas:"texte cartes . tel . droite" "vitrine vitrine vitrine tel . rail";
+    grid-template-areas:"menu texte . tel . droite" "menu vitrine vitrine vitrine vitrine vitrine";
   }
-  .wl-tel{ position:sticky; top:68px; align-self:start }
+  /* A gauche du telephone : le titre, puis le marche et la chaine, dans la MEME colonne. */
+  .wl-cote.gauche{ grid-area:texte; align-self:center; padding:24px 0 }
+  .wl-tel{ align-self:center }
   .vt-halo{ grid-area:1 / 4 / 2 / 5 }
-  .vt-cartes{ display:flex; flex-direction:column; grid-template-columns:none;
-    margin-top:0; align-self:center }
-  .vt-rail{ display:flex; grid-area:rail; position:sticky; top:68px; align-self:start;
-    margin-top:56px }
-  .vt-vitrine{ padding-right:4px }
+  .vt-vitrine{ padding:24px 0 0 }
+}
+/* Les cartes de gauche se mettent l'une sous l'autre quand la colonne est etroite. */
+@media (min-width:1340px) and (max-width:1559px){
+  .vt-cartes{ grid-template-columns:1fr }
+  .wl-cote.gauche .vt-hero h1{ font-size:clamp(32px,11cqi,54px) }
+  .wl-cote.gauche .vt-boutons{ margin:18px 0 18px }
 }
 /* Dans le voile d'une autre page, le portefeuille seul — jamais la vitrine. */
 html.wl-encadre .wl-page{ display:contents }
 html.wl-encadre .wl-cote, html.wl-encadre .vt-cartes, html.wl-encadre .vt-liens,
 html.wl-encadre .vt-halo, html.wl-encadre .vt-rail, html.wl-encadre .vt-vitrine,
-html.wl-encadre .wl-nav, html.wl-encadre .vt-hdroite{ display:none }
+html.wl-encadre .wl-menu, html.wl-encadre .vt-hdroite{ display:none }
 
-/* ---- LE MENU DU SITE, DANS LE BANDEAU ---- */
+/* ---- LE MENU DU SITE, DANS SA COLONNE (03/10) ---- */
+.wl-nav{ background:var(--carte); border:1px solid var(--bord); border-radius:var(--rayon);
+  padding:8px; box-shadow:var(--vt-ombre) }
 .wl-nav a{
-  display:flex; align-items:center; gap:7px; padding:9px 13px; border-radius:999px;
-  font:700 13.5px/1 'Archivo',system-ui,sans-serif; color:var(--doux);
-  text-decoration:none; white-space:nowrap;
+  display:flex; align-items:center; gap:11px; padding:11px 12px; border-radius:10px;
+  font:700 14px/1 'Archivo',system-ui,sans-serif; color:var(--texte); text-decoration:none;
 }
-.wl-nav a .ic{ display:none }
-.wl-nav a:hover{ color:var(--texte); background:var(--carte2) }
+.wl-nav a .ic{ width:20px; text-align:center; font-size:15px; opacity:.75 }
+.wl-nav a:hover{ background:var(--carte2) }
 /* La page courante se marque, et reste cliquable : une entree « ici » qu'on
    ne peut pas cliquer se lit comme desactivee. */
-.wl-nav a.on{ color:var(--texte); background:var(--carte2) }
+.wl-nav a.on{ background:var(--carte2); color:var(--accent) }
+.wl-nav a.on .ic{ opacity:1 }
 .wl-reseaux{ display:flex; gap:8px; justify-content:center }
 .wl-reseaux a{
   width:34px; height:34px; border-radius:10px; background:var(--carte);
@@ -1524,8 +1534,7 @@ html.wl-encadre .wl-nav, html.wl-encadre .vt-hdroite{ display:none }
     background:color-mix(in srgb, var(--carte) 84%, transparent);
     -webkit-backdrop-filter:saturate(1.4) blur(14px); backdrop-filter:saturate(1.4) blur(14px);
     border-bottom:1px solid var(--bord) }
-  .wl-nav{ display:flex; gap:2px; margin:0 auto }
-  .vt-hdroite{ display:flex; align-items:center; gap:10px; flex:0 0 auto }
+  .vt-hdroite{ display:flex; align-items:center; gap:10px; flex:0 0 auto; margin-left:auto }
   .wl-retour{ display:none }
 }
 html.wl-encadre .wl-haut{ position:static; height:auto }
@@ -1536,7 +1545,6 @@ html.wl-encadre .wl-haut{ position:static; height:auto }
  * que son logo et son point (le nom reste dans son `title`). */
 @media (min-width:1060px) and (max-width:1239px){
   .wl-haut{ gap:10px; padding:0 14px }
-  .wl-nav a{ padding:8px 8px; font-size:12.5px }
   .vt-chaine{ font-size:0; gap:5px; padding:5px 8px 5px 5px }
   .vt-connecte{ padding:10px 12px }
 }
@@ -1586,6 +1594,7 @@ html.wl-encadre .wl-haut{ position:static; height:auto }
 .vt-faits{ list-style:none; margin:0; padding:0; display:flex; flex-wrap:wrap; row-gap:12px }
 .vt-faits li{ padding:0 18px; border-left:1px solid var(--bord) }
 .vt-faits li:first-child{ padding-left:0; border-left:0 }
+@media (min-width:1060px){ .wl-cote.gauche .vt-faits{ flex-wrap:nowrap } .wl-cote.gauche .vt-faits li{ padding:0 12px; min-width:0 } }
 .vt-faits b{ display:block; font:800 17px/1.1 'Archivo',sans-serif; color:var(--texte) }
 .vt-faits span{ display:block; margin-top:4px; font:400 12px/1.3 'Archivo',sans-serif; color:var(--doux) }
 
@@ -1650,6 +1659,53 @@ html.wl-encadre .wl-haut{ position:static; height:auto }
 .vt-lieux .wl-vers .dit{ left:9px; bottom:7px }
 .vt-lieux .wl-vers .dit b{ font-size:11px }
 .vt-carte .wl-tous{ margin-top:8px; padding:9px; border-radius:11px }
+
+/* ---- 03/10 : LES CARTES QUI DISENT QUELQUE CHOSE A TOUT VISITEUR ---- */
+.vt-ic img{ width:18px; height:18px; border-radius:50% }
+.vt-prix{ display:flex; align-items:baseline; gap:10px; margin:2px 0 10px }
+.vt-prix b{ font:900 26px/1 'Archivo',sans-serif; letter-spacing:-.5px; color:var(--texte) }
+.vt-prix span{ font:800 12px/1 'Space Mono',monospace }
+.vt-prix span.haut{ color:var(--vert) }
+.vt-prix span.bas{ color:var(--rouge) }
+.vt-grille{ display:grid; grid-template-columns:1fr 1fr; gap:8px }
+.vt-grille div{ padding:8px 9px; border-radius:10px; background:var(--carte2); border:1px solid var(--bord); min-width:0 }
+.vt-grille span{ display:block; font:600 10.5px/1.2 'Archivo',sans-serif; color:var(--doux) }
+.vt-grille b{ display:block; margin-top:4px; font:700 13px/1.15 'Space Mono',monospace; color:var(--texte);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.vt-source{ margin:9px 0 0; font:500 10.5px/1.3 'Archivo',sans-serif; color:var(--doux) }
+.vt-direct{ font:800 9.5px/1 'Archivo',sans-serif !important; letter-spacing:1px; padding:4px 7px; border-radius:999px;
+  color:var(--vert) !important; background:color-mix(in srgb, var(--vert) 12%, transparent) }
+.vt-direct.non{ color:var(--doux) !important; background:var(--carte2) }
+.vt-rapide{ cursor:default }
+.vt-tuiles{ display:grid; grid-template-columns:repeat(4,1fr); gap:7px }
+.vt-tuiles button, .vt-tuiles a{ display:flex; flex-direction:column; align-items:center; gap:6px; padding:10px 4px 9px;
+  border-radius:12px; border:1px solid var(--bord); background:var(--carte); cursor:pointer; text-decoration:none;
+  font:700 10.5px/1.15 'Archivo',sans-serif; color:var(--texte); text-align:center; transition:border-color .2s, transform .2s }
+.vt-tuiles span{ width:30px; height:30px; border-radius:10px; display:grid; place-items:center; font-size:15px;
+  color:var(--vt-bleu); background:color-mix(in srgb, var(--vt-bleu) 9%, transparent) }
+.vt-tuiles span img{ width:20px; height:20px; border-radius:50% }
+.vt-tuiles button:hover, .vt-tuiles a:hover{ border-color:var(--vt-bleu); transform:translateY(-1px) }
+.vt-jl{ display:flex; flex-direction:column }
+.vt-jl .l{ display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:9px; padding:7px 0;
+  border-top:1px dashed var(--bord) }
+.vt-jl .l:first-child{ border-top:0 }
+.vt-jl .l img, .vt-jl .l em{ width:26px; height:26px; border-radius:50%; display:grid; place-items:center;
+  font:800 10px/1 'Archivo',sans-serif; font-style:normal; background:var(--carte2) }
+.vt-jl .l b{ display:block; font:800 12.5px/1.15 'Archivo',sans-serif; color:var(--texte) }
+.vt-jl .l small{ display:block; font:500 10.5px/1.2 'Archivo',sans-serif; color:var(--doux) }
+.vt-jl .l .v{ text-align:right; font:700 12px/1.2 'Space Mono',monospace; color:var(--texte) }
+.vt-jl .l .v small{ font-family:'Archivo',sans-serif }
+.vt-connect-l{ width:100%; margin-top:8px; padding:9px }
+.vt-bannieres{ display:grid; grid-template-columns:1.4fr 1fr; gap:14px; padding:6px 0 18px }
+.vt-banniere{ position:relative; display:block; min-height:150px; border-radius:20px; overflow:hidden;
+  text-decoration:none; border:1px solid var(--bord); box-shadow:var(--vt-ombre) }
+.vt-banniere img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover }
+.vt-banniere .voile{ position:absolute; inset:0; background:linear-gradient(90deg, rgba(8,18,52,.86) 0%, rgba(8,18,52,.55) 52%, rgba(8,18,52,.05) 100%) }
+.vt-banniere .dit{ position:relative; display:flex; flex-direction:column; gap:6px; padding:22px 24px; max-width:68% }
+.vt-banniere small{ font:800 10.5px/1 'Archivo',sans-serif; letter-spacing:1.8px; color:#9FC0FF }
+.vt-banniere b{ font:900 22px/1.12 'Archivo',sans-serif; color:#fff }
+.vt-banniere em{ font:500 12.5px/1.4 'Archivo',sans-serif; font-style:normal; color:rgba(255,255,255,.86) }
+.vt-banniere:hover b{ text-decoration:underline }
 
 /* ---- LES LIENS VERS LE TELEPHONE ----
  * Des courbes fines, en pointilles qui avancent vers lui : on lit d'ou vient
@@ -1844,22 +1900,6 @@ html.wl-encadre .wl-haut{ position:static; height:auto }
     <img src="img/wallet/tok_swoge.webp" alt="">
     <span><b>SWOGE</b><i>WALLET</i></span>
   </a>
-  <!-- ---- LE MENU DU SITE, EN HAUT, ET SEULEMENT AU-DESSUS DE 1060 PIXELS ----
-       Il vivait dans une colonne a gauche du telephone. La page est devenue
-       une vitrine autour du telephone : cette colonne porte maintenant le
-       titre, et le menu monte dans le bandeau, comme sur les autres pages.
-       Memes destinations, meme ordre, memes pictogrammes — voir
-       `wallet_page.test.js`, qui relit la liste exacte. -->
-  <nav class="wl-nav" aria-label="Site">
-    <a href="index.html"><span class="ic">&#127968;</span>Home</a>
-    <a href="games.html"><span class="ic">&#127920;</span>Casino</a>
-    <a href="swogebet.html"><span class="ic">&#9917;</span>Sports</a>
-    <a href="swoge_wallet.html" class="on"><span class="ic">&#129433;</span>Wallet</a>
-    <a href="swoge_ai.html"><span class="ic">&#129302;</span>AI Trading</a>
-    <a href="swoge_agents.html"><span class="ic">&#129504;</span>Agents</a>
-    <a href="launchpad.html"><span class="ic">&#128640;</span>Launchpad</a>
-    <a href="whitepaper.html"><span class="ic">&#128220;</span>Docs</a>
-  </nav>
   <!-- La pastille dit la chaine que le telephone lit, pas une promesse : elle
        s'allume quand un compte est connecte, comme celle de l'ecran. -->
   <div class="vt-hdroite">
@@ -1897,6 +1937,30 @@ html.wl-encadre .wl-haut{ position:static; height:auto }
      traverser pour arriver a son solde. -->
 <div class="wl-page">
 
+<!-- ================== LE MENU DU SITE, A GAUCHE (03/10) ==================
+     « Le menu, tu nous l'as change de place. » Il etait monte dans le bandeau le 01/10 ;
+     il revient ou il est sur toutes les autres pages : une colonne a gauche, collee sous
+     le bandeau. Memes destinations, meme ordre, memes pictogrammes — `wallet_page.test.js`
+     relit la liste exacte. Au-dessus de 1060 pixels seulement : sur telephone, l'ecran EST
+     le portefeuille. -->
+<aside class="wl-menu" aria-label="Site">
+  <nav class="wl-nav">
+    <a href="index.html"><span class="ic">&#127968;</span>Home</a>
+    <a href="games.html"><span class="ic">&#127920;</span>Casino</a>
+    <a href="swogebet.html"><span class="ic">&#9917;</span>Sports</a>
+    <a href="swoge_wallet.html" class="on"><span class="ic">&#129433;</span>Wallet</a>
+    <a href="swoge_ai.html"><span class="ic">&#129302;</span>AI Trading</a>
+    <a href="swoge_agents.html"><span class="ic">&#129504;</span>Agents</a>
+    <a href="launchpad.html"><span class="ic">&#128640;</span>Launchpad</a>
+    <a href="whitepaper.html"><span class="ic">&#128220;</span>Docs</a>
+  </nav>
+  <div class="wl-reseaux">
+    <a href="https://x.com/SwoleDogeSwoge" target="_blank" rel="noopener" title="X — @SwoleDogeSwoge">&#120143;</a>
+    <a href="https://t.me/swoleswoge" target="_blank" rel="noopener" title="Telegram — t.me/swoleswoge">&#9992;</a>
+    <a href="https://dexscreener.com/robinhood/0x2dc0fb72d9284228046cc95910eeaabebfe48456" target="_blank" rel="noopener" title="Dexscreener — $SWOGE chart">&#128200;</a>
+  </div>
+</aside>
+
 <!-- ================== LA COLONNE DE GAUCHE ==================
      Le meme menu que le reste du site — memes destinations, meme ordre, memes
      pictogrammes. Il n'apparait qu'au-dessus de 1060 pixels : sur telephone
@@ -1920,31 +1984,37 @@ html.wl-encadre .wl-haut{ position:static; height:auto }
       <li><b>$SWOGE</b><span>&amp; $SWOGEBET</span></li>
     </ul>
   </div>
-</aside>
-
-<!-- ================== LES CARTES DE GAUCHE ==================
-     Chacune est un ecran du telephone, vu de cote. Un clic l'OUVRE dans le
-     telephone — c'est le meme `va` que la barre d'onglets. Aucune ne montre
-     un montant qu'elle n'a pas lu : un champ vide s'ecrit « -- ». -->
-<div class="vt-cartes gauche" aria-label="What the wallet does">
-  <div class="vt-carte" data-vt-va="ecEnvoyer" data-lien="g1">
-    <div class="vt-ct"><span class="vt-ic bleu">&#8599;</span><b>SEND</b><i>&rarr;</i></div>
-    <div class="vt-r"><span>Amount</span><b>--</b></div>
-    <div class="vt-r"><span>Recipient</span><b>--</b></div>
-    <div class="vt-r"><span>Network fee</span><b>--</b></div>
+<!-- ================== LES CARTES DE GAUCHE (03/10) ==================
+     « Plein de blocs avec des trous » : Send, Receive et Activity n'affichaient que des « -- »
+     tant qu'on n'etait pas connecte. Elles laissent la place a deux cartes qui disent quelque
+     chose a TOUT visiteur, lues en direct : le marche du $SWOGE (DexScreener, la paire que lit
+     deja le portefeuille) et la chaine (le noeud de Robinhood Chain). Une valeur pas encore lue
+     s'ecrit « Loading… », une lecture ratee « unavailable » — jamais un faux chiffre. -->
+  <div class="vt-cartes gauche" aria-label="Live market and chain">
+  <div class="vt-carte vt-marche" data-vt-va="ecSwap" data-lien="g1">
+    <div class="vt-ct"><span class="vt-ic bleu"><img src="img/wallet/tok_swoge.webp" alt=""></span><b>$SWOGE MARKET</b><i>&rarr;</i></div>
+    <div class="vt-prix"><b id="vtMPrix">Loading…</b><span id="vtMVar"></span></div>
+    <div class="vt-grille">
+      <div><span>Liquidity</span><b id="vtMLiq">…</b></div>
+      <div><span>Volume 24h</span><b id="vtMVol">…</b></div>
+      <div><span>Trades 24h</span><b id="vtMTx">…</b></div>
+      <div><span>Market cap</span><b id="vtMCap">…</b></div>
+    </div>
+    <p class="vt-source">Live from DexScreener &middot; tap to swap</p>
   </div>
-  <div class="vt-carte" data-vt-va="ecRecevoir" data-lien="g2">
-    <div class="vt-ct"><span class="vt-ic vert">&#8601;</span><b>RECEIVE</b><i>&rarr;</i></div>
-    <div class="vt-adr"><code id="vtRecAdr">--</code>
-      <button type="button" class="vt-mini" id="vtCopier" disabled>Copy</button></div>
-    <div class="vt-r"><span>QR code</span><b class="vt-qr" aria-hidden="true">&#9638;</b></div>
-  </div>
-  <div class="vt-carte" data-vt-va="ecActivite" data-lien="g3">
-    <div class="vt-ct"><span class="vt-ic violet">&#8635;</span><b>ACTIVITY</b><i>&rarr;</i></div>
-    <div class="vt-puces"><span>Transfers</span><span>Swaps</span><span>Bridge</span></div>
-    <p class="vt-vide" id="vtActVide">Connect your wallet to see activity</p>
+  <div class="vt-carte vt-reseau" data-vt-va="ecAccueil" data-lien="g2">
+    <div class="vt-ct"><span class="vt-ic vert"><img src="img/wallet/ch/robinhood.webp" alt=""></span><b>ROBINHOOD CHAIN</b><i class="vt-direct" id="vtRDirect">LIVE</i></div>
+    <div class="vt-grille">
+      <div><span>Latest block</span><b id="vtRBloc">…</b></div>
+      <div><span>Gas price</span><b id="vtRGaz">…</b></div>
+      <div><span>Chain ID</span><b>4663</b></div>
+      <div><span>Block time</span><b id="vtRTemps">…</b></div>
+    </div>
+    <p class="vt-source">Read from the chain's public node</p>
   </div>
 </div>
+
+</aside>
 
 <div class="wl-tel" id="tel">
 
@@ -2982,26 +3052,31 @@ html.wl-encadre .wl-haut{ position:static; height:auto }
        éléments pour aller sur SWOGE World, une table de blackjack, des trucs
        où on peut dépenser ses sous, pas des stats. » Memes lieux, memes
        films, memes liens que `games.html`. -->
-  <div class="vt-carte" data-vt-va="ecSwap" data-lien="d1">
-    <div class="vt-ct"><span class="vt-ic bleu">&#8644;</span><b>SWAP</b><i>&rarr;</i></div>
-    <div class="vt-paire"><span><img src="img/wallet/tok_swoge.webp" alt="">$SWOGE</span><em>&rarr;</em>
-      <span><img src="img/wallet/tok_eth.webp" alt="">ETH (RH)</span></div>
-    <div class="vt-r"><span>Amount</span><b>--</b></div>
-    <div class="vt-r"><span>Price impact</span><b>--</b></div>
-    <div class="vt-r"><span>Minimum received</span><b>--</b></div>
-    <div class="vt-r"><span>1 $SWOGE</span><b id="vtPrixSwoge">--</b></div>
+  <!-- 03/10 : l'echange et le pont n'affichaient que des « -- ». Une grille d'actions les
+       remplace : chaque tuile ouvre l'ecran du telephone (le meme `va` que la barre d'onglets),
+       ou la page du site qu'elle nomme. Aucune ne montre de chiffre. -->
+  <div class="vt-carte vt-rapide" data-lien="d1">
+    <div class="vt-ct"><span class="vt-ic bleu">&#9889;</span><b>QUICK ACTIONS</b></div>
+    <div class="vt-tuiles">
+      <button type="button" data-vt-va="ecEnvoyer"><span>&#8599;</span>Send</button>
+      <button type="button" data-vt-va="ecRecevoir"><span>&#8601;</span>Receive</button>
+      <button type="button" data-vt-va="ecSwap"><span>&#8644;</span>Swap</button>
+      <button type="button" data-vt-va="ecPont"><span>&#8669;</span>Bridge</button>
+      <button type="button" data-vt-va="ecSwap" data-vt-acheter><span><img src="img/wallet/tok_swoge.webp" alt=""></span>Buy $SWOGE</button>
+      <button type="button" data-vt-va="ecActivite"><span>&#8635;</span>Activity</button>
+      <a href="launchpad.html"><span>&#128640;</span>Launchpad</a>
+      <a href="swoge_agents.html"><span>&#129504;</span>AI Agents</a>
+    </div>
   </div>
-  <div class="vt-carte" data-vt-va="ecPont" data-lien="d2">
-    <div class="vt-ct"><span class="vt-ic violet">&#8669;</span><b>BRIDGE</b><i>&rarr;</i></div>
-    <div class="vt-paire"><span><img src="img/wallet/ch/ethereum.webp" alt="">Ethereum</span><em>&rarr;</em>
-      <span><img src="img/wallet/ch/robinhood.webp" alt="">Robinhood</span></div>
-    <div class="vt-r"><span>Amount</span><b>--</b></div>
-    <div class="vt-r"><span>Bridge fee</span><b>--</b></div>
-    <div class="vt-r"><span>Network fee</span><b>--</b></div>
+  <!-- Les jetons de la maison, avec leur prix lu en direct ; le solde quand on est connecte. -->
+  <div class="vt-carte vt-mesjetons" data-vt-va="ecJetons" data-lien="d2">
+    <div class="vt-ct"><span class="vt-ic violet">&#9673;</span><b>TOKENS</b><i>&rarr;</i></div>
+    <div class="vt-jl" id="vtJl"></div>
+    <button type="button" class="vt-mini vt-connect-l" data-vt-connecte id="vtJlConnect">Connect to see your balances</button>
   </div>
   <div class="vt-carte or" data-vt-va="ecCasino" data-lien="d3">
     <div class="vt-ct"><span class="vt-ic or">&#9824;</span><b>CASINO GAME VAULT</b><i>&rarr;</i></div>
-    <div class="vt-r"><span>In the game vault</span><b id="vtCoffre">--</b></div>
+    <div class="vt-r"><span>In the game vault</span><b id="vtCoffre">Connect to see</b></div>
     <div class="vt-actions">
       <button type="button" data-vt-va="ecCasino">Deposit to play</button>
       <button type="button" data-vt-va="ecCasino">Withdraw to wallet</button>
@@ -3052,6 +3127,20 @@ html.wl-encadre .wl-haut{ position:static; height:auto }
 </nav>
 
 <main class="vt-vitrine" id="vitrine">
+
+  <!-- 03/10 : deux bannieres pour aller plus loin, sous le telephone — le monde et le launchpad. -->
+  <div class="vt-bannieres">
+    <a class="vt-banniere monde" href="nexus.html">
+      <img src="img/site/accueil/cta.webp" alt="" loading="lazy">
+      <span class="voile"></span>
+      <span class="dit"><small>SWOGE WORLD</small><b>Explore the Robinhood Chain ecosystem</b><em>Games, agents and tokens, straight from your wallet &rarr;</em></span>
+    </a>
+    <a class="vt-banniere lance" href="launchpad.html">
+      <img src="img/site/accueil/hero.webp" alt="" loading="lazy">
+      <span class="voile"></span>
+      <span class="dit"><small>LAUNCHPAD</small><b>Launch your own token</b><em>On the launchpad, or just ask SwoleMind &rarr;</em></span>
+    </a>
+  </div>
 
   <!-- 1. UN SEUL PORTEFEUILLE -->
   <section class="vt-sec" id="vtUn" data-ecran="ecAccueil">
@@ -10911,16 +11000,28 @@ function peint(){
     b.textContent = c ? 'My account' : 'Connect wallet';
   });
 
-  $('vtRecAdr').textContent = c ? court(e.adresse) : '--';
-  $('vtCopier').disabled = !c;
-  $('vtActVide').textContent = c ? 'Your history opens on the phone' : 'Connect your wallet to see activity';
-
-  var sw = null;
-  for(var i=0;i<e.jetons.length;i++) if(e.jetons[i].cle === 'swoge') sw = e.jetons[i];
-  $('vtPrixSwoge').textContent = sw ? prix(sw.prix) : '--';
   /* Le coffre n'est connu qu'une fois l'ecran du casino ouvert : avant, on
-     ne sait pas, et on ne l'ecrit pas « 0 ». */
-  $('vtCoffre').textContent = e.coffre.swoge ? e.coffre.swoge + ' $SWOGE' : '--';
+     ne sait pas, et on ne l'ecrit pas « 0 » — ni « -- » (03/10 : « des blocs avec des
+     trous ») : on dit ce qu'il faut faire pour le voir. */
+  $('vtCoffre').textContent = e.coffre.swoge ? e.coffre.swoge + ' $SWOGE' : (c ? 'Open the vault' : 'Connect to see');
+
+  /* ---- LES JETONS, A DROITE (03/10) : le prix pour tous, le solde une fois connecte ---- */
+  var J = $('vtJl');
+  J.textContent = '';
+  e.jetons.forEach(function(j){
+    var r = el('div', 'l');
+    if(j.logo){ var im = el('img'); im.src = j.logo; im.alt = ''; r.appendChild(im); }
+    else r.appendChild(el('em', '', String(j.sym || '?').slice(0,2)));
+    var n = el('span'); n.appendChild(el('b', '', j.sym)); n.appendChild(el('small', '', j.nom)); r.appendChild(n);
+    var v = el('span', 'v');
+    /* Le $SWOGE a son prix de marche (ci-dessous) avant que le telephone ait le sien. */
+    if(j.cle === 'swoge' && !(j.prix > 0) && prixMarche > 0) j = Object.assign({}, j, { prix: prixMarche });
+    if(c && j.solde !== null && j.solde !== undefined){ v.appendChild(el('span', '', j.solde)); v.appendChild(el('small', '', prix(j.prix) === '--' ? '' : prix(j.prix))); }
+    else v.textContent = prix(j.prix) === '--' ? 'Price loading…' : prix(j.prix);
+    r.appendChild(v);
+    J.appendChild(r);
+  });
+  $('vtJlConnect').hidden = c;
   $('vtCoffre2').textContent = e.coffre.swoge ? e.coffre.swoge + ' $SWOGE' : 'Your playing balance';
 
   /* la table */
@@ -10984,6 +11085,70 @@ function miroir(){
 }
 if($('acvCorps')) new MutationObserver(planifie).observe($('acvCorps'), { childList:true });
 
+/* ---- LE MARCHE ET LA CHAINE, EN DIRECT (03/10) ----
+ * Ce que tout visiteur peut lire sans se connecter : la paire $SWOGE / WETH sur DexScreener
+ * (celle que lit deja le portefeuille) et le noeud public de Robinhood Chain. Toutes les
+ * 30 secondes, et seulement quand la page est visible et assez large pour montrer les cartes.
+ * Une lecture ratee s'ecrit « unavailable », jamais un ancien chiffre presente comme frais. */
+var PAIRE = '0x2Dc0fb72d9284228046CC95910eEAaBeBfe48456', prixMarche = null;
+var RPC = 'https://rpc.mainnet.chain.robinhood.com';
+function compact(v){
+  if(!isFinite(v)) return 'unavailable';
+  if(v >= 1e6) return '$' + (v/1e6).toFixed(2) + 'M';
+  if(v >= 1e3) return '$' + (v/1e3).toFixed(1) + 'K';
+  return '$' + v.toFixed(0);
+}
+function ecrit(id, t){ var x = $(id); if(x) x.textContent = t; }
+function marche(){
+  fetch('https://api.dexscreener.com/latest/dex/pairs/robinhood/' + PAIRE, { cache:'no-store' })
+    .then(function(r){ return r.json(); }).then(function(j){
+      var p = j && (j.pair || (j.pairs && j.pairs[0]));
+      if(!p) throw new Error('no pair');
+      prixMarche = Number(p.priceUsd);
+      ecrit('vtMPrix', prix(prixMarche));
+      planifie();
+      var ch = p.priceChange && Number(p.priceChange.h24), m = $('vtMVar');
+      m.textContent = isFinite(ch) ? (ch >= 0 ? '+' : '') + ch.toFixed(2) + '% 24h' : '';
+      m.className = isFinite(ch) ? (ch >= 0 ? 'haut' : 'bas') : '';
+      ecrit('vtMLiq', compact(Number(p.liquidity && p.liquidity.usd)));
+      ecrit('vtMVol', compact(Number(p.volume && p.volume.h24)));
+      var tx = p.txns && p.txns.h24;
+      ecrit('vtMTx', tx ? String((tx.buys || 0) + (tx.sells || 0)) : 'unavailable');
+      ecrit('vtMCap', compact(Number(p.marketCap || p.fdv)));
+    })['catch'](function(){ ecrit('vtMPrix', 'Unavailable'); ['vtMLiq','vtMVol','vtMTx','vtMCap'].forEach(function(i){ ecrit(i, 'unavailable'); }); });
+}
+var dernierBloc = null;
+function rpc(methode, params){
+  return fetch(RPC, { method:'POST', headers:{ 'content-type':'application/json' },
+    body: JSON.stringify({ jsonrpc:'2.0', id:1, method:methode, params:params || [] }) })
+    .then(function(r){ return r.json(); }).then(function(j){ if(!j || j.error || j.result === undefined) throw new Error('rpc'); return j.result; });
+}
+function chaine(){
+  Promise.all([rpc('eth_getBlockByNumber', ['latest', false]), rpc('eth_gasPrice')]).then(function(r){
+    var b = r[0], n = parseInt(b.number, 16), t = parseInt(b.timestamp, 16);
+    ecrit('vtRBloc', '#' + n.toLocaleString('en-US'));
+    var g = parseInt(r[1], 16) / 1e9;
+    ecrit('vtRGaz', (g < 0.01 ? g.toFixed(4) : g.toFixed(2)) + ' gwei');
+    /* Le temps de bloc se MESURE entre deux lectures, il ne s'annonce pas. */
+    if(dernierBloc && n > dernierBloc.n) ecrit('vtRTemps', ((t - dernierBloc.t) / (n - dernierBloc.n)).toFixed(2) + ' s');
+    else if(!dernierBloc) ecrit('vtRTemps', 'measuring…');
+    dernierBloc = { n:n, t:t };
+    $('vtRDirect').className = 'vt-direct'; $('vtRDirect').textContent = 'LIVE';
+  })['catch'](function(){
+    ['vtRBloc','vtRGaz','vtRTemps'].forEach(function(i){ ecrit(i, 'unavailable'); });
+    $('vtRDirect').className = 'vt-direct non'; $('vtRDirect').textContent = 'OFFLINE';
+  });
+}
+function direct(){
+  if(document.hidden || !cote.matches) return;
+  marche(); chaine();
+}
+direct();
+/* Une seconde lecture de la chaine 4 s apres la premiere : le temps de bloc se mesure tout de suite. */
+setTimeout(function(){ if(!document.hidden && cote.matches) chaine(); }, 4000);
+setInterval(direct, 30000);
+document.addEventListener('visibilitychange', function(){ if(!document.hidden) direct(); });
+
 /* ---- MONTRER LE TELEPHONE APRES UN GESTE ---- */
 function montreTel(){
   var r = tel.getBoundingClientRect();
@@ -11010,14 +11175,6 @@ function arreteVisite(){
 document.addEventListener('click', function(ev){
   var t = ev.target;
   if(!t.closest) return;
-  if(t.closest('#vtCopier')){
-    var a = W.etat().adresse;
-    if(a && navigator.clipboard) navigator.clipboard.writeText(a).then(function(){
-      $('vtCopier').textContent = 'Copied';
-      setTimeout(function(){ $('vtCopier').textContent = 'Copy'; }, 1400);
-    })['catch'](function(){});
-    return;
-  }
   if(t.closest('[data-vt-connecte]')){ arreteVisite(); W.connecte(); montreTel(); return; }
   var v = t.closest('[data-vt-va]');
   if(v && !t.closest('a')){
@@ -11119,7 +11276,9 @@ function marqueRail(id){
 }
 function visite(id){
   marqueRail(id);
-  if(!grand.matches || touche || feuilleOuverte() || id === enCours) return;
+  /* 03/10 : le telephone ne colle plus (les sections ont toute la largeur) : la visite ne joue
+     que si une mise en page le refait coller. Le defilement ne change jamais un ecran qu'on ne voit pas. */
+  if(!grand.matches || getComputedStyle(tel).position !== 'sticky' || touche || feuilleOuverte() || id === enCours) return;
   /* L'historique relit la chaine (getLogs sur trente jours) : une fois par
      minute au plus, quel que soit le nombre d'allers-retours du lecteur. */
   if(id === 'ecActivite'){

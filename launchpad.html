@@ -1248,6 +1248,10 @@ async function lanceV4(){
     var o=d.offre;
     var res=await window.SwogeLance.lance(o,{fournisseur:rawEth,statut:function(t){ note.className="note"; note.textContent=t; }});
     note.className="note ok"; note.textContent="🎉 $"+o.symbol+" is live on Robinhood Chain.";
+    /* Demande venue de Telegram : le bot annonce le jeton dans son chat, apres avoir relu la
+       transaction sur la chaine (le serveur ne croit pas la page sur parole). */
+    if(lpTg) fetch(lpServeur()+"/launchpad/v4/lance",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({tg:lpTg,tx:res.tx})})
+      .then(function(r){ return r.json(); }).then(function(d){ if(d&&d.ok) toast("Announced in your Telegram chat ✓"); })["catch"](function(){});
     kit(o,res);
     toast("Token launched 🚀");
   }catch(e){
@@ -1333,7 +1337,16 @@ $("#createBtn").onclick=async function(){
   }
   finally{ btn.disabled=false; if(v3Live()) btn.innerHTML="⚡ Launch on Uniswap"; }
 };
-choisisPool("swoge");
+/* 03/10 : un lien du bot Telegram (/launch) : ?pool=&name=&symbol=&tg=. On remplit, on ne lance
+   rien : le joueur relit et signe lui-meme. `tg` ne sert qu'a annoncer le jeton dans le chat. */
+var lpTg=null;
+(function(){
+  var q; try{ q=new URLSearchParams(location.search); }catch(e){ return choisisPool("swoge"); }
+  var p=q.get("pool"); choisisPool(p==="eth"||p==="v3"?p:"swoge");
+  if(q.get("name")) $("#cName").value=String(q.get("name")).slice(0,40);
+  if(q.get("symbol")) $("#cSym").value=String(q.get("symbol")).replace(/[^A-Za-z0-9]/g,"").slice(0,12).toUpperCase();
+  if(/^[0-9a-f]{16}$/.test(q.get("tg")||"")){ lpTg=q.get("tg"); $("#createNote").className="note"; $("#createNote").textContent="Prepared from Telegram — check the name, connect your wallet and press Launch. Nothing is sent until you sign."; }
+})();
 
 /* ---------- token logos (off-chain, from logos.json in the repo) ---------- */
 var logoMap = {};

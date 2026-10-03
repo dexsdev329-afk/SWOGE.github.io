@@ -177,6 +177,36 @@ const gp = (taxe) => ({ is_honeypot: '0', is_mintable: '0', hidden_owner: '0', c
   ok((await pg.evaluate(() => window.__lances[1] && window.__lances[1].o.launchpad)) === LP.eth.adresse, 'cette fois l offre visait le launchpad ETH');
   ok(!(await pg.isDisabled('#createBtn')), 'le bouton redevient utilisable');
 
+  console.log('\n-- un lien du bot Telegram (/launch, 03/10) --');
+  /* Le bot repond par launchpad.html?pool=&name=&symbol=&tg=. La page remplit, ne lance rien seule,
+     et apres la signature dit au serveur quelle transaction annoncer (il la relit sur la chaine). */
+  const annonces = [];
+  await ctx.route('**/launchpad/v4/lance', (r) => { annonces.push(JSON.parse(r.request().postData() || '{}'));
+    r.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: '{"ok":true}' }); });
+  const pt = await ctx.newPage();
+  pt.on('pageerror', (e) => erreurs.push(String(e.message || e)));
+  await pt.goto('http://127.0.0.1:' + srv.address().port + '/launchpad.html?pool=eth&name=Moon%20Dog&symbol=MDOG&tg=0123456789abcdef', { waitUntil: 'load' });
+  await pt.waitForTimeout(600);
+  ok(await pt.getAttribute('.lp-pool[data-pool="eth"]', 'aria-checked') === 'true' && await pt.inputValue('#cName') === 'Moon Dog' && await pt.inputValue('#cSym') === 'MDOG',
+     'le lien choisit le pool ETH et remplit nom et symbole');
+  ok(/Prepared from Telegram/.test(await pt.textContent('#createNote')) && (await pt.evaluate(() => (window.__lances || []).length)) === 0, 'la page dit d ou vient la demande ; rien n est parti tout seul');
+  const piege = await ctx.newPage();
+  await piege.goto('http://127.0.0.1:' + srv.address().port + '/launchpad.html?pool=evil&symbol=%3Cimg%20src%3Dx%3E&tg=nope', { waitUntil: 'load' });
+  await piege.waitForTimeout(400);
+  ok(await piege.getAttribute('.lp-pool[data-pool="swoge"]', 'aria-checked') === 'true' && await piege.inputValue('#cSym') === 'IMGSRCX' && !/Telegram/.test(await piege.textContent('#createNote')),
+     'un lien trafique : pool inconnu → $SWOGE, symbole nettoye, identifiant invalide ignore');
+  await piege.close();
+  await pt.click('#walletBtn');
+  await pt.click('#wpickList .wrow:has-text("Browser wallet")');
+  await pt.waitForFunction(() => /0x49eE/i.test(document.querySelector('#walletBtn').textContent || ''), { timeout: 10000 }).catch(() => {});
+  await pt.evaluate(({ jeton, pool }) => { window.SwogeLance.lance = function (o, opts) { opts.statut('…'); return Promise.resolve({ token: jeton, pool, tx: '0x' + '4'.repeat(64) }); }; }, { jeton: JETON, pool: POOL });
+  await pt.click('#createBtn');
+  await pt.waitForFunction(() => !document.querySelector('#lpKit').hidden, { timeout: 5000 }).catch(() => {});
+  await pt.waitForTimeout(300);
+  ok(annonces.length === 1 && annonces[0].tg === '0123456789abcdef' && annonces[0].tx === '0x' + '4'.repeat(64) && Object.keys(annonces[0]).length === 2,
+     'lance : la page envoie l identifiant Telegram et la transaction, rien d autre ' + JSON.stringify(annonces[0] || {}));
+  await pt.close();
+
   ok(erreurs.length === 0, erreurs.length ? 'erreurs de script : ' + erreurs.slice(0, 2).join(' | ') : 'aucune erreur de script');
   await nav.close(); srv.close();
   console.log('\nVERIFICATIONS : ' + n + (rates ? ' — ' + rates + ' RATE(S)' : ' — tout passe'));

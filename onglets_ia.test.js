@@ -41,7 +41,7 @@ let chromium = null; try { chromium = require('playwright').chromium; } catch (e
     await p.goto(base + 'swoge_predict.html', { waitUntil: 'domcontentloaded' });
     const r = await p.evaluate(() => { const b = document.querySelector('.ia-onglets'); const rc = b.getBoundingClientRect();
       return { vis: rc.width > 0 && rc.height > 0, liens: [...b.querySelectorAll('a')].map((a) => a.getAttribute('href')), large: document.documentElement.scrollWidth, droite: rc.right }; });
-    ok(r.vis && r.liens.length === 4 && r.droite <= w + 1, 'a ' + w + ' px, la barre se voit, quatre onglets, rien ne depasse (' + Math.round(r.droite) + ' px)');
+    ok(r.vis && r.liens.length === O.PAGES.length && O.PAGES.every((x) => r.liens.includes(x.f)) && r.large <= w + 1 && r.droite <= w + 1, 'a ' + w + ' px, la barre se voit, un onglet par page (' + r.liens.length + '), rien ne depasse (' + Math.round(r.droite) + ' px)');
     if (w === 1280) {
       await p.click('.ia-onglets a[href="swoge_polymarket_ai.html"]');
       await p.waitForLoadState('domcontentloaded');

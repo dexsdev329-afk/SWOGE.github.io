@@ -9,7 +9,8 @@
  *   1. une barre d'onglets IDENTIQUE en tete de chacune, l'onglet courant marque ;
  *   2. le menu du site n'a plus qu'UNE entree « AI Trading » au lieu de quatre.
  *
- *   node outils/onglets_ia.js      reecrit les quatre pages et les menus du site
+ *   node outils/onglets_ia.js      reecrit les pages et les menus du site
+ * 03/10/2026 : une cinquieme, swoge_colonies.html (Solana & ETH) ; la grille suit PAGES.length.
  * onglets_ia.test.js echoue si une page n'est plus celle que donne ce script.
  * ==========================================================================*/
 const fs = require('fs'), path = require('path');
@@ -19,6 +20,8 @@ const PAGES = [
   { f: 'swoge_perp.html', ic: '&#128200;', nom: 'AI Perps', sous: 'Agents on BTC, ETH, SOL perps' },
   { f: 'swoge_predict.html', ic: '&#128302;', nom: 'Predict', sous: 'PancakeSwap rounds, 5 min' },
   { f: 'swoge_polymarket_ai.html', ic: '&#127919;', nom: 'Polymarket AI', sous: '15-minute crypto markets' },
+  /* 03/10 : la colonie Solana / Ethereum (etape 1, observer) a sa page ; elle rejoint la barre. */
+  { f: 'swoge_colonies.html', ic: '&#127760;', nom: 'Solana & ETH', sous: 'New tokens, 3 chains observed' },
 ];
 const DEBUT = '<!-- ONGLETS-IA:debut (genere par outils/onglets_ia.js, ne pas editer ici) -->';
 const FIN = '<!-- ONGLETS-IA:fin -->';
@@ -31,7 +34,7 @@ const ENTREE = '<a href="swoge_ai.html"%CLS%><span class="ic">&#129302;</span>AI
 
 function bloc(courante) {
   return DEBUT + '\n<style>\n'
-    + '.ia-onglets{margin:0 0 14px;padding:4px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;background:#E1E9F6;border-radius:16px}\n'
+    + '.ia-onglets{margin:0 0 14px;padding:4px;display:grid;grid-template-columns:repeat(' + PAGES.length + ',minmax(0,1fr));gap:4px;background:#E1E9F6;border-radius:16px}\n'
     + '@media (max-width:640px){ .ia-onglets{grid-template-columns:1fr 1fr} }\n'
     + '.ia-onglets a{display:flex;flex-direction:column;gap:2px;min-width:0;padding:8px 12px;border-radius:12px;text-decoration:none;color:#6B7C99;min-height:44px;justify-content:center}\n'
     + '.ia-onglets a:hover{color:#0B1B36}\n'

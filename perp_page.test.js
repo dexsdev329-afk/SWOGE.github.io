@@ -575,8 +575,9 @@ const txt = (page, sel) => page.$eval(sel, (e) => (e.textContent || '').trim()).
        'le menu n a qu une entree pour les quatre pages d IA : ' + liens.filter((h) => /swoge_ai/.test(h)).join(', '));
     ok(/AI Trading/.test(await page.$eval('.sw-nav a.on', (e) => e.textContent)), 'et elle est marquee courante sur la page des perps');
     const onglets = await page.$$eval('.ia-onglets a', (e) => e.map((x) => ({ h: x.getAttribute('href'), c: x.getAttribute('aria-current') })));
-    ok(onglets.map((o) => o.h).join(',') === 'swoge_ai.html,swoge_perp.html,swoge_predict.html,swoge_polymarket_ai.html'
-       && onglets.filter((o) => o.c === 'page').map((o) => o.h).join() === 'swoge_perp.html', 'les onglets en tete : les quatre pages, celle des perps marquee');
+    /* 03/10 : une cinquieme page (Solana & ETH) ; l intention reste : toutes les pages d IA, dans l ordre du script, celle des perps marquee. */
+    ok(onglets.map((o) => o.h).join(',') === require('./outils/onglets_ia.js').PAGES.map((p) => p.f).join(',') && onglets.length === 5
+       && onglets.filter((o) => o.c === 'page').map((o) => o.h).join() === 'swoge_perp.html', 'les onglets en tete : les ' + onglets.length + ' pages d IA, celle des perps marquee');
     const ailleurs = fs.readFileSync(path.join(SITE, 'index.html'), 'utf8');
     const menuAccueil = (ailleurs.match(/<nav class="sw-nav">[\s\S]*?<\/nav>/) || [''])[0];
     ok(!/swoge_perp/.test(menuAccueil) && (menuAccueil.match(/AI Trading/g) || []).length === 1, 'le menu de l accueil aussi : une entree AI Trading');

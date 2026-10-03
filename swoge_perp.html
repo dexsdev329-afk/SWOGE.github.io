@@ -38,7 +38,7 @@
  * Meme garde que `swoge_ai.html` : sans elle, un joueur garde des semaines
  * une version corrigee depuis longtemps, et ici cela voudrait dire une
  * colonie qui a l'air arretee alors qu'elle tourne. */
-var MARQUE_PAGE = '135989af';
+var MARQUE_PAGE = '47aa319e';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -289,7 +289,7 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
   <main>
 <!-- ONGLETS-IA:debut (genere par outils/onglets_ia.js, ne pas editer ici) -->
 <style>
-.ia-onglets{margin:0 0 14px;padding:4px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;background:#E1E9F6;border-radius:16px}
+.ia-onglets{margin:0 0 14px;padding:4px;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px;background:#E1E9F6;border-radius:16px}
 @media (max-width:640px){ .ia-onglets{grid-template-columns:1fr 1fr} }
 .ia-onglets a{display:flex;flex-direction:column;gap:2px;min-width:0;padding:8px 12px;border-radius:12px;text-decoration:none;color:#6B7C99;min-height:44px;justify-content:center}
 .ia-onglets a:hover{color:#0B1B36}
@@ -304,6 +304,7 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
   <a href="swoge_perp.html" aria-current="page"><b>&#128200; AI Perps</b><small>Agents on BTC, ETH, SOL perps</small></a>
   <a href="swoge_predict.html"><b>&#128302; Predict</b><small>PancakeSwap rounds, 5 min</small></a>
   <a href="swoge_polymarket_ai.html"><b>&#127919; Polymarket AI</b><small>15-minute crypto markets</small></a>
+  <a href="swoge_colonies.html"><b>&#127760; Solana & ETH</b><small>New tokens, 3 chains observed</small></a>
 </nav>
 <!-- ONGLETS-IA:fin -->
   <div class="pp-wrap">

@@ -27,6 +27,11 @@
 @media (prefers-reduced-motion:reduce){ #modeBrowse .bw-cadre.charge::after{animation:none;left:0;width:100%;opacity:.5} }
 /* 02/10 : l'ecran arrive en direct (flux d'images de Chromium) : une pastille le dit. */
 #modeBrowse .bw-cadre.direct::before{content:"LIVE";position:absolute;right:8px;top:8px;z-index:2;padding:3px 7px;border-radius:999px;background:rgba(18,161,80,.92);color:#fff;font:800 10px/1 system-ui,sans-serif;letter-spacing:1px;pointer-events:none}
+/* 03/10 : « sur Google, j'arrive pas a ecrire avec mon clavier ». Le clavier va maintenant a la
+   page : une zone de saisie invisible prend le focus apres un clic sur l'ecran (ou le bouton ⌨
+   sur telephone, qui ouvre le clavier), et le cadre le montre. */
+#modeBrowse .bw-clavier{position:absolute;left:0;top:0;width:1px;height:1px;opacity:0;border:0;padding:0;resize:none;font-size:16px;pointer-events:none}
+#modeBrowse .bw-cadre.clavier{outline:2px solid var(--accent,#1652F0);outline-offset:-2px}
 #modeBrowse .bw-vide{padding:40px 18px;text-align:center;color:var(--dim);font-size:14px;line-height:1.5}
 #modeBrowse .bw-statut{font-size:12.5px;color:var(--dim);margin-top:6px;min-height:18px}
 #modeBrowse .bw-statut.mal{color:#c0392b}
@@ -73,14 +78,16 @@
       <input id="bw-adresse" type="text" inputmode="url" autocomplete="off" spellcheck="false" placeholder="Type an address or a search" aria-label="Address or search">
       <button type="button" id="bw-va">Go</button>
       <button type="button" id="bw-ecranMode" aria-label="Desktop or phone view" title="Desktop or phone view">&#128421;</button>
+      <button type="button" id="bw-clavierBtn" aria-label="Type on the page with your keyboard" title="Type on the page">&#9000;</button>
     </div>
     <div class="bw-cadre">
       <div class="bw-vide" id="bw-vide">Open any website: type an address or a search above. You browse a real browser running on our server — click on the page to click, scroll over it to scroll.</div>
       <img id="bw-ecran" alt="What the browser shows" hidden>
+      <textarea id="bw-clavier" class="bw-clavier" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="Keyboard input for the page" tabindex="-1"></textarea>
     </div>
     <div class="bw-statut" id="bw-statut" role="status"></div>
     <div class="bw-tape">
-      <input id="bw-texte" type="text" autocomplete="off" placeholder="Click a field on the page, then type here" aria-label="Text to type into the page">
+      <input id="bw-texte" type="text" autocomplete="off" placeholder="Or type a whole text here, then press Type" aria-label="Text to type into the page">
       <button type="button" id="bw-envoieTexte">Type</button>
       <button type="button" id="bw-entree">Enter &#8629;</button>
     </div>
@@ -180,7 +187,7 @@
       .then(function(r){
         libre();
         if (!r.x || !r.x.ok) { if (!discret) statut((r.x && r.x.raison) || "The browser did not answer.", true); if (apres) apres(false); return suite(); }
-        if (discret && !r.x.image) return suite();
+        if (discret && !r.x.image) { if (apres) apres(true); return suite(); }
         peins(r.x); if (apres) apres(true);
         /* En flux CONFIRME, la suite de la page arrive en images : plus de capture de suivi. Tant
            que le serveur ne l'a pas confirme (ou s'il ne le sert pas), la capture de suivi reste. */
@@ -262,10 +269,57 @@
     etat.ecran = etat.ecran === "telephone" ? "bureau" : "telephone"; ecris("swogeBrowserEcran", etat.ecran); peintEcranMode();
     if (etat.url) geste({ action: "goto", url: etat.url });
   });
-  /* Un clic sur la capture = un clic au meme endroit de la vraie page. */
+  /* Un clic sur la capture = un clic au meme endroit de la vraie page. Puis le clavier va a la page
+     (ordinateur) ; sur telephone, c'est le bouton ⌨ qui l'ouvre — sinon chaque toucher sur un lien
+     ferait surgir le clavier. */
+  var tactile = !!(window.matchMedia && matchMedia("(pointer: coarse)").matches);
   $("ecran").addEventListener("click", function(e){
     var r = $("ecran").getBoundingClientRect();
     geste({ action: "clic", x: Math.round((e.clientX - r.left) * etat.l / r.width), y: Math.round((e.clientY - r.top) * etat.h / r.height) });
+    if (!tactile) prendClavier();
+  });
+
+  /* ---- LE CLAVIER, DIRECTEMENT DANS LA PAGE (03/10/2026) ----
+     Les lettres sont mises en FILE et regroupees : le serveur accepte un geste toutes les 250 ms, et
+     un geste pendant un chargement remplacait le precedent — une lettre tapee vite etait perdue.
+     Entree, Retour arriere, Tab, Echap et les fleches partent comme touches ; un collage part en texte. */
+  var TOUCHES_CLAVIER = { Enter: 1, Backspace: 1, Tab: 1, Escape: 1, ArrowUp: 1, ArrowDown: 1, ArrowLeft: 1, ArrowRight: 1, PageUp: 1, PageDown: 1, Home: 1, End: 1 };
+  var clav = $("clavier"), compose = false, fileClavier = [], frappeEnCours = false;
+  function prendClavier(){ try { clav.focus({ preventScroll: true }); } catch (e) { clav.focus(); } }
+  function frappe(op){
+    var d = fileClavier[fileClavier.length - 1];
+    if (op.texte && d && d.texte && !d.parti && d.texte.length + op.texte.length <= 500) d.texte += op.texte;
+    else fileClavier.push(op);
+    vidange();
+  }
+  function vidange(){
+    if (frappeEnCours || !fileClavier.length) return;
+    if (etat.occupe) { setTimeout(vidange, 120); return; }
+    var op = fileClavier[0]; op.parti = true; frappeEnCours = true;
+    geste(op.texte ? { action: "tape", texte: op.texte } : { action: "touche", touche: op.touche }, function(ok){
+      /* Refuse pour la cadence (ou un reseau qui hoquette) : on reessaie, deux fois au plus. */
+      if (ok || (op.essais = (op.essais || 0) + 1) > 2) fileClavier.shift();
+      setTimeout(function(){ frappeEnCours = false; vidange(); }, ok ? 260 : 450);
+    }, true);
+  }
+  function videClavier(){ var t = clav.value; clav.value = ""; if (t) frappe({ texte: t }); }
+  clav.addEventListener("compositionstart", function(){ compose = true; });
+  clav.addEventListener("compositionend", function(){ compose = false; videClavier(); });
+  clav.addEventListener("keydown", function(e){
+    if (compose || e.isComposing || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (TOUCHES_CLAVIER[e.key]) { e.preventDefault(); videClavier(); frappe({ touche: e.key }); }
+  });
+  /* Telephone : Retour arriere et Entree arrivent souvent ainsi plutot qu'en touche. */
+  clav.addEventListener("beforeinput", function(e){
+    if (e.inputType === "deleteContentBackward" && !clav.value) { e.preventDefault(); frappe({ touche: "Backspace" }); }
+    else if (e.inputType === "insertLineBreak" || e.inputType === "insertParagraph") { e.preventDefault(); videClavier(); frappe({ touche: "Enter" }); }
+  });
+  clav.addEventListener("input", function(){ if (!compose) videClavier(); });
+  clav.addEventListener("focus", function(){ if (cadre()) cadre().classList.add("clavier"); if (etat.image) statut("Typing goes to the page — click outside the screen to stop."); });
+  clav.addEventListener("blur", function(){ if (cadre()) cadre().classList.remove("clavier"); });
+  $("clavierBtn").addEventListener("click", function(){
+    if (!etat.image) { statut("Open a page first, then tap a field on it.", true); return; }
+    prendClavier();
   });
   var cumul = 0, minuteur = null;
   $("ecran").addEventListener("wheel", function(e){

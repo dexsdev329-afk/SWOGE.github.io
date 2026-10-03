@@ -352,6 +352,59 @@ let chromium = null; try { chromium = require('playwright').chromium; } catch (e
     await ctx.close();
   }
 
+  /* 03/10 : « sur Google j arrive pas a ecrire avec mon clavier ». Apres un clic sur l ecran, le
+     clavier va a la page ; les lettres tapees vite ne se perdent plus (file, regroupees). */
+  console.log('\n-- Browse : ecrire au clavier, directement dans la page --');
+  {
+    const ctx = await nav.newContext({ viewport: { width: 1280, height: 900 } });
+    const p = await ctx.newPage(), erreurs = [];
+    p.on('pageerror', (e) => erreurs.push(String(e.message || e)));
+    const vue = (await p.screenshot({ type: 'jpeg', quality: 40, clip: { x: 0, y: 0, width: 64, height: 40 } })).toString('base64');
+    const gestes = [];
+    await p.addInitScript(() => { try { localStorage.setItem('swogeSession', 'jeton-essai'); } catch (e) {} });
+    await p.route('**/*', (r) => r.request().url().startsWith(base) ? r.continue() : r.abort());
+    await p.route('**/navigateur/etat', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, actif: true }) }));
+    await p.route('**/navigateur/image', (r) => r.fulfill({ status: 404, contentType: 'text/plain', body: 'not found' }));
+    let premierTape = true;
+    await p.route('**/navigateur/geste', async (r) => { const b = JSON.parse(r.request().postData()); gestes.push(b);
+      /* Le serveur prend son temps, et refuse UNE fois pour la cadence : rien ne doit se perdre. */
+      await new Promise((s2) => setTimeout(s2, 150));
+      if (b.action === 'tape' && premierTape) { premierTape = false; return r.fulfill({ status: 429, contentType: 'application/json', body: JSON.stringify({ ok: false, raison: 'slow down' }) }); }
+      r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, url: 'https://www.google.com/', titre: 'Google', image: vue, ecran: { width: 1280, height: 800 }, note: null }) }); });
+    await p.goto(base + CIBLE + '?mode=browse', { waitUntil: 'load' });
+    await p.waitForTimeout(300);
+    await p.fill('#bw-adresse', 'google.com'); await p.click('#bw-va');
+    await p.waitForFunction(() => !document.getElementById('bw-ecran').hidden);
+    await p.waitForTimeout(300);
+    const box = await p.$eval('#bw-ecran', (i) => { const r = i.getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height }; });
+    await p.mouse.click(box.x + box.w / 2, box.y + box.h / 3);
+    ok(await p.evaluate(() => document.activeElement && document.activeElement.id === 'bw-clavier' && document.querySelector('#bw-ecran').parentNode.classList.contains('clavier')),
+       'apres un clic sur l ecran, le clavier va a la page (et le cadre le montre)');
+    await p.keyboard.type('swoge price', { delay: 15 });
+    await p.keyboard.press('Backspace');
+    await p.keyboard.type('e');
+    await p.keyboard.press('Enter');
+    await p.waitForFunction(() => true);
+    for (let k = 0; k < 40; k++) { if (gestes.some((g) => g.touche === 'Enter')) break; await p.waitForTimeout(150); }
+    await p.waitForTimeout(400);
+    const apres = gestes.slice(gestes.findIndex((g) => g.action === 'clic') + 1);
+    const texte = apres.filter((g) => g.action === 'tape').map((g) => g.texte);
+    const suite = apres.map((g) => g.action === 'tape' ? 'tape' : g.action === 'touche' ? g.touche : g.action);
+    /* Le premier « tape » est refuse puis renvoye : on lit le texte recu AVANT le Retour arriere,
+       sans le doublon de l envoi refuse. */
+    const avantRetour = apres.slice(0, apres.findIndex((g) => g.touche === 'Backspace')).filter((g) => g.action === 'tape').map((g) => g.texte);
+    const recu = avantRetour.slice(1).join('');
+    ok(recu === 'swoge price', 'les 11 lettres arrivent toutes, dans l ordre, regroupees (' + JSON.stringify(texte) + ')');
+    const iBack = suite.indexOf('Backspace'), iE = suite.lastIndexOf('tape'), iEnter = suite.indexOf('Enter');
+    ok(iBack > 0 && iEnter > iBack && texte[texte.length - 1].endsWith('e') && iE < iEnter, 'Retour arriere puis « e » puis Entree, dans cet ordre [' + suite.join(',') + ']');
+    ok(texte[0] === texte[1], 'un envoi refuse pour la cadence (429) est renvoye, pas perdu');
+    ok(apres.every((g) => g.action !== 'tape' || g.texte.length <= 500) && apres.length <= 8, 'pas un geste par lettre : ' + apres.length + ' gestes pour 13 frappes');
+    await p.mouse.click(box.x - 5 > 0 ? 5 : 2, 5);
+    ok(await p.evaluate(() => !document.querySelector('#bw-ecran').parentNode.classList.contains('clavier')), 'cliquer hors de l ecran rend le clavier a la page SWOGE');
+    ok(erreurs.length === 0, erreurs.length ? 'erreurs : ' + erreurs.slice(0, 2).join(' | ') : 'aucune erreur de script');
+    await ctx.close();
+  }
+
   /* 01/10 : l Agent Store devient le sixieme onglet. */
   console.log('\n-- Store : l Agent Store, dans Agents --');
   {

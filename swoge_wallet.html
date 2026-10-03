@@ -68,7 +68,7 @@
      A savoir : cela ne sauve pas la page DEJA en cache chez quelqu'un, qui ne
      contient pas ces lignes. Ce garde-fou vaut a partir de celle-ci. -->
 <script>
-var MARQUE_PAGE = 'f1d069bc';
+var MARQUE_PAGE = '126795ec';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -1431,27 +1431,40 @@ a.sg-logo:focus-visible{ outline:2px solid var(--accent); outline-offset:2px }
 /* 03/10 : le telephone ne suit plus la lecture. Il gardait une colonne sur toute la hauteur, et
  * les sections n'avaient plus que 480 pixels a cote de lui et du rail — d'ou des blocs tasses et
  * des trous. Elles prennent maintenant toute la largeur sous le telephone. */
+/* 03/10 (soir) : « les blocs autour du wallet, on dirait que tu les as jetes au hasard ». Mesure
+ * a 1920 x 1080 : le titre commencait 190 px sous le haut du telephone, les cartes de droite 90 px
+ * sous lui, celles de gauche finissaient 30 px au-dessus de son bas — trois colonnes, trois
+ * alignements. La rangee etait forcee a la hauteur de l'ecran (100dvh - 68) alors que le
+ * telephone en fait 844 au plus : les colonnes « centrees » l'etaient sur une boite plus haute
+ * que lui. Maintenant : une rangee a la hauteur du contenu, les trois colonnes partent de la MEME
+ * ligne (le haut du telephone), et les deux colonnes de 36 px vides disparaissent. */
 @media (min-width:1340px){
   .wl-page{
-    grid-template-columns:190px minmax(250px,1fr) 36px 390px 36px minmax(270px,1fr);
-    grid-template-rows:minmax(calc(100dvh - 68px), auto) auto;
-    grid-template-areas:"menu texte . tel . droite" "menu vitrine vitrine vitrine vitrine vitrine";
+    grid-template-columns:190px minmax(260px,1fr) 390px minmax(270px,1fr); column-gap:30px;
+    grid-template-rows:auto auto;
+    grid-template-areas:"menu texte tel droite" "menu vitrine vitrine vitrine";
   }
   /* A gauche du telephone : le titre, puis le marche et la chaine, dans la MEME colonne. */
-  .wl-cote.gauche{ grid-area:texte; align-self:center; padding:24px 0 }
+  /* Haut ET bas : les colonnes prennent la hauteur de la rangee (celle du telephone quand il est
+     le plus haut). A gauche, le titre en haut, le marche et la chaine posees en bas ; a droite,
+     les trois cartes reparties du haut au bas. */
+  .wl-cote.gauche{ grid-area:texte; align-self:stretch; padding:0 }
+  .wl-cote.gauche .vt-cartes{ margin-top:auto }
+  .wl-cote.droite{ align-self:stretch; justify-content:space-between }
   /* 03/10 : PAS centre. Quand le titre et les cartes depassent l'ecran, la rangee grandit et un
      telephone centre descendait avec elle : mesure, son bas a 822 px dans une fenetre de 760,
      a 789 dans 650, la feuille de connexion dessous (wallet_page.test.js). En haut de la
      rangee, il tient dans la fenetre (sa hauteur est deja 100dvh - 80). */
   .wl-tel{ align-self:start }
-  .vt-halo{ grid-area:1 / 4 / 2 / 5 }
+  .vt-halo{ grid-area:1 / 3 / 2 / 4 }
   .vt-vitrine{ padding:24px 0 0 }
 }
 /* Les cartes de gauche se mettent l'une sous l'autre quand la colonne est etroite. */
 @media (min-width:1340px) and (max-width:1559px){
   .vt-cartes{ grid-template-columns:1fr }
   .wl-cote.gauche .vt-hero h1{ font-size:clamp(32px,11cqi,54px) }
-  .wl-cote.gauche .vt-boutons{ margin:18px 0 18px }
+  .wl-cote.gauche .vt-boutons{ margin:18px 0 18px; flex-wrap:nowrap }
+  .wl-cote.gauche .vt-b{ padding-left:16px; padding-right:16px; white-space:nowrap }
 }
 /* Dans le voile d'une autre page, le portefeuille seul — jamais la vitrine. */
 html.wl-encadre .wl-page{ display:contents }
@@ -1676,6 +1689,18 @@ html.wl-encadre .wl-haut{ position:static; height:auto }
 .vt-grille span{ display:block; font:600 10.5px/1.2 'Archivo',sans-serif; color:var(--doux) }
 .vt-grille b{ display:block; margin-top:4px; font:700 13px/1.15 'Space Mono',monospace; color:var(--texte);
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+/* 03/10 : la carte de la chaine tronquait ses chiffres (« #29,51… », « measur… ») dans des cases
+   de 95 px. Des lignes libelle / valeur, comme le coffre ; l'identifiant de chaine est deja dans
+   les trois faits du titre. */
+.vt-reseau .vt-grille{ grid-template-columns:1fr; gap:0 }
+.vt-reseau .vt-grille div{ display:flex; justify-content:space-between; align-items:baseline; gap:10px;
+  padding:6px 0; background:none; border:0; border-top:1px dashed var(--bord); border-radius:0 }
+.vt-reseau .vt-grille div:first-child{ border-top:0 }
+.vt-reseau .vt-grille b{ margin:0; text-align:right; overflow:visible; text-overflow:clip }
+.vt-reseau .vt-grille span{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+/* Les courbes en pointilles des cartes vers le telephone : lues comme des traits jetes au hasard
+   (demande du proprietaire, 03/10). Retirees ; l'alignement suffit a dire ce qui va ensemble. */
+.vt-liens{ display:none !important }
 .vt-source{ margin:9px 0 0; font:500 10.5px/1.3 'Archivo',sans-serif; color:var(--doux) }
 .vt-direct{ font:800 9.5px/1 'Archivo',sans-serif !important; letter-spacing:1px; padding:4px 7px; border-radius:999px;
   color:var(--vert) !important; background:color-mix(in srgb, var(--vert) 12%, transparent) }

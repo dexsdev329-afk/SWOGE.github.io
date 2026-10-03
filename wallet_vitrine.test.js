@@ -119,7 +119,13 @@ const srv = http.createServer((q, r) => {
         noms: cartes.map((c) => c.querySelector('.vt-ct b').textContent.trim()),
         cible: cartes.map((c) => c.getAttribute('data-vt-va')),
         surLeTel: cartes.filter((c) => chevauche(c.getBoundingClientRect())).length,
-        liens: document.querySelectorAll('#vtLiens path').length,
+        lienVu: getComputedStyle(document.getElementById('vtLiens')).display,
+        bord: (() => { const r = (e) => { const x = e.getBoundingClientRect(); return { top: Math.round(x.top), bas: Math.round(x.bottom) }; };
+          const g = document.querySelector('.wl-cote.gauche'), d = document.querySelector('.wl-cote.droite');
+          const der = (c) => { const k = [...c.querySelectorAll('.vt-carte')].pop(); return k.getBoundingClientRect().bottom; };
+          return { t: r(document.getElementById('tel')), g: { top: Math.round(g.querySelector('.vt-sur').getBoundingClientRect().top), bas: Math.round(der(g)) },
+                   d: { top: Math.round(d.querySelector('.vt-carte').getBoundingClientRect().top), bas: Math.round(der(d)) } }; })(),
+        tronque: [...document.querySelectorAll('.vt-reseau .vt-grille b')].filter((b) => b.scrollWidth > b.clientWidth + 1).map((b) => b.textContent),
         auTel: !!(ici && ici.closest('#tel')),
         /* 03/10 : les valeurs des cartes autour du telephone (marche, chaine, coffre, jetons) */
         valeurs: [...document.querySelectorAll('.vt-carte .vt-r b, .vt-carte .vt-grille b, #vtMPrix, .vt-jl .v')].map((b) => b.textContent.trim()),
@@ -136,7 +142,7 @@ const srv = http.createServer((q, r) => {
         largeur: document.documentElement.scrollWidth <= innerWidth + 1
       };
     });
-    console.log('   ' + JSON.stringify({ noms: m.noms, liens: m.liens, valeurs: m.valeurs, table: m.table }));
+    console.log('   ' + JSON.stringify({ noms: m.noms, bord: m.bord, valeurs: m.valeurs, table: m.table }));
     ok(m.titre === 'YOUR WALLET. YOUR WORLD.',
        'le titre dit « YOUR WALLET. YOUR WORLD. » (' + m.titre + ')');
     /* 03/10 : « le menu, tu nous l as change de place [...] des blocs avec des trous ». */
@@ -148,7 +154,15 @@ const srv = http.createServer((q, r) => {
     ok(m.tuiles.join(',') === 'ecEnvoyer,ecRecevoir,ecSwap,ecPont,ecSwap,ecActivite,launchpad.html,swoge_agents.html',
        'les huit actions rapides ouvrent un ecran du telephone ou une page du site');
     ok(m.surLeTel === 0, 'aucune carte ne couvre le telephone (' + m.surLeTel + ')');
-    ok(m.liens === 5, 'cinq liens relient les cartes au telephone (' + m.liens + ')');
+    /* 03/10 (soir) : « on dirait que tu as jete des blocs au hasard ». Les courbes en pointilles
+       sont retirees ; ce qui dit ce qui va ensemble, c'est l'alignement : les trois colonnes
+       partent du haut du telephone et finissent a son bas. */
+    ok(m.lienVu === 'none', 'plus de courbes decoratives vers le telephone (' + m.lienVu + ')');
+    ok(Math.abs(m.bord.g.top - m.bord.t.top) <= 2 && Math.abs(m.bord.d.top - m.bord.t.top) <= 2,
+       'les deux colonnes partent du HAUT du telephone (' + [m.bord.g.top, m.bord.t.top, m.bord.d.top].join(' / ') + ')');
+    ok(Math.abs(m.bord.g.bas - m.bord.t.bas) <= 2 && Math.abs(m.bord.d.bas - m.bord.t.bas) <= 2,
+       'et finissent a son BAS (' + [m.bord.g.bas, m.bord.t.bas, m.bord.d.bas].join(' / ') + ')');
+    ok(m.tronque.length === 0, 'aucun chiffre de la carte de la chaine n est coupe (' + m.tronque.join(', ') + ')');
     ok(m.auTel, 'un clic au centre du telephone arrive au telephone — les liens ne prennent pas le pointeur');
     ok(m.valeurs.length >= 10 && !m.valeurs.includes('--') && m.valeurs.every((v) => /^(unavailable|Unavailable|…|Loading…|measuring…|4663|Connect to see|Price loading…)$/.test(v)),
        'deconnecte et sans reseau : aucun « -- » (plus de trous), et aucun chiffre invente — seulement « unavailable » ou ce qu il faut faire');

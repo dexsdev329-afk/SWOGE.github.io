@@ -142,6 +142,13 @@ const sse = (evs) => evs.map(([t, d]) => 'event: ' + t + '\ndata: ' + JSON.strin
     return { page, ctx, envois, soldes, stops, signes };
   };
   const pose = async (page, q) => { await page.fill('#question', q); await page.click('#envoyer'); };
+  /* 03/10 : sur un ecran large, la liste des discussions est TOUJOURS a gauche (le bouton History
+     n'existe plus que sur un ecran etroit). L'intention des essais d'historique ne change pas :
+     la liste est la, a portee d'un clic au plus. */
+  const montreHisto = async (page) => {
+    if (await page.isVisible('#histoBtn')) await page.click('#histoBtn');
+    await page.waitForSelector('#histo', { state: 'visible', timeout: 5000 });
+  };
 
   console.log('-- 1. la page, sans rien executer --');
   {
@@ -609,7 +616,7 @@ const sse = (evs) => evs.map(([t, d]) => 'event: ' + t + '\ndata: ' + JSON.strin
       ok(!put.some((x) => /"adresse"|"addr"/.test(x.corps)), 'le corps ne porte aucune adresse : le serveur la tient de la session');
 
       const ordi = await ouvre({ session:'jA', rep, adresses, histo, journal });
-      await ordi.page.click('#histoBtn');
+      await montreHisto(ordi.page);
       await ordi.page.waitForFunction(() => /written on my phone/.test(document.getElementById('histo').textContent));
       ok(/Synced to your wallet 0xa1a1/.test(await ordi.page.textContent('#histo .note')), 'sur l autre appareil : le chat est la, et la page dit ou il vit');
       await ordi.page.click('#histo .ouvre');
@@ -624,7 +631,7 @@ const sse = (evs) => evs.map(([t, d]) => 'event: ' + t + '\ndata: ' + JSON.strin
       await telephone.page.waitForFunction(() => document.querySelectorAll('.msg.ia .meta').length === 2, null, { timeout: 8000 });
       eq(await telephone.page.$$eval('.msg.moi', (l) => l[l.length - 1].textContent), 'continued on my laptop', 'de retour sur le telephone : la suite ecrite sur l ordinateur apparait');
 
-      await ordi.page.click('#histoBtn');
+      await montreHisto(ordi.page);
       await ordi.page.click('#histo .efface');
       await ordi.page.waitForTimeout(300);
       ok(journal.some((x) => x.m === 'DELETE' && x.addr === A), '« ✕ » supprime aussi sur le serveur');
@@ -645,7 +652,7 @@ const sse = (evs) => evs.map(([t, d]) => 'event: ' + t + '\ndata: ' + JSON.strin
       await telephone.ctx.close(); await ordi.ctx.close();
 
       const sans = await ouvre({ rep });
-      await sans.page.click('#histoBtn');
+      await montreHisto(sans.page);
       ok(/Sign in to sync/.test(await sans.page.textContent('#histo .note')), 'sans session : la page dit que tout reste sur l appareil');
       await sans.ctx.close();
       fs.rmSync(dir, { recursive: true, force: true });
@@ -724,6 +731,51 @@ const sse = (evs) => evs.map(([t, d]) => 'event: ' + t + '\ndata: ' + JSON.strin
     const larg = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     ok(larg <= 1, 'a 390 px, rien ne deborde [' + larg + ']');
     await ctx.close();
+  }
+
+  console.log('\n-- LE CADRE ET LA COLONNE DES DISCUSSIONS (demande du proprietaire, 03/10/2026) --');
+  {
+    /* « Le chat pas infini : dans un rectangle comme Claude et ChatGPT, on scroll dedans ; les
+       discussions historiques, on les voit facilement sur la gauche. » */
+    const long = Array.from({ length: 30 }, (_, k) => [{ role: 'user', content: 'question ' + k }, { role: 'assistant', content: 'answer ' + k + ' ' + 'word '.repeat(60) }]).flat();
+    const convs = [{ id: 'long', titre: 'A long chat', maj: Date.now(), messages: long }].concat(Array.from({ length: 4 }, (_, k) => ({ id: 'o' + k, titre: 'Other chat ' + k, maj: Date.now() - (k + 1) * 3600e3,
+      messages: [{ role: 'user', content: 'other ' + k }, { role: 'assistant', content: 'reply ' + k }] })));
+    for (const largeur of [1200, 390]) {
+      const ctx = await nav.newContext({ viewport: { width: largeur, height: 860 } });
+      await ctx.addInitScript((v) => { try { localStorage.setItem('swogeChats', JSON.stringify(v)); localStorage.setItem('swogeChatCourant', JSON.stringify('long')); localStorage.setItem('swogeStudioMode', JSON.stringify('chat')); } catch (e) {} }, convs);
+      const page = await ctx.newPage();
+      await page.route((u) => !u.href.startsWith('http://127.0.0.1:' + port), (r) => (/catalogue/.test(r.request().url())
+        ? r.fulfill({ status:200, contentType:'application/json', body: JSON.stringify(CAT) }) : r.abort()));
+      await page.goto('http://127.0.0.1:' + port + '/swolemind.html', { waitUntil:'domcontentloaded' });
+      await page.waitForFunction(() => document.querySelectorAll('#fil .msg').length === 60);
+      await page.waitForTimeout(200);
+      const m = await page.evaluate(() => { const d = document.getElementById('defile'), c = document.querySelector('.ch-cadre').getBoundingClientRect();
+        return { page: document.documentElement.scrollHeight, vue: innerHeight, interne: d.scrollHeight > d.clientHeight + 200, enBas: d.scrollHeight - d.scrollTop - d.clientHeight < 4,
+                 cadre: c.height, compose: document.querySelector('.compose').getBoundingClientRect().bottom <= c.bottom + 1 }; });
+      ok(m.page <= m.vue + 200 && m.cadre <= m.vue, largeur + ' px : 60 messages, et la page ne s allonge pas (' + m.page + ' px pour un ecran de ' + m.vue + ')');
+      ok(m.interne && m.enBas, largeur + ' px : le fil defile DANS le cadre, ouvert sur le dernier message');
+      ok(m.compose, largeur + ' px : le composeur reste dans le cadre, en bas');
+      if (largeur === 1200) {
+        ok(await page.isVisible('#histo') && !(await page.isVisible('#histoBtn')), 'ecran large : la liste des discussions est a gauche sans rien ouvrir');
+        const g = await page.evaluate(() => ({ h: document.getElementById('histo').getBoundingClientRect(), f: document.getElementById('fil').getBoundingClientRect() }));
+        ok(g.h.right <= g.f.left, 'elle est a GAUCHE du fil');
+        eq(await page.$$eval('#histo .ouvre', (l) => l.length), 5, 'les 5 discussions y sont');
+        ok(/A long chat/.test(await page.textContent('#histo .ligne.actif')), 'la discussion ouverte est marquee');
+        await page.click('#histo .ligne:nth-of-type(2) .ouvre').catch(() => {});
+        await page.click('#histo .ouvre >> text=Other chat 2');
+        await page.waitForFunction(() => /reply 2/.test(document.getElementById('fil').textContent));
+        ok(/Other chat 2/.test(await page.textContent('#histo .ligne.actif')) && await page.isVisible('#histo'), 'un clic ouvre une autre discussion ; la liste reste la, la marque suit');
+        await page.click('#histo .neuf');
+        ok(await page.isVisible('#accueil') && (await page.$$('#fil .msg')).length === 0, '« New chat » en tete de la liste : une page vierge');
+      } else {
+        ok(!(await page.isVisible('#histo')) && await page.isVisible('#histoBtn'), 'ecran etroit : la liste est derriere « History », le fil a toute la largeur');
+        await page.click('#histoBtn');
+        ok(await page.isVisible('#histo') && (await page.$$('#histo .ouvre')).length === 5, 'History ouvre la liste');
+        const larg = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+        ok(larg <= 1, 'a 390 px, rien ne deborde [' + larg + ']');
+      }
+      await ctx.close();
+    }
   }
 
   console.log('\n-- 12. payer sans $SWOGE : le credit en dollars, une signature par question (29/09) --');
@@ -813,7 +865,7 @@ const sse = (evs) => evs.map(([t, d]) => 'event: ' + t + '\ndata: ' + JSON.strin
     ok(await page.$eval('.mission-pas li:nth-child(3)', (x) => x.className) === 'rate' && (await page.$('.mission img')) === null && !(await page.evaluate(() => window.pirate)), 'un outil rate se voit, son message est du texte');
     ok(/Total 640 \$SWOGE · 2 model calls · 2 tools/.test(await page.textContent('.mission-bilan')) && /done in/.test(await page.textContent('.mission-etat')), 'le bilan : total facture, appels, outils, duree');
     ok(/PEPE looks liquid/.test(await page.textContent('.msg.ia .corps')) && /🎯 Mission · Sonnet 5 · 640 \$SWOGE/.test(await page.textContent('.msg.ia .meta')), 'la reponse, et sa ligne de cout');
-    await page.click('#histoBtn');
+    await montreHisto(page);
     ok(/🎯 Analyze PEPE/.test(await page.textContent('#histo')) && /1 mission · 2 tools/.test(await page.textContent('#histo')), 'l historique : la mission, son objectif, ses outils, sa duree et son cout');
     await page.reload({ waitUntil: 'domcontentloaded' });
     await page.waitForSelector('.mission-bilan');

@@ -701,6 +701,47 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 .ag-tete{display:flex;flex-wrap:wrap;align-items:flex-end;gap:8px 16px;margin:6px 0 12px}
 .ag-tete h1{font:400 34px/1 Anton,Impact,sans-serif;letter-spacing:.02em;margin:0;color:var(--paper)}
 .ag-tete p{margin:0;color:var(--dim);font-size:13.5px;max-width:560px}
+/* ---- 03/10 : LE CADRE, comme le chat ----
+ * Les taches a gauche des que le cadre a la place, le fil defile dedans, le composeur en
+ * bas ; ce qui servait peu (embauches, eSIM, x402, API) est replie sous le cadre.
+ * Classes `ta-` : jamais celles du chat (`ch-`), dont les regles restent globales dans
+ * swoge_agents.html ; aucun selecteur d'identifiant (la fusion prefixe les identifiants). */
+.ta-cadre{container-type:inline-size;position:relative;height:calc(100vh - 110px);height:calc(100dvh - 110px);min-height:460px;
+  border:1px solid var(--line);border-radius:20px;background:var(--void);overflow:hidden;box-shadow:0 4px 24px rgba(11,27,54,.07);margin:4px 0 12px}
+.ta-grille{display:flex;height:100%;min-height:0}
+.ta-principal{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;padding:12px 14px 0}
+.ta-defile{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;display:flex;flex-direction:column;scrollbar-width:thin}
+.ta-principal .compose{position:static;background:none;padding:8px 0 12px}
+.ta-tete{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.ta-titre{font-family:'Anton',sans-serif;font-size:20px;text-transform:uppercase;letter-spacing:.02em}
+.ta-titre em{font-style:normal;color:var(--pool)}
+.ta-droite{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.ta-accroche{font-family:'Archivo',sans-serif;font-weight:800;font-size:clamp(22px,4.5vw,30px);margin:0 0 6px;text-transform:none}
+.ta-intro{max-width:460px}
+.ta-defile .ag-outils{justify-content:center;margin:16px 0 8px}
+.ta-defile .ag-lit{margin:0}
+.ta-cote{position:absolute;z-index:6;top:50px;left:10px;right:10px;max-height:70%;overflow-y:auto}
+.ta-cote .histo{margin:0;box-shadow:0 10px 30px rgba(11,27,54,.18)}
+.ta-plus .x4{margin:8px 0 0;border:0;padding:4px 0 0;background:transparent}
+.ta-plus .x4 .x4-h{display:none}
+.x4-plie{border-color:var(--pool)}
+@container (max-width:699px){
+  .ta-tete{flex-wrap:nowrap}
+  .ta-titre{font-size:17px;flex:0 0 auto}
+  .ta-droite{flex-wrap:nowrap;overflow-x:auto;min-width:0;scrollbar-width:none;padding-bottom:2px}
+  .ta-droite > *{flex:0 0 auto}
+  .ta-principal{padding:10px 10px 0}
+}
+@container (min-width:700px){
+  .ta-cote{position:static;flex:0 0 230px;max-height:none;border-right:1px solid var(--line);background:var(--panel);padding:10px 8px}
+  .ta-cote .histo,.ta-cote .histo[hidden]{display:block;border:0;background:transparent;box-shadow:none;padding:0;margin:0}
+  .ta-droite .histo-btn,.ta-droite .neuf-btn{display:none}   /* deja dans la colonne de gauche */
+}
+.histo .ligne.actif{background:var(--panel2);border-radius:8px}
+.histo .ligne.actif button.ouvre{font-weight:700}
+.histo button.neuf{font-weight:700;color:var(--pool);border:1px solid var(--line);margin:2px 0 8px;text-align:center}
+.histo .histo-titre{font-weight:800;font-size:14px;padding:6px 10px 2px}
+.histo .quand{font-family:'Space Mono',monospace;font-size:10.5px;color:var(--dim);flex:0 0 auto;padding-left:6px}
 .ag-outils{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
 .ag-outil{font:700 11px/1 'Space Mono',monospace;border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:6px 10px;color:var(--paper)}
 .ag-outil[data-off]{opacity:.45}
@@ -980,7 +1021,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 .histo{margin-top:10px;border:1px solid var(--line);background:var(--panel);border-radius:12px;padding:8px}
 .histo[hidden]{display:none}
 .histo button{display:block;width:100%;text-align:left;background:transparent;border:0;padding:8px 10px;border-radius:8px;
-  font-size:13px;cursor:pointer;color:var(--paper);font-family:inherit;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  text-transform:none;letter-spacing:0;font-size:13px;cursor:pointer;color:var(--paper);font-family:inherit;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .histo button:hover{background:var(--panel2)}
 .histo .vide{font-size:12.5px;color:var(--dim);padding:8px 10px}
 .histo .note{font-size:11.5px;color:var(--dim);padding:4px 10px 8px;border-bottom:1px solid var(--line);margin-bottom:4px}
@@ -988,12 +1029,70 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 .histo .ligne button.ouvre{flex:1;min-width:0}
 .histo .ligne button.efface{width:auto;flex:0 0 auto;color:var(--dim);padding:8px 10px}
 </style>
-  <div class="ag-tete">
-    <h1>SwogeAgentic</h1>
-    <p>An AI agent that works with SWOGE's own data: it reads tokens, the newest launches, wallets, the SWOGE AI colony, the $SWOGE economy, infrastructure and the web, chains the lookups itself, then answers with the numbers it read.</p>
+  <!-- 03/10 : « je la trouve compliquee a utiliser, beaucoup d'information, je ne vois pas
+       l'historique des discussions ». Meme cadre que le chat : les taches a gauche, le fil qui
+       defile dedans, le composeur en bas. Le reste (embauches, eSIM, x402, API) est replie dessous. -->
+  <div class="ta-cadre" id="cadre"><div class="ta-grille">
+   <aside class="ta-cote" aria-label="Your tasks">
+    <div class="histo" id="histo" hidden></div>
+   </aside>
+   <div class="ta-principal">
+    <div class="ta-tete">
+      <div class="ta-titre">Swoge<em>Agentic</em></div>
+      <div class="ta-droite">
+        <button class="btn-fin histo-btn" id="histoBtn" type="button" aria-expanded="false" title="Your past tasks">&#128339; History</button>
+        <button class="btn-fin neuf-btn" id="nouveau" type="button">&#10133; New task</button>
+        <span class="pastille" id="credit" title="Your dollar credit: topped up with one wallet signature (USDC on Base or Solana), spent at real cost">Credit <b>&mdash;</b></span>
+        <span class="pastille" id="solde" title="Your SWOGE gaming balance">Balance <b>&mdash;</b></span>
+        <select class="btn-fin" id="payeur" aria-label="Pay with"><option value="signe">Sign with my wallet (USDC)</option><option value="credit">Use my dollar credit</option><option value="swoge">Pay with $SWOGE</option></select>
+        <button class="btn-fin" id="recharger" type="button" aria-expanded="false">&#43; Top up</button>
+      </div>
+    </div>
+    <div class="ta-defile" id="defile">
+  <div class="recharge" id="rechargeBox" hidden>
+    <p><b>No $SWOGE needed.</b> Choose <i>Sign with my wallet</i> and your wallet asks you to sign USDC when a task needs it, or top up a dollar credit here once. No deposit: USDC goes straight from your wallet, then every task is paid from the credit at real cost, with no new signature. The credit stays on this wallet's sign-in and is not withdrawable.</p>
+    <div class="rc-ligne" id="rcMontants">
+      <button type="button" class="btn-fin" data-usd="1">$1</button>
+      <button type="button" class="btn-fin choisi" data-usd="5">$5</button>
+      <button type="button" class="btn-fin" data-usd="20">$20</button>
+    </div>
+    <div class="rc-ligne">
+      <label><input type="radio" name="rcReseau" value="base" checked> USDC on Base</label>
+      <label><input type="radio" name="rcReseau" value="solana"> USDC on Solana</label>
+    </div>
+    <button type="button" class="rc-signer" id="rcSigner">Sign a $5 top-up</button>
+    <p class="rc-statut" id="rcStatut" role="status"></p>
+    <div class="rc-histo" id="rcHisto"></div>
   </div>
-  <div class="ag-outils" id="outils" aria-label="Tools the agent can use"></div>
-  <div class="ag-lit" id="agLit">&#128274; Read-only: the agent can't buy, sell, sign or post anything.</div>
+  <div class="accueil" id="accueil">
+    <h2 class="ta-accroche">Give it a task</h2>
+    <p class="ta-intro">It reads tokens, new launches, wallets, the SWOGE AI colony and the web, then answers with the numbers it read.</p>
+    <div class="suggestions" id="suggestions">
+      <button class="suggestion" type="button" data-t="Check this token and tell me what you find: "><span class="ic">&#128269;</span>Check a token</button>
+      <button class="suggestion" type="button" data-t="Is this the official Robinhood Stock Token or a copy with the same ticker? "><span class="ic">&#127974;</span>Real stock token or a copy?</button>
+      <button class="suggestion" type="button" data-t="What is the SWOGE AI colony doing right now? Open positions, latest buys and sells, and how the real-money mirror is doing."><span class="ic">&#129302;</span>What is the colony doing?</button>
+      <button class="suggestion" type="button" data-t="How much $SWOGE has been burnt, what is in the casino vault, and what is the price now?"><span class="ic">&#128293;</span>$SWOGE economy</button>
+      <button class="suggestion" type="button" data-t="Research this project on the web and summarise what it does, with sources: "><span class="ic">&#127760;</span>Research a project</button>
+    </div>
+    <div class="ag-outils" id="outils" aria-label="Tools the agent can use"></div>
+    <div class="ag-lit" id="agLit">&#128274; Read-only: the agent can't buy, sell, sign or post anything.</div>
+  </div>
+  <div class="fil" id="fil" hidden></div>
+  <div class="etat" id="etat" hidden></div>
+    </div>
+  <div class="compose ag-compose">
+    <div class="boite">
+      <textarea id="question" rows="1" placeholder="Give SwogeAgentic a task" aria-label="Your task"></textarea>
+      <div class="outils">
+        <select id="modele" aria-label="Model"></select>
+        <button class="envoi" id="envoyer" type="button" disabled aria-label="Run">&#8593;</button>
+      </div>
+    </div>
+    <div class="prixq" id="prixq">&nbsp;</div>
+  </div>
+   </div>
+  </div></div>
+  <div class="ta-plus">
   <!-- ---- MES EMBAUCHES (28/09/2026) : ce que l'agent a paye pour CE joueur, lu sur
        /studio/agent/embauches avec la session ; ecrit en texte, jamais en HTML. -->
   <details class="dev" id="embBox" hidden>
@@ -1015,13 +1114,16 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
        les posts menent ici, et la page ne parlait que de la cle payee en $SWOGE.
        Les outils et leurs prix sont LUS en direct (/agentic/x402, /agentic/tools),
        jamais recopies ; tout est ecrit en texte, rien du serveur ne devient du HTML. -->
+  <details class="dev x4-plie">
+  <summary>&#129302; For AI agents: pay per call with x402</summary>
   <section class="x4" id="x402" aria-labelledby="x4titre">
-    <h2 id="x4titre">&#129302; For AI agents: pay per call with x402</h2>
+    <h2 id="x4titre" class="x4-h">For AI agents: pay per call with x402</h2>
     <p>Any AI agent can hire these tools with no account and no API key. It calls a tool, gets a <code>402 Payment Required</code> with the price, pays in <b>USDC on Base or Solana</b> (or USDG / $SWOGE on Robinhood Chain), and gets the answer. The tools are listed in PayAI's public catalog of agent services.</p>
     <div class="x4-grille" id="x4Outils"><p class="x4-note">Loading live prices&hellip;</p></div>
     <p><a href="x402_essai.html">&#9889; Try a paid call in your browser</a> &middot; <a href="swogeagentic_api.html">&#128214; API docs</a> &middot; <a id="x4Decouverte" href="https://web-production-220a3.up.railway.app/.well-known/x402" rel="noopener">/.well-known/x402</a></p>
     <p class="x4-note" id="x4Note">Prices shown are live, in USD on Base. On Solana and Robinhood Chain they can differ slightly (network fees). Read-only tools: none of them can buy, sell or sign anything.</p>
   </section>
+  </details>
   <!-- ---- POUR LES AUTRES AGENTS (demande du proprietaire, 26 septembre 2026) ----
        Les cles d'API se creent ICI, par la session signee ; le serveur ne garde
        que leur empreinte, la cle se montre une seule fois. Chaque cle a un
@@ -1047,48 +1149,6 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     <h3>Your last calls</h3>
     <div id="devRecus"><p>No calls yet.</p></div>
   </details>
-  <div class="barre-fin">
-    <span class="pastille" id="credit" title="Your dollar credit: topped up with one wallet signature (USDC on Base or Solana), spent at real cost">Credit <b>&mdash;</b></span>
-    <span class="pastille" id="solde" title="Your SWOGE gaming balance">Balance <b>&mdash;</b></span>
-    <select class="btn-fin" id="payeur" aria-label="Pay with"><option value="signe">Sign with my wallet (USDC)</option><option value="credit">Use my dollar credit</option><option value="swoge">Pay with $SWOGE</option></select>
-    <button class="btn-fin" id="recharger" type="button" aria-expanded="false">&#43; Top up</button>
-    <button class="btn-fin" id="nouveau" type="button">&#10133; New task</button>
-  </div>
-  <div class="recharge" id="rechargeBox" hidden>
-    <p><b>No $SWOGE needed.</b> Choose <i>Sign with my wallet</i> and your wallet asks you to sign USDC when a task needs it, or top up a dollar credit here once. No deposit: USDC goes straight from your wallet, then every task is paid from the credit at real cost, with no new signature. The credit stays on this wallet's sign-in and is not withdrawable.</p>
-    <div class="rc-ligne" id="rcMontants">
-      <button type="button" class="btn-fin" data-usd="1">$1</button>
-      <button type="button" class="btn-fin choisi" data-usd="5">$5</button>
-      <button type="button" class="btn-fin" data-usd="20">$20</button>
-    </div>
-    <div class="rc-ligne">
-      <label><input type="radio" name="rcReseau" value="base" checked> USDC on Base</label>
-      <label><input type="radio" name="rcReseau" value="solana"> USDC on Solana</label>
-    </div>
-    <button type="button" class="rc-signer" id="rcSigner">Sign a $5 top-up</button>
-    <p class="rc-statut" id="rcStatut" role="status"></p>
-    <div class="rc-histo" id="rcHisto"></div>
-  </div>
-  <div class="accueil" id="accueil">
-    <div class="suggestions" id="suggestions">
-      <button class="suggestion" type="button" data-t="Check this token and tell me what you find: "><span class="ic">&#128269;</span>Check a token</button>
-      <button class="suggestion" type="button" data-t="Is this the official Robinhood Stock Token or a copy with the same ticker? "><span class="ic">&#127974;</span>Real stock token or a copy?</button>
-      <button class="suggestion" type="button" data-t="What is the SWOGE AI colony doing right now? Open positions, latest buys and sells, and how the real-money mirror is doing."><span class="ic">&#129302;</span>What is the colony doing?</button>
-      <button class="suggestion" type="button" data-t="How much $SWOGE has been burnt, what is in the casino vault, and what is the price now?"><span class="ic">&#128293;</span>$SWOGE economy</button>
-      <button class="suggestion" type="button" data-t="Research this project on the web and summarise what it does, with sources: "><span class="ic">&#127760;</span>Research a project</button>
-    </div>
-  </div>
-  <div class="fil" id="fil" hidden></div>
-  <div class="etat" id="etat" hidden></div>
-  <div class="compose ag-compose">
-    <div class="boite">
-      <textarea id="question" rows="1" placeholder="Give SwogeAgentic a task" aria-label="Your task"></textarea>
-      <div class="outils">
-        <select id="modele" aria-label="Model"></select>
-        <button class="envoi" id="envoyer" type="button" disabled aria-label="Run">&#8593;</button>
-      </div>
-    </div>
-    <div class="prixq" id="prixq">&nbsp;</div>
   </div>
 <script>
 /* ==================== SWOGEAGENTIC — la page ====================
@@ -1258,7 +1318,10 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   }
   function nouveauRid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2, 10); }
   var etat = { cat: null, modele: lisLocal("swogeAgentModele", null), occupe: false, enVol: null, fil: lisLocal("swogeAgentFil", []), quitte: false,
-               credit: null, swoge: null, rcUsd: 5, payeurChoisi: lisLocal("swogeAgentPayeur", null) };
+               credit: null, swoge: null, rcUsd: 5, payeurChoisi: lisLocal("swogeAgentPayeur", null),
+               taches: lisLocal("swogeAgentTaches", []), tacheId: lisLocal("swogeAgentCourante", null) };
+  if (!Array.isArray(etat.taches)) etat.taches = [];
+  if (!Array.isArray(etat.fil)) etat.fil = [];
 
   function dit(t){ var e = $("etat"); e.textContent = t || ""; e.hidden = !t; }
   function modeleCourant(){
@@ -1289,14 +1352,79 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       .then(coupe, coupe);
   }
   function dimensionne(){ var t = $("question"); t.style.height = "auto"; t.style.height = Math.min(200, t.scrollHeight) + "px"; peintBoutons(); }
-  function sauve(){ ecrisLocal("swogeAgentFil", etat.fil.slice(-30)); }
+  /* ---- 03/10 : LES TACHES PASSEES, a gauche ----
+   * « Je ne vois pas l'historique des discussions. » Il n'y avait qu'UN fil (swogeAgentFil),
+   * efface par « New task ». Chaque fil est maintenant une tache gardee sur cet appareil
+   * (swogeAgentTaches, 20 au plus) ; swogeAgentFil reste le fil ouvert. On ne change pas de
+   * tache pendant qu'une tourne : sa reponse s'ecrirait dans une autre. */
+  function nouvelId(){ return "t" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+  function sauve(){
+    ecrisLocal("swogeAgentFil", etat.fil.slice(-30));
+    var id = etat.tacheId || (etat.tacheId = nouvelId());
+    var autres = etat.taches.filter(function(x){ return x.id !== id; });
+    if (etat.fil.length) {
+      var premier = etat.fil.filter(function(x){ return x.role === "user"; })[0];
+      etat.taches = [{ id: id, titre: String(premier ? premier.content : "Task").slice(0, 60), maj: Date.now(), fil: etat.fil.slice(-30) }].concat(autres).slice(0, 20);
+    } else etat.taches = autres;
+    ecrisLocal("swogeAgentTaches", etat.taches); ecrisLocal("swogeAgentCourante", id);
+    peintHisto();
+  }
+  function quand(t){
+    if (!t) return "";
+    var d = new Date(t), n = new Date();
+    return d.toDateString() === n.toDateString() ? d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })
+      : d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  }
+  var TOURNE = "A task is running: stop it or let it finish before opening another.";
+  function nouvelleTache(){
+    if (etat.occupe) { dit(TOURNE); return; }
+    etat.fil = []; etat.tacheId = nouvelId(); sauve(); peintFil(); dit(""); basculeHisto(false); $("question").focus();
+  }
+  function ouvreTache(t){
+    if (etat.occupe) { dit(TOURNE); return; }
+    etat.fil = JSON.parse(JSON.stringify(t.fil || [])); etat.tacheId = t.id;
+    ecrisLocal("swogeAgentFil", etat.fil); ecrisLocal("swogeAgentCourante", t.id);
+    peintFil(); dit(""); basculeHisto(false); peintHisto(); enBas(true);
+  }
+  function effaceTache(t){
+    if (etat.occupe && t.id === etat.tacheId) { dit(TOURNE); return; }
+    etat.taches = etat.taches.filter(function(x){ return x.id !== t.id; });
+    ecrisLocal("swogeAgentTaches", etat.taches);
+    if (t.id === etat.tacheId) { etat.fil = []; etat.tacheId = nouvelId(); ecrisLocal("swogeAgentFil", []); ecrisLocal("swogeAgentCourante", etat.tacheId); peintFil(); }
+    peintHisto();
+  }
+  function peintHisto(){
+    var h = $("histo"); h.innerHTML = "";
+    var ti = document.createElement("div"); ti.className = "histo-titre"; ti.textContent = "Your tasks"; h.appendChild(ti);
+    var note = document.createElement("div"); note.className = "note"; note.textContent = "Saved on this device."; h.appendChild(note);
+    var nv = document.createElement("button"); nv.type = "button"; nv.className = "neuf"; nv.textContent = "\u2795 New task";
+    nv.addEventListener("click", nouvelleTache); h.appendChild(nv);
+    if (!etat.taches.length) { var v = document.createElement("div"); v.className = "vide"; v.textContent = "Your tasks will appear here."; h.appendChild(v); return; }
+    etat.taches.forEach(function(t){
+      var l = document.createElement("div"); l.className = "ligne" + (t.id === etat.tacheId ? " actif" : "");
+      var b = document.createElement("button"); b.type = "button"; b.className = "ouvre"; b.textContent = t.titre || "Task";
+      b.addEventListener("click", function(){ ouvreTache(t); });
+      var q = document.createElement("span"); q.className = "quand"; q.textContent = quand(t.maj);
+      var x = document.createElement("button"); x.type = "button"; x.className = "efface"; x.textContent = "\u2715";
+      x.setAttribute("aria-label", "Delete " + (t.titre || "task"));
+      x.addEventListener("click", function(){ effaceTache(t); });
+      l.appendChild(b); l.appendChild(q); l.appendChild(x); h.appendChild(l);
+    });
+  }
+  function basculeHisto(ouvre){
+    var h = $("histo"); var o = typeof ouvre === "boolean" ? ouvre : h.hidden;
+    if (o) peintHisto(); h.hidden = !o; $("histoBtn").setAttribute("aria-expanded", String(o));
+  }
+  /* Le fil defile DANS le cadre, et suit la reponse tant que le joueur est en bas. */
+  var colle = true;
+  function enBas(force){ var z = $("defile"); if (force) colle = true; if (colle) z.scrollTop = z.scrollHeight; }
 
   function ajouteMsg(role, texte){
     $("accueil").hidden = true; $("fil").hidden = false;
     var d = document.createElement("div"); d.className = "msg " + (role === "user" ? "moi" : "ia");
     if (role === "user") d.textContent = texte;
     else d.innerHTML = '<ol class="etapes"></ol><div class="corps"></div>';
-    $("fil").appendChild(d); d.scrollIntoView({ block: "end" });
+    $("fil").appendChild(d); enBas(true);
     return d;
   }
   function ligneEtape(d, o){
@@ -2075,7 +2203,22 @@ function qrMatrice(txt){
   $("question").addEventListener("input", dimensionne);
   $("question").addEventListener("keydown", function(e){ if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); envoyer(); } });
   $("envoyer").addEventListener("click", function(){ if (etat.occupe && etat.enVol) arreter(); else envoyer(); });
-  $("nouveau").addEventListener("click", function(){ etat.fil = []; sauve(); peintFil(); dit(""); $("question").focus(); });
+  $("nouveau").addEventListener("click", nouvelleTache);
+  $("histoBtn").addEventListener("click", function(){ basculeHisto(); });
+  $("defile").addEventListener("scroll", function(){ var z = $("defile"); colle = z.scrollHeight - z.scrollTop - z.clientHeight < 80; });
+  /* Le cadre tient dans l'ecran SOUS ce qui le precede (les onglets de swoge_agents.html, plus
+     hauts sur un telephone) : le composeur est visible sans faire defiler la page. Recalcule
+     quand le cadre apparait (changement d'onglet) et quand la fenetre change. */
+  function ajusteCadre(){
+    var c = $("cadre"), r = c.getBoundingClientRect(); if (!r.width) return;
+    var haut = r.top + (window.scrollY || 0);
+    c.style.height = Math.max(460, Math.min(window.innerHeight - 16, Math.round(window.innerHeight - haut - 14))) + "px";
+  }
+  window.addEventListener("resize", ajusteCadre);
+  if (window.IntersectionObserver) new IntersectionObserver(ajusteCadre).observe($("cadre"));
+  ajusteCadre();
+  if (window.MutationObserver) new MutationObserver(function(){ enBas(false); }).observe($("fil"), { childList: true, subtree: true, characterData: true });
+  if (window.ResizeObserver) new ResizeObserver(function(){ enBas(false); }).observe($("defile"));
   $("modele").addEventListener("change", function(){ etat.modele = this.value; ecrisLocal("swogeAgentModele", etat.modele); peintPrix(); });
   window.addEventListener("pagehide", function(){ etat.quitte = true; });
   window.addEventListener("beforeunload", function(){ etat.quitte = true; });
@@ -2163,7 +2306,10 @@ function qrMatrice(txt){
     })["catch"](function(){ $("prixq").textContent = TXT.ferme; });
   chargeSolde();
   peintDev(null); chargeDev();
+  /* Le fil ouvert devient une tache s'il n'en etait pas une (fil d'avant le 03/10). */
+  if (etat.fil.length && !etat.taches.some(function(x){ return x.id === etat.tacheId; })) { etat.tacheId = null; sauve(); }
   peintFil();
+  peintHisto();
   reprend();
   var dernierJeton = jeton();
   setInterval(function(){

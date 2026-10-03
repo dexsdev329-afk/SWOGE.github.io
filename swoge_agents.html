@@ -700,6 +700,39 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
  * recherche web facon Perplexity, et le cout de chaque reponse affiche. */
 .chat-main{min-width:0}
 .chat{max-width:780px;margin:0 auto;padding:18px 16px 0;display:flex;flex-direction:column;min-height:calc(100vh - 150px)}
+/* ---- 03/10 : LE CADRE, facon Claude et ChatGPT ----
+ * « La page web est infinie : s'il y a beaucoup de requetes dans la discussion… » Le chat vit
+ * dans un rectangle de la hauteur de l'ecran ; seul le fil defile, le composeur reste en bas.
+ * Les discussions sont a gauche des que le cadre a la place (requete de conteneur : la meme
+ * regle vaut dans swolemind.html et dans l'onglet de swoge_agents.html, plus etroit). */
+.chat{min-height:0}
+.ch-cadre{container-type:inline-size;position:relative;height:calc(100vh - 110px);height:calc(100dvh - 110px);min-height:460px;
+  border:1px solid var(--line);border-radius:20px;background:var(--void);overflow:hidden;box-shadow:0 4px 24px rgba(11,27,54,.07)}
+.ch-grille{display:flex;height:100%;min-height:0}
+.ch-principal{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;padding:12px 14px 0}
+.ch-defile{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;display:flex;flex-direction:column;scrollbar-width:thin}
+.ch-principal .compose{position:static;background:none;padding:8px 0 12px}
+/* Etroit : l'historique s'ouvre par-dessus, sous l'en-tete (bouton History). */
+.ch-cote{position:absolute;z-index:6;top:50px;left:10px;right:10px;max-height:70%;overflow-y:auto}
+.ch-cote .histo{margin:0;box-shadow:0 10px 30px rgba(11,27,54,.18)}
+.histo .ligne.actif{background:var(--panel2);border-radius:8px}
+.histo button.neuf{font-weight:700;color:var(--pool);border:1px solid var(--line);margin:2px 0 8px;text-align:center}
+.histo .ligne.actif button.ouvre{font-weight:700}
+/* Etroit : l'en-tete tient sur UNE ligne qui glisse de cote ; le fil garde la hauteur. */
+@container (max-width:699px){
+  .ch-principal .chat-tete{flex-wrap:nowrap}
+  .ch-principal .chat-tete .titre{font-size:17px;flex:0 0 auto}
+  .ch-principal .chat-tete .droite{flex-wrap:nowrap;overflow-x:auto;min-width:0;scrollbar-width:none;padding-bottom:2px}
+  .ch-principal .chat-tete .droite > *{flex:0 0 auto}
+  .ch-principal #histoBtn{order:-2}
+  .ch-principal #nouveau{order:-1}
+  .ch-principal{padding:10px 10px 0}
+}
+@container (min-width:700px){
+  .ch-cote{position:static;flex:0 0 230px;max-height:none;border-right:1px solid var(--line);background:var(--panel);padding:10px 8px}
+  .ch-cote .histo,.ch-cote .histo[hidden]{display:block;border:0;background:transparent;box-shadow:none;padding:0}
+  .ch-principal #histoBtn,.ch-principal #nouveau,.ch-principal .recents{display:none}   /* deja dans la colonne de gauche */
+}
 .chat-tete{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .chat-tete .titre{font-family:'Anton',sans-serif;font-size:20px;text-transform:uppercase;letter-spacing:.02em}
 .chat-tete .titre em{font-style:normal;color:var(--pool)}
@@ -966,7 +999,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 .histo{margin-top:10px;border:1px solid var(--line);background:var(--panel);border-radius:12px;padding:8px}
 .histo[hidden]{display:none}
 .histo button{display:block;width:100%;text-align:left;background:transparent;border:0;padding:8px 10px;border-radius:8px;
-  font-size:13px;cursor:pointer;color:var(--paper);font-family:inherit;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  text-transform:none;letter-spacing:0;font-size:13px;cursor:pointer;color:var(--paper);font-family:inherit;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .histo button:hover{background:var(--panel2)}
 .histo .vide{font-size:12.5px;color:var(--dim);padding:8px 10px}
 .histo .note{font-size:11.5px;color:var(--dim);padding:4px 10px 8px;border-bottom:1px solid var(--line);margin-bottom:4px}
@@ -1008,6 +1041,40 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 #modeAgent .ag-tete{display:flex;flex-wrap:wrap;align-items:flex-end;gap:8px 16px;margin:6px 0 12px}
 #modeAgent .ag-tete h1{font:400 34px/1 Anton,Impact,sans-serif;letter-spacing:.02em;margin:0;color:var(--paper)}
 #modeAgent .ag-tete p{margin:0;color:var(--dim);font-size:13.5px;max-width:560px}
+#modeAgent .ta-cadre{container-type:inline-size;position:relative;height:calc(100vh - 110px);height:calc(100dvh - 110px);min-height:460px;
+  border:1px solid var(--line);border-radius:20px;background:var(--void);overflow:hidden;box-shadow:0 4px 24px rgba(11,27,54,.07);margin:4px 0 12px}
+#modeAgent .ta-grille{display:flex;height:100%;min-height:0}
+#modeAgent .ta-principal{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;padding:12px 14px 0}
+#modeAgent .ta-defile{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;display:flex;flex-direction:column;scrollbar-width:thin}
+#modeAgent .ta-principal .compose{position:static;background:none;padding:8px 0 12px}
+#modeAgent .ta-tete{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+#modeAgent .ta-titre{font-family:'Anton',sans-serif;font-size:20px;text-transform:uppercase;letter-spacing:.02em}
+#modeAgent .ta-titre em{font-style:normal;color:var(--pool)}
+#modeAgent .ta-droite{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+#modeAgent .ta-accroche{font-family:'Archivo',sans-serif;font-weight:800;font-size:clamp(22px,4.5vw,30px);margin:0 0 6px;text-transform:none}
+#modeAgent .ta-intro{max-width:460px}
+#modeAgent .ta-defile .ag-outils{justify-content:center;margin:16px 0 8px}
+#modeAgent .ta-defile .ag-lit{margin:0}
+#modeAgent .ta-cote{position:absolute;z-index:6;top:50px;left:10px;right:10px;max-height:70%;overflow-y:auto}
+#modeAgent .ta-cote .histo{margin:0;box-shadow:0 10px 30px rgba(11,27,54,.18)}
+#modeAgent .ta-plus .x4{margin:8px 0 0;border:0;padding:4px 0 0;background:transparent}
+#modeAgent .ta-plus .x4 .x4-h{display:none}
+#modeAgent .x4-plie{border-color:var(--pool)}
+@container (max-width:699px){#modeAgent .ta-tete{flex-wrap:nowrap}
+#modeAgent .ta-titre{font-size:17px;flex:0 0 auto}
+#modeAgent .ta-droite{flex-wrap:nowrap;overflow-x:auto;min-width:0;scrollbar-width:none;padding-bottom:2px}
+#modeAgent .ta-droite > *{flex:0 0 auto}
+#modeAgent .ta-principal{padding:10px 10px 0}
+}
+@container (min-width:700px){#modeAgent .ta-cote{position:static;flex:0 0 230px;max-height:none;border-right:1px solid var(--line);background:var(--panel);padding:10px 8px}
+#modeAgent .ta-cote .histo,#modeAgent .ta-cote .histo[hidden]{display:block;border:0;background:transparent;box-shadow:none;padding:0;margin:0}
+#modeAgent .ta-droite .histo-btn,#modeAgent .ta-droite .neuf-btn{display:none}
+}
+#modeAgent .histo .ligne.actif{background:var(--panel2);border-radius:8px}
+#modeAgent .histo .ligne.actif button.ouvre{font-weight:700}
+#modeAgent .histo button.neuf{font-weight:700;color:var(--pool);border:1px solid var(--line);margin:2px 0 8px;text-align:center}
+#modeAgent .histo .histo-titre{font-weight:800;font-size:14px;padding:6px 10px 2px}
+#modeAgent .histo .quand{font-family:'Space Mono',monospace;font-size:10.5px;color:var(--dim);flex:0 0 auto;padding-left:6px}
 #modeAgent .ag-outils{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
 #modeAgent .ag-outil{font:700 11px/1 'Space Mono',monospace;border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:6px 10px;color:var(--paper)}
 #modeAgent .ag-outil[data-off]{opacity:.45}
@@ -1238,7 +1305,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 #modeAgent .histo{margin-top:10px;border:1px solid var(--line);background:var(--panel);border-radius:12px;padding:8px}
 #modeAgent .histo[hidden]{display:none}
 #modeAgent .histo button{display:block;width:100%;text-align:left;background:transparent;border:0;padding:8px 10px;border-radius:8px;
-  font-size:13px;cursor:pointer;color:var(--paper);font-family:inherit;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  text-transform:none;letter-spacing:0;font-size:13px;cursor:pointer;color:var(--paper);font-family:inherit;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #modeAgent .histo button:hover{background:var(--panel2)}
 #modeAgent .histo .vide{font-size:12.5px;color:var(--dim);padding:8px 10px}
 #modeAgent .histo .note{font-size:11.5px;color:var(--dim);padding:4px 10px 8px;border-bottom:1px solid var(--line);margin-bottom:4px}
@@ -1485,6 +1552,13 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 </div>
 <section class="ag-mode" id="modeChat" role="tabpanel" aria-labelledby="ongletChat">
 <div class="chat">
+ <!-- 03/10 : « le chat pas infini : dans un rectangle comme Claude et ChatGPT, on scroll dedans ;
+      les discussions historiques sur la gauche ». Le cadre a sa hauteur, le fil defile dedans. -->
+ <div class="ch-cadre" id="cadre"><div class="ch-grille">
+  <aside class="ch-cote" aria-label="Your chats">
+  <div class="histo" id="histo" hidden></div>
+  </aside>
+  <div class="ch-principal">
   <div class="chat-tete">
     <div class="titre">Swole<em>Mind</em></div>
     <div class="droite">
@@ -1496,6 +1570,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       <button class="btn-fin" id="nouveau" type="button">&#10133; New chat</button>
     </div>
   </div>
+  <div class="ch-defile" id="defile">
   <div class="recharge" id="rechargeBox" hidden>
     <p><b>No $SWOGE needed.</b> Choose <i>Sign with my wallet</i> and your wallet asks you to sign USDC when a request needs it, or top up a dollar credit here once. No deposit: USDC goes straight from your wallet, then every answer and image is paid from the credit at real cost, with no new signature. Videos are paid in $SWOGE for now. The credit stays on this wallet's sign-in and is not withdrawable.</p>
     <div class="rc-ligne" id="rcMontants">
@@ -1511,7 +1586,6 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     <p class="rc-statut" id="rcStatut" role="status"></p>
     <div class="rc-histo" id="rcHisto"></div>
   </div>
-  <div class="histo" id="histo" hidden></div>
   <div class="etat" id="etat" hidden></div>
 
   <section class="accueil" id="accueil">
@@ -1542,6 +1616,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   </section>
 
   <section class="fil" id="fil" hidden aria-live="polite"></section>
+  </div>
 
   <div class="compose">
     <div class="reglages" id="reglages" hidden>
@@ -1583,6 +1658,8 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     </div>
     <div class="prixq" id="prixq">Loading models…</div>
   </div>
+  </div>
+ </div></div>
 </div>
 
 <div class="voile-feuille" id="prod" hidden role="dialog" aria-modal="true" aria-label="Series and ads">
@@ -1630,12 +1707,70 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 </section>
 <section class="ag-mode" id="modeAgent" role="tabpanel" aria-labelledby="ongletAgent" hidden>
 <div class="ag-cadre">
-  <div class="ag-tete">
-    <h1>SwogeAgentic</h1>
-    <p>An AI agent that works with SWOGE's own data: it reads tokens, the newest launches, wallets, the SWOGE AI colony, the $SWOGE economy, infrastructure and the web, chains the lookups itself, then answers with the numbers it read.</p>
+  <!-- 03/10 : « je la trouve compliquee a utiliser, beaucoup d'information, je ne vois pas
+       l'historique des discussions ». Meme cadre que le chat : les taches a gauche, le fil qui
+       defile dedans, le composeur en bas. Le reste (embauches, eSIM, x402, API) est replie dessous. -->
+  <div class="ta-cadre" id="ag-cadre"><div class="ta-grille">
+   <aside class="ta-cote" aria-label="Your tasks">
+    <div class="histo" id="ag-histo" hidden></div>
+   </aside>
+   <div class="ta-principal">
+    <div class="ta-tete">
+      <div class="ta-titre">Swoge<em>Agentic</em></div>
+      <div class="ta-droite">
+        <button class="btn-fin histo-btn" id="ag-histoBtn" type="button" aria-expanded="false" title="Your past tasks">&#128339; History</button>
+        <button class="btn-fin neuf-btn" id="ag-nouveau" type="button">&#10133; New task</button>
+        <span class="pastille" id="ag-credit" title="Your dollar credit: topped up with one wallet signature (USDC on Base or Solana), spent at real cost">Credit <b>&mdash;</b></span>
+        <span class="pastille" id="ag-solde" title="Your SWOGE gaming balance">Balance <b>&mdash;</b></span>
+        <select class="btn-fin" id="ag-payeur" aria-label="Pay with"><option value="signe">Sign with my wallet (USDC)</option><option value="credit">Use my dollar credit</option><option value="swoge">Pay with $SWOGE</option></select>
+        <button class="btn-fin" id="ag-recharger" type="button" aria-expanded="false">&#43; Top up</button>
+      </div>
+    </div>
+    <div class="ta-defile" id="ag-defile">
+  <div class="recharge" id="ag-rechargeBox" hidden>
+    <p><b>No $SWOGE needed.</b> Choose <i>Sign with my wallet</i> and your wallet asks you to sign USDC when a task needs it, or top up a dollar credit here once. No deposit: USDC goes straight from your wallet, then every task is paid from the credit at real cost, with no new signature. The credit stays on this wallet's sign-in and is not withdrawable.</p>
+    <div class="rc-ligne" id="ag-rcMontants">
+      <button type="button" class="btn-fin" data-usd="1">$1</button>
+      <button type="button" class="btn-fin choisi" data-usd="5">$5</button>
+      <button type="button" class="btn-fin" data-usd="20">$20</button>
+    </div>
+    <div class="rc-ligne">
+      <label><input type="radio" name="agRcReseau" value="base" checked> USDC on Base</label>
+      <label><input type="radio" name="agRcReseau" value="solana"> USDC on Solana</label>
+    </div>
+    <button type="button" class="rc-signer" id="ag-rcSigner">Sign a $5 top-up</button>
+    <p class="rc-statut" id="ag-rcStatut" role="status"></p>
+    <div class="rc-histo" id="ag-rcHisto"></div>
   </div>
-  <div class="ag-outils" id="ag-outils" aria-label="Tools the agent can use"></div>
-  <div class="ag-lit" id="ag-agLit">&#128274; Read-only: the agent can't buy, sell, sign or post anything.</div>
+  <div class="accueil" id="ag-accueil">
+    <h2 class="ta-accroche">Give it a task</h2>
+    <p class="ta-intro">It reads tokens, new launches, wallets, the SWOGE AI colony and the web, then answers with the numbers it read.</p>
+    <div class="suggestions" id="ag-suggestions">
+      <button class="suggestion" type="button" data-t="Check this token and tell me what you find: "><span class="ic">&#128269;</span>Check a token</button>
+      <button class="suggestion" type="button" data-t="Is this the official Robinhood Stock Token or a copy with the same ticker? "><span class="ic">&#127974;</span>Real stock token or a copy?</button>
+      <button class="suggestion" type="button" data-t="What is the SWOGE AI colony doing right now? Open positions, latest buys and sells, and how the real-money mirror is doing."><span class="ic">&#129302;</span>What is the colony doing?</button>
+      <button class="suggestion" type="button" data-t="How much $SWOGE has been burnt, what is in the casino vault, and what is the price now?"><span class="ic">&#128293;</span>$SWOGE economy</button>
+      <button class="suggestion" type="button" data-t="Research this project on the web and summarise what it does, with sources: "><span class="ic">&#127760;</span>Research a project</button>
+    </div>
+    <div class="ag-outils" id="ag-outils" aria-label="Tools the agent can use"></div>
+    <div class="ag-lit" id="ag-agLit">&#128274; Read-only: the agent can't buy, sell, sign or post anything.</div>
+  </div>
+  <div class="fil" id="ag-fil" hidden></div>
+  <div class="etat" id="ag-etat" hidden></div>
+    </div>
+  <div class="compose ag-compose">
+    <div class="boite">
+      <textarea id="ag-question" rows="1" placeholder="Give SwogeAgentic a task" aria-label="Your task"></textarea>
+      <div class="outils">
+        <select id="ag-modele" aria-label="Model"></select>
+        <button class="envoi" id="ag-envoyer" type="button" disabled aria-label="Run">&#8593;</button>
+      </div>
+    </div>
+    <div class="prixq" id="ag-prixq">&nbsp;</div>
+  </div>
+   </div>
+  </div></div>
+  <div class="ta-plus">
   <!-- ---- MES EMBAUCHES (28/09/2026) : ce que l'agent a paye pour CE joueur, lu sur
        /studio/agent/embauches avec la session ; ecrit en texte, jamais en HTML. -->
   <details class="dev" id="ag-embBox" hidden>
@@ -1657,13 +1792,16 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
        les posts menent ici, et la page ne parlait que de la cle payee en $SWOGE.
        Les outils et leurs prix sont LUS en direct (/agentic/x402, /agentic/tools),
        jamais recopies ; tout est ecrit en texte, rien du serveur ne devient du HTML. -->
+  <details class="dev x4-plie">
+  <summary>&#129302; For AI agents: pay per call with x402</summary>
   <section class="x4" id="ag-x402" aria-labelledby="ag-x4titre">
-    <h2 id="ag-x4titre">&#129302; For AI agents: pay per call with x402</h2>
+    <h2 id="ag-x4titre" class="x4-h">For AI agents: pay per call with x402</h2>
     <p>Any AI agent can hire these tools with no account and no API key. It calls a tool, gets a <code>402 Payment Required</code> with the price, pays in <b>USDC on Base or Solana</b> (or USDG / $SWOGE on Robinhood Chain), and gets the answer. The tools are listed in PayAI's public catalog of agent services.</p>
     <div class="x4-grille" id="ag-x4Outils"><p class="x4-note">Loading live prices&hellip;</p></div>
     <p><a href="x402_essai.html">&#9889; Try a paid call in your browser</a> &middot; <a href="swogeagentic_api.html">&#128214; API docs</a> &middot; <a id="ag-x4Decouverte" href="https://web-production-220a3.up.railway.app/.well-known/x402" rel="noopener">/.well-known/x402</a></p>
     <p class="x4-note" id="ag-x4Note">Prices shown are live, in USD on Base. On Solana and Robinhood Chain they can differ slightly (network fees). Read-only tools: none of them can buy, sell or sign anything.</p>
   </section>
+  </details>
   <!-- ---- POUR LES AUTRES AGENTS (demande du proprietaire, 26 septembre 2026) ----
        Les cles d'API se creent ICI, par la session signee ; le serveur ne garde
        que leur empreinte, la cle se montre une seule fois. Chaque cle a un
@@ -1689,48 +1827,6 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     <h3>Your last calls</h3>
     <div id="ag-devRecus"><p>No calls yet.</p></div>
   </details>
-  <div class="barre-fin">
-    <span class="pastille" id="ag-credit" title="Your dollar credit: topped up with one wallet signature (USDC on Base or Solana), spent at real cost">Credit <b>&mdash;</b></span>
-    <span class="pastille" id="ag-solde" title="Your SWOGE gaming balance">Balance <b>&mdash;</b></span>
-    <select class="btn-fin" id="ag-payeur" aria-label="Pay with"><option value="signe">Sign with my wallet (USDC)</option><option value="credit">Use my dollar credit</option><option value="swoge">Pay with $SWOGE</option></select>
-    <button class="btn-fin" id="ag-recharger" type="button" aria-expanded="false">&#43; Top up</button>
-    <button class="btn-fin" id="ag-nouveau" type="button">&#10133; New task</button>
-  </div>
-  <div class="recharge" id="ag-rechargeBox" hidden>
-    <p><b>No $SWOGE needed.</b> Choose <i>Sign with my wallet</i> and your wallet asks you to sign USDC when a task needs it, or top up a dollar credit here once. No deposit: USDC goes straight from your wallet, then every task is paid from the credit at real cost, with no new signature. The credit stays on this wallet's sign-in and is not withdrawable.</p>
-    <div class="rc-ligne" id="ag-rcMontants">
-      <button type="button" class="btn-fin" data-usd="1">$1</button>
-      <button type="button" class="btn-fin choisi" data-usd="5">$5</button>
-      <button type="button" class="btn-fin" data-usd="20">$20</button>
-    </div>
-    <div class="rc-ligne">
-      <label><input type="radio" name="agRcReseau" value="base" checked> USDC on Base</label>
-      <label><input type="radio" name="agRcReseau" value="solana"> USDC on Solana</label>
-    </div>
-    <button type="button" class="rc-signer" id="ag-rcSigner">Sign a $5 top-up</button>
-    <p class="rc-statut" id="ag-rcStatut" role="status"></p>
-    <div class="rc-histo" id="ag-rcHisto"></div>
-  </div>
-  <div class="accueil" id="ag-accueil">
-    <div class="suggestions" id="ag-suggestions">
-      <button class="suggestion" type="button" data-t="Check this token and tell me what you find: "><span class="ic">&#128269;</span>Check a token</button>
-      <button class="suggestion" type="button" data-t="Is this the official Robinhood Stock Token or a copy with the same ticker? "><span class="ic">&#127974;</span>Real stock token or a copy?</button>
-      <button class="suggestion" type="button" data-t="What is the SWOGE AI colony doing right now? Open positions, latest buys and sells, and how the real-money mirror is doing."><span class="ic">&#129302;</span>What is the colony doing?</button>
-      <button class="suggestion" type="button" data-t="How much $SWOGE has been burnt, what is in the casino vault, and what is the price now?"><span class="ic">&#128293;</span>$SWOGE economy</button>
-      <button class="suggestion" type="button" data-t="Research this project on the web and summarise what it does, with sources: "><span class="ic">&#127760;</span>Research a project</button>
-    </div>
-  </div>
-  <div class="fil" id="ag-fil" hidden></div>
-  <div class="etat" id="ag-etat" hidden></div>
-  <div class="compose ag-compose">
-    <div class="boite">
-      <textarea id="ag-question" rows="1" placeholder="Give SwogeAgentic a task" aria-label="Your task"></textarea>
-      <div class="outils">
-        <select id="ag-modele" aria-label="Model"></select>
-        <button class="envoi" id="ag-envoyer" type="button" disabled aria-label="Run">&#8593;</button>
-      </div>
-    </div>
-    <div class="prixq" id="ag-prixq">&nbsp;</div>
   </div></div>
 </section>
 <section class="ag-mode" id="modeBrowse" role="tabpanel" aria-labelledby="ongletBrowse" hidden>
@@ -2829,9 +2925,30 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     if (role === "user") d.textContent = texte;
     else d.innerHTML = '<div class="corps"></div>';
     $("fil").appendChild(d);
-    d.scrollIntoView({ block: "end" });
+    enBas(true);
     return d;
   }
+  /* 03/10 : le fil defile DANS le cadre. Il suit la reponse qui s'ecrit tant que le joueur est
+     en bas ; s'il remonte lire, on ne le ramene pas de force. scrollIntoView faisait aussi
+     defiler la page entiere. */
+  var colle = true;
+  function enBas(force){ var z = $("defile"); if (force) colle = true; if (colle) z.scrollTop = z.scrollHeight; }
+  $("defile").addEventListener("scroll", function(){ var z = $("defile"); colle = z.scrollHeight - z.scrollTop - z.clientHeight < 80; });
+  /* Le cadre tient dans l'ecran SOUS ce qui le precede (les onglets de swoge_agents.html, plus
+     hauts sur un telephone) : le composeur est visible sans faire defiler la page. Recalcule
+     quand le cadre apparait (changement d'onglet) et quand la fenetre change. */
+  function ajusteCadre(){
+    var c = $("cadre"), r = c.getBoundingClientRect(); if (!r.width) return;
+    var haut = r.top + (window.scrollY || 0);
+    c.style.height = Math.max(460, Math.min(window.innerHeight - 16, Math.round(window.innerHeight - haut - 14))) + "px";
+  }
+  window.addEventListener("resize", ajusteCadre);
+  if (window.IntersectionObserver) new IntersectionObserver(ajusteCadre).observe($("cadre"));
+  ajusteCadre();
+  if (window.MutationObserver) new MutationObserver(function(){ enBas(false); }).observe($("fil"), { childList: true, subtree: true, characterData: true });
+  /* Le composeur change de hauteur (reglages d'un mode, texte sur plusieurs lignes) : le fil
+     raccourcit sans qu'aucun message ne change. On reste colle au dernier. */
+  if (window.ResizeObserver) new ResizeObserver(function(){ enBas(false); }).observe($("defile"));
   function peintConv(){
     $("fil").innerHTML = "";
     var c = etat.conv;
@@ -3097,7 +3214,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   function nouvelleConv(){
     etat.conv = { id: String(Date.now()), titre: "", messages: [] };
     ecrisLocal("swogeChatCourant", null);
-    peintConv(); $("question").focus();
+    peintConv(); peintHisto(); $("question").focus();
   }
   function sauveConv(){
     var c = etat.conv; if (!c) return;
@@ -3111,6 +3228,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     ecrisLocal("swogeChats", etat.convs);
     ecrisLocal("swogeChatCourant", c.id);
     planifiePousse();
+    peintHisto();
   }
 
   /* ---- L'HISTORIQUE ATTACHE AU PORTEFEUILLE ----
@@ -3181,7 +3299,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
         etat.convs = etat.convs.slice(0, 50);
         SYNC.t = d.maintenant || SYNC.t; ecrisLocal("swogeHistoSync", SYNC);
         ecrisLocal("swogeChats", etat.convs);
-        if (!$("histo").hidden) peintHisto();
+        peintHisto();   /* toujours : sur ordinateur, la liste est visible en permanence */
         if (!$("accueil").hidden) peintRecents();
         return pousseTout();
       })["catch"](function(){})
@@ -3198,7 +3316,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     peintHisto();
   }
   /* Ouvrir une discussion enregistree : la meme chose depuis l'historique et depuis l'accueil. */
-  function ouvreConv(c){ etat.conv = JSON.parse(JSON.stringify(c)); ecrisLocal("swogeChatCourant", c.id); peintConv(); basculeHisto(false); reprend(); }
+  function ouvreConv(c){ etat.conv = JSON.parse(JSON.stringify(c)); ecrisLocal("swogeChatCourant", c.id); peintConv(); basculeHisto(false); peintHisto(); enBas(true); reprend(); }
   /* Quand : l'heure aujourd'hui, sinon le jour. */
   function quand(t){
     if (!t) return "";
@@ -3241,9 +3359,14 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     note.textContent = histoActif() ? "Synced to your wallet " + SYNC.adresse.slice(0, 6) + "\u2026" + SYNC.adresse.slice(-4) + " \u2014 open it on any device."
       : "Saved on this device. Sign in to sync your chats across devices.";
     h.appendChild(note);
+    /* Le geste le plus courant en tete de la liste, comme ChatGPT et Claude. */
+    var nv = document.createElement("button"); nv.type = "button"; nv.className = "neuf"; nv.textContent = "\u2795 New chat";
+    nv.addEventListener("click", function(){ nouvelleConv(); basculeHisto(false); });
+    h.appendChild(nv);
     if (!etat.convs.length) { var v = document.createElement("div"); v.className = "vide"; v.textContent = TXT.vide; h.appendChild(v); return; }
+    var courant = etat.conv && etat.conv.id;
     etat.convs.forEach(function(c){
-      var l = document.createElement("div"); l.className = "ligne";
+      var l = document.createElement("div"); l.className = "ligne" + (c.id === courant ? " actif" : "");
       var b = document.createElement("button"); b.type = "button"; b.className = "ouvre"; b.textContent = (estMission(c) ? "\ud83c\udfaf " : "") + (c.titre || "Chat");
       var rm = resumeMissions(c);
       if (rm) { var sm = document.createElement("span"); sm.className = "resume-mission"; sm.textContent = rm; b.appendChild(sm); }
@@ -4653,6 +4776,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     var id = lisLocal("swogeChatCourant", null);
     var c = id && etat.convs.filter(function(x){ return x.id === id; })[0];
     if (c) { etat.conv = JSON.parse(JSON.stringify(c)); peintConv(); } else nouvelleConv();
+    peintHisto();
   })();
   peintMode();
   reprend();
@@ -4847,7 +4971,10 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   }
   function nouveauRid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2, 10); }
   var etat = { cat: null, modele: lisLocal("swogeAgentModele", null), occupe: false, enVol: null, fil: lisLocal("swogeAgentFil", []), quitte: false,
-               credit: null, swoge: null, rcUsd: 5, payeurChoisi: lisLocal("swogeAgentPayeur", null) };
+               credit: null, swoge: null, rcUsd: 5, payeurChoisi: lisLocal("swogeAgentPayeur", null),
+               taches: lisLocal("swogeAgentTaches", []), tacheId: lisLocal("swogeAgentCourante", null) };
+  if (!Array.isArray(etat.taches)) etat.taches = [];
+  if (!Array.isArray(etat.fil)) etat.fil = [];
 
   function dit(t){ var e = $("etat"); e.textContent = t || ""; e.hidden = !t; }
   function modeleCourant(){
@@ -4878,14 +5005,79 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       .then(coupe, coupe);
   }
   function dimensionne(){ var t = $("question"); t.style.height = "auto"; t.style.height = Math.min(200, t.scrollHeight) + "px"; peintBoutons(); }
-  function sauve(){ ecrisLocal("swogeAgentFil", etat.fil.slice(-30)); }
+  /* ---- 03/10 : LES TACHES PASSEES, a gauche ----
+   * « Je ne vois pas l'historique des discussions. » Il n'y avait qu'UN fil (swogeAgentFil),
+   * efface par « New task ». Chaque fil est maintenant une tache gardee sur cet appareil
+   * (swogeAgentTaches, 20 au plus) ; swogeAgentFil reste le fil ouvert. On ne change pas de
+   * tache pendant qu'une tourne : sa reponse s'ecrirait dans une autre. */
+  function nouvelId(){ return "t" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+  function sauve(){
+    ecrisLocal("swogeAgentFil", etat.fil.slice(-30));
+    var id = etat.tacheId || (etat.tacheId = nouvelId());
+    var autres = etat.taches.filter(function(x){ return x.id !== id; });
+    if (etat.fil.length) {
+      var premier = etat.fil.filter(function(x){ return x.role === "user"; })[0];
+      etat.taches = [{ id: id, titre: String(premier ? premier.content : "Task").slice(0, 60), maj: Date.now(), fil: etat.fil.slice(-30) }].concat(autres).slice(0, 20);
+    } else etat.taches = autres;
+    ecrisLocal("swogeAgentTaches", etat.taches); ecrisLocal("swogeAgentCourante", id);
+    peintHisto();
+  }
+  function quand(t){
+    if (!t) return "";
+    var d = new Date(t), n = new Date();
+    return d.toDateString() === n.toDateString() ? d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })
+      : d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  }
+  var TOURNE = "A task is running: stop it or let it finish before opening another.";
+  function nouvelleTache(){
+    if (etat.occupe) { dit(TOURNE); return; }
+    etat.fil = []; etat.tacheId = nouvelId(); sauve(); peintFil(); dit(""); basculeHisto(false); $("question").focus();
+  }
+  function ouvreTache(t){
+    if (etat.occupe) { dit(TOURNE); return; }
+    etat.fil = JSON.parse(JSON.stringify(t.fil || [])); etat.tacheId = t.id;
+    ecrisLocal("swogeAgentFil", etat.fil); ecrisLocal("swogeAgentCourante", t.id);
+    peintFil(); dit(""); basculeHisto(false); peintHisto(); enBas(true);
+  }
+  function effaceTache(t){
+    if (etat.occupe && t.id === etat.tacheId) { dit(TOURNE); return; }
+    etat.taches = etat.taches.filter(function(x){ return x.id !== t.id; });
+    ecrisLocal("swogeAgentTaches", etat.taches);
+    if (t.id === etat.tacheId) { etat.fil = []; etat.tacheId = nouvelId(); ecrisLocal("swogeAgentFil", []); ecrisLocal("swogeAgentCourante", etat.tacheId); peintFil(); }
+    peintHisto();
+  }
+  function peintHisto(){
+    var h = $("histo"); h.innerHTML = "";
+    var ti = document.createElement("div"); ti.className = "histo-titre"; ti.textContent = "Your tasks"; h.appendChild(ti);
+    var note = document.createElement("div"); note.className = "note"; note.textContent = "Saved on this device."; h.appendChild(note);
+    var nv = document.createElement("button"); nv.type = "button"; nv.className = "neuf"; nv.textContent = "\u2795 New task";
+    nv.addEventListener("click", nouvelleTache); h.appendChild(nv);
+    if (!etat.taches.length) { var v = document.createElement("div"); v.className = "vide"; v.textContent = "Your tasks will appear here."; h.appendChild(v); return; }
+    etat.taches.forEach(function(t){
+      var l = document.createElement("div"); l.className = "ligne" + (t.id === etat.tacheId ? " actif" : "");
+      var b = document.createElement("button"); b.type = "button"; b.className = "ouvre"; b.textContent = t.titre || "Task";
+      b.addEventListener("click", function(){ ouvreTache(t); });
+      var q = document.createElement("span"); q.className = "quand"; q.textContent = quand(t.maj);
+      var x = document.createElement("button"); x.type = "button"; x.className = "efface"; x.textContent = "\u2715";
+      x.setAttribute("aria-label", "Delete " + (t.titre || "task"));
+      x.addEventListener("click", function(){ effaceTache(t); });
+      l.appendChild(b); l.appendChild(q); l.appendChild(x); h.appendChild(l);
+    });
+  }
+  function basculeHisto(ouvre){
+    var h = $("histo"); var o = typeof ouvre === "boolean" ? ouvre : h.hidden;
+    if (o) peintHisto(); h.hidden = !o; $("histoBtn").setAttribute("aria-expanded", String(o));
+  }
+  /* Le fil defile DANS le cadre, et suit la reponse tant que le joueur est en bas. */
+  var colle = true;
+  function enBas(force){ var z = $("defile"); if (force) colle = true; if (colle) z.scrollTop = z.scrollHeight; }
 
   function ajouteMsg(role, texte){
     $("accueil").hidden = true; $("fil").hidden = false;
     var d = document.createElement("div"); d.className = "msg " + (role === "user" ? "moi" : "ia");
     if (role === "user") d.textContent = texte;
     else d.innerHTML = '<ol class="etapes"></ol><div class="corps"></div>';
-    $("fil").appendChild(d); d.scrollIntoView({ block: "end" });
+    $("fil").appendChild(d); enBas(true);
     return d;
   }
   function ligneEtape(d, o){
@@ -5664,7 +5856,22 @@ function qrMatrice(txt){
   $("question").addEventListener("input", dimensionne);
   $("question").addEventListener("keydown", function(e){ if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); envoyer(); } });
   $("envoyer").addEventListener("click", function(){ if (etat.occupe && etat.enVol) arreter(); else envoyer(); });
-  $("nouveau").addEventListener("click", function(){ etat.fil = []; sauve(); peintFil(); dit(""); $("question").focus(); });
+  $("nouveau").addEventListener("click", nouvelleTache);
+  $("histoBtn").addEventListener("click", function(){ basculeHisto(); });
+  $("defile").addEventListener("scroll", function(){ var z = $("defile"); colle = z.scrollHeight - z.scrollTop - z.clientHeight < 80; });
+  /* Le cadre tient dans l'ecran SOUS ce qui le precede (les onglets de swoge_agents.html, plus
+     hauts sur un telephone) : le composeur est visible sans faire defiler la page. Recalcule
+     quand le cadre apparait (changement d'onglet) et quand la fenetre change. */
+  function ajusteCadre(){
+    var c = $("cadre"), r = c.getBoundingClientRect(); if (!r.width) return;
+    var haut = r.top + (window.scrollY || 0);
+    c.style.height = Math.max(460, Math.min(window.innerHeight - 16, Math.round(window.innerHeight - haut - 14))) + "px";
+  }
+  window.addEventListener("resize", ajusteCadre);
+  if (window.IntersectionObserver) new IntersectionObserver(ajusteCadre).observe($("cadre"));
+  ajusteCadre();
+  if (window.MutationObserver) new MutationObserver(function(){ enBas(false); }).observe($("fil"), { childList: true, subtree: true, characterData: true });
+  if (window.ResizeObserver) new ResizeObserver(function(){ enBas(false); }).observe($("defile"));
   $("modele").addEventListener("change", function(){ etat.modele = this.value; ecrisLocal("swogeAgentModele", etat.modele); peintPrix(); });
   window.addEventListener("pagehide", function(){ etat.quitte = true; });
   window.addEventListener("beforeunload", function(){ etat.quitte = true; });
@@ -5752,7 +5959,10 @@ function qrMatrice(txt){
     })["catch"](function(){ $("prixq").textContent = TXT.ferme; });
   chargeSolde();
   peintDev(null); chargeDev();
+  /* Le fil ouvert devient une tache s'il n'en etait pas une (fil d'avant le 03/10). */
+  if (etat.fil.length && !etat.taches.some(function(x){ return x.id === etat.tacheId; })) { etat.tacheId = null; sauve(); }
   peintFil();
+  peintHisto();
   reprend();
   var dernierJeton = jeton();
   setInterval(function(){

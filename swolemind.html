@@ -699,6 +699,39 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
  * recherche web facon Perplexity, et le cout de chaque reponse affiche. */
 .chat-main{min-width:0}
 .chat{max-width:780px;margin:0 auto;padding:18px 16px 0;display:flex;flex-direction:column;min-height:calc(100vh - 150px)}
+/* ---- 03/10 : LE CADRE, facon Claude et ChatGPT ----
+ * « La page web est infinie : s'il y a beaucoup de requetes dans la discussion… » Le chat vit
+ * dans un rectangle de la hauteur de l'ecran ; seul le fil defile, le composeur reste en bas.
+ * Les discussions sont a gauche des que le cadre a la place (requete de conteneur : la meme
+ * regle vaut dans swolemind.html et dans l'onglet de swoge_agents.html, plus etroit). */
+.chat{min-height:0}
+.ch-cadre{container-type:inline-size;position:relative;height:calc(100vh - 110px);height:calc(100dvh - 110px);min-height:460px;
+  border:1px solid var(--line);border-radius:20px;background:var(--void);overflow:hidden;box-shadow:0 4px 24px rgba(11,27,54,.07)}
+.ch-grille{display:flex;height:100%;min-height:0}
+.ch-principal{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;padding:12px 14px 0}
+.ch-defile{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;display:flex;flex-direction:column;scrollbar-width:thin}
+.ch-principal .compose{position:static;background:none;padding:8px 0 12px}
+/* Etroit : l'historique s'ouvre par-dessus, sous l'en-tete (bouton History). */
+.ch-cote{position:absolute;z-index:6;top:50px;left:10px;right:10px;max-height:70%;overflow-y:auto}
+.ch-cote .histo{margin:0;box-shadow:0 10px 30px rgba(11,27,54,.18)}
+.histo .ligne.actif{background:var(--panel2);border-radius:8px}
+.histo button.neuf{font-weight:700;color:var(--pool);border:1px solid var(--line);margin:2px 0 8px;text-align:center}
+.histo .ligne.actif button.ouvre{font-weight:700}
+/* Etroit : l'en-tete tient sur UNE ligne qui glisse de cote ; le fil garde la hauteur. */
+@container (max-width:699px){
+  .ch-principal .chat-tete{flex-wrap:nowrap}
+  .ch-principal .chat-tete .titre{font-size:17px;flex:0 0 auto}
+  .ch-principal .chat-tete .droite{flex-wrap:nowrap;overflow-x:auto;min-width:0;scrollbar-width:none;padding-bottom:2px}
+  .ch-principal .chat-tete .droite > *{flex:0 0 auto}
+  .ch-principal #histoBtn{order:-2}
+  .ch-principal #nouveau{order:-1}
+  .ch-principal{padding:10px 10px 0}
+}
+@container (min-width:700px){
+  .ch-cote{position:static;flex:0 0 230px;max-height:none;border-right:1px solid var(--line);background:var(--panel);padding:10px 8px}
+  .ch-cote .histo,.ch-cote .histo[hidden]{display:block;border:0;background:transparent;box-shadow:none;padding:0}
+  .ch-principal #histoBtn,.ch-principal #nouveau,.ch-principal .recents{display:none}   /* deja dans la colonne de gauche */
+}
 .chat-tete{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .chat-tete .titre{font-family:'Anton',sans-serif;font-size:20px;text-transform:uppercase;letter-spacing:.02em}
 .chat-tete .titre em{font-style:normal;color:var(--pool)}
@@ -965,7 +998,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 .histo{margin-top:10px;border:1px solid var(--line);background:var(--panel);border-radius:12px;padding:8px}
 .histo[hidden]{display:none}
 .histo button{display:block;width:100%;text-align:left;background:transparent;border:0;padding:8px 10px;border-radius:8px;
-  font-size:13px;cursor:pointer;color:var(--paper);font-family:inherit;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  text-transform:none;letter-spacing:0;font-size:13px;cursor:pointer;color:var(--paper);font-family:inherit;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .histo button:hover{background:var(--panel2)}
 .histo .vide{font-size:12.5px;color:var(--dim);padding:8px 10px}
 .histo .note{font-size:11.5px;color:var(--dim);padding:4px 10px 8px;border-bottom:1px solid var(--line);margin-bottom:4px}
@@ -1004,6 +1037,13 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 </style>
 
 <div class="chat">
+ <!-- 03/10 : « le chat pas infini : dans un rectangle comme Claude et ChatGPT, on scroll dedans ;
+      les discussions historiques sur la gauche ». Le cadre a sa hauteur, le fil defile dedans. -->
+ <div class="ch-cadre" id="cadre"><div class="ch-grille">
+  <aside class="ch-cote" aria-label="Your chats">
+  <div class="histo" id="histo" hidden></div>
+  </aside>
+  <div class="ch-principal">
   <div class="chat-tete">
     <div class="titre">Swole<em>Mind</em></div>
     <div class="droite">
@@ -1015,6 +1055,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       <button class="btn-fin" id="nouveau" type="button">&#10133; New chat</button>
     </div>
   </div>
+  <div class="ch-defile" id="defile">
   <div class="recharge" id="rechargeBox" hidden>
     <p><b>No $SWOGE needed.</b> Choose <i>Sign with my wallet</i> and your wallet asks you to sign USDC when a request needs it, or top up a dollar credit here once. No deposit: USDC goes straight from your wallet, then every answer and image is paid from the credit at real cost, with no new signature. Videos are paid in $SWOGE for now. The credit stays on this wallet's sign-in and is not withdrawable.</p>
     <div class="rc-ligne" id="rcMontants">
@@ -1030,7 +1071,6 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     <p class="rc-statut" id="rcStatut" role="status"></p>
     <div class="rc-histo" id="rcHisto"></div>
   </div>
-  <div class="histo" id="histo" hidden></div>
   <div class="etat" id="etat" hidden></div>
 
   <section class="accueil" id="accueil">
@@ -1061,6 +1101,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   </section>
 
   <section class="fil" id="fil" hidden aria-live="polite"></section>
+  </div>
 
   <div class="compose">
     <div class="reglages" id="reglages" hidden>
@@ -1102,6 +1143,8 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     </div>
     <div class="prixq" id="prixq">Loading models…</div>
   </div>
+  </div>
+ </div></div>
 </div>
 
 <div class="voile-feuille" id="prod" hidden role="dialog" aria-modal="true" aria-label="Series and ads">
@@ -1447,9 +1490,30 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     if (role === "user") d.textContent = texte;
     else d.innerHTML = '<div class="corps"></div>';
     $("fil").appendChild(d);
-    d.scrollIntoView({ block: "end" });
+    enBas(true);
     return d;
   }
+  /* 03/10 : le fil defile DANS le cadre. Il suit la reponse qui s'ecrit tant que le joueur est
+     en bas ; s'il remonte lire, on ne le ramene pas de force. scrollIntoView faisait aussi
+     defiler la page entiere. */
+  var colle = true;
+  function enBas(force){ var z = $("defile"); if (force) colle = true; if (colle) z.scrollTop = z.scrollHeight; }
+  $("defile").addEventListener("scroll", function(){ var z = $("defile"); colle = z.scrollHeight - z.scrollTop - z.clientHeight < 80; });
+  /* Le cadre tient dans l'ecran SOUS ce qui le precede (les onglets de swoge_agents.html, plus
+     hauts sur un telephone) : le composeur est visible sans faire defiler la page. Recalcule
+     quand le cadre apparait (changement d'onglet) et quand la fenetre change. */
+  function ajusteCadre(){
+    var c = $("cadre"), r = c.getBoundingClientRect(); if (!r.width) return;
+    var haut = r.top + (window.scrollY || 0);
+    c.style.height = Math.max(460, Math.min(window.innerHeight - 16, Math.round(window.innerHeight - haut - 14))) + "px";
+  }
+  window.addEventListener("resize", ajusteCadre);
+  if (window.IntersectionObserver) new IntersectionObserver(ajusteCadre).observe($("cadre"));
+  ajusteCadre();
+  if (window.MutationObserver) new MutationObserver(function(){ enBas(false); }).observe($("fil"), { childList: true, subtree: true, characterData: true });
+  /* Le composeur change de hauteur (reglages d'un mode, texte sur plusieurs lignes) : le fil
+     raccourcit sans qu'aucun message ne change. On reste colle au dernier. */
+  if (window.ResizeObserver) new ResizeObserver(function(){ enBas(false); }).observe($("defile"));
   function peintConv(){
     $("fil").innerHTML = "";
     var c = etat.conv;
@@ -1715,7 +1779,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   function nouvelleConv(){
     etat.conv = { id: String(Date.now()), titre: "", messages: [] };
     ecrisLocal("swogeChatCourant", null);
-    peintConv(); $("question").focus();
+    peintConv(); peintHisto(); $("question").focus();
   }
   function sauveConv(){
     var c = etat.conv; if (!c) return;
@@ -1729,6 +1793,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     ecrisLocal("swogeChats", etat.convs);
     ecrisLocal("swogeChatCourant", c.id);
     planifiePousse();
+    peintHisto();
   }
 
   /* ---- L'HISTORIQUE ATTACHE AU PORTEFEUILLE ----
@@ -1799,7 +1864,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
         etat.convs = etat.convs.slice(0, 50);
         SYNC.t = d.maintenant || SYNC.t; ecrisLocal("swogeHistoSync", SYNC);
         ecrisLocal("swogeChats", etat.convs);
-        if (!$("histo").hidden) peintHisto();
+        peintHisto();   /* toujours : sur ordinateur, la liste est visible en permanence */
         if (!$("accueil").hidden) peintRecents();
         return pousseTout();
       })["catch"](function(){})
@@ -1816,7 +1881,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     peintHisto();
   }
   /* Ouvrir une discussion enregistree : la meme chose depuis l'historique et depuis l'accueil. */
-  function ouvreConv(c){ etat.conv = JSON.parse(JSON.stringify(c)); ecrisLocal("swogeChatCourant", c.id); peintConv(); basculeHisto(false); reprend(); }
+  function ouvreConv(c){ etat.conv = JSON.parse(JSON.stringify(c)); ecrisLocal("swogeChatCourant", c.id); peintConv(); basculeHisto(false); peintHisto(); enBas(true); reprend(); }
   /* Quand : l'heure aujourd'hui, sinon le jour. */
   function quand(t){
     if (!t) return "";
@@ -1859,9 +1924,14 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     note.textContent = histoActif() ? "Synced to your wallet " + SYNC.adresse.slice(0, 6) + "\u2026" + SYNC.adresse.slice(-4) + " \u2014 open it on any device."
       : "Saved on this device. Sign in to sync your chats across devices.";
     h.appendChild(note);
+    /* Le geste le plus courant en tete de la liste, comme ChatGPT et Claude. */
+    var nv = document.createElement("button"); nv.type = "button"; nv.className = "neuf"; nv.textContent = "\u2795 New chat";
+    nv.addEventListener("click", function(){ nouvelleConv(); basculeHisto(false); });
+    h.appendChild(nv);
     if (!etat.convs.length) { var v = document.createElement("div"); v.className = "vide"; v.textContent = TXT.vide; h.appendChild(v); return; }
+    var courant = etat.conv && etat.conv.id;
     etat.convs.forEach(function(c){
-      var l = document.createElement("div"); l.className = "ligne";
+      var l = document.createElement("div"); l.className = "ligne" + (c.id === courant ? " actif" : "");
       var b = document.createElement("button"); b.type = "button"; b.className = "ouvre"; b.textContent = (estMission(c) ? "\ud83c\udfaf " : "") + (c.titre || "Chat");
       var rm = resumeMissions(c);
       if (rm) { var sm = document.createElement("span"); sm.className = "resume-mission"; sm.textContent = rm; b.appendChild(sm); }
@@ -3271,6 +3341,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     var id = lisLocal("swogeChatCourant", null);
     var c = id && etat.convs.filter(function(x){ return x.id === id; })[0];
     if (c) { etat.conv = JSON.parse(JSON.stringify(c)); peintConv(); } else nouvelleConv();
+    peintHisto();
   })();
   peintMode();
   reprend();

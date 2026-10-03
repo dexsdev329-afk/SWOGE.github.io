@@ -51,8 +51,9 @@ const PEPE = { adresse:'0x6982508145454ce325ddbe47a25d4ec3d2311933', trouve:true
   await new Promise((s) => srv.listen(0, '127.0.0.1', s));
   const port = srv.address().port;
   const nav = await chromium.launch();
-  const ouvre = async ({ session, rep, largeur, reprise, portefeuille, cat } = {}) => {
+  const ouvre = async ({ session, rep, largeur, reprise, portefeuille, cat, local } = {}) => {
     const ctx = await nav.newContext({ viewport: { width: largeur || 1200, height: 900 } });
+    if (local) await ctx.addInitScript((o) => { try { Object.keys(o).forEach((k) => { if (localStorage.getItem(k) === null) localStorage.setItem(k, JSON.stringify(o[k])); }); } catch (e) {} }, local);
     if (session) await ctx.addInitScript((j) => { try { localStorage.setItem('swogeSession', j); } catch (e) {} }, session);
     const page = await ctx.newPage();
     const signes = [];
@@ -171,7 +172,12 @@ const PEPE = { adresse:'0x6982508145454ce325ddbe47a25d4ec3d2311933', trouve:true
     ok(/Sonnet 5 · ~2,500 \$SWOGE per task \(max 45,000\) · up to 6 steps/.test(await page.textContent('#prixq')), 'le prix d une tache, son maximum, le nombre d etapes');
     ok(/Read-only/.test(await page.textContent('.ag-lit')), 'la page dit que l agent ne fait que lire');
     /* x402 (28/09) : les posts menent ici ; la page dit comment un agent paie a l appel, prix lus en direct. */
-    await page.waitForSelector('#x4Outils .x4-o');
+    /* 03/10 : la section x402 est repliee sous le cadre (« trop d'information » sur la page). Les prix
+       sont toujours lus en direct ; un clic sur sa ligne la montre. */
+    await page.waitForSelector('#x4Outils .x4-o', { state: 'attached' });
+    ok(!(await page.isVisible('#x402')), 'repliee par defaut : la page commence par la tache');
+    await page.click('.x4-plie summary');
+    ok(await page.isVisible('#x4Outils .x4-o'), 'un clic sur « For AI agents: pay per call with x402 » la montre');
     const x4 = await page.$$eval('#x4Outils .x4-o', (l) => l.map((d) => d.querySelector('b').textContent + '=' + d.querySelector('.x4-p').textContent));
     eq(x4.slice(0, 4).join(' | '), 'token_verdict=$0.01 | scan_token=$0.02 | robinhood_rpc=$0.005 | chat_completion=from $0.0066', 'les outils x402, dans l ordre voulu, au prix de Base lu en direct');
     ok(x4[4] === '<img src=x onerror=window.pirate=3>=$0.02' && (await page.$('#x4Outils img')) === null && !(await page.evaluate(() => window.pirate)), 'un nom venu du serveur reste du texte');
@@ -181,6 +187,46 @@ const PEPE = { adresse:'0x6982508145454ce325ddbe47a25d4ec3d2311933', trouve:true
     await pose(page, 'hello');
     ok(/Sign in/.test(await page.textContent('#etat')) && envois.length === 0, 'sans session : la page le dit, rien ne part');
     await ctx.close();
+  }
+
+  console.log('\n-- 2b. LE CADRE ET LES TACHES PASSEES (demande du proprietaire, 03/10/2026) --');
+  {
+    /* « Je la trouve compliquee a utiliser, beaucoup d'information, je ne vois pas l'historique des
+       discussions ; le chat pas infini, dans un rectangle, on scroll dedans. » */
+    const long = Array.from({ length: 25 }, (_, k) => [{ role: 'user', content: 'task step ' + k }, { role: 'assistant', content: 'result ' + k + ' ' + 'data '.repeat(50), meta: 'Sonnet 5' }]).flat();
+    /* Un joueur d'avant le 03/10 : un seul fil, aucune tache. Il devient la premiere tache. */
+    const { page, ctx } = await ouvre({ local: { swogeAgentFil: long } });
+    await page.waitForFunction(() => document.querySelectorAll('#fil .msg').length === 50);
+    await page.waitForTimeout(200);
+    const m = await page.evaluate(() => { const d = document.getElementById('defile');
+      return { page: document.documentElement.scrollHeight, vue: innerHeight, interne: d.scrollHeight > d.clientHeight + 200, enBas: d.scrollHeight - d.scrollTop - d.clientHeight < 4 }; });
+    ok(m.page <= m.vue + 200, '50 messages : la page ne s allonge pas (' + m.page + ' px pour ' + m.vue + ')');
+    ok(m.interne && m.enBas, 'le fil defile DANS le cadre, ouvert sur le dernier message');
+    ok(await page.isVisible('#histo') && !(await page.isVisible('#histoBtn')), 'ecran large : les taches sont a gauche, sans rien ouvrir');
+    const g = await page.evaluate(() => ({ h: document.getElementById('histo').getBoundingClientRect(), f: document.getElementById('fil').getBoundingClientRect() }));
+    ok(g.h.right <= g.f.left, 'a GAUCHE du fil');
+    ok(/task step 0/.test(await page.textContent('#histo .ligne.actif')), 'l ancien fil unique devient une tache, marquee ouverte');
+    ok(!(await page.isVisible('#dev')) || (await page.$eval('#dev', (d) => !d.open)), 'l API et x402 sont replies sous le cadre');
+    await page.click('#histo .neuf');
+    ok((await page.$$('#fil .msg')).length === 0 && await page.isVisible('#accueil'), '« New task » : une page vierge…');
+    ok((await page.$$('#histo .ouvre')).length === 1, '… et l ancienne tache reste dans la liste');
+    await page.click('#histo .ouvre');
+    await page.waitForFunction(() => document.querySelectorAll('#fil .msg').length === 30, null, { timeout: 5000 }).catch(() => {});
+    ok(/task step 24/.test(await page.textContent('#fil')) && (await page.$$('#fil .msg')).length === 30, 'un clic la rouvre (ses 30 derniers messages, comme le fil d avant)');
+    const t = await page.evaluate(() => JSON.parse(localStorage.getItem('swogeAgentTaches')));
+    ok(Array.isArray(t) && t.length === 1 && t[0].fil.length === 30 && /task step/.test(t[0].titre), 'gardee sur l appareil (30 derniers messages), titre = la premiere demande');
+    await page.click('#histo .efface');
+    ok((await page.$$('#histo .ouvre')).length === 0 && (await page.$$('#fil .msg')).length === 0, '« ✕ » efface la tache, et le fil ouvert se vide');
+    await ctx.close();
+    const tel = await ouvre({ largeur: 390, local: { swogeAgentTaches: [{ id: 'a', titre: 'Check PEPE', maj: Date.now(), fil: [{ role: 'user', content: 'Check PEPE' }, { role: 'assistant', content: 'PEPE ok' }] }], swogeAgentCourante: 'zz' } });
+    ok(!(await tel.page.isVisible('#histo')) && await tel.page.isVisible('#histoBtn'), '390 px : les taches derriere « History »');
+    await tel.page.click('#histoBtn');
+    await tel.page.click('#histo .ouvre');
+    await tel.page.waitForFunction(() => /PEPE ok/.test(document.getElementById('fil').textContent));
+    ok(!(await tel.page.isVisible('#histo')), 'une tache ouverte : la liste se referme');
+    const larg = await tel.page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    ok(larg <= 1, 'a 390 px, rien ne deborde [' + larg + ']');
+    await tel.ctx.close();
   }
 
   console.log('\n-- 2c. l embauche allumee (28/09) : la page ne dit plus « read-only », elle dit ce que l agent peut payer --');

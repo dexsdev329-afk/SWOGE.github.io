@@ -68,7 +68,7 @@
      A savoir : cela ne sauve pas la page DEJA en cache chez quelqu'un, qui ne
      contient pas ces lignes. Ce garde-fou vaut a partir de celle-ci. -->
 <script>
-var MARQUE_PAGE = '84e1a488';
+var MARQUE_PAGE = 'f1d069bc';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -1439,7 +1439,11 @@ a.sg-logo:focus-visible{ outline:2px solid var(--accent); outline-offset:2px }
   }
   /* A gauche du telephone : le titre, puis le marche et la chaine, dans la MEME colonne. */
   .wl-cote.gauche{ grid-area:texte; align-self:center; padding:24px 0 }
-  .wl-tel{ align-self:center }
+  /* 03/10 : PAS centre. Quand le titre et les cartes depassent l'ecran, la rangee grandit et un
+     telephone centre descendait avec elle : mesure, son bas a 822 px dans une fenetre de 760,
+     a 789 dans 650, la feuille de connexion dessous (wallet_page.test.js). En haut de la
+     rangee, il tient dans la fenetre (sa hauteur est deja 100dvh - 80). */
+  .wl-tel{ align-self:start }
   .vt-halo{ grid-area:1 / 4 / 2 / 5 }
   .vt-vitrine{ padding:24px 0 0 }
 }

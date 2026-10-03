@@ -537,9 +537,9 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
     <div class="ds-kpis quatre" id="bkKpis"></div>
     <div class="ds-verdict" id="bkVerdict"></div>
     <h3 class="bk-h">Control and arms</h3>
-    <p class="ds-note" style="margin-top:0">The control buys the first token after every 15 minutes without looking at it. Each arm buys only the tokens of one case standing out above. An arm losing beyond chance is retired; one only &ldquo;holds in paper&rdquo; with 100+ buys, t above the bar and both halves positive.</p>
+    <p class="ds-note" style="margin-top:0">The control buys the first token after every 15 minutes without looking at it. Each arm buys only the tokens of one case standing out above &mdash; or, on Robinhood, one group the SWOGE AI colony handles: its own buys (&ldquo;colony &middot; bought&rdquo;, the colony&rsquo;s control) and four groups it refuses. Each token counts once, even if bought again. An arm losing beyond chance is retired; one only &ldquo;holds in paper&rdquo; with 100+ tokens, t above the bar and both halves positive.</p>
     <div class="ds-table"><table>
-      <thead><tr><th>Bought by</th><th>State</th><th class="num">Buys</th><th class="num">Net avg</th><th class="num">t</th><th class="num">1st / 2nd half</th><th class="num">Winners</th></tr></thead>
+      <thead><tr><th>Bought by</th><th>State</th><th class="num">Tokens (buys)</th><th class="num">Net avg</th><th class="num">t</th><th class="num">1st / 2nd half</th><th class="num">Winners</th></tr></thead>
       <tbody id="bkBras"></tbody>
     </table></div>
     <p class="ds-note" id="bkBanc"></p>
@@ -660,18 +660,18 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
     var pnlPct=b.startUsd ? b.pnlUsd/b.startUsd*100 : null;
     k.appendChild(kpi("Bank value", usd(b.valueUsd), "started at "+usd(b.startUsd)+" · "+usd(b.stakeUsd)+" per buy"));
     k.appendChild(kpi("Profit / loss", usd(b.pnlUsd,true), (pnlPct==null?"--":pct(pnlPct,true))+" of the bank · "+nb(b.open)+" open"));
-    k.appendChild(kpi("Settled buys", nb(b.all&&b.all.n), "net avg "+pct(b.all&&b.all.net,true)+(b.all&&b.all.t!=null?" · t "+b.all.t:"")));
+    k.appendChild(kpi("Settled tokens", nb(b.all&&b.all.n), (b.all&&b.all.buys!=null?nb(b.all.buys)+" buys · ":"")+"net avg "+pct(b.all&&b.all.net,true)+(b.all&&b.all.t!=null?" · t "+b.all.t:"")));
     k.appendChild(kpi("Entry cost (median)", b.entryCost&&b.entryCost.medianPct!=null?b.entryCost.medianPct+"%":"--", "round trip at the buy · quoted by "+(b.quoter||"--")));
     var v=$("bkVerdict"), c=b.control||{}, n=b.all?b.all.n:0;
-    if(n<30){ v.className="ds-verdict peu"; v.textContent="Too early: "+nb(n)+" settled buy"+(n===1?"":"s")+". The bank concludes nothing under 30, and an arm nothing under 100."; }
-    else if((b.arms||[]).some(function(a){ return a.state==="holds in paper"; })){ v.className="ds-verdict ok"; v.textContent="An arm holds in paper: "+b.arms.filter(function(a){ return a.state==="holds in paper"; }).map(function(a){ return a.case+" ("+pct(a.net,true)+" net, t "+a.t+", "+nb(a.n)+" buys)"; }).join(" · ")+". Still paper: real money is the owner’s decision, after more data."; }
-    else { v.className="ds-verdict "+((b.all.net||0)>0?"peu":"non"); v.textContent="No arm holds yet. All paper buys: "+pct(b.all.net,true)+" net on average over "+nb(n)+" (t "+(b.all.t==null?"--":b.all.t)+"); the control alone: "+pct(c.net,true)+" over "+nb(c.n)+"."; }
+    if(n<30){ v.className="ds-verdict peu"; v.textContent="Too early: "+nb(n)+" settled token"+(n===1?"":"s")+". The bank concludes nothing under 30, and an arm nothing under 100."; }
+    else if((b.arms||[]).some(function(a){ return a.state==="holds in paper"; })){ v.className="ds-verdict ok"; v.textContent="An arm holds in paper: "+b.arms.filter(function(a){ return a.state==="holds in paper"; }).map(function(a){ return a.case+" ("+pct(a.net,true)+" net, t "+a.t+", "+nb(a.n)+" tokens)"; }).join(" · ")+". Still paper: real money is the owner’s decision, after more data."; }
+    else { v.className="ds-verdict "+((b.all.net||0)>0?"peu":"non"); v.textContent="No arm holds yet. All paper buys: "+pct(b.all.net,true)+" net on average over "+nb(n)+" tokens (t "+(b.all.t==null?"--":b.all.t)+"); the control alone: "+pct(c.net,true)+" over "+nb(c.n)+"."; }
     var tb=$("bkBras"); tb.textContent="";
     var lignes=[{ case:"Control (any token)", state:"control", n:c.n, net:c.net, t:c.t, moitie1:c.moitie1, moitie2:c.moitie2, gagnants:c.gagnants }].concat(b.arms||[]);
     lignes.forEach(function(a){
       var tr=el("tr"); if(a.state==="control") tr.style.fontWeight="700";
       tr.appendChild(el("td",null,a.case)); tr.appendChild(el("td",null,a.state));
-      tr.appendChild(el("td","num",nb(a.n)));
+      tr.appendChild(el("td","num",nb(a.n)+(a.buys!=null&&a.buys!==a.n?" ("+nb(a.buys)+")":"")));
       var peu=!(a.n>=30);
       tr.appendChild(el("td","num",a.n?pct(a.net,true)+(peu?" *":""):"--"));
       var tt=el("td","num",a.t==null?"--":String(a.t)); if(a.state==="holds in paper"){ tt.style.color="#0E8A4F"; tt.style.fontWeight="800"; } tr.appendChild(tt);
@@ -680,7 +680,7 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
       tb.appendChild(tr);
     });
     var bc=b.bench||{};
-    $("bkBanc").textContent=bc.n ? "Same buys, three exits ("+nb(bc.n)+" fully read): sold at 10 min "+pct(bc.at10&&bc.at10.net,true)+", at 30 min "+pct(bc.at30&&bc.at30.net,true)+", at 60 min "+pct(bc.at60&&bc.at60.net,true)+" net on average. 60 vs 30 min: "+pct(bc.min60vs30&&bc.min60vs30.net,true)+" (t "+(bc.min60vs30&&bc.min60vs30.t!=null?bc.min60vs30.t:"--")+"). * under 30 buys: no conclusion." : "* under 30 buys: no conclusion. The three-exit bench fills in as buys reach 60 minutes.";
+    $("bkBanc").textContent=bc.n ? "Same buys, three exits ("+nb(bc.n)+" fully read): sold at 10 min "+pct(bc.at10&&bc.at10.net,true)+", at 30 min "+pct(bc.at30&&bc.at30.net,true)+", at 60 min "+pct(bc.at60&&bc.at60.net,true)+" net on average. 60 vs 30 min: "+pct(bc.min60vs30&&bc.min60vs30.net,true)+" (t "+(bc.min60vs30&&bc.min60vs30.t!=null?bc.min60vs30.t:"--")+"). * under 30 tokens: no conclusion." : "* under 30 tokens: no conclusion. The three-exit bench fills in as buys reach 60 minutes.";
     var r=(b.counts&&b.counts.refused)||{}, parts=[];
     Object.keys(r).sort(function(x,y){ return r[y]-r[x]; }).forEach(function(x){ parts.push(x+" "+nb(r[x])); });
     var pl=b.refusedByVenue||{}, top=Object.keys(pl).sort(function(x,y){ return pl[y]-pl[x]; }).slice(0,3).map(function(x){ return x+" ("+nb(pl[x])+")"; });

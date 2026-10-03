@@ -45,7 +45,8 @@ const BANQUE_SOL = { quoter: 'Jupiter', since: '2026-10-03T19:00:00.000Z', stake
   recent: [{ addr: SOL_A, dex: 'pumpswap', control: true, arm: null, entryCostPct: 4.3, r30: -2.1, unsellable: false, t: 1 },
            { addr: 'javascript:alert(1)', dex: PIEGE, control: false, arm: PIEGE, entryCostPct: 4, r30: -100, unsellable: true, t: 2 }] };
 const BANQUE_RH = Object.assign({}, BANQUE_SOL, { quoter: 'Robinhood quoters', all: serieB(200, 1.2, 1.1, 0.8, 1.6, 48), control: serieB(60, -4.1, -2.2, -4, -4.2, 30),
-  arms: [Object.assign({ case: 'Quoted in = ETH', state: 'holds in paper', since: '2026-10-03T19:00:00.000Z', retiredBecause: null }, serieB(120, 6.2, 3.4, 5.9, 6.5, 58))],
+  arms: [Object.assign({ case: 'Quoted in = ETH', state: 'holds in paper', since: '2026-10-03T19:00:00.000Z', retiredBecause: null }, serieB(120, 6.2, 3.4, 5.9, 6.5, 58)),
+         Object.assign({ case: 'colony · bought', source: 'colony', control: true, state: 'control', since: '2026-10-03T19:00:00.000Z', retiredBecause: null, buys: 30 }, serieB(22, -4.4, -1.9, -4, -4.8, 30))],
   bench: { n: 150, at10: serieB(150, 0.5, 0.3), at30: serieB(150, 1.2, 1), at60: serieB(150, -0.8, -0.4), min60vs30: serieB(150, -2, -1.5), min10vs30: serieB(150, -0.7, -0.6) }, recent: [] });
 const ETAT = { actif: true, note: 'Observation only.', horizonMin: 30, chaines: {
   robinhood: chaine('Robinhood Chain', [kase('all tokens', 'all tokens', 12310, 9.4, 16.82, {}), kase('Quoted in', 'ETH', 8090, 16.5, 25.86, {}), kase('Venue', 'uniswap', 12299, 9.5, 16.84, {})].concat([kase('Launcher', '0x221A6239E40709792b0d4bdc140fA36158CD41C7', 400, -3, -1, {})]), { bank: BANQUE_RH, devs: { recorded: 8301, withThreeTokensOrMore: 422, withThreePlausibleLaunches: 2,
@@ -125,7 +126,7 @@ for (const c of Object.values(VIDE.chaines)) c.cases = c.cases.map((x) => kase(x
   console.log('\n-- 1b. la banque papier (Solana : trop tot) --');
   ok(r.bkCache === false && r.bkKpis.length === 4 && /\$1,012\.5/.test(r.bkKpis[0]) && /\+\$12\.5/.test(r.bkKpis[1]) && /4.3%/.test(r.bkKpis[3]) && /Jupiter/.test(r.bkKpis[3]),
      'la banque : valeur 1 012,5 $, +12,5 $, cout d entree median 4,3 % chiffre par Jupiter');
-  ok(/^ds-verdict peu$/.test(r.bkVcls) && /Too early: 4 settled buys/.test(r.bkVerdict) && /nothing under 30/.test(r.bkVerdict), 'sous 30 achats regles : « Too early », aucune conclusion');
+  ok(/^ds-verdict peu$/.test(r.bkVcls) && /Too early: 4 settled tokens/.test(r.bkVerdict) && /nothing under 30/.test(r.bkVerdict), 'sous 30 achats regles : « Too early », aucune conclusion');
   ok(r.bkBras[0][0] === 'Control (any token)' && r.bkBras[0][2] === '3' && /\*/.test(r.bkBras[0][3]) && r.bkBras.some((l) => l[0] === PIEGE && l[1] === 'retired'), 'le temoin d abord, avec son effectif et l asterisque sous 30 ; un bras retire le dit ; un nom piege reste du texte');
   ok(/cannot sell 2/.test(r.bkRefus) && /round trip too costly 1/.test(r.bkRefus) && /median cost of the refused round trips 21%/.test(r.bkRefus) && /By venue: cannot sell · Pump\.fun \(2\)/.test(r.bkRefus) && /1 rate-limited/.test(r.bkRefus),
      'les refus dits, avec leur place et le cout median des allers-retours refuses : ' + r.bkRefus.slice(0, 90));
@@ -153,9 +154,11 @@ for (const c of Object.values(VIDE.chaines)) c.cases = c.cases.map((x) => kase(x
      'Robinhood : la reference elle-meme monte (+9,4 %) — la page previent que le premier prix lu n est pas celui d un acheteur');
   ok(r.liens.includes('https://robinhoodchain.blockscout.com/address/' + RH_DEV) && r.liens.filter((h) => /blockscout/.test(h)).length === 1, 'lien Blockscout pour l adresse valide, aucun pour le nom piege');
   ok(/8,301 devs recorded, 2 with 3 plausible launches/.test(r.devsNote), 'la note dit sur combien de devs : ' + r.devsNote.slice(0, 80));
-  ok(/^ds-verdict ok$/.test(r.bkVcls) && /An arm holds in paper: Quoted in = ETH \(\+6\.2% net, t 3\.4, 120 buys\)/.test(r.bkVerdict) && /Still paper/.test(r.bkVerdict), 'Robinhood : un bras « holds in paper » est dit, avec son effectif — et « Still paper »');
+  ok(/^ds-verdict ok$/.test(r.bkVcls) && /An arm holds in paper: Quoted in = ETH \(\+6\.2% net, t 3\.4, 120 tokens\)/.test(r.bkVerdict) && /Still paper/.test(r.bkVerdict), 'Robinhood : un bras « holds in paper » est dit, avec son effectif — et « Still paper »');
   ok(/at 10 min \+0\.5%, at 30 min \+1\.2%, at 60 min -0\.8%/.test(r.bkBanc) && /60 vs 30 min: -2% \(t -1\.5\)/.test(r.bkBanc), 'le banc : les memes achats a 10/30/60 min, et l ecart apparie 60 contre 30 avec son t');
   ok(r.bkRecents.length === 1 && /No settled paper buy yet/.test(r.bkRecents[0][0]), 'sans achat regle recent : dit, aucune ligne inventee');
+  const col = r.bkBras.find((l) => l[0] === 'colony · bought');
+  ok(col && col[1] === 'control' && col[2] === '22 (30)', 'le temoin de la colonie : « control », 22 jetons pour 30 achats (un jeton compte une fois)');
   ok(r.pirate === undefined && r.imgs === 0, 'un dev au nom piege reste du texte');
   await ctx.close();
 

@@ -78,7 +78,28 @@ const T = { '.html': 'text/html', '.js': 'application/javascript', '.json': 'app
      page posait pendant la lecture (un taux arrive avant les jetons) : 1 « jeton », essai rouge. */
   await pg.waitForFunction(() => document.querySelectorAll('#list .tcard').length > 0, { timeout: 120000 }).catch(() => {});
   const nGrille = await pg.evaluate(() => document.querySelectorAll('#list .tcard').length);
-  ok(nGrille >= 10, nGrille + ' jetons dans la grille (V2 et V3, lus sur la vraie chaine)');
+  ok(nGrille >= 10, nGrille + ' jetons dans la grille (V2, V3 et V4, lus sur la vraie chaine)');
+  /* 03/10 : « un jeton lance via Telegram ou le site n'apparait pas dans Explore ». Les deux jetons
+     V4 de test du 30/09 doivent y etre, marques par leur pool. */
+  const v4 = await pg.evaluate((js) => js.map((j) => { const c = document.querySelector('#list .tcard[data-addr="' + j + '"]');
+    return c ? { sym: c.querySelector('.tsy').textContent, pool: (c.querySelector('.tv4') || {}).textContent || '' } : null; }), JETONS);
+  ok(v4[0] && /SWV4TEST/.test(v4[0].sym) && v4[0].pool === '$SWOGE pool', 'le jeton V4 du pool $SWOGE est dans Explore, marque « $SWOGE pool » ' + JSON.stringify(v4[0]));
+  ok(v4[1] && /SWV4WTEST/.test(v4[1].sym) && v4[1].pool === 'ETH pool', 'le jeton V4 du pool ETH aussi, marque « ETH pool » ' + JSON.stringify(v4[1]));
+  const premier = await pg.evaluate(() => { const c = document.querySelector('#list .tcard'); return c && c.getAttribute('data-addr'); });
+  ok(JETONS.map((j) => j.toLowerCase()).includes(String(premier).toLowerCase()), 'tri « New » : un V4, le plus recent, passe en tete');
+
+  console.log('\n-- un jeton V4 s ouvre dans l echange, cote dans son actif --');
+  for (const [i, lib, sym] of [[0, 'Buy — SWOGE to spend', 'SWV4TEST'], [1, 'Buy — ETH (RH) to spend', 'SWV4WTEST']]) {
+    await pg.click('#list .tcard[data-addr="' + JETONS[i] + '"]');
+    /* On attend CE jeton (son symbole) et sa capitalisation lue : le badge « live on Uniswap » du
+       jeton precedent est encore affiche pendant que le suivant se charge. */
+    await pg.waitForFunction((s) => document.getElementById('tvSym').textContent === '$' + s && document.getElementById('tvMcap').textContent.trim() !== '—', sym, { timeout: 45000 }).catch(() => {});
+    const t = await pg.evaluate(() => ({ lbl: document.getElementById('buyLbl').textContent.trim(), col: document.getElementById('tvCollectBtn').textContent,
+      mc: document.getElementById('tvMcap').textContent, dex: document.getElementById('tvDexBtn').href }));
+    ok(t.lbl === lib && /50% creator/.test(t.col) && !/70%/.test(t.col), (i ? 'ETH' : '$SWOGE') + ' : « ' + t.lbl + ' », frais « ' + t.col.trim() + ' »');
+    ok(/dexscreener\.com\/robinhood\/0x[0-9a-f]{40}$/i.test(t.dex) && t.mc && t.mc !== '—', 'la piscine est lue (DexScreener) et la capitalisation affichee : ' + t.mc);
+    await pg.click('.tab[data-tab="explore"]');
+  }
 
   console.log('\n-- le createur reel se connecte, onglet Portfolio --');
   await pg.click('#walletBtn');
@@ -94,7 +115,8 @@ const T = { '.html': 'text/html', '.js': 'application/javascript', '.json': 'app
   }, JETONS);
   ok(/SWV4TEST/.test(vue.texte) && /SWV4WTEST/.test(vue.texte), 'les deux jetons V4 du createur apparaissent dans « Tokens you created » (SWV4TEST, SWV4WTEST)');
   ok(vue.collect.every(Boolean), 'chacun a son bouton « Collect »');
-  ok(!vue.open.some(Boolean), 'pas de bouton « Open » sur un V4 : le trading de la page ne sait pas les echanger');
+  /* 03/10 : l'echange de la page sait maintenant traiter un V4 (meme routeur, meme palier de 1 %). */
+  ok(vue.open.every(Boolean), 'chacun a son bouton « Open » : l echange de la page sait les traiter');
   ok(vue.cartes.every((t) => !/70%/.test(t)), 'aucune part de 70 % annoncee sur un jeton V4');
   ok(/You burned/.test(vue.texte) && !/Could not load burns/.test(vue.texte), 'la section des $SWOGE brules se charge (elle affichait « Could not load burns »)');
 

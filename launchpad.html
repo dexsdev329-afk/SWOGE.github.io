@@ -268,6 +268,7 @@ input:focus,select:focus{border-color:var(--gold)}
 .thumb.ov{position:absolute;inset:0;object-fit:cover}
 .tcard .tnm{font-family:'Anton',sans-serif;font-size:16px;margin-top:8px;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tcard .tsy{font-family:'Space Mono',monospace;font-size:11px;color:var(--gold);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tcard .tv4{font-size:9.5px;color:#12a150;border:1px solid #12a150;border-radius:6px;padding:0 4px;margin-left:3px}
 .tcard .tmc{font-family:'Space Mono',monospace;font-size:13px;font-weight:700;color:var(--signal);margin-top:5px}
 .tcard .tmc small{color:var(--dim);font-weight:400;font-size:10px}
 .tcard .tgrad{position:absolute;top:13px;left:13px;font-family:'Space Mono',monospace;font-size:9px;padding:2px 6px;border-radius:6px;background:rgba(255,255,255,.92);color:var(--signal);border:1px solid rgba(14,124,107,.35)}
@@ -858,6 +859,27 @@ var VEN = {
   3:{ id:3, addr:V3_ADDRESS,       abi:FUN_V3_ABI, quote:SWOGE_TOKEN, sym:"SWOGE", native:false, curve:false,
       part:"70% holders / 30% SWOGE treasury" }
 };
+/* 03/10 : LES DEUX LAUNCHPADS V4 DANS EXPLORE ET DANS L'ECHANGE.
+   « Un jeton lance via Telegram ou le site n'apparait pas dans Explore. » Les V4 ont les memes
+   evenements que le V3 (Created, Meta, LaunchedInstant), la meme table `instant` et le meme
+   palier Uniswap de 1 % : l'echange de la page (routeur SwapRouter02, actif de cotation) vaut
+   pour eux tel quel. Pool $SWOGE : on paie en $SWOGE ; pool ETH : en ETH brut, que le routeur
+   emballe, comme le V2. Adresses : lance_v4.js (une seule source). */
+(function(){
+  var L=(window.SwogeLance&&window.SwogeLance.LAUNCHPADS)||{};
+  var ABI4=["event Created(address indexed token, address indexed creator, string name, string symbol)",
+    "event Meta(address indexed token, string telegram, string twitter, string website, string logo)",
+    "event LaunchedInstant(address indexed token, address indexed creator, address pool, uint256 lpTokenId)",
+    "function instant(address) view returns (address token, address creator, address pool, uint256 lpTokenId, bool exists)",
+    "function collectFees(address token)"];
+  if(L.swoge) VEN.v4s={ id:"v4s", addr:L.swoge.adresse, abi:ABI4, quote:SWOGE_TOKEN, sym:"SWOGE", native:false, curve:false, v4:true,
+    naissance:76000000 /* = NAISSANCE_V4, declaree plus bas */, part:"50% creator / 50% SWOGE treasury", pool:"$SWOGE pool" };
+  if(L.eth) VEN.v4e={ id:"v4e", addr:L.eth.adresse, abi:ABI4, quote:WETH, sym:"ETH (RH)", native:true, curve:false, v4:true,
+    naissance:76000000 /* = NAISSANCE_V4, declaree plus bas */, part:"50% creator / 50% SWOGE treasury", pool:"ETH pool" };
+})();
+var V4_IDS=["v4s","v4e"].filter(function(k){ return !!VEN[k]; });
+/* Cote en $SWOGE ? (le V3 et le V4 « pool $SWOGE ») — c'est ce qui choisit le taux en dollars. */
+function enSwoge(v){ return venue(v).quote===SWOGE_TOKEN; }
 function venue(v){ return VEN[v] || VEN[2]; }
 function v3Live(){ return !!V3_ADDRESS; }
 var DEAD="0x000000000000000000000000000000000000dEaD";
@@ -896,7 +918,7 @@ function rpcProvider(){ return new ethers.providers.StaticJsonRpcProvider(CHAIN.
    une connexion a chaque lecture. */
 var _lecteur=null;
 function lecteur(){ return _lecteur || (_lecteur = rpcProvider()); }
-function readFun(v){ var V=venue(v); return new ethers.Contract(V.addr, V.abi, lecteur()); }
+function readFun(v){ var V=venue(v), c=new ethers.Contract(V.addr, V.abi, lecteur()); c.__naissance=V.naissance; return c; }
 /* ---------- LE NOEUD NE LIT PLUS L'HISTORIQUE D'UN SEUL COUP (mesure du 30/09/2026) ----------
    « query spans 76531054 blocks (0 to 76531053), but only 10000000 are allowed » : toute
    lecture de journaux depuis le bloc 0 etait refusee. La page affichait « aucun jeton »,
@@ -912,7 +934,8 @@ async function parTranches(lire, depuis){
   return [].concat.apply([], parts);
 }
 function journaux(c, filtre, depuis){
-  return parTranches(function(de, a){ return c.queryFilter(filtre, de, a); }, depuis==null ? NAISSANCE_LANCEUR : depuis);
+  /* Un V4 ne lit pas 54 M de blocs d'avant sa naissance (readFun pose `__naissance`). */
+  return parTranches(function(de, a){ return c.queryFilter(filtre, de, a); }, depuis==null ? (c.__naissance || NAISSANCE_LANCEUR) : depuis);
 }
 function writeFun(v){ var V=venue(v); return new ethers.Contract(V.addr, V.abi, signer); }
 
@@ -1462,7 +1485,7 @@ async function dexCharge(pools){
 
 /* Le taux qui convertit l'actif de cotation en dollars. Null tant qu'il n'est
    pas connu — on affiche alors la quantite brute, jamais un dollar invente. */
-function usdRate(v){ return v===3 ? exploreSu : exploreEu; }
+function usdRate(v){ return enSwoge(v) ? exploreSu : exploreEu; }
 function mcUsd(r){
   var d=dexLu(r.pool);
   if(d && d.fdv!=null) return d.fdv;              // le chiffre de DexScreener, tel quel
@@ -1475,7 +1498,7 @@ function mcText(r){
   if(u!=null) return fmtUsd(u)+" <small>MC</small>";
   /* PAS DE DOLLARS : on le DIT. Afficher `167.26M SWOGE` a cote d'un `$4.4K`
      ailleurs, c'est donner deux nombres sans dire lequel est en quoi. */
-  if(r.mcQuote!=null) return fmtQty(r.mcQuote)+" "+venue(r.v).sym+" <small>MC (pas de taux $)</small>";
+  if(r.mcQuote!=null) return fmtQty(r.mcQuote)+" "+venue(r.v).sym+" <small>MC (no $ rate)</small>";
   return r.mode===0 ? "on curve" : "<small class='mcpend'>…</small>";
 }
 // fetch market caps in the background with limited concurrency, update cards in place
@@ -1529,15 +1552,19 @@ async function loadVolumes(rows){
 function renderTrending(){
   var panel=$("#trendingPanel"), strip=$("#trendingStrip"); if(!strip) return;
   var withVol=allCache.filter(function(r){ return (r.vol24||0)>0; });
-  var top=withVol.slice().sort(function(a,b){ return (b.vol24||0)-(a.vol24||0); }).slice(0,8);
+  var top=withVol.slice().sort(function(a,b){ return volUsd(b)-volUsd(a) || (b.vol24||0)-(a.vol24||0); }).slice(0,8);
   if(!top.length){ panel.style.display="none"; return; }
   panel.style.display="block"; strip.innerHTML="";
-  var tot=withVol.reduce(function(s,r){ return s+(r.vol24||0); },0);
+  /* 03/10 : le volume est dans l'actif de COTATION de chaque jeton. Le multiplier par le prix
+     de l'ETH faisait d'un volume en $SWOGE un volume en ETH — des milliers de fois trop grand.
+     Le total n'additionne que ce qui a un taux en dollars ; sinon il le dit. */
+  var sansTaux=withVol.some(function(r){ return usdRate(r.v)==null; });
+  var tot=withVol.reduce(function(s,r){ return s+volUsd(r); },0);
   var totEl=$("#trendTotVol");
-  if(totEl) totEl.innerHTML='📊 Total 24h volume · <b>'+(exploreEu?fmtUsd(tot*exploreEu):tot.toFixed(3)+" ETH (RH)")+'</b>';
+  if(totEl) totEl.innerHTML='📊 Total 24h volume · <b>'+(sansTaux?"waiting for $ rates":fmtUsd(tot))+'</b>';
   top.forEach(function(r,i){
     var d=document.createElement("div"); d.className="trend-card"; d.setAttribute("data-addr",r.addr);
-    var volTxt = exploreEu ? fmtUsd(r.vol24*exploreEu) : r.vol24.toFixed(3)+" ETH (RH)";
+    var volTxt = usdRate(r.v)!=null ? fmtUsd(volUsd(r)) : fmtQty(r.vol24)+" "+venue(r.v).sym;
     d.innerHTML=thumbHTML(r.addr,r.sym)
       +'<div class="tnm">'+esc(r.name||"?")+'</div>'
       +'<div class="tsy">$'+esc(r.sym||"?")+'</div>'
@@ -1582,13 +1609,14 @@ async function loadList(){
     /* 03/10 : un taux arrive souvent AVANT les jetons ; redessiner a ce moment-la affichait
        « No token matches. » pendant la lecture de la chaine. On ne redessine qu'une grille lue. */
     var grilleLue=false;
-    getEthUsd().then(function(eu){ exploreEu=eu; if(grilleLue && !$("#tab-explore").classList.contains("hidden")) renderList(); });
-    getSwogeUsd().then(function(su){ exploreSu=su; if(grilleLue && !$("#tab-explore").classList.contains("hidden")) renderList(); });
+    getEthUsd().then(function(eu){ exploreEu=eu; if(grilleLue && !$("#tab-explore").classList.contains("hidden")){ renderList(); renderTrending(); } });
+    getSwogeUsd().then(function(su){ exploreSu=su; if(grilleLue && !$("#tab-explore").classList.contains("hidden")){ renderList(); renderTrending(); } });
 
-    var both=await Promise.all([readVenue(3), readVenue(2)]);
-    /* V3 d'abord a egalite de bloc : c'est le lanceur courant. Sinon, du plus
-       recent au plus ancien, les deux lanceurs melanges. */
-    var rows=both[0].concat(both[1]).sort(function(a,b){ return b.bn-a.bn || b.v-a.v; });
+    var tous=await Promise.all([readVenue(3), readVenue(2)].concat(V4_IDS.map(readVenue)));
+    /* Du plus recent au plus ancien, tous les lanceurs melanges ; a egalite de bloc, le plus
+       recent des lanceurs d'abord (V4, puis V3, puis V2). */
+    var rang=function(v){ return v===2?0:v===3?1:2; };
+    var rows=[].concat.apply([], tous).sort(function(a,b){ return b.bn-a.bn || rang(b.v)-rang(a.v); });
     var total=rows.length;
     rows=rows.slice(0,60);                             // meme plafond qu'avant
     rows.forEach(function(r,k){ r.idx=total-k; });     // pour le tri « Oldest »
@@ -1623,7 +1651,7 @@ function renderList(){
     d.innerHTML=thumbHTML(r.addr, r.sym)
       +'<a class="tdex dexlink" href="'+dexUrl+'" target="_blank" title="DexScreener">📊</a>'
       +'<div class="tnm">'+esc(r.name||"?")+'</div>'
-      +'<div class="tsy">$'+esc(r.sym||"?")+'</div>'
+      +'<div class="tsy">$'+esc(r.sym||"?")+(venue(r.v).v4?' <span class="tv4">'+esc(venue(r.v).pool)+'</span>':'')+'</div>'
       +'<div class="tmc">'+mcTxt+'</div>'
       +'<div style="display:flex;align-items:center;gap:5px;margin-top:5px;font-family:\'Space Mono\',monospace;font-size:10px;color:var(--dim)"><span>'+shortAddr(r.addr)+'</span>'+copyMini(r.addr)+'</div>';
     d.querySelectorAll(".dexlink").forEach(function(a){ a.onclick=function(ev){ ev.stopPropagation(); }; });
@@ -1809,7 +1837,7 @@ async function loadMine(){
         var dexUrl = r.pool ? ("https://dexscreener.com/robinhood/"+r.pool) : ("https://dexscreener.com/search?q="+r.addr);
         madeHtml+='<div class="card" style="cursor:default;margin-top:8px"><div class="top"><div style="display:flex;align-items:center;gap:10px">'+logoImg(r.addr)+'<div><span class="nm">'+esc(r.name||"?")+'</span> <span class="sy">$'+esc(r.sym||"?")+'</span></div></div>'+lockChip()+'</div>'
           +claimHtml
-          +'<div class="btnrow" style="margin-top:8px">'+(r.c4?'':'<button class="btn" data-open="'+r.addr+'" style="padding:5px 10px;font-size:12px">📈 Open</button>')
+          +'<div class="btnrow" style="margin-top:8px">'+('<button class="btn" data-open="'+r.addr+'" style="padding:5px 10px;font-size:12px">📈 Open</button>')
           +'<a class="btn dexlink" href="'+dexUrl+'" target="_blank" style="padding:5px 10px;font-size:12px">📊 Dex</a>'
           +'<button class="btn primary" data-collect="'+r.addr+'" style="padding:5px 10px;font-size:12px">💰 Collect</button></div>'
           +'<div class="note" data-cnote="'+r.addr+'" style="margin-top:6px"></div></div>';
@@ -1922,6 +1950,9 @@ async function openTrade(addr){
   switchTab("trade");
   $("#tradeEmpty").classList.add("hidden"); $("#tradeView").classList.remove("hidden");
   curToken=addr; curPool=null;
+  /* 03/10 : rien du jeton precedent ne reste affiche pendant que celui-ci se lit (sa
+     capitalisation et son prix restaient a l'ecran sous le nom du nouveau). */
+  ["#tvName","#tvMcap","#tvPrice"].forEach(function(id){ var e=$(id); if(e) e.textContent="—"; }); $("#tvSym").textContent="";
   /* De quel lanceur vient ce jeton ? La grille le sait deja ; sinon on
      interroge le V3 puis le V2. On ne devine pas : un mauvais lanceur
      donnerait un mauvais actif de cotation, donc de mauvais prix. */
@@ -1929,6 +1960,7 @@ async function openTrade(addr){
   curV = known ? known.v : 0;
   try{
     if(!curV && v3Live()){ try{ if((await readFun(3).instant(addr)).exists) curV=3; }catch(e){} }
+    for(var k4=0; !curV && k4<V4_IDS.length; k4++){ try{ if((await readFun(V4_IDS[k4]).instant(addr)).exists) curV=V4_IDS[k4]; }catch(e){} }
     if(!curV) curV=2;
     var fun=readFun(curV);
     curMode = venue(curV).curve ? await fun.modeOf(addr) : 1;   // le V3 n'a qu'un mode
@@ -2203,10 +2235,10 @@ async function refreshTrade(){
      second passage le cache est rempli, donc `eu` n'est plus nul.
      Avant ce changement, une seule requete pendante — un bloqueur de
      publicite suffit — laissait la page d'echange figee sur « — ». */
-  var eu = (curV===3) ? swogeUsdCache : ethUsdCache;
+  var eu = enSwoge(curV) ? swogeUsdCache : ethUsdCache;
   if(eu==null){
     var tokAlors=curToken;
-    (curV===3 ? getSwogeUsd() : getEthUsd()).then(function(v){
+    (enSwoge(curV) ? getSwogeUsd() : getEthUsd()).then(function(v){
       if(v!=null && curToken===tokAlors) refreshTrade();
     }, function(){});
   }
@@ -2276,10 +2308,10 @@ async function refreshTrade(){
         + ((dx && dx.liq!=null) ? "  ·  liq "+fmtUsd(dx.liq) : "")
     /* Sans taux, on NOMME l'unite : c'est l'absence de ce mot qui a fait lire
        « 167.26M » comme des dollars a cote du « $4.4K » de DexScreener. */
-    : fmtQty(mcap)+" "+QS+"  (pas de taux $)";
+    : fmtQty(mcap)+" "+QS+"  (no $ rate)";
   $("#tvPrice").textContent = (prUsdV!=null)
     ? fmtPrice(prUsdV)+"  ·  "+price.toExponential(2)+" "+QS
-    : price.toExponential(3)+" "+QS+"  (pas de taux $)";
+    : price.toExponential(3)+" "+QS+"  (no $ rate)";
   loadAndRenderChart(curToken, eu);
 
   if(account){

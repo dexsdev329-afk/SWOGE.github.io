@@ -19,11 +19,13 @@ const ctx = {
   fetchBorne: async (u)=>{ appels++; lastUrl=u; return { json: async()=>REP }; },
   fmtUsd: (v)=> '$'+(v>=1000 ? (v/1000).toFixed(1)+'K' : v.toFixed(2)),
   fmtQty: (v)=> v>=1e6 ? (v/1e6).toFixed(2)+'M' : String(v),
-  venue: ()=>({sym:'SWOGE'}), exploreSu:null, exploreEu:null,
+  /* 03/10 : le taux en dollars se choisit sur l actif de cotation (enSwoge, extrait de la page) :
+     un V3 et un V4 « pool $SWOGE » sont cotes en $SWOGE, le reste en ETH. */
+  venue: (v)=>({sym:'SWOGE', quote: (v===3||v==='v4s') ? 'SWOGE_ADR' : 'WETH_ADR'}), SWOGE_TOKEN:'SWOGE_ADR', exploreSu:null, exploreEu:null,
   console
 };
 const vm=require('vm'); vm.createContext(ctx);
-vm.runInContext(src+'\n'+bloc('function usdRate(v)','async function loadMarketCaps'), ctx);
+vm.runInContext(src+'\n'+bloc('function enSwoge(v)','function venue(v)')+'\n'+bloc('function usdRate(v)','async function loadMarketCaps'), ctx);
 
 (async()=>{
   const POOL='0xc12943975def537daCe9D62D4762a8250501924E';
@@ -55,7 +57,8 @@ vm.runInContext(src+'\n'+bloc('function usdRate(v)','async function loadMarketCa
      'un pool inconnu est marque, pas redemande en boucle');
   const r2={ pool:NEUF, v:3, mcQuote:167257602, mode:1 };
   ok(ctx.mcUsd(r2)===null, 'aucun dollar invente pour lui');
-  ok(/pas de taux/.test(ctx.mcText(r2)),
+  /* 03/10 : le texte montre aux joueurs est en anglais (« no $ rate ») ; l'intention reste : l'unite est NOMMEE. */
+  ok(/no \$ rate/.test(ctx.mcText(r2)),
      "et l unite est NOMMEE plutot que sous-entendue : "+ctx.mcText(r2).replace(/<[^>]+>/g,''));
 
   /* LE REPLI EN DEUX SAUTS reste vivant si le taux, lui, est connu. */

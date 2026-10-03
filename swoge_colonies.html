@@ -55,8 +55,16 @@ a{ color:var(--ds-bleu); }
 main{ max-width:1180px; margin:0 auto; padding:18px 16px 48px; }
 [hidden]{ display:none !important; }
 .pos{ color:var(--ds-vert); } .neg{ color:var(--ds-rouge); }
+/* Un element de grille garde la largeur minimale de son contenu : sans min-width:0, le tableau des
+   cases (huit colonnes, sans retour a la ligne) elargissait la colonne du milieu SOUS la colonne de droite (vu a
+   1440 px) ; et margin:auto la faisait se caler sur son contenu au lieu de remplir sa piste : width:100%. */
+.sw-corps main{ min-width:0; width:100%; }
 #chaines{ margin:4px 0 12px; }
 #cases td, #devs td, #derniers td{ font-variant-numeric:tabular-nums; }
+/* Les libelles longs (« first token we see from this dev », l adresse d un lanceur en case) passent a la
+   ligne : le tableau tient dans la colonne, le t reste visible sans defiler. */
+#cases td:nth-child(-n+2){ white-space:normal; overflow-wrap:anywhere; min-width:90px; }
+#cases td, .ds-table th{ padding:9px 8px; }
 
 /* ==================== LA NOUVELLE BARRE, BLANCHE ====================
    DEMANDE : « tous se qu on viens de faire a blackjack html et spin html » —
@@ -525,7 +533,7 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
       <p id="casesNote">Sorted by t. &ldquo;All tokens&rdquo; is the reference: a case is only interesting if it does better.</p>
     </div></div>
     <div class="ds-table haut"><table>
-      <thead><tr><th>Trait</th><th>Case</th><th class="num">Tokens</th><th class="num">Rise</th><th class="num">Collapse</th><th class="num">Avg (capped)</th><th>Median</th><th class="num">t</th></tr></thead>
+      <thead><tr><th>Trait</th><th>Case</th><th class="num">Tokens</th><th class="num">Rise</th><th class="num">Collapse</th><th class="num">Avg, capped</th><th>Median</th><th class="num">t</th></tr></thead>
       <tbody id="cases"></tbody>
     </table></div>
   </section>
@@ -635,7 +643,16 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
     /* La barre et les cases qui la passent. */
     var jugees=cases.filter(function(x){ return x.trait!=="all tokens" && x.assez && x.nCapped>=30 && x.t!=null; });
     var barre=jugees.length ? Math.round(probit(1-0.05/(2*jugees.length))*100)/100 : null;
-    var sortent=jugees.filter(function(x){ return x.t>=barre && x.avgCapped>0; }).sort(function(a,b){ return b.t-a.t; });
+    /* Une moyenne collee au plafond (+300 %, 80 % et plus) veut dire que presque chaque jeton « monte » au
+       maximum : releve du 03/10, Solana « Venue = fluxbeam », 82 jetons, 100 % de montees, +293,9 % — le
+       signe d'un premier prix mal lu, pas d'une pompe. Mise de cote et DITE, jamais montree comme une piste. */
+    var PLAF=300, suspecte=function(x){ return x.avgCapped>=0.8*PLAF; };
+    var sortent=jugees.filter(function(x){ return x.t>=barre && x.avgCapped>0 && !suspecte(x); }).sort(function(a,b){ return b.t-a.t; });
+    var douteuses=jugees.filter(function(x){ return x.t>=barre && suspecte(x); });
+    /* La reference elle-meme au-dessus de zero (Robinhood, 03/10 : +9,4 % sur 12 310 jetons, alors que la
+       colonie papier, qui paie les vrais devis, y perd 4,2 % par trade) : le premier prix lu n'est pas celui
+       qu'un acheteur paie. La page le dit au lieu de laisser croire que tout monte. */
+    var refMonte=barre!=null && tout.avgCapped>0 && tout.t!=null && tout.t>=barre;
     var v=$("verdict"); v.textContent=""; v.className="ds-verdict";
     if(!jugees.length){ v.className="ds-verdict peu"; v.textContent="Not enough tokens yet: no case has 30 capped reads."; }
     else if(!sortent.length){ v.className="ds-verdict non"; v.textContent="Nothing stands out on "+S.nom+": none of the "+jugees.length+" cases tested has an average move above zero with t ≥ "+barre+" (the bar for "+jugees.length+" cases). The reference, all tokens, moves "+pct(tout.avgCapped,true)+" on average in 30 minutes."; }
@@ -645,6 +662,8 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
       v.appendChild(el("b",null,sortent.slice(0,4).map(function(x){ return x.trait+" = "+x.case+" ("+pct(x.avgCapped,true)+", t "+x.t+", "+nb(x.nCapped)+" tokens)"; }).join(" · ")));
       v.appendChild(el("span",null,". A lead for step 2 — paper trades paying real fees — not a trade."));
     }
+    if(jugees.length && refMonte) v.appendChild(el("p","ds-note","Careful: on "+S.nom+" even the reference, all tokens, moves "+pct(tout.avgCapped,true)+" on average (t "+tout.t+"). The first price read here is often below what a buyer can actually pay, so this measures the reading as much as the tokens — only paper trades at real quotes can tell."));
+    if(douteuses.length) v.appendChild(el("p","ds-note","Left out until checked: "+douteuses.map(function(x){ return x.trait+" = "+x.case+" ("+pct(x.avgCapped,true)+", "+nb(x.nCapped)+" tokens)"; }).join(" · ")+". An average this close to the +300% cap means almost every token “rose” to the maximum — the sign of a bad first price, not a pump."));
 
     var tb=$("cases"); tb.textContent="";
     var tri=cases.slice().sort(function(a,b){ if(a.trait==="all tokens") return -1; if(b.trait==="all tokens") return 1; return (b.t==null?-99:b.t)-(a.t==null?-99:a.t); });
@@ -656,7 +675,7 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
       else {
         tr.appendChild(el("td","num",x.partMontes+"%")); tr.appendChild(el("td","num",x.partEffondres+"%"));
         tr.appendChild(el("td","num",pct(x.avgCapped,true))); tr.appendChild(el("td",null,x.median||"--"));
-        var tt=el("td","num",x.t==null?"--":String(x.t)); if(barre && x.t>=barre && x.avgCapped>0){ tt.style.color="#0E8A4F"; tt.style.fontWeight="800"; } tr.appendChild(tt);
+        var tt=el("td","num",x.t==null?"--":String(x.t)); if(barre && x.trait!=="all tokens" && x.t>=barre && x.avgCapped>0 && !suspecte(x)){ tt.style.color="#0E8A4F"; tt.style.fontWeight="800"; } tr.appendChild(tt);
       }
       tb.appendChild(tr);
     });

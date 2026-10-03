@@ -19,7 +19,7 @@ const ok = (c, m) => { n++; if (c) console.log('  ok   ' + m); else { rates++; c
 const PIEGE = '<img src=x onerror=window.pirate=1>';
 const kase = (trait, cas, nb, avg, t, o) => Object.assign({ trait, case: cas, n: nb, partMontes: nb >= 30 ? 6 : null, partEffondres: nb >= 30 ? 14 : null, disparus: 0,
   assez: nb >= 30, avgCapped: nb >= 30 ? avg : null, t: nb >= 30 ? t : null, median: nb >= 30 ? '-10 to -5%' : null, nCapped: nb }, o || {});
-/* Solana : dix cases jugees (barre = probit(1 - 0,05/20) = 2,81) ; une seule la passe avec une moyenne
+/* Solana : onze cases jugees (barre = probit(1 - 0,05/22) = 2,84) ; une seule la passe avec une moyenne
    positive ; une autre a un t fort mais une moyenne NEGATIVE (elle ne sort pas : elle baisse « surement ») ;
    une au nom piege sous 30 jetons. */
 const casesSol = [kase('all tokens', 'all tokens', 29730, -12.3, -40.1, { partMontes: 5, partEffondres: 13 }),
@@ -27,6 +27,7 @@ const casesSol = [kase('all tokens', 'all tokens', 29730, -12.3, -40.1, { partMo
   kase('Pool size', '$5-20k', 9000, -9.1, -12, {}), kase('Venue', 'pumpswap', 5000, -2, -1, {}), kase('Venue', 'meteora', 800, 1.2, 1.1, {}),
   kase('Venue', 'raydium', 3000, -5, -4, {}), kase('Market cap', 'under $10k', 12000, -15, 3.5, {}), kase('Market cap', '$10-100k', 7000, -3, -2, {}),
   kase('Security', 'mint renounced', 20000, -11, -20, {}), kase('Security', 'freeze active', 300, -20, -6, {}), kase('Age', 'under 5 min', 25000, -12, -30, {}),
+  kase('Venue', 'fluxbeam', 82, 293.9, 129.05, { partMontes: 100, partEffondres: 0 }),
   kase('Venue', PIEGE, 12, 0, 0, {})];
 const casesEth = [kase('all tokens', 'all tokens', 2041, -7.4, -9.9, {}), kase('Pool size', '$20-100k', 300, -1.5, -0.7, {}), kase('Venue', 'uniswap', 1500, -6, -8, {})];
 const SOL_A = '7GCihgDB8fe6KNjn2MYtkzZcRjQy3t9GHdC8uHYmW2hr', ETH_A = '0x' + 'ab'.repeat(20), RH_DEV = '0x' + 'cd'.repeat(20);
@@ -34,7 +35,7 @@ const chaine = (nom, cases, extra) => Object.assign({ nom, depuis: '2026-09-27T1
   enCours: 40, compte: { decouverts: 30782, observes: 29730, jamaisIndexes: 512, disparus: 300, pleins: 0, erreurs: {} }, holders: null, cases, jev: null, devs: null,
   derniers: [] }, extra || {});
 const ETAT = { actif: true, note: 'Observation only.', horizonMin: 30, chaines: {
-  robinhood: chaine('Robinhood Chain', casesEth.map((c) => Object.assign({}, c)), { devs: { recorded: 8301, withThreeTokensOrMore: 422, withThreePlausibleLaunches: 2,
+  robinhood: chaine('Robinhood Chain', [kase('all tokens', 'all tokens', 12310, 9.4, 16.82, {}), kase('Quoted in', 'ETH', 8090, 16.5, 25.86, {}), kase('Venue', 'uniswap', 12299, 9.5, 16.84, {})].concat([kase('Launcher', '0x221A6239E40709792b0d4bdc140fA36158CD41C7', 400, -3, -1, {})]), { devs: { recorded: 8301, withThreeTokensOrMore: 422, withThreePlausibleLaunches: 2,
     pushers: [{ dev: RH_DEV, tokens: 9, plausibleLaunches: 5, doubled: 3, medianMultiple: 2.1, vanished: 1, reached100k: 1 },
       { dev: PIEGE, tokens: 4, plausibleLaunches: 3, doubled: 1, medianMultiple: 0.8, vanished: 2 }], bestAvgPeak: [], mostVanished: [] } }),
   solana: chaine('Solana', casesSol, { holders: 'unknown: the public Solana node refuses holder reads — set SOLANA_RPC_URL',
@@ -85,14 +86,18 @@ for (const c of Object.values(VIDE.chaines)) c.cases = c.cases.map((x) => kase(x
   ok(r.presses.join() === 'solana' && r.pastille === 'Observing live', 'Solana choisi par defaut, la pastille dit « Observing live »');
   ok(r.kpis.length === 4 && /29,730/.test(r.kpis[0]) && /30,782 discovered/.test(r.kpis[0]) && /-12\.3%/.test(r.kpis[2]) && /over 29,730 tokens/.test(r.kpis[2]), 'quatre chiffres, chacun avec son effectif : ' + r.kpis.slice(0, 3).join(' | '));
   ok(/unknown/.test(r.kpis[3]) && /refuses/.test(r.kpis[3]), 'les detenteurs : « unknown », la raison dite (noeud public)');
-  ok(/^ds-verdict ok$/.test(r.vcls) && /1 case stands out/.test(r.verdict) && /t ≥ 2\.81/.test(r.verdict) && /10 cases tested/.test(r.verdict) && /Pool size = \$20-100k \(\+8\.5%, t 5\.2, 1,078 tokens\)/.test(r.verdict),
-     'la barre pour 10 cases jugees : 2,81 ; seule « Pool size = $20-100k » sort, avec son effectif : ' + r.verdict.slice(0, 120));
+  ok(/^ds-verdict ok$/.test(r.vcls) && /1 case stands out/.test(r.verdict) && /t ≥ 2\.84/.test(r.verdict) && /11 cases tested/.test(r.verdict) && /Pool size = \$20-100k \(\+8\.5%, t 5\.2, 1,078 tokens\)/.test(r.verdict),
+     'la barre pour 11 cases jugees : 2,84 ; seule « Pool size = $20-100k » sort, avec son effectif : ' + r.verdict.slice(0, 120));
   ok(!/under \$10k/.test(r.verdict) && r.vertes.join() === '$20-100k', 'un t fort avec une moyenne NEGATIVE (« under $10k », t 3,5) ne sort pas ; une seule case en vert');
   ok(/not a trade/.test(r.verdict), 'le verdict dit que c est une piste, pas un trade');
+  ok(/Left out until checked: Venue = fluxbeam \(\+293\.9%, 82 tokens\)/.test(r.verdict) && !/stand.? out[^.]*fluxbeam/.test(r.verdict.split('Left out')[0]) && !r.vertes.includes('fluxbeam'),
+     'une moyenne collee au plafond (fluxbeam, +293,9 %, 100 % de montees) : mise de cote et dite, jamais une piste ni en vert');
+  ok(!/even the reference/.test(r.verdict), 'Solana : la reference est sous zero, pas de mise en garde sur elle');
   const sous = r.lignes.find((l) => l[1] === PIEGE);
   ok(sous && sous.length === 4 && sous[3] === 'not enough (under 30)', 'une case de 12 jetons : « not enough (under 30) », aucun pourcentage');
-  ok(r.lignes[0][0] === 'all tokens' && r.lignes[1][1] === '$20-100k', 'la reference d abord, puis les cases triees par t');
-  ok(/Bar for 10 cases: t ≥ 2\.81/.test(r.casesNote) && /recomputed on 28,000 saved tokens on 2026-10-03/.test(r.casesNote), 'la note dit la barre et le recalcul (28 000 jetons relus le 03/10)');
+  const ts = r.lignes.slice(1).filter((l) => l.length === 8).map((l) => Number(l[7]));
+  ok(r.lignes[0][0] === 'all tokens' && ts.length === 11 && ts.every((x, i) => i === 0 || ts[i - 1] >= x), 'la reference d abord, puis les cases triees par t decroissant (' + ts.slice(0, 4).join(', ') + '…)');
+  ok(/Bar for 11 cases: t ≥ 2\.84/.test(r.casesNote) && /recomputed on 28,000 saved tokens on 2026-10-03/.test(r.casesNote), 'la note dit la barre et le recalcul (28 000 jetons relus le 03/10)');
   ok(r.devsCache === true, 'Solana : pas de carte des devs (aucun dev releve sur cette chaine)');
   const lienSol = r.liens.filter((h) => /dexscreener\.com\/solana\//.test(h));
   ok(lienSol.length === 2 && lienSol.every((h) => h === 'https://dexscreener.com/solana/' + SOL_A) && !r.liens.some((h) => /javascript/i.test(h)), 'derniers jetons : lien DexScreener pour une adresse Solana valide, aucun pour « javascript:… »');
@@ -116,6 +121,8 @@ for (const c of Object.values(VIDE.chaines)) c.cases = c.cases.map((x) => kase(x
   ok(r.presses.join() === 'robinhood' && r.devsCache === false, '?chain=robinhood ouvre directement Robinhood, la carte des devs visible');
   ok(r.devs.length === 2 && r.devs[0][1] === '5' && r.devs[0][2] === '3 (60%)' && r.devs[0][3] === '×2.1' && r.devs[0][4] === '1' && r.devs[0][5] === '9',
      'le premier pousseur : 5 lancements plausibles, 3 doubles (60 %), multiple median ×2.1, 1 disparu, 9 en tout');
+  ok(/even the reference, all tokens, moves \+9\.4%/.test(r.verdict) && /only paper trades at real quotes can tell/.test(r.verdict) && !r.vertes.includes('all tokens'),
+     'Robinhood : la reference elle-meme monte (+9,4 %) — la page previent que le premier prix lu n est pas celui d un acheteur');
   ok(r.liens.includes('https://robinhoodchain.blockscout.com/address/' + RH_DEV) && r.liens.filter((h) => /blockscout/.test(h)).length === 1, 'lien Blockscout pour l adresse valide, aucun pour le nom piege');
   ok(/8,301 devs recorded, 2 with 3 plausible launches/.test(r.devsNote), 'la note dit sur combien de devs : ' + r.devsNote.slice(0, 80));
   ok(r.pirate === undefined && r.imgs === 0, 'un dev au nom piege reste du texte');
@@ -132,6 +139,21 @@ for (const c of Object.values(VIDE.chaines)) c.cases = c.cases.map((x) => kase(x
   r = await lit(p);
   ok(r.pastille === 'Unreachable' && r.kpis.length === 0, 'serveur injoignable : « Unreachable », aucun chiffre invente');
   await ctx.close();
+
+  console.log('\n-- 5. a 1440 px : la colonne du milieu ne passe pas sous celle de droite --');
+  /* 03/10 : vu sur les donnees reelles — le tableau des cases (sans retour a la ligne) elargissait <main>
+     de 1 004 px dans une piste de 854, sous la colonne de droite. */
+  for (const c of ['solana', 'robinhood']) {
+    ({ p, ctx } = await ouvre('chain=' + c + '&server=' + encodeURIComponent(base + 'api'), 1440));
+    await p.waitForFunction(() => document.querySelectorAll('#cases tr').length > 0);
+    const g = await p.evaluate(() => { const m = document.querySelector('main').getBoundingClientRect(), l = document.querySelector('.sw-lat');
+      const cartes = [...document.querySelectorAll('main .ds-carte')].map((e) => e.getBoundingClientRect().right);
+      const tb = document.querySelector('#cases').closest('table'), boite = tb.parentNode;
+      return { main: m.right, lat: l ? l.getBoundingClientRect().left : 1e9, cartes: Math.max(...cartes), table: tb.getBoundingClientRect().width, boite: boite.clientWidth }; });
+    ok(g.main <= g.lat && g.cartes <= g.lat, c + ' a 1440 px : <main> et ses cartes s arretent avant la colonne de droite (' + Math.round(g.cartes) + ' <= ' + Math.round(g.lat) + ' px)');
+    ok(g.table <= g.boite + 1, c + ' a 1440 px : le tableau des cases tient dans sa carte, le t visible sans defiler (une adresse de lanceur en case passe a la ligne : ' + Math.round(g.table) + ' <= ' + g.boite + ' px)');
+    await ctx.close();
+  }
 
   console.log('\n-- 5. a 360 px --');
   for (const c of ['solana', 'robinhood']) {

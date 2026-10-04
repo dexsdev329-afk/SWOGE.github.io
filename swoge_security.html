@@ -14,7 +14,7 @@
      recalculee par cache_marqueur.test.js. Voir swoge_wallet.html pour le
      detail du mecanisme. -->
 <script>
-var MARQUE_PAGE = 'cd4712e1';
+var MARQUE_PAGE = 'a48ae86d';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -86,6 +86,21 @@ var MARQUE_PAGE = 'cd4712e1';
     <div id="outAudit" class="sortie" hidden></div>
   </div>
 
+  <!-- Dependance : OSV.dev (public, aucune cible, aucune autorisation) -->
+  <div class="carte">
+    <h2>Dependency vulnerabilities</h2>
+    <p class="note">Known CVEs for a package version, from <b>OSV.dev</b> (public database,
+      like NVD). No target is contacted.</p>
+    <label for="osvEco">Ecosystem</label>
+    <input type="text" id="osvEco" class="mono" placeholder="npm · PyPI · Go · crates.io · Maven">
+    <label for="osvName">Package</label>
+    <input type="text" id="osvName" class="mono" placeholder="lodash">
+    <label for="osvVer">Version (optional)</label>
+    <input type="text" id="osvVer" class="mono" placeholder="4.17.0">
+    <button id="goOsv" type="button">Check dependency</button>
+    <div id="outOsv" class="sortie" hidden></div>
+  </div>
+
   <div class="ligne"></div>
   <h2 style="margin-top:16px">Targeted tools — authorization required</h2>
   <p class="sous">For the three below, either the target is in a program scope you enter, or you tick the attestation.</p>
@@ -111,6 +126,8 @@ var MARQUE_PAGE = 'cd4712e1';
     <label for="cibleR">Domain or on-chain address</label>
     <input type="text" id="cibleR" class="mono" placeholder="example.com  or  0x…">
     <button id="goRecon" type="button">Run recon</button>
+    <button id="goSub" type="button" style="background:#555">Subdomains (CT logs)</button>
+    <button id="goScans" type="button" style="background:#555">Known public scans</button>
     <div id="outRecon" class="sortie" hidden></div>
   </div>
 
@@ -210,6 +227,30 @@ var MARQUE_PAGE = 'cd4712e1';
     catch(e){ montre($('outRecon'), 'error: ' + e.message); }
     this.disabled = false;
   });
+
+  /* Dependance OSV : public, aucune autorisation. */
+  $('goOsv').addEventListener('click', async function(){
+    var eco = ($('osvEco').value || '').trim(), nom = ($('osvName').value || '').trim();
+    if(!eco || !nom){ montre($('outOsv'), 'Enter an ecosystem and a package name.'); return; }
+    this.disabled = true; montre($('outOsv'), 'Querying OSV.dev…');
+    try{ var r = await appelle('/bugbounty/pkgvulns', { ecosystem: eco, name: nom, version: ($('osvVer').value || '').trim() }); montre($('outOsv'), (r.j && (r.j.ok ? r.j : r.j.raison)) || ('HTTP ' + r.code)); }
+    catch(e){ montre($('outOsv'), 'error: ' + e.message); }
+    this.disabled = false;
+  });
+
+  /* Sous-domaines (CT logs) et scans publics : autorisation requise (cible = domaine). */
+  function surfaceDomaine(chemin, outId){
+    return async function(){
+      var a = garde(outId); if(!a) return;
+      var cible = ($('cibleR').value || '').trim(); if(!cible){ montre($(outId), 'Enter a domain above.'); return; }
+      this.disabled = true; montre($(outId), 'Reading public logs…');
+      try{ var r = await appelle(chemin, Object.assign({ domaine: cible }, a)); montre($(outId), (r.j && (r.j.ok ? r.j : r.j.raison)) || ('HTTP ' + r.code)); }
+      catch(e){ montre($(outId), 'error: ' + e.message); }
+      this.disabled = false;
+    };
+  }
+  $('goSub').addEventListener('click', surfaceDomaine('/bugbounty/subdomains', 'outRecon'));
+  $('goScans').addEventListener('click', surfaceDomaine('/bugbounty/scans', 'outRecon'));
 
   /* 3. Exposition passive */
   $('goExp').addEventListener('click', async function(){

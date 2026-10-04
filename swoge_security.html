@@ -14,7 +14,7 @@
      recalculee par cache_marqueur.test.js. Voir swoge_wallet.html pour le
      detail du mecanisme. -->
 <script>
-var MARQUE_PAGE = '7b383939';
+var MARQUE_PAGE = '5d3b36df';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -215,6 +215,22 @@ var MARQUE_PAGE = '7b383939';
           var d = document.createElement('div'); d.className = 'f ' + t.gravite;
           d.innerHTML = '<b>' + t.classe + ' · ' + t.gravite + ' · line ' + t.ligne + ' · confidence ' + t.confiance + '</b><br>' +
             t.pourquoi.replace(/</g,'&lt;') + '<br><span class="mono" style="color:var(--doux)">' + (t.extrait||'').replace(/</g,'&lt;') + '</span>';
+          /* Explication IA a la demande (Claude) : explication claire + CVSS + correctif. */
+          var bEx = document.createElement('button'); bEx.type = 'button'; bEx.textContent = 'Explain with AI'; bEx.style.margin = '8px 0 0'; bEx.style.padding = '6px 12px'; bEx.style.fontSize = '13px';
+          var zone = document.createElement('div'); zone.className = 'note';
+          bEx.addEventListener('click', async function(){
+            bEx.disabled = true; zone.textContent = 'Asking the model…';
+            try{
+              var e = await appelle('/bugbounty/explain', { finding: t, source: ($('src').value || '').slice(0, 4000) });
+              if(e.j && e.j.ok){
+                zone.innerHTML = '<b>Explanation.</b> ' + (e.j.explanation||'').replace(/</g,'&lt;') +
+                  (e.j.cvss && e.j.cvss.vector ? '<br><b>CVSS.</b> ' + e.j.cvss.vector + ' (' + (e.j.cvss.score!=null?e.j.cvss.score:'?') + ')' : '') +
+                  (e.j.fix ? '<br><b>Fix.</b> <span class="mono">' + e.j.fix.replace(/</g,'&lt;') + '</span>' : '');
+              } else zone.textContent = (e.j && e.j.raison) || ('HTTP ' + e.code);
+            }catch(x){ zone.textContent = 'error: ' + x.message; }
+            bEx.disabled = false;
+          });
+          d.appendChild(document.createElement('br')); d.appendChild(bEx); d.appendChild(zone);
           el.appendChild(d);
         });
         var note = document.createElement('p'); note.className = 'note'; note.textContent = r.j.note; el.appendChild(note);

@@ -657,9 +657,12 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
     carte.hidden=!b; if(!b) return;
     var usd=function(x,signe){ if(x==null||!isFinite(x)) return "--"; return (signe&&x>0?"+":"")+(x<0?"−$":"$")+Math.abs(x).toLocaleString("en-US",{maximumFractionDigits:2}); };
     var k=$("bkKpis"); k.textContent="";
-    var pnlPct=b.startUsd ? b.pnlUsd/b.startUsd*100 : null;
-    k.appendChild(kpi("Bank value", usd(b.valueUsd), "started at "+usd(b.startUsd)+" · "+usd(b.stakeUsd)+" per buy"));
-    k.appendChild(kpi("Profit / loss", usd(b.pnlUsd,true), (pnlPct==null?"--":pct(pnlPct,true))+" of the bank · "+nb(b.open)+" open"));
+    /* Recharges (04/10) : une caisse a sec est rechargee pour que la mesure continue ; le resultat se
+       lit contre TOUT l'argent apporte, et le nombre de recharges est dit. */
+    var apporte=b.investedUsd||b.startUsd, rech=b.refills||0;
+    var pnlPct=apporte ? b.pnlUsd/apporte*100 : null;
+    k.appendChild(kpi("Bank value", usd(b.valueUsd), rech ? "ran dry "+nb(rech)+" time"+(rech===1?"":"s")+": refilled with "+usd(b.startUsd)+" each · "+usd(apporte)+" put in" : "started at "+usd(b.startUsd)+" · "+usd(b.stakeUsd)+" per buy"));
+    k.appendChild(kpi("Profit / loss", usd(b.pnlUsd,true), (pnlPct==null?"--":pct(pnlPct,true))+" of all money put in · "+nb(b.open)+" open"));
     k.appendChild(kpi("Settled tokens", nb(b.all&&b.all.n), (b.all&&b.all.buys!=null?nb(b.all.buys)+" buys · ":"")+"net avg "+pct(b.all&&b.all.net,true)+(b.all&&b.all.t!=null?" · t "+b.all.t:"")));
     k.appendChild(kpi("Entry cost (median)", b.entryCost&&b.entryCost.medianPct!=null?b.entryCost.medianPct+"%":"--", "round trip at the buy · quoted by "+(b.quoter||"--")));
     var v=$("bkVerdict"), c=b.control||{}, n=b.all?b.all.n:0;

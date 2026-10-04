@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SWOGE Security — defensive bug bounty &amp; OSINT</title>
+<meta name="description" content="Defensive, read-only security tools: static contract pre-audit, authorized passive recon, passive exposure lookup, and defensive .onion monitoring. Authorized targets only.">
+<script>
+  try{ if(localStorage.getItem('swogeWalletTenue') === 'sombre') document.documentElement.setAttribute('data-theme','sombre'); }catch(e){}
+</script>
+
+<!-- ==================== UNE PAGE PERIMEE SE REMPLACE ====================
+     Tout le code est ecrit dans la page : elle porte donc sa propre empreinte,
+     recalculee par cache_marqueur.test.js. Voir swoge_wallet.html pour le
+     detail du mecanisme. -->
+<script>
+var MARQUE_PAGE = 'e0846538';
+(function(){
+  try{
+    if(!window.fetch || !window.sessionStorage) return;
+    var CLE = 'swogeRelancePage:' + location.pathname;
+    if(sessionStorage.getItem(CLE) === MARQUE_PAGE) return;
+    var moi = location.pathname.split('/').pop() || 'index.html';
+    fetch('version.json', { cache: 'no-store' })
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(vrai){
+        if(!vrai || !vrai[moi] || vrai[moi] === MARQUE_PAGE) return;
+        sessionStorage.setItem(CLE, MARQUE_PAGE);
+        location.reload();
+      })['catch'](function(){});
+  }catch(e){}
+})();
+</script>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{ --bg:#f6f7fb; --carte:#fff; --txt:#15131c; --doux:#5b6070; --trait:#e6e8f0; --accent:#1b5fe0; --ok:#188a4b; --warn:#b26a00; --no:#c0362c; }
+  :root[data-theme="sombre"]{ --bg:#15131c; --carte:#1d1b27; --txt:#f3f3f7; --doux:#a6a9b8; --trait:#2b2838; --accent:#5b8cff; }
+  *{ box-sizing:border-box; }
+  body{ margin:0; background:var(--bg); color:var(--txt); font:16px/1.55 'Archivo',system-ui,sans-serif; }
+  main{ max-width:860px; margin:0 auto; padding:24px 16px 80px; }
+  a{ color:var(--accent); }
+  h1{ font-size:30px; font-weight:900; margin:8px 0 2px; letter-spacing:-.5px; }
+  h2{ font-size:18px; font-weight:800; margin:0 0 6px; }
+  .sous{ color:var(--doux); margin:0 0 18px; }
+  .carte{ background:var(--carte); border:1px solid var(--trait); border-radius:16px; padding:16px; margin:14px 0; }
+  .mono{ font-family:'Space Mono',monospace; }
+  label{ display:block; font-weight:700; font-size:13px; color:var(--doux); margin:10px 0 4px; text-transform:uppercase; letter-spacing:.4px; }
+  input[type=text], textarea{ width:100%; padding:10px 12px; border:1px solid var(--trait); border-radius:10px; background:var(--bg); color:var(--txt); font:inherit; }
+  textarea{ min-height:150px; font-family:'Space Mono',monospace; font-size:13px; }
+  button{ background:var(--accent); color:#fff; border:0; border-radius:10px; padding:10px 16px; font:700 15px 'Archivo',sans-serif; cursor:pointer; margin-top:10px; }
+  button:disabled{ opacity:.5; cursor:default; }
+  .att{ background:rgba(178,106,0,.08); border:1px solid rgba(178,106,0,.3); border-radius:12px; padding:12px; margin:12px 0; }
+  .att label{ display:flex; gap:10px; align-items:flex-start; text-transform:none; letter-spacing:0; font-weight:600; color:var(--txt); font-size:14px; }
+  .att input{ width:auto; margin-top:3px; flex:0 0 auto; }
+  .note{ font-size:13px; color:var(--doux); margin:8px 0 0; }
+  .sortie{ white-space:pre-wrap; font-family:'Space Mono',monospace; font-size:12.5px; background:var(--bg); border:1px solid var(--trait); border-radius:10px; padding:12px; margin-top:12px; max-height:360px; overflow:auto; }
+  .f{ border-left:3px solid var(--trait); padding:8px 10px; margin:8px 0; border-radius:0 8px 8px 0; background:var(--bg); }
+  .f.high{ border-color:var(--no); } .f.medium{ border-color:var(--warn); } .f.low{ border-color:var(--doux); }
+  .f b{ text-transform:uppercase; font-size:12px; letter-spacing:.5px; }
+  .ligne{ border-top:1px solid var(--trait); margin:28px 0 8px; }
+  .bandeau{ background:rgba(27,95,224,.07); border:1px solid rgba(27,95,224,.25); border-radius:12px; padding:12px 14px; font-size:14px; }
+  .bandeau b{ color:var(--accent); }
+</style>
+</head>
+<body>
+<main>
+  <p style="margin:0 0 4px"><a href="index.html">&larr; SWOGE</a></p>
+  <h1>SWOGE Security</h1>
+  <p class="sous">Defensive bug bounty &amp; OSINT — <b>read-only</b>, <b>authorized targets only</b>.</p>
+
+  <div class="bandeau">
+    These tools only <b>read</b>: public OSINT, already-collected exposure data, on-chain
+    contract source. <b>No active scanning, no exploitation, no credential attacks.</b> A target
+    must be in a bug-bounty program scope, or you must tick the box that attests you are
+    authorized to assess it. Ticking it does not grant permission — you are responsible.
+  </div>
+
+  <!-- ============ 1. PRE-AUDIT DE CONTRAT (aucune cible, aucune autorisation) ============ -->
+  <div class="carte">
+    <h2>Contract pre-audit</h2>
+    <p class="note">Paste Solidity source. A static assist (access control, reentrancy, rounding,
+      oracle), precision-first — <b>a lead to verify, never a verdict</b>. Nothing leaves as an action.</p>
+    <label for="src">Solidity source</label>
+    <textarea id="src" placeholder="contract MyToken { ... }"></textarea>
+    <button id="goAudit" type="button">Pre-audit</button>
+    <div id="outAudit" class="sortie" hidden></div>
+  </div>
+
+  <div class="ligne"></div>
+  <h2 style="margin-top:16px">Targeted tools — authorization required</h2>
+  <p class="sous">For the three below, either the target is in a program scope you enter, or you tick the attestation.</p>
+
+  <!-- La case, texte EXACT venu du serveur (jamais recopie ici, pour ne pas deriver) -->
+  <div class="att">
+    <label><input type="checkbox" id="att"> <span id="attTxt">Loading the exact authorization statement…</span></label>
+    <div style="margin-top:8px">
+      <label for="who">Your name / handle (logged with the attestation)</label>
+      <input type="text" id="who" placeholder="e.g. enzo">
+    </div>
+    <div style="margin-top:8px">
+      <label for="prog">…or a program scope (comma-separated), if the target is in a bug-bounty program</label>
+      <input type="text" id="prog" class="mono" placeholder="*.example.com, example.com, 0xabc…">
+    </div>
+  </div>
+
+  <!-- ============ 2. RECON AUTORISEE ============ -->
+  <div class="carte">
+    <h2>Authorized recon (passive)</h2>
+    <p class="note">Public OSINT on a domain or on-chain address — DNS, RDAP, certificate
+      transparency, the target's own pages (robots.txt respected). Read-only.</p>
+    <label for="cibleR">Domain or on-chain address</label>
+    <input type="text" id="cibleR" class="mono" placeholder="example.com  or  0x…">
+    <button id="goRecon" type="button">Run recon</button>
+    <div id="outRecon" class="sortie" hidden></div>
+  </div>
+
+  <!-- ============ 3. EXPOSITION PASSIVE ============ -->
+  <div class="carte">
+    <h2>Passive exposure (IP)</h2>
+    <p class="note">Open ports &amp; known CVEs an IP already exposes, read from
+      <b>Shodan InternetDB</b> — already collected, <b>no packet is sent to the target</b>.
+      This is the safe stand-in for a port scan.</p>
+    <label for="ip">IPv4 address</label>
+    <input type="text" id="ip" class="mono" placeholder="203.0.113.10">
+    <button id="goExp" type="button">Look up exposure</button>
+    <div id="outExp" class="sortie" hidden></div>
+  </div>
+
+  <!-- ============ 4. VEILLE .onion DEFENSIVE ============ -->
+  <div class="carte">
+    <h2>Dark-web monitoring (.onion)</h2>
+    <p class="note">Read a public <span class="mono">.onion</span> page to check <b>your own</b>
+      exposure (your contract address, domain, leaked credentials). Read-only (GET). This is
+      <b>not</b> a free-roam browser, and it is off unless a Tor daemon is configured server-side.</p>
+    <label for="onion">http:// &lt;host&gt;.onion/…</label>
+    <input type="text" id="onion" class="mono" placeholder="http://xxxxx.onion/forum?q=swoge">
+    <button id="goOnion" type="button">Read (defensive)</button>
+    <div id="outOnion" class="sortie" hidden></div>
+  </div>
+
+  <p class="note" style="margin-top:24px">Not available here, by design: SQL injection, password
+    cracking of others' hashes, port scanning that sends packets, or any active intrusion — no
+    checkbox unlocks those.</p>
+</main>
+
+<script>
+(function(){
+  var $ = function(id){ return document.getElementById(id); };
+  function serveur(){ try{ var q = new URLSearchParams(location.search).get('server'); if(q) return String(q).replace(/^ws/,'http'); }catch(e){} return 'https://web-production-220a3.up.railway.app'; }
+  var BASE = serveur();
+  var ATT_TXT = '';
+
+  /* Le texte de la case vient du serveur : il doit matcher au mot pres, sinon
+     l'attestation est rejetee. On ne le recopie pas dans la page. */
+  fetch(BASE + '/bugbounty', { cache: 'no-store' }).then(function(r){ return r.json(); }).then(function(j){
+    if(j && j.attestationTexte){ ATT_TXT = j.attestationTexte; $('attTxt').textContent = j.attestationTexte; }
+  })['catch'](function(){ $('attTxt').textContent = 'Could not load the authorization statement — reload the page.'; });
+
+  /* L'autorisation que la page envoie : un scope de programme OU l'attestation cochee. */
+  function autor(){
+    var prog = ($('prog').value || '').trim();
+    if(prog){ return { programme: { nom: 'user-entered', scope: prog.split(',').map(function(s){ return s.trim(); }).filter(Boolean) } }; }
+    if($('att').checked && ATT_TXT){ return { attestation: { autorise: true, texte: ATT_TXT, qui: ($('who').value || '').trim() || 'anonymous' } }; }
+    return null;
+  }
+
+  function montre(el, obj){ el.hidden = false; el.textContent = typeof obj === 'string' ? obj : JSON.stringify(obj, null, 1); }
+
+  async function appelle(chemin, corps){
+    var r = await fetch(BASE + chemin, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(corps) });
+    return { code: r.status, j: await r.json()['catch'](function(){ return null; }) };
+  }
+
+  /* 1. Pre-audit : aucune cible, aucune autorisation. */
+  $('goAudit').addEventListener('click', async function(){
+    var src = $('src').value || '';
+    if(src.trim().length < 20){ montre($('outAudit'), 'Paste a Solidity source first.'); return; }
+    this.disabled = true; montre($('outAudit'), 'Analysing…');
+    try{
+      var r = await appelle('/bugbounty/preaudit', { source: src });
+      if(!r.j || !r.j.ok){ montre($('outAudit'), (r.j && r.j.raison) || ('HTTP ' + r.code)); }
+      else {
+        var el = $('outAudit'); el.hidden = false; el.textContent = '';
+        if(!r.j.trouvailles.length) el.textContent = 'No obvious pattern found (this is not a clean bill of health).';
+        r.j.trouvailles.forEach(function(t){
+          var d = document.createElement('div'); d.className = 'f ' + t.gravite;
+          d.innerHTML = '<b>' + t.classe + ' · ' + t.gravite + ' · line ' + t.ligne + ' · confidence ' + t.confiance + '</b><br>' +
+            t.pourquoi.replace(/</g,'&lt;') + '<br><span class="mono" style="color:var(--doux)">' + (t.extrait||'').replace(/</g,'&lt;') + '</span>';
+          el.appendChild(d);
+        });
+        var note = document.createElement('p'); note.className = 'note'; note.textContent = r.j.note; el.appendChild(note);
+      }
+    }catch(e){ montre($('outAudit'), 'error: ' + e.message); }
+    this.disabled = false;
+  });
+
+  function garde(outId){
+    var a = autor();
+    if(!a){ montre($(outId), 'Authorization required: enter a program scope, or tick the box and (recommended) your name.'); return null; }
+    return a;
+  }
+
+  /* 2. Recon */
+  $('goRecon').addEventListener('click', async function(){
+    var a = garde('outRecon'); if(!a) return;
+    var cible = ($('cibleR').value || '').trim(); if(!cible){ montre($('outRecon'), 'Enter a domain or address.'); return; }
+    this.disabled = true; montre($('outRecon'), 'Running (read-only)…');
+    try{ var r = await appelle('/bugbounty/recon', Object.assign({ cible: cible }, a)); montre($('outRecon'), (r.j && (r.j.ok ? r.j : r.j.raison)) || ('HTTP ' + r.code)); }
+    catch(e){ montre($('outRecon'), 'error: ' + e.message); }
+    this.disabled = false;
+  });
+
+  /* 3. Exposition passive */
+  $('goExp').addEventListener('click', async function(){
+    var a = garde('outExp'); if(!a) return;
+    var ip = ($('ip').value || '').trim(); if(!ip){ montre($('outExp'), 'Enter an IPv4 address.'); return; }
+    this.disabled = true; montre($('outExp'), 'Reading already-collected data…');
+    try{ var r = await appelle('/bugbounty/exposure', Object.assign({ ip: ip }, a)); montre($('outExp'), (r.j && (r.j.ok ? r.j : r.j.raison)) || ('HTTP ' + r.code)); }
+    catch(e){ montre($('outExp'), 'error: ' + e.message); }
+    this.disabled = false;
+  });
+
+  /* 4. .onion defensif */
+  $('goOnion').addEventListener('click', async function(){
+    var a = garde('outOnion'); if(!a) return;
+    var url = ($('onion').value || '').trim(); if(!/\.onion/.test(url)){ montre($('outOnion'), 'Enter an http:// …​.onion address.'); return; }
+    this.disabled = true; montre($('outOnion'), 'Reading (defensive, read-only)…');
+    try{ var r = await appelle('/bugbounty/onion', Object.assign({ url: url }, a)); montre($('outOnion'), (r.j && (r.j.ok ? (r.j.corps || r.j) : r.j.raison)) || ('HTTP ' + r.code)); }
+    catch(e){ montre($('outOnion'), 'error: ' + e.message); }
+    this.disabled = false;
+  });
+})();
+</script>
+<script src="fond_anime.js?v=caf410ea" data-fond="security" defer></script>
+</body>
+</html>

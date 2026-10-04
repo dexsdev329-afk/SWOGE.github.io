@@ -68,7 +68,7 @@
      A savoir : cela ne sauve pas la page DEJA en cache chez quelqu'un, qui ne
      contient pas ces lignes. Ce garde-fou vaut a partir de celle-ci. -->
 <script>
-var MARQUE_PAGE = '126795ec';
+var MARQUE_PAGE = 'cfd7a871';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -90,6 +90,7 @@ var MARQUE_PAGE = '126795ec';
         location.reload();
       })['catch'](function(){});
   }catch(e){}
+
 })();
 </script>
 
@@ -103,6 +104,9 @@ var MARQUE_PAGE = '126795ec';
 <!-- ethers v5 en global, comme sur toutes les pages qui touchent a la chaine.
      Il doit etre la AVANT tout appel a la chaine. -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+<!-- Le cerveau de l'assistant : il COMPREND une phrase et la rend lisible,
+     il ne signe jamais. Code et essai a part (wallet_assistant.js). -->
+<script src="wallet_assistant.js?v=4b2f430e"></script>
 
 <style>
 /* ==================================================================
@@ -306,7 +310,6 @@ body{
   .wl-tel{ width:100vw; height:auto; flex:1 1 auto; min-height:0;
            border-radius:0; border:0; box-shadow:none }
 }
-
 
 /* la barre d'etat, purement decorative sur ordinateur */
 .wl-etat{
@@ -2143,6 +2146,13 @@ html.wl-encadre .wl-haut{ position:static; height:auto }
                peut pas se tromper a la place de quelqu'un. Ceux qui le lisent,
                eux, ont de l'argent reel. -->
           <button type="button" data-va="ecSignaux"><span class="bulle">&#128225;</span><span class="t">Signals</span></button>
+          <!-- ---- L'ASSISTANT ----
+               On lui ecrit ou on lui parle (« send 0.1 ETH to 0x… »,
+               « buy $50 of SWOGE », « bridge 0.2 ETH to Base ») ; il PREPARE
+               le geste sur l'ecran Send / Swap / Bridge, et c'est TOI qui
+               relis et signes. Il ne detient aucune cle et n'envoie rien :
+               voir wallet_assistant.js. -->
+          <button type="button" data-va="ecAssistant"><span class="bulle">&#10024;</span><span class="t">Assistant</span></button>
         </div>
         <button type="button" class="wl-fleche d" id="acFlecheD" hidden
                 data-fl="&#8250;" aria-label="More actions"></button>
@@ -2764,6 +2774,51 @@ html.wl-encadre .wl-haut{ position:static; height:auto }
 
       <button class="wl-b" id="poPartir" type="button">Bridge</button>
       <p class="wl-note" id="poNote"></p>
+    </div>
+  </section>
+
+  <!-- ============ ASSISTANT ============
+       On lui ecrit ou on lui parle ; il COMPREND et PREPARE le geste sur
+       l'ecran Send / Swap / Bridge. Il ne detient aucune cle, n'envoie rien :
+       c'est le portefeuille du joueur qui signe, apres relecture. Le cerveau
+       (comprend la phrase) est dans wallet_assistant.js, teste a part. -->
+  <section class="wl-ecran" id="ecAssistant">
+    <div class="wl-tete">
+      <h1>Assistant</h1>
+    </div>
+    <div class="wl-corps">
+      <div class="wl-carte">
+        <div class="wl-champ wl-avecmax">
+          <label for="asTexte">TELL ME WHAT TO DO</label>
+          <input id="asTexte" placeholder="send 0.1 ETH to 0x…" autocomplete="off" spellcheck="false">
+          <button type="button" class="wl-max" id="asMic" aria-label="Speak" title="Speak">&#127908;</button>
+        </div>
+        <button class="wl-b" id="asGo" type="button">Understand</button>
+        <p class="wl-note" id="asNote"></p>
+      </div>
+
+      <!-- La fiche de l'action comprise : relue EN ENTIER avant tout. Le
+           bouton n'execute rien — il ouvre l'ecran reel, pre-rempli. -->
+      <div class="wl-carte" id="asRevue" hidden>
+        <div class="wl-titre">I UNDERSTOOD</div>
+        <p id="asResume" style="margin:6px 0 2px;font-weight:700"></p>
+        <div class="wl-rang" id="asLigneAdr" hidden><span>To</span><b id="asAdr" style="word-break:break-all"></b></div>
+        <button class="wl-b" id="asOuvre" type="button">Open in the form &rarr;</button>
+        <p class="wl-note">You review every field on the next screen, then your
+          own wallet asks you to sign. The assistant never signs or moves funds.</p>
+      </div>
+
+      <div class="wl-carte">
+        <div class="wl-titre">EXAMPLES</div>
+        <ul class="wl-note" style="margin:6px 0;padding-left:18px;line-height:1.8">
+          <li>send 0.1 ETH to 0x…</li>
+          <li>buy $50 of SWOGE</li>
+          <li>swap 0.1 ETH for SWOGEBET</li>
+          <li>bridge 0.2 ETH to Base</li>
+        </ul>
+        <p class="wl-note">It reads your words only — never an address from a
+          message you received. One address at a time.</p>
+      </div>
     </div>
   </section>
 
@@ -10610,7 +10665,6 @@ peintSwChaine();
 if($('poPartir')) $('poPartir').addEventListener('click', partPont);
 
 
-
 /* ==================== L'ADRESSE SOLANA ====================
  *
  * ---- CE QUE J'AVAIS DIT, ET QUI ETAIT FAUX ----
@@ -10763,7 +10817,6 @@ if($('cpSolAdr')) $('cpSolAdr').addEventListener('click', function(){
     var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
   }catch(e){}
 });
-
 
 heure(); setInterval(heure, 20000);
 exposeVitrine();
@@ -10956,11 +11009,57 @@ function exposeVitrine(){
       if(e && e.classList.contains('wl-ecran')) va(id);
     },
     connecte: function(){ if(moi) va('ecCompte'); else ouvreConnexion(); },
-    ouvreConnexion: ouvreConnexion
+    ouvreConnexion: ouvreConnexion,
+    /* ---- L'ASSISTANT ----
+     * Expose depuis l'interieur du portefeuille, la ou JETONS, va, choisitPick
+     * et toutesChaines existent. Le cerveau (comprendre la phrase) est dans
+     * wallet_assistant.js ; ici on COMPREND puis on PRE-REMPLIT l'ecran reel.
+     * Rien ne signe : c'est le portefeuille du joueur qui demande la signature
+     * sur l'ecran Send / Swap / Bridge. Le cablage de l'UI (boutons, voix) est
+     * un script a part, qui n'appelle que ces deux methodes. */
+    assistant: {
+      comprend: function(texte){
+        if(!window.SwogeAssistant) return { action:'inconnu', pourquoi:'The assistant could not load. Reload the page.' };
+        var al = { 1:['eth','ethereum','l1','mainnet'], 8453:['base'], 42161:['arbitrum','arb'], 10:['optimism','op'], 56:['bnb','bsc','binance'] };
+        var chaines = toutesChaines().map(function(c){ return { id:c.id, nom:c.nom, alias:al[c.id] || [] }; });
+        return window.SwogeAssistant.comprend(texte, JETONS, chaines);
+      },
+      /* Pre-remplit l'ecran reel et rend une phrase a montrer. Ne signe jamais. */
+      prefill: function(r){
+        if(!r || r.action === 'inconnu') return '';
+        var opt = function(sel, cle){ if(!sel || !cle) return false; for(var i=0;i<sel.options.length;i++) if(sel.options[i].value === cle) return true; return false; };
+        if(r.action === 'send'){
+          va('ecEnvoyer');
+          var s = $('enJeton'); if(opt(s, r.jetonCle)) choisitPick(s, r.jetonCle);
+          if(r.dest) $('enDest').value = r.dest;
+          if(r.montant && r.montant.type === 'token') $('enMontant').value = r.montant.valeur;
+          var m = [];
+          if(!r.jetonCle || !opt(s, r.jetonCle)) m.push('pick the token');
+          if(!r.montant) m.push('enter the amount');
+          else if(r.montant.type === 'usd') m.push('this screen takes a token amount, not dollars');
+          else if(r.montant.type === 'max') m.push('tap MAX for the whole balance');
+          return 'Filled in. Check the address and amount, then tap Review — your wallet will ask you to sign.' + (m.length ? ' (' + m.join('; ') + ')' : '');
+        }
+        if(r.action === 'swap'){
+          va('ecSwap');
+          if(opt($('swDe'), r.deCle)) choisitPick($('swDe'), r.deCle);
+          if(opt($('swVers'), r.versCle)) choisitPick($('swVers'), r.versCle);
+          if(r.montant && r.montant.type === 'token') $('swMontant').value = r.montant.valeur;
+          return r.montant && r.montant.type === 'usd'
+            ? 'Filled in. Enter how much you want to pay, then tap Swap — your wallet will ask you to sign.'
+            : 'Filled in. Check it, then tap Swap — your wallet will ask you to sign.';
+        }
+        if(r.action === 'bridge'){
+          va('ecPont');
+          if(r.montant && r.montant.type === 'token') $('poMontant').value = r.montant.valeur;
+          return 'Opened the bridge. Pick the chains and the amount, then tap Bridge — your wallet will ask you to sign.';
+        }
+        return '';
+      }
+    }
   });
 }
 signale();
-
 })();
 </script>
 <script>
@@ -11344,6 +11443,54 @@ if(window.IntersectionObserver){
 
 peint();
 trace();
+})();
+</script>
+<!-- ==================== L'ASSISTANT : LE CABLAGE DE L'UI ====================
+     Boutons et voix. Il n'appelle QUE window.SwogeWallet.assistant (comprend +
+     prefill) : aucune cle, aucun signataire ici. Le portefeuille signe sur
+     l'ecran reel, apres relecture. -->
+<script>
+(function(){
+  var $ = function(id){ return document.getElementById(id); };
+  var go = $('asGo'), txt = $('asTexte'), ouvre = $('asOuvre'), mic = $('asMic');
+  if(!go || !txt) return;
+  var dernier = null;
+  function dis(msg, grave){ var n = $('asNote'); if(n){ n.className = 'wl-note' + (grave ? ' grave' : ''); n.textContent = msg || ''; } }
+  function api(){ return window.SwogeWallet && window.SwogeWallet.assistant; }
+  function comprend(){
+    var a = api();
+    if(!a){ dis('The assistant is still loading. Try again in a second.', true); return; }
+    var r = a.comprend((txt.value || '').trim()); dernier = r;
+    var revue = $('asRevue');
+    if(!r || r.action === 'inconnu'){ if(revue) revue.hidden = true; dis((r && r.pourquoi) || 'I did not understand.', true); return; }
+    dis(''); $('asResume').textContent = r.resume || '';
+    var ligne = $('asLigneAdr');
+    if(r.action === 'send' && r.dest){ ligne.hidden = false; $('asAdr').textContent = r.dest; }
+    else ligne.hidden = true;
+    if(revue) revue.hidden = false;
+  }
+  function prefill(){ var a = api(); if(!a || !dernier) return; var msg = a.prefill(dernier); if(msg) dis(msg); }
+  go.addEventListener('click', comprend);
+  txt.addEventListener('keydown', function(e){ if(e.key === 'Enter'){ e.preventDefault(); comprend(); } });
+  if(ouvre) ouvre.addEventListener('click', prefill);
+  /* La voix : la reconnaissance DU NAVIGATEUR, sur l'appareil. Rien n'est
+     envoye par nous. Absente : on retire le bouton. */
+  var Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(!Rec){ if(mic) mic.hidden = true; return; }
+  var ecoute = null;
+  if(mic) mic.addEventListener('click', function(){
+    if(ecoute){ try{ ecoute.stop(); }catch(e){} ecoute = null; return; }
+    try{
+      ecoute = new Rec();
+      ecoute.lang = (navigator.language && /^fr/.test(navigator.language)) ? 'fr-FR' : 'en-US';
+      ecoute.interimResults = false; ecoute.maxAlternatives = 1;
+      mic.classList.add('on'); dis('Listening…');
+      ecoute.onresult = function(ev){ txt.value = ev.results[0][0].transcript; comprend(); };
+      ecoute.onerror = function(){ dis('I could not hear you — type it instead.', true); };
+      ecoute.onend = function(){ mic.classList.remove('on'); ecoute = null; };
+      ecoute.start();
+    }catch(e){ dis('Voice is not available here — type it instead.', true); ecoute = null; }
+  });
 })();
 </script>
 <!-- Le fond d ecran anime, derriere tout : voir fond_anime.js. -->

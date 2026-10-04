@@ -14,7 +14,7 @@
      recalculee par cache_marqueur.test.js. Voir swoge_wallet.html pour le
      detail du mecanisme. -->
 <script>
-var MARQUE_PAGE = '5d3b36df';
+var MARQUE_PAGE = '6b9b9566';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -140,6 +140,18 @@ var MARQUE_PAGE = '5d3b36df';
     <button id="goSub" type="button" style="background:#555">Subdomains (CT logs)</button>
     <button id="goScans" type="button" style="background:#555">Known public scans</button>
     <div id="outRecon" class="sortie" hidden></div>
+  </div>
+
+  <!-- ============ 2b. CAN I SELL ? (Robinhood Chain) ============ -->
+  <div class="carte">
+    <h2>Can I sell? (Robinhood Chain)</h2>
+    <p class="note">Simulates a real <b>buy + sell</b> round trip on-chain for a token — the thing
+      GoPlus leaves as « tax unknown » on this chain. Read-only. Shows the round-trip cost, the pool,
+      the liquidity and whether the LP is burned.</p>
+    <label for="csAddr">Token contract (0x…)</label>
+    <input type="text" id="csAddr" class="mono" placeholder="0x…">
+    <button id="goSell" type="button">Can I sell?</button>
+    <div id="outSell" class="sortie" hidden></div>
   </div>
 
   <!-- ============ 3. EXPOSITION PASSIVE ============ -->
@@ -314,6 +326,36 @@ var MARQUE_PAGE = '5d3b36df';
   }
   $('goSub').addEventListener('click', surfaceDomaine('/bugbounty/subdomains', 'outRecon'));
   $('goScans').addEventListener('click', surfaceDomaine('/bugbounty/scans', 'outRecon'));
+
+  /* 2b. Can I sell ? Lecture seule, aucune autorisation (piscine publique). */
+  $('goSell').addEventListener('click', async function(){
+    var adr = ($('csAddr').value || '').trim();
+    if(!/^0x[0-9a-fA-F]{40}$/.test(adr)){ montre($('outSell'), 'Enter a token contract (0x… 40 hex).'); return; }
+    this.disabled = true; var el = $('outSell'); el.hidden = false; el.textContent = 'Simulating a buy + sell on-chain…';
+    try{
+      var r = await appelle('/bugbounty/cansell', { address: adr });
+      var j = r.j;
+      if(!j || !j.ok){ montre($('outSell'), (j && j.raison) || ('HTTP ' + r.code)); }
+      else if(!j.trouve){ montre($('outSell'), 'No Robinhood Chain pool found for this token — nothing to sell into.'); }
+      else {
+        el.textContent = '';
+        var rt = j.retour && typeof j.retour.pct === 'number' ? j.retour.pct : null;
+        var carte = document.createElement('div');
+        carte.className = 'f ' + (rt == null ? 'low' : rt >= 90 ? 'low' : rt >= 70 ? 'medium' : 'high');
+        carte.innerHTML = '<b>' + (j.jeton && j.jeton.sym ? j.jeton.sym : 'token') + ' · ' +
+          (rt == null ? 'no round-trip quote (cannot confirm a sell)' : rt + '% comes back on a buy+sell → ~' + (Math.round((100-rt)*10)/10) + '% round-trip cost') + '</b>' +
+          (j.retour && j.retour.ver ? '<br>route ' + j.retour.ver + ' · pool ' + (j.jeton && j.jeton.pool ? j.jeton.pool : '') : '') +
+          (j.jeton ? '<br>liquidity $' + (j.jeton.liq!=null?j.jeton.liq:'?') + ' · market cap $' + (j.jeton.mc!=null?j.jeton.mc:'?') : '') +
+          (j.lp ? '<br>LP burned: ' + (j.lp.brulee!=null?j.lp.brulee+'%':'?') + (j.lp.partielle?' (partial)':'') : '') +
+          (j.transfert && j.transfert.teste === false ? '<br><span style="color:var(--doux)">transfer sub-check: ' + (j.transfert.raison||'inconclusive') + '</span>' : '');
+        el.appendChild(carte);
+        var note = document.createElement('p'); note.className = 'note';
+        note.textContent = rt == null ? 'No quote means do NOT assume you can sell.' : 'Small probe size — a large sell has more price impact on thin liquidity.';
+        el.appendChild(note);
+      }
+    }catch(e){ montre($('outSell'), 'error: ' + e.message); }
+    this.disabled = false;
+  });
 
   /* 3. Exposition passive */
   $('goExp').addEventListener('click', async function(){

@@ -14,7 +14,7 @@
      recalculee par cache_marqueur.test.js. Voir swoge_wallet.html pour le
      detail du mecanisme. -->
 <script>
-var MARQUE_PAGE = 'e0846538';
+var MARQUE_PAGE = 'cd4712e1';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -119,7 +119,8 @@ var MARQUE_PAGE = 'e0846538';
     <h2>Passive exposure (IP)</h2>
     <p class="note">Open ports &amp; known CVEs an IP already exposes, read from
       <b>Shodan InternetDB</b> — already collected, <b>no packet is sent to the target</b>.
-      This is the safe stand-in for a port scan.</p>
+      This is the safe stand-in for a port scan. It also <b>guesses the device type</b>
+      (website, router, mail server, camera, PC, phone behind NAT…) from the passive data.</p>
     <label for="ip">IPv4 address</label>
     <input type="text" id="ip" class="mono" placeholder="203.0.113.10">
     <button id="goExp" type="button">Look up exposure</button>
@@ -215,7 +216,19 @@ var MARQUE_PAGE = 'e0846538';
     var a = garde('outExp'); if(!a) return;
     var ip = ($('ip').value || '').trim(); if(!ip){ montre($('outExp'), 'Enter an IPv4 address.'); return; }
     this.disabled = true; montre($('outExp'), 'Reading already-collected data…');
-    try{ var r = await appelle('/bugbounty/exposure', Object.assign({ ip: ip }, a)); montre($('outExp'), (r.j && (r.j.ok ? r.j : r.j.raison)) || ('HTTP ' + r.code)); }
+    try{
+      var r = await appelle('/bugbounty/exposure', Object.assign({ ip: ip }, a));
+      if(r.j && r.j.ok){
+        var el = $('outExp'); el.hidden = false; el.textContent = '';
+        if(r.j.device){ var d = document.createElement('div'); d.className = 'f ' + (r.j.device.confidence === 'high' ? 'high' : r.j.device.confidence === 'medium' ? 'medium' : 'low');
+          d.innerHTML = '<b>Device type · ' + (r.j.device.confidence || '') + '</b><br>' + r.j.device.type.replace(/</g,'&lt;') +
+            (r.j.device.evidence && r.j.device.evidence.length ? '<br><span class="mono" style="color:var(--doux)">from ' + r.j.device.evidence.join(', ') + '</span>' : '');
+          el.appendChild(d); }
+        var pre = document.createElement('div'); pre.className = 'mono'; pre.style.fontSize = '12px';
+        pre.textContent = JSON.stringify({ ip: r.j.ip, ports: r.j.ports, vulns: r.j.vulns, hostnames: r.j.hostnames, tags: r.j.tags }, null, 1);
+        el.appendChild(pre);
+      } else montre($('outExp'), (r.j && r.j.raison) || ('HTTP ' + r.code));
+    }
     catch(e){ montre($('outExp'), 'error: ' + e.message); }
     this.disabled = false;
   });

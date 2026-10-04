@@ -14,7 +14,7 @@
      recalculee par cache_marqueur.test.js. Voir swoge_wallet.html pour le
      detail du mecanisme. -->
 <script>
-var MARQUE_PAGE = 'a48ae86d';
+var MARQUE_PAGE = '7b383939';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -73,6 +73,17 @@ var MARQUE_PAGE = 'a48ae86d';
     contract source. <b>No active scanning, no exploitation, no credential attacks.</b> A target
     must be in a bug-bounty program scope, or you must tick the box that attests you are
     authorized to assess it. Ticking it does not grant permission — you are responsible.
+  </div>
+
+  <!-- ============ 0. TON RESEAU VU DE L'EXTERIEUR (ta propre IP) ============ -->
+  <div class="carte">
+    <h2>Your network, from the outside</h2>
+    <p class="note">One click reads <b>your own</b> public IP exposure (ports, CVEs, device type)
+      from already-collected data — no scan, no authorization needed (it is your connection). A
+      web page can't scan the LAN you're on; this is the honest, legal view.</p>
+    <button id="goMe" type="button">Map my exposure</button>
+    <div id="meGraph" style="margin-top:12px; overflow:auto"></div>
+    <div id="outMe" class="sortie" hidden></div>
   </div>
 
   <!-- ============ 1. PRE-AUDIT DE CONTRAT (aucune cible, aucune autorisation) ============ -->
@@ -225,6 +236,42 @@ var MARQUE_PAGE = 'a48ae86d';
     this.disabled = true; montre($('outRecon'), 'Running (read-only)…');
     try{ var r = await appelle('/bugbounty/recon', Object.assign({ cible: cible }, a)); montre($('outRecon'), (r.j && (r.j.ok ? r.j : r.j.raison)) || ('HTTP ' + r.code)); }
     catch(e){ montre($('outRecon'), 'error: ' + e.message); }
+    this.disabled = false;
+  });
+
+  /* 0. Mon exposition + graphe. Ma propre IP, lecture seule, aucune autorisation. */
+  function dessineGraphe(expo){
+    var svgns = 'http://www.w3.org/2000/svg';
+    var ports = (expo.ports || []).slice(0, 12);
+    var vulns = (expo.vulns || []).slice(0, 8);
+    var W = 640, H = 360, cx = W/2, cy = H/2;
+    var svg = document.createElementNS(svgns, 'svg'); svg.setAttribute('viewBox','0 0 '+W+' '+H); svg.setAttribute('width','100%'); svg.style.maxWidth = W+'px';
+    function noeud(x,y,r,fill,txt,sous){
+      var g = document.createElementNS(svgns,'g');
+      var c = document.createElementNS(svgns,'circle'); c.setAttribute('cx',x); c.setAttribute('cy',y); c.setAttribute('r',r); c.setAttribute('fill',fill); c.setAttribute('stroke','rgba(0,0,0,.15)'); g.appendChild(c);
+      var t = document.createElementNS(svgns,'text'); t.setAttribute('x',x); t.setAttribute('y',y+ (sous?-2:4)); t.setAttribute('text-anchor','middle'); t.setAttribute('font-size','12'); t.setAttribute('font-weight','700'); t.setAttribute('fill','#fff'); t.textContent = txt; g.appendChild(t);
+      if(sous){ var s = document.createElementNS(svgns,'text'); s.setAttribute('x',x); s.setAttribute('y',y+11); s.setAttribute('text-anchor','middle'); s.setAttribute('font-size','9'); s.setAttribute('fill','rgba(255,255,255,.85)'); s.textContent = sous; g.appendChild(s); }
+      return g;
+    }
+    function lien(x1,y1,x2,y2,col){ var l = document.createElementNS(svgns,'line'); l.setAttribute('x1',x1); l.setAttribute('y1',y1); l.setAttribute('x2',x2); l.setAttribute('y2',y2); l.setAttribute('stroke',col||'rgba(120,120,140,.5)'); l.setAttribute('stroke-width','1.5'); return l; }
+    var autour = ports.length + vulns.length;
+    var i = 0;
+    ports.forEach(function(p){ var a = (i/Math.max(1,autour))*2*Math.PI; i++; var x = cx + Math.cos(a)*150, y = cy + Math.sin(a)*120; svg.appendChild(lien(cx,cy,x,y)); svg.appendChild(noeud(x,y,22,'#1b5fe0','port','#'+p)); });
+    vulns.forEach(function(v){ var a = (i/Math.max(1,autour))*2*Math.PI; i++; var x = cx + Math.cos(a)*150, y = cy + Math.sin(a)*120; svg.appendChild(lien(cx,cy,x,y,'rgba(192,54,44,.5)')); svg.appendChild(noeud(x,y,24,'#c0362c','CVE', String(v).replace('CVE-',''))); });
+    svg.appendChild(noeud(cx,cy,40,'#15131c', expo.ip || 'you', (expo.device && expo.device.type ? expo.device.type.split(' ')[0] : '')));
+    var lab = document.createElementNS(svgns,'text'); lab.setAttribute('x',cx); lab.setAttribute('y',H-8); lab.setAttribute('text-anchor','middle'); lab.setAttribute('font-size','11'); lab.setAttribute('fill','var(--doux)');
+    lab.textContent = (expo.device ? expo.device.type + ' · ' : '') + (ports.length ? ports.length+' open port(s)' : 'no open ports') + (vulns.length ? ' · '+vulns.length+' known CVE(s)' : '');
+    svg.appendChild(lab);
+    var box = $('meGraph'); box.textContent = ''; box.appendChild(svg);
+  }
+  $('goMe').addEventListener('click', async function(){
+    this.disabled = true; $('meGraph').textContent = ''; montre($('outMe'), 'Reading your public exposure…');
+    try{
+      var r = await fetch(BASE + '/bugbounty/myexposure', { cache: 'no-store' });
+      var j = await r.json();
+      if(j && j.ok){ dessineGraphe(j); $('outMe').hidden = true; }
+      else montre($('outMe'), (j && j.raison) || ('HTTP ' + r.status));
+    }catch(e){ montre($('outMe'), 'error: ' + e.message); }
     this.disabled = false;
   });
 

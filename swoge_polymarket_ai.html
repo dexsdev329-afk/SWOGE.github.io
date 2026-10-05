@@ -538,6 +538,7 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
       <div class="ds-fait"><i>&#128221;</i><div><b>Paper money only</b><span>No key, no order, no wallet. Nothing is ever placed on Polymarket.</span></div></div>
       <div class="ds-fait"><i>&#128214;</i><div><b>Real prices, official fees</b><span>Bought at the ask on the live order book; the fee rate is read on each market.</span></div></div>
       <div class="ds-fait"><i>&#127922;</i><div><b>A random control</b><span>Coin bets at random. Doing no better than Coin means no edge.</span></div></div>
+      <div class="ds-fait"><i>&#127974;</i><div><b>And the market itself</b><span>Crowd buys the favourite &mdash; the market&rsquo;s own pick. The real bar is beating the market, not just the coin.</span></div></div>
     </div>
   </section>
   <p class="ds-statut statut" id="statut" role="status">Loading the colony&hellip;</p>
@@ -725,6 +726,9 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
     var c = el("div", "agent"), t = el("div", "tete");
     var nom = el("span", "nom", a.name); t.appendChild(nom);
     if (a.id === "coin") t.appendChild(el("span", "temoin", "control"));
+    /* 05/10 : Crowd = le MARCHE (il achete le favori du carnet). Le vrai etalon n est pas
+       la piece, c est le marche : une strategie n a un edge que si elle bat Crowd aussi. */
+    if (a.id === "crowd") t.appendChild(el("span", "temoin", "the market"));
     t.appendChild(el("span", Number(a.pnl) >= 0 ? "pos" : "neg", signe(a.pnl)));
     c.appendChild(t); c.appendChild(el("p", "role", a.role));
     /* 01/10 : trois chiffres en tete, le detail replie (25 cartes depliees faisaient 6 000 px). */

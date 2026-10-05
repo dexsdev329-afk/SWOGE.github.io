@@ -2401,6 +2401,8 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     </div>
 
     <div class="actions">
+      <button class="bascule" id="os-moi" aria-pressed="false"
+        title="Check what is publicly exposed about your own handle, e-mail or domain — public sources only, no leaked database, no password.">&#128269; Analyze my socials</button>
       <button class="bascule" id="os-passif" aria-pressed="false"
         title="Passive mode reads third-party indexes only. The target never sees your requests.">Passive only</button>
       <a class="tele" id="os-teleJson" href="#" hidden>JSON</a>
@@ -6211,6 +6213,15 @@ function graphe(){
 /* ==================== LES GESTES ==================== */
 $("#go").addEventListener("click", enquete);
 $("#q").addEventListener("keydown", e => { if(e.key==="Enter") enquete(); });
+/* « Analyze my socials » (05/10) : OSINT DEFENSIF sur ses propres comptes. On traite
+   le handle/e-mail/domaine saisi comme un selecteur public (jamais une personne, aucune
+   base fuitee, aucun mot de passe) — c est l enquete normale, cadree sur SOI. Si le champ
+   est vide, on demande quoi verifier ; rien n est deduit ni fusionne. */
+$("#moi").addEventListener("click", () => {
+  let v = ($("#q").value || "").trim();
+  if(!v){ v = (window.prompt("Your own handle, e-mail or domain to check — public sources only, no leaked database, no password:") || "").trim(); if(!v){ $("#q").focus(); return; } $("#q").value = v; }
+  enquete();
+});
 $("#passif").addEventListener("click", () => {
   PASSIF = !PASSIF;
   $("#passif").setAttribute("aria-pressed", PASSIF?"true":"false");

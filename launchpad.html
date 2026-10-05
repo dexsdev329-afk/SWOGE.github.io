@@ -1599,8 +1599,9 @@ function construitAgentForm(box, ctx){
       fetch(S+"/agent/jeton/"+tk+"/trades?n=10",{cache:"no-store"}).then(function(r){ return r.json(); })["catch"](function(){ return null; })
     ]).then(function(res){
       var info=res[0]||{}, feed=res[1]||{}, tr=res[2]||{};
-      var fuel=info.fuel&&info.fuel.soldeUsd, tres=info.tresor&&info.tresor.soldeUsd;
+      var fuel=info.fuel&&info.fuel.soldeUsd, tres=info.tresor&&info.tresor.soldeUsd, rw=info.runway;
       var h='<div class="kv" style="border:0"><span class="k">Fuel (pays the API)</span><span class="v">'+(fuel!=null?("$"+Number(fuel).toFixed(2)):"—")+'</span></div>'
+        +(rw&&rw.pensees?('<div class="kv" style="border:0"><span class="k">Runway</span><span class="v">'+rw.pensees+' thoughts · ~'+(rw.jours>=1?(rw.jours+" days"):(rw.heures+"h"))+'</span></div>'):'')
         +'<div class="kv" style="border:0"><span class="k">Treasury (paper)</span><span class="v">'+(tres!=null?("$"+Number(tres).toFixed(2)):"—")+'</span></div>';
       var posts=(feed&&feed.posts)||[];
       h+='<div style="margin-top:8px;font-weight:700;font-size:12px">Posts <span class="count">'+posts.length+'</span></div>';

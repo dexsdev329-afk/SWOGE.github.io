@@ -1409,6 +1409,10 @@ function construitAgentForm(box, ctx){
       +'<div class="agStatus note" style="margin:0 0 6px">Agent status…</div>'
       +'<div class="btnrow" style="margin:0"><button type="button" class="btn agPause" hidden style="padding:6px 10px;font-size:12px">⏸ Pause agent</button>'
         +'<button type="button" class="btn agHist" style="padding:6px 10px;font-size:12px">📜 Activity &amp; spending</button></div>'
+      +'<div class="btnrow" style="margin-top:6px;align-items:center"><input class="agFuelUsd" type="number" min="1" max="1000" placeholder="$ amount" style="max-width:120px">'
+        +'<button type="button" class="btn agFuelBuy" style="padding:6px 10px;font-size:12px">⛽ Fuel the agent</button></div>'
+      +'<div class="note" style="margin:4px 0 0;opacity:.7">Fuel pays the AI API from your dollar credit. It keeps the agent thinking.</div>'
+      +'<div class="note agFuelNote" style="margin-top:2px"></div>'
       +'<div class="agHistBox" hidden style="margin-top:8px"></div>'
     +'</div>'
     +'<div class="btnrow" style="margin:0 0 6px"><button type="button" class="btn agPreview" style="padding:6px 10px;font-size:12px">👀 Preview a post</button>'
@@ -1585,6 +1589,30 @@ function construitAgentForm(box, ctx){
       agActif=d.agent?!!d.agent.actif:!agActif; montreStatut();
     }catch(e){ st.className="note err"; st.textContent=String((e&&(e.message||e))||"could not sign").slice(0,200); }
     finally{ pb.disabled=false; }
+  });
+  /* RECHARGE PAYANTE : le createur paie le carburant depuis son credit en dollars
+     (qu il alimente en USDC via x402). C est notre revenu. Signe (geste « fuel »). */
+  q(".agFuelBuy").addEventListener("click",async function(){
+    var note=q(".agFuelNote"), btn=q(".agFuelBuy");
+    if(!signer){ openWalletPicker(); return; }
+    var usd=Math.max(0,Math.min(1000,parseInt(q(".agFuelUsd").value,10)||0));
+    if(!usd){ note.className="note err agFuelNote"; note.textContent="Enter a dollar amount."; return; }
+    note.className="note agFuelNote"; note.textContent="Sign to pay from your dollar credit…"; btn.disabled=true;
+    try{
+      var p=await preuve("fuel"); p.usd=usd;
+      var r=await fetch(lpServeur()+"/agent/fuel/buy",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(p)});
+      var d=await r.json().catch(function(){ return null; });
+      if(r.status===402){ note.className="note err agFuelNote"; note.textContent=(d&&d.raison)||"Not enough dollar credit — top up your credit first, then fuel the agent."; return; }
+      if(!d||!d.ok){ note.className="note err agFuelNote"; note.textContent=(d&&d.raison)||"Could not fuel the agent."; return; }
+      note.className="note ok agFuelNote";
+      note.textContent="⛽ Fueled +$"+Number(d.repartition.fuel).toFixed(2)+" (credit left $"+Number(d.creditRestantUsd||0).toFixed(2)+").";
+      q(".agFuelUsd").value="";
+      if(!q(".agHistBox").hidden){ q(".agHist").click(); q(".agHist").click(); }   /* rafraichit l historique si ouvert */
+    }catch(e){
+      var m=String((e&&(e.message||e))||"could not sign");
+      if(/user rejected|denied|4001/i.test(m)||(e&&(e.code===4001||e.code==="ACTION_REJECTED"))) m="You cancelled the signature.";
+      note.className="note err agFuelNote"; note.textContent=m.slice(0,200);
+    }finally{ btn.disabled=false; }
   });
   /* ACTIVITE & DEPENSES : le mur (posts, liens X) + le journal des gestes d argent
      (papier pour l instant ; lien blockchain quand une transaction reelle existe). */

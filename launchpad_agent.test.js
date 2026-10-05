@@ -54,6 +54,11 @@ ok(/id="tvAgentPanel"/.test(html) && /id="tvAgentBtn"/.test(html), 'la fiche du 
 ok(/construitAgentForm\(box, \{ token:curToken/.test(html), 'le panneau construit l agent DU jeton ouvert (curToken), un seul par jeton');
 ok(/removeAttribute\("data-built"\)/.test(html), 'changer de jeton repart propre (pas de melange entre jetons)');
 
+console.log('\n-- recharge payante du carburant (notre revenu), signee --');
+ok(/\/agent\/fuel\/buy/.test(html) && /preuve\("fuel"\)/.test(html), 'le createur recharge le carburant via /agent/fuel/buy (signe geste fuel)');
+ok(/Fuel pays the AI API from your dollar credit/i.test(html), 'c est dit : le carburant paie l API depuis le credit en dollars');
+ok(/Runway/.test(html), 'le tableau de bord montre l autonomie (runway)');
+
 console.log('\n-- gestion par le createur : pause/reprise + historique + liens --');
 ok(/\/agent\/toggle_createur/.test(html) && /Pause agent|Resume agent/.test(html), 'le createur peut mettre en pause / relancer son agent (toggle_createur signe)');
 ok(/\/feed\?n=/.test(html) && /\/trades\?n=/.test(html), 'l historique lit le mur (posts) et le journal des gestes d argent');

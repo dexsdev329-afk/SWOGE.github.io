@@ -22,12 +22,20 @@ ok(/id="cAgentGoal"/.test(html) && /id="cAgentPreviewBtn"/.test(html) && /id="cA
 
 console.log('\n-- le bouton appelle l apercu PUBLIC, et ne publie rien --');
 ok(/\/agent\/preview_config/.test(html), 'le bouton POST vers /agent/preview_config (apercu, pas de publication)');
-ok(!/\/agent\/attach/.test(html), 'la page n attache rien elle-meme (le self-service createur viendra avec l auth de session)');
+
+console.log('\n-- le self-service createur : attache SIGNEE, jamais en aveugle --');
+/* Intention d origine : la page n attache rien SANS autorisation. Depuis le 05/10 le
+   createur attache l agent de SON jeton — mais seulement en SIGNANT une preuve, verifiee
+   on-chain cote serveur. On tient donc le fond : aucune attache sans signature. */
+ok(/\/agent\/attach_createur/.test(html), 'le createur attache via /agent/attach_createur (self-service, apres lancement)');
+ok(/signer\.signMessage\(agentSignMsg\(/.test(html), 'l attache est precedee d une SIGNATURE (preuve de creation), jamais en aveugle');
+ok(!/\/agent\/attach\b(?!_createur)/.test(html) && !/x-admin-key/.test(html), 'la page n appelle jamais la route admin /agent/attach ni n envoie de cle admin');
 
 console.log('\n-- l honnetete de la promesse --');
 ok(/preview/i.test(html.slice(html.indexOf('id="cAgentChamp"'), html.indexOf('id="cAgentChamp"') + 1200)), 'le panneau se presente comme un APERCU');
-ok(/goes live after launch/i.test(html), 'il dit que la publication autonome vient APRES le lancement (rien n est deja en ligne)');
+ok(/goes live after launch/i.test(html) || /autonomous X posting goes live once the team enables it/i.test(html), 'il dit que la publication autonome X vient APRES (rien n est deja en ligne)');
 ok(/never invents numbers/i.test(html), 'il dit que l agent ne cite que des faits, jamais un chiffre invente');
+ok(/simulated \(paper\)|simulated \/ paper/i.test(html), 'le rachat (geste d argent) est annonce comme simule / paper');
 
 console.log('\n' + (rates ? 'RATES : ' + rates + '/' + n : 'VERIFICATIONS : ' + n + ' — tout passe'));
 process.exit(rates ? 1 : 0);

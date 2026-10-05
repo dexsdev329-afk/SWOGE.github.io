@@ -1345,6 +1345,86 @@ function kit(o,res){
     +"</div><div style=\"margin-top:8px\">Your 50% of the trading fees ("+(o.pool==="eth"?"WETH":"$SWOGE")+") is claimable any time in <b>Portfolio</b> → Collect. "
     +"DexScreener shows the chart after the first trade. Add your logo there (Enhanced Token Info) — the V4 contract keeps no logo.</div>";
   k.hidden=false;
+  /* « Donne-lui un esprit » : le createur configure l agent de SON jeton, ici, tout
+     de suite. Aucune cle admin : il PROUVE qu il est le createur en signant un message,
+     et le serveur revérifie `instant(token).creator` sur la chaine. */
+  var mind=document.createElement("div"); mind.className="field"; mind.style.marginTop="12px";
+  k.appendChild(mind);
+  construitAgentForm(mind, { token:res.token, pool:res.pool, symbole:o.symbol, nom:o.name });
+}
+
+/* Le message EXACT que le portefeuille signe — doit coller a agent_createur.message()
+   cote serveur (jeton en minuscules, meme texte, meme horodatage). */
+function agentSignMsg(token, ts){
+  return "SWOGE AI Agent\n"
+    +"I am the on-chain creator of token "+String(token).toLowerCase()+"\n"
+    +"and I authorize configuring its AI agent on swoge.\n"
+    +"This signature moves no funds and grants no spending power.\n"
+    +"Timestamp: "+Number(ts);
+}
+/* Les personas proposees : l allow-list cote serveur (agent_jeton.PERSONAS). */
+var AGENT_PERSONAS=[["builder","Builder — ships and explains"],["analyst","Analyst — data-first, dry, precise"],
+  ["hype","Hype — high energy, meme-forward"],["stoic","Stoic — calm, long-term"],["contrarian","Contrarian — questions the crowd"]];
+/* Construit, dans `box`, le formulaire de l agent d UN jeton, et cable la signature +
+   l envoi a /agent/attach_createur. Prefill depuis la config existante si elle existe. */
+function construitAgentForm(box, ctx){
+  var opts=AGENT_PERSONAS.map(function(p){ return '<option value="'+p[0]+'">'+esc(p[1])+'</option>'; }).join("");
+  box.innerHTML=
+    '<h3 style="margin:0 0 6px">🧠 Give $'+esc(ctx.symbole||"")+' an AI agent</h3>'
+    +'<div class="note" style="margin:0 0 8px">Your wallet created this token, so you can set up its agent — just sign a message to prove it (no gas, moves no funds).</div>'
+    +'<label class="lbl">Personality</label><select class="agPersona" style="margin-bottom:8px">'+opts+'</select>'
+    +'<label class="lbl">Objective (optional)</label><input class="agGoal" maxlength="280" placeholder="e.g. keep the community informed, post the honest facts daily" style="margin-bottom:8px">'
+    +'<label class="lbl">Posts per day at most</label><input class="agPosts" type="number" min="1" max="96" value="24" style="margin-bottom:8px">'
+    +'<label style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><input class="agRachat" type="checkbox"> <span>Enable buy-back &amp; burn <b>(simulated / paper)</b></span></label>'
+    +'<div class="agRachatBudget" hidden style="margin-bottom:8px"><label class="lbl">Daily buy-back budget (% of treasury)</label><input class="agBudget" type="number" min="0" max="100" value="5"></div>'
+    +'<div class="btnrow" style="margin:0 0 6px"><button type="button" class="btn agPreview" style="padding:6px 10px;font-size:12px">👀 Preview a post</button>'
+    +'<button type="button" class="btn primary agSave" style="padding:6px 10px;font-size:12px">💾 Save agent</button></div>'
+    +'<div class="note agNote"></div><div class="note agPrev" hidden style="margin-top:6px"></div>';
+  var q=function(s){ return box.querySelector(s); };
+  var chk=q(".agRachat"); chk.addEventListener("change",function(){ q(".agRachatBudget").hidden=!chk.checked; });
+  /* Prefill depuis l agent existant (lecture publique) : modifier n efface pas les reglages. */
+  fetch(lpServeur()+"/agent/jeton/"+String(ctx.token).toLowerCase(),{cache:"no-store"}).then(function(r){ return r.json(); }).then(function(d){
+    var a=d&&d.agent; if(!a) return;
+    if(a.persona) q(".agPersona").value=a.persona;
+    if(a.objectif) q(".agGoal").value=a.objectif;
+    if(a.postsParJourMax) q(".agPosts").value=a.postsParJourMax;
+    if(a.rachat&&a.rachat.actif){ chk.checked=true; q(".agRachatBudget").hidden=false; if(a.rachat.budgetPctJour) q(".agBudget").value=a.rachat.budgetPctJour; }
+    q(".agSave").textContent="💾 Update agent";
+  })["catch"](function(){});
+  q(".agPreview").addEventListener("click",function(){
+    var out=q(".agPrev"), btn=q(".agPreview");
+    out.hidden=false; out.className="note agPrev"; out.textContent="Composing a sample post…"; btn.disabled=true;
+    fetch(lpServeur()+"/agent/preview_config",{method:"POST",headers:{"content-type":"application/json"},
+      body:JSON.stringify({persona:q(".agPersona").value,objectif:q(".agGoal").value.trim(),symbole:ctx.symbole||undefined,nom:ctx.nom||undefined})})
+      .then(function(r){ return r.json(); }).then(function(d){
+        if(d&&d.ok&&d.post){ out.textContent="“"+(d.post.texte||"")+"”"; } else { out.className="note err agPrev"; out.textContent=(d&&d.raison)||"Preview unavailable."; }
+      })["catch"](function(){ out.className="note err agPrev"; out.textContent="Preview unavailable."; })["finally"](function(){ btn.disabled=false; });
+  });
+  q(".agSave").addEventListener("click",async function(){
+    var note=q(".agNote"), btn=q(".agSave");
+    if(!signer){ openWalletPicker(); return; }
+    note.className="note"; note.textContent="Sign in your wallet to prove you created this token…"; btn.disabled=true;
+    try{
+      var ts=Date.now(), sig=await signer.signMessage(agentSignMsg(ctx.token, ts));
+      var body={ token:String(ctx.token).toLowerCase(), ts:ts, signature:sig,
+        persona:q(".agPersona").value, objectif:q(".agGoal").value.trim(),
+        postsParJourMax:Math.max(1,Math.min(96,parseInt(q(".agPosts").value,10)||24)), langue:"en",
+        rachat:{ actif:q(".agRachat").checked, budgetPctJour:Math.max(0,Math.min(100,parseInt(q(".agBudget").value,10)||0)) },
+        symbole:ctx.symbole||undefined, nom:ctx.nom||undefined };
+      note.textContent="Saving your agent…";
+      var r=await fetch(lpServeur()+"/agent/attach_createur",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)});
+      var d=await r.json().catch(function(){ return null; });
+      if(!d||!d.ok){ note.className="note err"; note.textContent=(d&&d.raison)||"Could not save the agent."; return; }
+      note.className="note ok";
+      note.innerHTML="🧠 Agent saved for $"+esc(ctx.symbole||"")+". It posts to its wall now; autonomous X posting goes live once the team enables it. Buy-back is simulated (paper). "
+        +'<a href="token_agents.html?t='+esc(String(ctx.token).toLowerCase())+'" target="_blank">See it on the AI Agents page ↗</a>';
+      btn.textContent="💾 Update agent";
+    }catch(e){
+      var m=String((e&&(e.message||e))||"could not sign");
+      if(/user rejected|denied|4001/i.test(m)||(e&&(e.code===4001||e.code==="ACTION_REJECTED"))) m="You cancelled the signature — nothing was saved.";
+      note.className="note err"; note.textContent=m.slice(0,200);
+    }finally{ btn.disabled=false; }
+  });
 }
 
 $("#createBtn").onclick=async function(){
@@ -1885,8 +1965,9 @@ async function loadMine(){
           +claimHtml
           +'<div class="btnrow" style="margin-top:8px">'+('<button class="btn" data-open="'+r.addr+'" style="padding:5px 10px;font-size:12px">📈 Open</button>')
           +'<a class="btn dexlink" href="'+dexUrl+'" target="_blank" style="padding:5px 10px;font-size:12px">📊 Dex</a>'
+          +'<button class="btn" data-agent="'+r.addr+'" style="padding:5px 10px;font-size:12px">🧠 AI agent</button>'
           +'<button class="btn primary" data-collect="'+r.addr+'" style="padding:5px 10px;font-size:12px">💰 Collect</button></div>'
-          +'<div class="note" data-cnote="'+r.addr+'" style="margin-top:6px"></div></div>';
+          +'<div class="note" data-cnote="'+r.addr+'" style="margin-top:6px"></div><div data-agentbox="'+r.addr+'" hidden style="margin-top:8px"></div></div>';
       });
     }
     madeHtml+='</div>';
@@ -1931,6 +2012,17 @@ async function loadMine(){
           note.className="note ok"; note.textContent="Rewards claimed 💰"; loadMine();
         }catch(e){ note.className="note err"; note.textContent="Failed · "+String(e.reason||e.message||e).slice(0,120); }
         finally{ b.disabled=false; }
+      };
+    });
+    host.querySelectorAll("[data-agent]").forEach(function(b){
+      b.onclick=function(ev){
+        ev.stopPropagation();
+        var addr=b.getAttribute("data-agent"), boxEl=host.querySelector('[data-agentbox="'+addr+'"]');
+        if(!boxEl) return;
+        if(!boxEl.hidden){ boxEl.hidden=true; return; }       /* deuxieme clic : on replie */
+        var row=madeRows.filter(function(x){ return x.addr===addr; })[0]||{};
+        if(!boxEl.getAttribute("data-built")){ construitAgentForm(boxEl, { token:addr, pool:row.pool||null, symbole:row.sym, nom:row.name }); boxEl.setAttribute("data-built","1"); }
+        boxEl.hidden=false;
       };
     });
     host.querySelectorAll("[data-collect]").forEach(function(b){

@@ -632,16 +632,14 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   <!-- ============ CREATE ============ -->
   <section id="tab-create">
     <div class="panel">
-      <h2>Launch a token ⚡</h2>
-      <!-- 03/10 : « je vois pas le bouton pour choisir de lancer avec un pool WETH ou $SWOGE ».
-           Les deux launchpads V4 (deployes et relus sur la chaine le 30/09) et l'ancien V3. -->
+      <h2>AI Agent Launch 🤖</h2>
+      <!-- 05/10 : l'ancien bouton « Classic (V3) » retire ; chaque jeton se lance avec son agent IA.
+           Restent les deux launchpads V4 (deployes et relus sur la chaine le 30/09) : pool $SWOGE ou ETH. -->
       <div class="lp-pools" role="radiogroup" aria-label="Launch pool">
         <button type="button" class="lp-pool on" data-pool="swoge" role="radio" aria-checked="true">
           <b>$SWOGE pool</b><span>Paired with $SWOGE · fee 10,000 $SWOGE, burned</span></button>
         <button type="button" class="lp-pool" data-pool="eth" role="radio" aria-checked="false">
           <b>ETH pool (WETH)</b><span>Paired with ETH · fee 0.0001 ETH</span></button>
-        <button type="button" class="lp-pool" data-pool="v3" role="radio" aria-checked="false">
-          <b>Classic (V3)</b><span>Logo on-chain · 70% holders / 30% treasury</span></button>
       </div>
       <div class="lp-fiche" id="lpFiche" aria-live="polite"></div>
       <div class="note" id="modeInfo" style="margin-bottom:12px"></div>

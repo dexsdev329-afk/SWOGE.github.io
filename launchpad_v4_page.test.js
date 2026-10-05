@@ -82,9 +82,10 @@ const gp = (taxe) => ({ is_honeypot: '0', is_mintable: '0', hidden_owner: '0', c
   await pg.goto('http://127.0.0.1:' + srv.address().port + '/launchpad.html', { waitUntil: 'load' });
   await pg.waitForTimeout(800);
 
-  console.log('\n-- les trois choix de pool --');
+  console.log('\n-- les deux choix de pool (le V3 « Classic » a ete retire le 05/10) --');
   const choix = await pg.$$eval('.lp-pool', (bs) => bs.map((b) => ({ p: b.dataset.pool, on: b.getAttribute('aria-checked'), vu: b.offsetParent !== null, t: b.innerText })));
-  ok(choix.length === 3 && choix.every((c) => c.vu), 'trois boutons visibles : ' + choix.map((c) => c.p).join(', '));
+  ok(choix.length === 2 && choix.every((c) => c.vu), 'deux boutons visibles : ' + choix.map((c) => c.p).join(', '));
+  ok(!choix.some((c) => c.p === 'v3'), 'plus de bouton « Classic (V3) »');
   ok(choix.filter((c) => c.on === 'true').length === 1 && choix[0].p === 'swoge' && choix[0].on === 'true', 'un seul actif, le pool $SWOGE par defaut');
   ok(/WETH/.test(choix[1].t) && /\$SWOGE/.test(choix[0].t), 'les libelles disent $SWOGE et ETH (WETH)');
 
@@ -110,13 +111,6 @@ const gp = (taxe) => ({ is_honeypot: '0', is_mintable: '0', hidden_owner: '0', c
   fee = await pg.textContent('#feeSummary');
   ok(/0\.0001 ETH/.test(fee), 'frais : 0,0001 ETH');
   ok(/ETH pool/.test(await pg.textContent('#createBtn')), 'le bouton nomme le pool choisi');
-
-  console.log('\n-- l ancien V3 reste choisissable --');
-  await pg.click('.lp-pool[data-pool="v3"]');
-  await pg.waitForTimeout(200);
-  ok(/external call: yes/.test(await pg.textContent('#lpFiche')), 'la fiche V3 dit ce que les scanners lui reprochent');
-  ok(await pg.isVisible('#cLogoChamp'), 'le champ logo revient pour le V3');
-  ok(!/pool\)/.test(await pg.textContent('#createBtn')), 'le bouton reprend son libelle V3');
 
   console.log('\n-- connexion, puis une copie refusee --');
   await pg.click('.lp-pool[data-pool="swoge"]');

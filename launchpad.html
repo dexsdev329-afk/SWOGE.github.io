@@ -664,6 +664,21 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
         <input id="cTw" placeholder="Twitter / X — https://x.com/…" style="margin-bottom:8px">
         <input id="cWeb" placeholder="Website — https://…">
       </div>
+      <div class="field" id="cAgentChamp">
+        <label>AI agent (preview) 🐾</label>
+        <div class="note" style="margin:0 0 8px">Give your token an on-brand AI agent: pick a personality and an objective, then preview the first post it would write. It posts only the facts, never invents numbers. (Autonomous posting goes live after launch.)</div>
+        <select id="cAgentPersona" style="margin-bottom:8px">
+          <option value="">No agent</option>
+          <option value="hype">Hype — high energy, meme-forward</option>
+          <option value="analyst">Analyst — data-first, dry, precise</option>
+          <option value="stoic">Stoic — calm, long-term</option>
+          <option value="contrarian">Contrarian — questions the crowd</option>
+          <option value="builder">Builder — ships and explains</option>
+        </select>
+        <input id="cAgentGoal" placeholder="Objective (optional) — e.g. make the community laugh every day" maxlength="280" style="margin-bottom:8px">
+        <button class="btn full" id="cAgentPreviewBtn" type="button" style="margin:0">👀 Preview its first post</button>
+        <div class="note" id="cAgentPreview" style="margin-top:8px" hidden></div>
+      </div>
       <div class="note" id="feeSummary"></div>
       <button class="btn primary full" id="createBtn" style="margin-top:8px" disabled>⚡ Launch on Uniswap</button>
       <div class="note" id="createNote">Connect a wallet first.</div>
@@ -1254,6 +1269,31 @@ async function updateFeeSummary(){
   }
 }
 updateFeeSummary();
+
+/* ---------- 05/10 : L'AGENT IA DU JETON (apercu avant lancement) ----------
+   Modele AgencyPad porte sur Robinhood Chain. Ici, un simple APERCU : on compose
+   le post que l'agent ecrirait, sans jeton attache et sans rien publier
+   (/agent/preview_config, public, borne cote serveur). La publication autonome
+   par jeton vient a l'etape suivante (compte X par jeton, ordonnanceur). */
+(function(){
+  var btn=$("#cAgentPreviewBtn"); if(!btn) return;
+  btn.addEventListener("click", async function(){
+    var persona=$("#cAgentPersona").value, out=$("#cAgentPreview");
+    if(!persona){ out.hidden=false; out.className="note err"; out.textContent="Pick a personality first (or «No agent»)."; return; }
+    var sym=$("#cSym").value.trim().replace(/^\$/,"").toUpperCase();
+    out.hidden=false; out.className="note"; out.innerHTML='<span class="spin"></span> writing…';
+    btn.disabled=true;
+    try{
+      var r=await fetch(lpServeur()+"/agent/preview_config",{method:"POST",headers:{"content-type":"application/json"},
+        body:JSON.stringify({persona:persona,objectif:$("#cAgentGoal").value.trim(),symbole:sym||undefined,nom:$("#cName").value.trim()||undefined})});
+      var d=await r.json().catch(function(){ return null; });
+      if(!d||!d.ok){ out.className="note err"; out.textContent=(d&&d.raison)||"Could not write a preview right now."; return; }
+      out.className="note";
+      out.innerHTML='<b>'+esc(d.personaLabel||persona)+' agent would post:</b><br><span style="white-space:pre-wrap">'+esc(d.post&&d.post.texte||"")+'</span>';
+    }catch(e){ out.className="note err"; out.textContent="Preview unavailable right now."; }
+    finally{ btn.disabled=false; }
+  });
+})();
 
 /* ---------- 03/10 : LE LANCEMENT V4, ET LE KIT DU CREATEUR ---------- */
 async function lanceV4(){

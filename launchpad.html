@@ -643,6 +643,8 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
           <b>AI Agent Launch 🤖</b><span>Recommended · ETH pool + your token gets its own AI agent</span></button>
         <button type="button" class="lp-pool" data-pool="swoge" role="radio" aria-checked="false">
           <b>$SWOGE pool</b><span>Paired with $SWOGE · fee 10,000 $SWOGE, burned</span></button>
+        <button type="button" class="lp-pool" data-pool="solana" role="radio" aria-checked="false">
+          <b>Solana (Pump.fun) ◎</b><span>Launch on Solana via Pump.fun · sign with Phantom · bonding curve</span></button>
       </div>
       <div class="lp-fiche" id="lpFiche" aria-live="polite"></div>
       <div class="note" id="modeInfo" style="margin-bottom:12px"></div>
@@ -658,6 +660,11 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
           <span class="note" id="cLogoNote" style="margin:0">Upload from your PC / phone — resized &amp; stored on-chain automatically.</span>
         </div>
         <input id="cLogo" placeholder="…or paste an image URL (https://…)" style="margin-top:8px">
+      </div>
+      <div class="field" id="cSolExtra" style="display:none">
+        <label>Dev-buy at launch (SOL, optional)</label>
+        <input id="cSolDevBuy" inputmode="decimal" placeholder="0 (none)">
+        <div class="note" id="cSolNote" style="margin-top:6px"></div>
       </div>
       <div class="field">
         <label>Links (optional)</label>
@@ -1206,7 +1213,9 @@ function choisisPool(p){
      on garde le bouton CLIQUE en surbrillance, mais le pool reel est ETH. */
   poolChoisi = p==="agent" ? "eth" : p;
   [].forEach.call(document.querySelectorAll(".lp-pool"),function(b){ var on=b.getAttribute("data-pool")===p; b.classList.toggle("on",on); b.setAttribute("aria-checked",String(on)); });
-  $("#cLogoChamp").style.display = poolChoisi==="v3" ? "" : "none";   /* le V4 ne porte pas de logo on-chain */
+  /* Le logo : le V4 EVM ne le porte pas on-chain, MAIS Pump.fun (Solana) EXIGE une image. */
+  $("#cLogoChamp").style.display = (poolChoisi==="v3"||poolChoisi==="solana") ? "" : "none";
+  var solX=$("#cSolExtra"); if(solX) solX.style.display = poolChoisi==="solana" ? "" : "none";
   var champ=$("#cAgentChamp"); if(champ) champ.classList.toggle("phare", p==="agent");   /* met le panneau agent en avant */
   $("#lpKit").hidden=true;
   updateFeeSummary(); fiche();
@@ -1219,6 +1228,15 @@ var GOPLUS_CASES={is_honeypot:"Honeypot",is_mintable:"Mintable",hidden_owner:"Hi
   external_call:"External call",is_proxy:"Proxy",transfer_pausable:"Transfers can be paused",is_blacklisted:"Blacklist"};
 function fiche(){
   var f=$("#lpFiche");
+  if(poolChoisi==="solana"){
+    f.innerHTML="<h3>◎ Solana — Pump.fun</h3><ul>"
+      +"<li>Your token launches on <b>Pump.fun</b>'s bonding curve, then graduates to PumpSwap — the same rails the big Solana AI-agent launches use</li>"
+      +"<li>You sign with <b>Phantom</b>; the mint is generated in your browser. <b>SWOGE never holds your keys</b></li>"
+      +"<li>Pump.fun charges its own creation fee (in SOL). You can add a small <b>dev-buy</b> at launch</li>"
+      +"<li>Image is <b>required</b> by Pump.fun. Name &amp; symbol as usual</li>"
+      +"<li>Note: the per-token <b>AI agent</b> (posts, replies, buy-back) is a Robinhood Chain feature today</li></ul>";
+    return;
+  }
   if(poolChoisi==="v3"){
     f.innerHTML="<h3>⚠️ Classic (V3)</h3>Still available, but scanners flag it: GoPlus reads <b>external call: yes</b> and the launchpad as owner on V3 tokens. "
       +"Prefer a V4 pool for a token that reads clean.";
@@ -1247,6 +1265,12 @@ function fiche(){
   })["catch"](function(){ var el=$("#lpGoplus"); if(el) el.textContent="GoPlus reading unavailable right now."; });
 }
 async function updateFeeSummary(){
+  if(poolChoisi==="solana"){
+    $("#modeInfo").innerHTML="Launch a token on <b>Solana</b> via <b>Pump.fun</b> (bonding curve). You sign with your <b>Phantom</b> wallet — SWOGE never holds your keys. An image is required.";
+    $("#feeSummary").innerHTML="Pump.fun's own creation fee applies (paid in SOL from your wallet). Optionally make a small dev-buy at launch. The SWOGE per-token AI agent is a Robinhood Chain feature for now.";
+    var bs=$("#createBtn"); bs.disabled=false; bs.innerHTML="◎ Launch on Solana (Pump.fun)";
+    return;
+  }
   if(poolChoisi!=="v3"){
     var eth=poolChoisi==="eth";
     $("#modeInfo").innerHTML="A real Uniswap pool is created at launch, paired with <b>"+(eth?"ETH (WETH)":"$SWOGE")+"</b>. "
@@ -1652,7 +1676,78 @@ function construitAgentForm(box, ctx){
   });
 }
 
+/* ---------- 05/10 : LANCER SUR SOLANA via Pump.fun (PumpPortal) ----------
+   NON CUSTODIAL : le mint est genere ici, le portefeuille Phantom signe ; le serveur
+   ne relaie que les deux appels Pump.fun/PumpPortal. @solana/web3.js charge a la demande. */
+function u8FromB64(b64){ var bin=atob(b64); var u=new Uint8Array(bin.length); for(var i=0;i<bin.length;i++) u[i]=bin.charCodeAt(i); return u; }
+var _solWeb3P=null;
+function chargeSolanaWeb3(){
+  if(window.solanaWeb3) return Promise.resolve(window.solanaWeb3);
+  if(_solWeb3P) return _solWeb3P;
+  _solWeb3P=new Promise(function(res,rej){
+    var s=document.createElement("script");
+    s.src="https://unpkg.com/@solana/web3.js@1/lib/index.iife.min.js";
+    s.onload=function(){ window.solanaWeb3 ? res(window.solanaWeb3) : rej(new Error("Solana web3 did not load")); };
+    s.onerror=function(){ rej(new Error("could not load Solana web3")); };
+    document.head.appendChild(s);
+  });
+  return _solWeb3P;
+}
+async function lanceSolana(){
+  var name=$("#cName").value.trim(), sym=$("#cSym").value.trim().replace(/^\$/,"").toUpperCase();
+  var note=$("#createNote"), btn=$("#createBtn");
+  if(!name||!sym){ note.className="note err"; note.textContent="Name and symbol required."; return; }
+  var img = uploadedLogo || "";
+  if(!/^data:/.test(img)){ note.className="note err"; note.textContent="Upload an image file (Pump.fun requires one)."; return; }
+  var prov = (window.phantom && window.phantom.solana) || (window.solana && window.solana.isPhantom ? window.solana : null);
+  if(!prov){ note.className="note err"; note.innerHTML='Phantom wallet not found. <a href="https://phantom.app/" target="_blank" rel="noopener">Install Phantom ↗</a>'; return; }
+  btn.disabled=true; btn.innerHTML='<span class="spin"></span> preparing…'; note.className="note"; note.textContent="Loading Solana…"; $("#lpKit").hidden=true;
+  try{
+    var web3=await chargeSolanaWeb3();
+    note.textContent="Connecting Phantom…";
+    var conn=await prov.connect();
+    var publicKey=((conn&&conn.publicKey)||prov.publicKey).toString();
+    note.textContent="Uploading image &amp; metadata to Pump.fun…";
+    var mr=await fetch(lpServeur()+"/launchpad/solana/metadata",{method:"POST",headers:{"content-type":"application/json"},
+      body:JSON.stringify({name:name,symbol:sym,description:"",twitter:$("#cTw").value.trim(),telegram:$("#cTg").value.trim(),website:$("#cWeb").value.trim(),imageBase64:img})});
+    var md=await mr.json().catch(function(){ return null; });
+    if(!md||!md.ok||!md.metadataUri){ note.className="note err"; note.textContent=(md&&md.raison)||"Metadata upload failed."; return; }
+    var mint=web3.Keypair.generate();
+    var devBuy=parseFloat($("#cSolDevBuy").value)||0;
+    note.textContent="Preparing the launch transaction…";
+    var or=await fetch(lpServeur()+"/launchpad/solana/offre",{method:"POST",headers:{"content-type":"application/json"},
+      body:JSON.stringify({publicKey:publicKey,mint:mint.publicKey.toBase58(),name:name,symbol:sym,uri:md.metadataUri,devBuySol:devBuy})});
+    var od=await or.json().catch(function(){ return null; });
+    if(!od||!od.ok||!od.txBase64){ note.className="note err"; note.textContent=(od&&od.raison)||"Could not prepare the launch."; return; }
+    var tx=web3.VersionedTransaction.deserialize(u8FromB64(od.txBase64));
+    tx.sign([mint]);                                  /* le mint (genere ici) co-signe */
+    note.textContent="Confirm in Phantom…";
+    var sent=await prov.signAndSendTransaction(tx);    /* Phantom ajoute SA signature et envoie */
+    var sig=(sent&&(sent.signature||sent.sig))||String(sent||"");
+    var mintAddr=mint.publicKey.toBase58();
+    note.className="note ok"; note.textContent="🎉 $"+sym+" launched on Solana via Pump.fun.";
+    solanaKit(sym, mintAddr, sig);
+    toast("Token launched on Solana 🚀");
+  }catch(e){
+    var m=String((e&&(e.message||e))||"the launch failed");
+    if(/user rejected|rejected the request|4001|WalletSignTransactionError/i.test(m)) m="You cancelled in Phantom - nothing was launched.";
+    note.className="note err"; note.textContent=m.slice(0,220);
+  }finally{ btn.disabled=false; updateFeeSummary(); }
+}
+function solanaKit(sym,mint,sig){
+  var k=$("#lpKit");
+  k.innerHTML="<h3>🎉 $"+esc(sym)+" is live on Solana</h3>"
+    +"<div>Mint: <code>"+esc(mint)+"</code></div>"
+    +'<div class="liens">'
+    +'<button type="button" data-copy="'+esc(mint)+'">📋 Copy mint</button>'
+    +'<a href="https://pump.fun/'+esc(mint)+'" target="_blank" rel="noopener">🚀 Pump.fun</a>'
+    +'<a href="https://dexscreener.com/solana/'+esc(mint)+'" target="_blank" rel="noopener">📊 DexScreener</a>'
+    +(sig?'<a href="https://solscan.io/tx/'+esc(sig)+'" target="_blank" rel="noopener">Transaction ↗</a>':"")
+    +"</div><div style=\"margin-top:8px\">Share it — it trades on Pump.fun, then PumpSwap. The SWOGE per-token AI agent is a Robinhood Chain feature for now.</div>";
+  k.hidden=false;
+}
 $("#createBtn").onclick=async function(){
+  if(poolChoisi==="solana"){ return lanceSolana(); }   /* Solana : Phantom, pas le signataire EVM */
   if(poolChoisi!=="v3"){ if(!signer){ openWalletPicker(); return; } return lanceV4(); }
   if(!v3Live()) return toast("Launchpad not deployed yet");
   if(!signer){ openWalletPicker(); return; }

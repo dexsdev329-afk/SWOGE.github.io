@@ -82,13 +82,13 @@ const gp = (taxe) => ({ is_honeypot: '0', is_mintable: '0', hidden_owner: '0', c
   await pg.goto('http://127.0.0.1:' + srv.address().port + '/launchpad.html', { waitUntil: 'load' });
   await pg.waitForTimeout(800);
 
-  console.log('\n-- les trois choix : ETH, AI Agent Launch (vedette), $SWOGE (05/10) --');
+  console.log('\n-- les choix : ETH, AI Agent Launch (vedette), $SWOGE, Solana (05/10) --');
   const choix = await pg.$$eval('.lp-pool', (bs) => bs.map((b) => ({ p: b.dataset.pool, on: b.getAttribute('aria-checked'), vu: b.offsetParent !== null, t: b.innerText })));
-  ok(choix.length === 3 && choix.every((c) => c.vu), 'trois boutons visibles : ' + choix.map((c) => c.p).join(', '));
+  ok(choix.length === 4 && choix.every((c) => c.vu), 'quatre boutons visibles : ' + choix.map((c) => c.p).join(', '));
   ok(!choix.some((c) => c.p === 'v3'), 'plus de bouton « Classic (V3) »');
-  ok(choix[0].p === 'eth' && choix[1].p === 'agent' && choix[2].p === 'swoge', 'ordre : ETH, AI Agent Launch, $SWOGE');
+  ok(choix[0].p === 'eth' && choix[1].p === 'agent' && choix[2].p === 'swoge' && choix[3].p === 'solana', 'ordre : ETH, AI Agent Launch, $SWOGE, Solana');
   ok(choix.filter((c) => c.on === 'true').length === 1 && choix[1].on === 'true', 'un seul actif : la vedette « AI Agent Launch » par defaut');
-  ok(/AI Agent Launch/.test(choix[1].t) && /WETH/.test(choix[0].t) && /\$SWOGE/.test(choix[2].t), 'les libelles : ETH (WETH), AI Agent Launch, $SWOGE');
+  ok(/AI Agent Launch/.test(choix[1].t) && /WETH/.test(choix[0].t) && /\$SWOGE/.test(choix[2].t) && /Solana|Pump\.fun/.test(choix[3].t), 'les libelles : ETH (WETH), AI Agent Launch, $SWOGE, Solana (Pump.fun)');
   ok(await pg.$eval('#cAgentChamp', (e) => e.classList.contains('phare')), 'le panneau agent est mis en avant quand la vedette est choisie');
 
   console.log('\n-- la vedette lance sur le pool ETH (fiche ETH, frais 0,0001 ETH) --');

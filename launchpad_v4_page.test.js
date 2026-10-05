@@ -82,35 +82,37 @@ const gp = (taxe) => ({ is_honeypot: '0', is_mintable: '0', hidden_owner: '0', c
   await pg.goto('http://127.0.0.1:' + srv.address().port + '/launchpad.html', { waitUntil: 'load' });
   await pg.waitForTimeout(800);
 
-  console.log('\n-- les deux choix de pool (le V3 « Classic » a ete retire le 05/10) --');
+  console.log('\n-- les trois choix : ETH, AI Agent Launch (vedette), $SWOGE (05/10) --');
   const choix = await pg.$$eval('.lp-pool', (bs) => bs.map((b) => ({ p: b.dataset.pool, on: b.getAttribute('aria-checked'), vu: b.offsetParent !== null, t: b.innerText })));
-  ok(choix.length === 2 && choix.every((c) => c.vu), 'deux boutons visibles : ' + choix.map((c) => c.p).join(', '));
+  ok(choix.length === 3 && choix.every((c) => c.vu), 'trois boutons visibles : ' + choix.map((c) => c.p).join(', '));
   ok(!choix.some((c) => c.p === 'v3'), 'plus de bouton « Classic (V3) »');
-  ok(choix.filter((c) => c.on === 'true').length === 1 && choix[0].p === 'swoge' && choix[0].on === 'true', 'un seul actif, le pool $SWOGE par defaut');
-  ok(/WETH/.test(choix[1].t) && /\$SWOGE/.test(choix[0].t), 'les libelles disent $SWOGE et ETH (WETH)');
+  ok(choix[0].p === 'eth' && choix[1].p === 'agent' && choix[2].p === 'swoge', 'ordre : ETH, AI Agent Launch, $SWOGE');
+  ok(choix.filter((c) => c.on === 'true').length === 1 && choix[1].on === 'true', 'un seul actif : la vedette « AI Agent Launch » par defaut');
+  ok(/AI Agent Launch/.test(choix[1].t) && /WETH/.test(choix[0].t) && /\$SWOGE/.test(choix[2].t), 'les libelles : ETH (WETH), AI Agent Launch, $SWOGE');
+  ok(await pg.$eval('#cAgentChamp', (e) => e.classList.contains('phare')), 'le panneau agent est mis en avant quand la vedette est choisie');
 
-  console.log('\n-- la fiche securite du pool $SWOGE (GoPlus : cases de taxe vides) --');
-  await pg.waitForFunction(() => /alerts|alert\(s\)/.test((document.querySelector('#lpGoplus') || {}).textContent || ''), { timeout: 5000 }).catch(() => {});
+  console.log('\n-- la vedette lance sur le pool ETH (fiche ETH, frais 0,0001 ETH) --');
+  await pg.waitForFunction(() => /ETH-pool/.test((document.querySelector('#lpGoplus') || {}).textContent || ''), { timeout: 5000 }).catch(() => {});
   let fiche = await pg.textContent('#lpFiche');
+  ok(/ETH pool/.test(fiche) && /in WETH/.test(fiche), 'AI Agent Launch : la fiche parle du pool ETH (part du createur en WETH)');
+  ok(/1 alert\(s\): Mintable/.test(fiche), 'une case levee par GoPlus est montree, pas cachee');
+  ok(/0% buy \/ 0% sell tax/.test(fiche), 'taxes lues a 0 : affichees');
+  let fee = await pg.textContent('#feeSummary');
+  ok(/0\.0001 ETH/.test(fee), 'frais : 0,0001 ETH');
+
+  console.log('\n-- le pool $SWOGE (GoPlus : cases de taxe vides) --');
+  await pg.click('.lp-pool[data-pool="swoge"]');
+  await pg.waitForFunction(() => /SWOGE-pool/.test((document.querySelector('#lpGoplus') || {}).textContent || ''), { timeout: 5000 }).catch(() => {});
+  fiche = await pg.textContent('#lpFiche');
+  ok(await pg.getAttribute('.lp-pool[data-pool="swoge"]', 'aria-checked') === 'true' && await pg.getAttribute('.lp-pool[data-pool="agent"]', 'aria-checked') === 'false', 'le choix bascule vers $SWOGE');
+  ok(!await pg.$eval('#cAgentChamp', (e) => e.classList.contains('phare')), 'hors vedette : le panneau agent n est plus mis en avant');
   ok(/locked forever/i.test(fiche) && /No owner, no mint, no tax/.test(fiche), 'la fiche dit liquidite enfermee, ni proprietaire, ni frappe, ni taxe');
   ok(/0 alerts on 8 risk checks/.test(fiche), 'GoPlus lu : 0 alerte sur 8 cases');
   ok(/taxes not readable/.test(fiche) && !/0% buy/.test(fiche), 'taxes vides : « taxes not readable », pas un 0 % invente');
   ok(/owner none/.test(fiche), 'proprietaire : aucun (adresse zero)');
   ok(await pg.isHidden('#cLogoChamp'), 'pas de champ logo pour un V4 (le contrat ne garde aucun logo)');
-  let fee = await pg.textContent('#feeSummary');
-  ok(/10,000 \$SWOGE/.test(fee) && /burned/.test(fee), 'frais : 10 000 $SWOGE, brules');
-
-  console.log('\n-- le pool ETH --');
-  await pg.click('.lp-pool[data-pool="eth"]');
-  await pg.waitForFunction(() => /alert/.test((document.querySelector('#lpGoplus') || {}).textContent || '') && /ETH-pool/.test(document.querySelector('#lpGoplus').textContent), { timeout: 5000 }).catch(() => {});
-  fiche = await pg.textContent('#lpFiche');
-  ok(await pg.getAttribute('.lp-pool[data-pool="eth"]', 'aria-checked') === 'true' && await pg.getAttribute('.lp-pool[data-pool="swoge"]', 'aria-checked') === 'false', 'le choix bascule');
-  ok(/ETH pool/.test(fiche) && /in WETH/.test(fiche), 'la fiche parle du pool ETH (part du createur en WETH)');
-  ok(/1 alert\(s\): Mintable/.test(fiche), 'une case levee par GoPlus est montree, pas cachee');
-  ok(/0% buy \/ 0% sell tax/.test(fiche), 'taxes lues a 0 : affichees');
   fee = await pg.textContent('#feeSummary');
-  ok(/0\.0001 ETH/.test(fee), 'frais : 0,0001 ETH');
-  ok(/ETH pool/.test(await pg.textContent('#createBtn')), 'le bouton nomme le pool choisi');
+  ok(/10,000 \$SWOGE/.test(fee) && /burned/.test(fee), 'frais : 10 000 $SWOGE, brules');
 
   console.log('\n-- connexion, puis une copie refusee --');
   await pg.click('.lp-pool[data-pool="swoge"]');
@@ -187,8 +189,8 @@ const gp = (taxe) => ({ is_honeypot: '0', is_mintable: '0', hidden_owner: '0', c
   const piege = await ctx.newPage();
   await piege.goto('http://127.0.0.1:' + srv.address().port + '/launchpad.html?pool=evil&symbol=%3Cimg%20src%3Dx%3E&tg=nope', { waitUntil: 'load' });
   await piege.waitForTimeout(400);
-  ok(await piege.getAttribute('.lp-pool[data-pool="swoge"]', 'aria-checked') === 'true' && await piege.inputValue('#cSym') === 'IMGSRCX' && !/Telegram/.test(await piege.textContent('#createNote')),
-     'un lien trafique : pool inconnu → $SWOGE, symbole nettoye, identifiant invalide ignore');
+  ok(await piege.getAttribute('.lp-pool[data-pool="agent"]', 'aria-checked') === 'true' && await piege.inputValue('#cSym') === 'IMGSRCX' && !/Telegram/.test(await piege.textContent('#createNote')),
+     'un lien trafique : pool inconnu → la vedette AI Agent Launch (defaut), symbole nettoye, identifiant invalide ignore');
   await piege.close();
   await pt.click('#walletBtn');
   await pt.click('#wpickList .wrow:has-text("Browser wallet")');

@@ -218,6 +218,7 @@ input:focus,select:focus{border-color:var(--gold)}
 .lp-pool b{font-size:14px}
 .lp-pool span{font-size:11.5px;line-height:1.35;color:var(--dim)}
 .lp-pool.on{background:color-mix(in srgb, var(--gold) 7%, var(--void2));border-color:var(--gold);box-shadow:0 0 0 2px color-mix(in srgb, var(--gold) 35%, transparent)}
+#cAgentChamp.phare{border-left:3px solid var(--gold);padding-left:12px;background:color-mix(in srgb, var(--gold) 5%, transparent);border-radius:10px}
 .lp-fiche{border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:12px;font-size:12.5px;line-height:1.5}
 .lp-fiche h3{margin:0 0 8px;font-size:13px;letter-spacing:.5px}
 .lp-fiche ul{margin:0;padding-left:18px}
@@ -636,10 +637,12 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       <!-- 05/10 : l'ancien bouton « Classic (V3) » retire ; chaque jeton se lance avec son agent IA.
            Restent les deux launchpads V4 (deployes et relus sur la chaine le 30/09) : pool $SWOGE ou ETH. -->
       <div class="lp-pools" role="radiogroup" aria-label="Launch pool">
-        <button type="button" class="lp-pool on" data-pool="swoge" role="radio" aria-checked="true">
-          <b>$SWOGE pool</b><span>Paired with $SWOGE · fee 10,000 $SWOGE, burned</span></button>
         <button type="button" class="lp-pool" data-pool="eth" role="radio" aria-checked="false">
           <b>ETH pool (WETH)</b><span>Paired with ETH · fee 0.0001 ETH</span></button>
+        <button type="button" class="lp-pool on" data-pool="agent" role="radio" aria-checked="true">
+          <b>AI Agent Launch 🤖</b><span>Recommended · ETH pool + your token gets its own AI agent</span></button>
+        <button type="button" class="lp-pool" data-pool="swoge" role="radio" aria-checked="false">
+          <b>$SWOGE pool</b><span>Paired with $SWOGE · fee 10,000 $SWOGE, burned</span></button>
       </div>
       <div class="lp-fiche" id="lpFiche" aria-live="polite"></div>
       <div class="note" id="modeInfo" style="margin-bottom:12px"></div>
@@ -1185,19 +1188,23 @@ var creationFeeWei=null;
    launchpad, ni proprietaire, ni frappe, ni taxe (contrats/SwogeFunV4.sol, verifies sur Sourcify).
    L'offre est preparee par le serveur (/launchpad/v4/offre : memes refus de copies que l'agent) et
    signee par le portefeuille du joueur (lance_v4.js) — le serveur ne signe rien. */
-var poolChoisi="swoge";
+var poolChoisi="eth";   /* « AI Agent Launch » (vedette) lance sur le pool ETH ; voir choisisPool */
 function lpServeur(){
   try{ var q=new URLSearchParams(location.search).get("server"); if(q) return String(q).replace(/^ws/,"http"); }catch(e){}
   return "https://web-production-220a3.up.railway.app";
 }
 function choisisPool(p){
-  poolChoisi=p;
+  /* « AI Agent Launch » (vedette) est un bouton a part qui lance sur le pool ETH :
+     on garde le bouton CLIQUE en surbrillance, mais le pool reel est ETH. */
+  poolChoisi = p==="agent" ? "eth" : p;
   [].forEach.call(document.querySelectorAll(".lp-pool"),function(b){ var on=b.getAttribute("data-pool")===p; b.classList.toggle("on",on); b.setAttribute("aria-checked",String(on)); });
-  $("#cLogoChamp").style.display = p==="v3" ? "" : "none";   /* le V4 ne porte pas de logo on-chain */
+  $("#cLogoChamp").style.display = poolChoisi==="v3" ? "" : "none";   /* le V4 ne porte pas de logo on-chain */
+  var champ=$("#cAgentChamp"); if(champ) champ.classList.toggle("phare", p==="agent");   /* met le panneau agent en avant */
   $("#lpKit").hidden=true;
   updateFeeSummary(); fiche();
 }
 [].forEach.call(document.querySelectorAll(".lp-pool"),function(b){ b.addEventListener("click",function(){ choisisPool(b.getAttribute("data-pool")); }); });
+/* l etat initial (defaut = vedette AI Agent Launch) est pose par l IIFE du lien Telegram plus bas */
 /* La fiche securite : les faits du contrat, et ce que GoPlus a LU sur notre jeton de test de ce
    pool (le serveur le relit toutes les 30 min, /launchpad/v4 et /launchpad/v4weth). */
 var GOPLUS_CASES={is_honeypot:"Honeypot",is_mintable:"Mintable",hidden_owner:"Hidden owner",can_take_back_ownership:"Can take back ownership",
@@ -1402,8 +1409,8 @@ $("#createBtn").onclick=async function(){
    rien : le joueur relit et signe lui-meme. `tg` ne sert qu'a annoncer le jeton dans le chat. */
 var lpTg=null;
 (function(){
-  var q; try{ q=new URLSearchParams(location.search); }catch(e){ return choisisPool("swoge"); }
-  var p=q.get("pool"); choisisPool(p==="eth"||p==="v3"?p:"swoge");
+  var q; try{ q=new URLSearchParams(location.search); }catch(e){ return choisisPool("agent"); }
+  var p=q.get("pool"); choisisPool(p==="eth"||p==="swoge"?p:"agent");   /* defaut = la vedette AI Agent Launch (pool ETH) */
   if(q.get("name")) $("#cName").value=String(q.get("name")).slice(0,40);
   if(q.get("symbol")) $("#cSym").value=String(q.get("symbol")).replace(/[^A-Za-z0-9]/g,"").slice(0,12).toUpperCase();
   if(/^[0-9a-f]{16}$/.test(q.get("tg")||"")){ lpTg=q.get("tg"); $("#createNote").className="note"; $("#createNote").textContent="Prepared from Telegram — check the name, connect your wallet and press Launch. Nothing is sent until you sign."; }

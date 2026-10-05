@@ -25,7 +25,7 @@ ok(/\/agent\/preview_config/.test(html), 'le bouton POST vers /agent/preview_con
 ok(!/\/agent\/attach/.test(html), 'la page n attache rien elle-meme (le self-service createur viendra avec l auth de session)');
 
 console.log('\n-- l honnetete de la promesse --');
-ok(/preview/i.test(html.slice(html.indexOf('cAgentChamp') - 2000, html.indexOf('cAgentChamp') + 1200)) , 'le panneau se presente comme un APERCU');
+ok(/preview/i.test(html.slice(html.indexOf('id="cAgentChamp"'), html.indexOf('id="cAgentChamp"') + 1200)), 'le panneau se presente comme un APERCU');
 ok(/goes live after launch/i.test(html), 'il dit que la publication autonome vient APRES le lancement (rien n est deja en ligne)');
 ok(/never invents numbers/i.test(html), 'il dit que l agent ne cite que des faits, jamais un chiffre invente');
 

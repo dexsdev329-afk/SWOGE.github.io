@@ -1395,6 +1395,16 @@ function construitAgentForm(box, ctx){
         +'<input class="agXpinInput" inputmode="numeric" maxlength="12" placeholder="e.g. 1234567">'
         +'<button type="button" class="btn primary agXfinish" style="margin-top:6px;padding:6px 10px;font-size:12px">Finish X linking</button></div>'
     +'</div>'
+    +'<div class="agTgbox" style="margin:8px 0;padding:9px;border:1px solid var(--line);border-radius:10px">'
+      +'<div class="agTgstatus note" style="margin:0 0 6px">Checking Telegram link…</div>'
+      +'<div class="agTgform">'
+        +'<label class="lbl">Telegram bot token (from @BotFather)</label><input class="agTgToken" placeholder="123456:ABC-…" autocomplete="off" style="margin-bottom:6px">'
+        +'<label class="lbl">Group chat id (e.g. -1001234567890) or @username</label><input class="agTgChat" placeholder="-1001234567890" style="margin-bottom:6px">'
+        +'<div class="note" style="margin:0 0 6px;opacity:.75">Create a bot with @BotFather, add it to your group, and make it an <b>admin</b> so it can pin. Your agent will post its updates there and pin its X posts.</div>'
+        +'<button type="button" class="btn primary agTgConnect" style="padding:6px 10px;font-size:12px">💬 Connect Telegram</button>'
+      +'</div>'
+      +'<button type="button" class="btn agTgUnlink" hidden style="padding:6px 10px;font-size:12px">Unlink Telegram</button>'
+    +'</div>'
     +'<div class="agManage" style="margin:8px 0;padding:9px;border:1px solid var(--line);border-radius:10px">'
       +'<div class="agStatus note" style="margin:0 0 6px">Agent status…</div>'
       +'<div class="btnrow" style="margin:0"><button type="button" class="btn agPause" hidden style="padding:6px 10px;font-size:12px">⏸ Pause agent</button>'
@@ -1425,9 +1435,18 @@ function construitAgentForm(box, ctx){
     else{ st.className="note"; st.textContent="⏸ Agent is PAUSED — it does nothing until you resume it."; pb.textContent="▶ Resume agent"; }
   }
   montreStatut();
+  /* L etat de la liaison Telegram (groupe public, jamais le jeton du bot). */
+  function montreTg(hasTg, tg){
+    var st=q(".agTgstatus");
+    if(hasTg){ st.className="note ok"; st.innerHTML="💬 Linked to <b>"+esc((tg&&(tg.titre||tg.chatId))||"your group")+"</b> — it posts updates there and pins its X posts.";
+      q(".agTgform").hidden=true; q(".agTgUnlink").hidden=false; }
+    else{ st.className="note"; st.textContent="No Telegram group linked. Connect a bot to let your agent post & pin in your group.";
+      q(".agTgform").hidden=false; q(".agTgUnlink").hidden=true; }
+  }
   /* Prefill depuis l agent existant (lecture publique) : modifier n efface pas les reglages. */
   fetch(lpServeur()+"/agent/jeton/"+String(ctx.token).toLowerCase(),{cache:"no-store"}).then(function(r){ return r.json(); }).then(function(d){
     montreX(!!(d&&d.hasX), d&&d.handle);
+    montreTg(!!(d&&d.hasTg), d&&d.telegram);
     var a=d&&d.agent; if(!a){ agActif=null; montreStatut(); return; }
     if(a.persona) q(".agPersona").value=a.persona;
     if(a.objectif) q(".agGoal").value=a.objectif;
@@ -1435,7 +1454,7 @@ function construitAgentForm(box, ctx){
     if(a.rachat&&a.rachat.actif){ chk.checked=true; q(".agRachatBudget").hidden=false; if(a.rachat.budgetPctJour) q(".agBudget").value=a.rachat.budgetPctJour; }
     agActif=!!a.actif; montreStatut();
     q(".agSave").textContent="💾 Update agent";
-  })["catch"](function(){ montreX(false,null); agActif=null; montreStatut(); });
+  })["catch"](function(){ montreX(false,null); montreTg(false,null); agActif=null; montreStatut(); });
   /* Une preuve fraiche (signature liee au jeton ET au geste) pour chaque action createur. */
   async function preuve(action){ var ts=Date.now(); var sig=await signer.signMessage(agentSignMsg(ctx.token, ts, action)); return { token:String(ctx.token).toLowerCase(), ts:ts, signature:sig }; }
   var xOauthToken=null;
@@ -1482,6 +1501,38 @@ function construitAgentForm(box, ctx){
       var d=await r.json().catch(function(){ return null; });
       if(!d||!d.ok){ st.className="note err"; st.textContent=(d&&d.raison)||"Could not unlink."; return; }
       montreX(false,null);
+    }catch(e){ st.className="note err"; st.textContent=String((e&&(e.message||e))||"could not sign").slice(0,200); }
+    finally{ btn.disabled=false; }
+  });
+  q(".agTgConnect").addEventListener("click",async function(){
+    var st=q(".agTgstatus"), btn=q(".agTgConnect");
+    if(!signer){ openWalletPicker(); return; }
+    var botToken=q(".agTgToken").value.trim(), chatId=q(".agTgChat").value.trim();
+    if(!botToken||!chatId){ st.className="note err"; st.textContent="Paste your bot token and the group chat id."; return; }
+    st.className="note"; st.textContent="Sign to prove you created this token…"; btn.disabled=true;
+    try{
+      var p=await preuve("link-tg"); p.botToken=botToken; p.chatId=chatId;
+      st.textContent="Connecting your bot to the group…";
+      var r=await fetch(lpServeur()+"/agent/tg/connect",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(p)});
+      var d=await r.json().catch(function(){ return null; });
+      if(!d||!d.ok){ st.className="note err"; st.textContent=(d&&d.raison)||"Could not connect Telegram."; return; }
+      q(".agTgToken").value="";                 /* on ne garde pas le jeton du bot dans la page */
+      montreTg(true, { titre:d.titre, chatId:d.chatId });
+    }catch(e){
+      var m=String((e&&(e.message||e))||"could not sign");
+      if(/user rejected|denied|4001/i.test(m)||(e&&(e.code===4001||e.code==="ACTION_REJECTED"))) m="You cancelled the signature.";
+      st.className="note err"; st.textContent=m.slice(0,200);
+    }finally{ btn.disabled=false; }
+  });
+  q(".agTgUnlink").addEventListener("click",async function(){
+    var st=q(".agTgstatus"), btn=q(".agTgUnlink");
+    if(!signer){ openWalletPicker(); return; }
+    st.className="note"; st.textContent="Sign to unlink…"; btn.disabled=true;
+    try{
+      var r=await fetch(lpServeur()+"/agent/tg/unlink",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(await preuve("unlink-tg"))});
+      var d=await r.json().catch(function(){ return null; });
+      if(!d||!d.ok){ st.className="note err"; st.textContent=(d&&d.raison)||"Could not unlink."; return; }
+      montreTg(false,null);
     }catch(e){ st.className="note err"; st.textContent=String((e&&(e.message||e))||"could not sign").slice(0,200); }
     finally{ btn.disabled=false; }
   });

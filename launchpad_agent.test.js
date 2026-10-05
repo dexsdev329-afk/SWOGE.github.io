@@ -42,6 +42,13 @@ ok(/Action: "\+g\+"/.test(html), 'le message signe porte une ligne Action: <gest
 ok(/preuve\("link-x"\)/.test(html) && /preuve\("unlink-x"\)/.test(html) && /preuve\("pause"\)/.test(html) && /agentSignMsg\(ctx\.token, ts, "configure"\)/.test(html),
    'chaque geste signe SON action (configure / pause / link-x / unlink-x)');
 
+console.log('\n-- le createur relie un BOT TELEGRAM (poste + epingle), signe --');
+ok(/\/agent\/tg\/connect/.test(html) && /\/agent\/tg\/unlink/.test(html), 'la liaison Telegram passe par /agent/tg/connect et /unlink (signe)');
+ok(/preuve\("link-tg"\)/.test(html) && /preuve\("unlink-tg"\)/.test(html), 'chaque geste Telegram signe SON action (link-tg / unlink-tg)');
+ok(/agTgToken/.test(html) && /BotFather/.test(html), 'le createur fournit le jeton du bot (BotFather) et l id du groupe');
+ok(/q\("\.agTgToken"\)\.value="";/.test(html), 'la page ne garde PAS le jeton du bot apres la connexion');
+ok(/pins its X posts|post updates there and pins/i.test(html), 'elle dit que l agent poste dans le groupe et epingle ses posts X');
+
 console.log('\n-- un agent par jeton, accessible depuis la fiche du jeton --');
 ok(/id="tvAgentPanel"/.test(html) && /id="tvAgentBtn"/.test(html), 'la fiche du jeton (Trade) porte un panneau AI agent');
 ok(/construitAgentForm\(box, \{ token:curToken/.test(html), 'le panneau construit l agent DU jeton ouvert (curToken), un seul par jeton');

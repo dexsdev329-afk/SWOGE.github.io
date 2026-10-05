@@ -1648,13 +1648,25 @@ function construitAgentForm(box, ctx){
     Promise.all([
       fetch(S+"/agent/jeton/"+tk,{cache:"no-store"}).then(function(r){ return r.json(); })["catch"](function(){ return null; }),
       fetch(S+"/agent/jeton/"+tk+"/feed?n=10",{cache:"no-store"}).then(function(r){ return r.json(); })["catch"](function(){ return null; }),
-      fetch(S+"/agent/jeton/"+tk+"/trades?n=10",{cache:"no-store"}).then(function(r){ return r.json(); })["catch"](function(){ return null; })
+      fetch(S+"/agent/jeton/"+tk+"/trades?n=10",{cache:"no-store"}).then(function(r){ return r.json(); })["catch"](function(){ return null; }),
+      fetch(S+"/agent/jeton/"+tk+"/metrics",{cache:"no-store"}).then(function(r){ return r.json(); })["catch"](function(){ return null; })
     ]).then(function(res){
-      var info=res[0]||{}, feed=res[1]||{}, tr=res[2]||{};
+      var info=res[0]||{}, feed=res[1]||{}, tr=res[2]||{}, mes=(res[3]&&res[3].resume)||null;
       var fuel=info.fuel&&info.fuel.soldeUsd, tres=info.tresor&&info.tresor.soldeUsd, rw=info.runway;
       var h='<div class="kv" style="border:0"><span class="k">Fuel (pays the API)</span><span class="v">'+(fuel!=null?("$"+Number(fuel).toFixed(2)):"—")+'</span></div>'
         +(rw&&rw.pensees?('<div class="kv" style="border:0"><span class="k">Runway</span><span class="v">'+rw.pensees+' thoughts · ~'+(rw.jours>=1?(rw.jours+" days"):(rw.heures+"h"))+'</span></div>'):'')
         +'<div class="kv" style="border:0"><span class="k">Treasury (paper)</span><span class="v">'+(tres!=null?("$"+Number(tres).toFixed(2)):"—")+'</span></div>';
+      if(mes){
+        h+='<div style="margin-top:8px;font-weight:700;font-size:12px">Engagement on X</div>';
+        if(mes.n>0){
+          h+='<div class="note" style="margin:4px 0">'+mes.n+' posts measured · '+Number(mes.impressions||0).toLocaleString()+' impressions · '+Number(mes.likes||0).toLocaleString()+' likes'
+            +(mes.tauxMoyenPct!=null?(' · '+mes.tauxMoyenPct+'% avg engagement'):'')+'</div>';
+          if(mes.meilleur&&mes.meilleur.texte) h+='<div class="note" style="margin:4px 0">Best post: “'+esc(String(mes.meilleur.texte).slice(0,120))+'”</div>';
+          if(!mes.assez) h+='<div class="note" style="margin:4px 0;opacity:.7">Not enough posts yet to say which format works — it learns as it posts (never guesses).</div>';
+        } else {
+          h+='<div class="note" style="margin:4px 0;opacity:.7">No X engagement yet (link an X account and let it post).</div>';
+        }
+      }
       var posts=(feed&&feed.posts)||[];
       h+='<div style="margin-top:8px;font-weight:700;font-size:12px">Posts <span class="count">'+posts.length+'</span></div>';
       if(!posts.length) h+='<div class="note" style="margin:4px 0">No posts yet.</div>';

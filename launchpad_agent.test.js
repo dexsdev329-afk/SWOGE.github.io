@@ -62,6 +62,8 @@ ok(/Runway/.test(html), 'le tableau de bord montre l autonomie (runway)');
 console.log('\n-- gestion par le createur : pause/reprise + historique + liens --');
 ok(/\/agent\/toggle_createur/.test(html) && /Pause agent|Resume agent/.test(html), 'le createur peut mettre en pause / relancer son agent (toggle_createur signe)');
 ok(/\/feed\?n=/.test(html) && /\/trades\?n=/.test(html), 'l historique lit le mur (posts) et le journal des gestes d argent');
+ok(/\/metrics/.test(html) && /Engagement on X/.test(html), 'l historique montre l engagement X (impressions/likes) — la mesure');
+ok(/Not enough posts yet to say which format works/i.test(html), 'honnete : il ne conclut pas sous assez d observations');
 ok(/Fuel \(pays the API\)|Treasury \(paper\)/.test(html), 'il montre le carburant et le tresor du jeton');
 ok(/esc\(CHAIN\.scan\)\+'\/tx\/'\+esc\(x\.tx\)/.test(html), 'une depense reelle (quand elle existera) porte un lien vers la transaction on-chain');
 ok(/simulated — no on-chain tx yet/i.test(html), 'tant que l execution reste papier, c est dit clairement (aucun lien invente)');

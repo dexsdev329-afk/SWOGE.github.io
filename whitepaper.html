@@ -1384,6 +1384,9 @@ operation. That gas does not go to SWOGE.
 
 <section id="en-s7">
 <h2><span class="num">07</span> Buying $SWOGE</h2>
+<!-- Contrat officiel (05/10, signale par @dodewl) : adresse verifiee (config.js SWOGE_TOKEN,
+     base token de la paire DexScreener 0x2dc0...8456), pour qu on n achete pas une copie. -->
+<p class="note"><strong>Official $SWOGE contract (Robinhood Chain):</strong> <code>0x8a166Fb41Cd659a0a43396272FF73973Ce29F817</code> — <a href="https://dexscreener.com/robinhood/0x2dc0fb72d9284228046cc95910eeaabebfe48456" target="_blank" rel="noopener">verify on DexScreener ↗</a>. Always check the address before buying; this is the only official $SWOGE contract. Beware of copycats.</p>
 <div class="flow"><pre>
 ETH (RH) <i>— the native gas of Robinhood Chain</i>
  │
@@ -1777,12 +1780,20 @@ one item funded by an allocation rather than by revenue.
 <p class="part">Part V · The launchpad</p>
 
 <section id="en-s17">
-<h2><span class="num">17</span> The launchpad — SwogeFun V2</h2>
-<p>
-Contract <code>0x4De26D120A4fF2d7c1875E6C7D611262b9cA426d</code>, deployed on Robinhood
-Chain. <strong>23 tokens launched to date.</strong>
-<span class="chip ok">Confirmed</span>
-</p>
+<h2><span class="num">17</span> The launchpad — SwogeFun V4</h2>
+<!-- 05/10 : mise a jour demandee par le proprietaire. Faits verifies : launchpad.html
+     (pools, frais, LP verrouillee) + contrats/SwogeFunV4.sol (Sourcify). V2 reste decrit
+     plus bas comme la conception anterieure. -->
+<p class="note"><strong>Current version: SwogeFun V4</strong> (<code>contracts/SwogeFunV4.sol</code>, verified on Sourcify). Instant Uniswap v3 launches on Robinhood Chain, paired with <strong>$SWOGE</strong> or <strong>ETH / WETH</strong>, visible on DexScreener. <strong>Liquidity is locked forever</strong> — the pool position stays inside the launchpad contract, which has no function to withdraw it; <strong>no owner, no mint, 0&nbsp;% tax.</strong> Launch fee: 0.0001&nbsp;ETH (to the treasury) or 10,000&nbsp;$SWOGE (burned, not pocketed). <span class="chip ok">Confirmed</span></p>
+<p>Two additions since the V2 design described below:</p>
+<div class="wrap"><table>
+  <thead><tr><th>Addition</th><th>Detail</th><th>State</th></tr></thead>
+  <tbody>
+    <tr><td><strong>An AI agent per launched token</strong></td><td>Each token can get its own autonomous agent — a persona that posts to X and Telegram on real on-chain events (price move, buy pressure, holder milestones), replies to holders, and reads the token (security scan, &ldquo;can I sell?&rdquo;). It never invents a number. The creator owns and controls it from their wallet (configure, pause, link X / Telegram). On-chain buy-back-and-burn stays off until the creator explicitly enables it.</td><td><span class="chip pro">Rolling out</span></td></tr>
+    <tr><td><strong>Launch on Solana too</strong></td><td>A token can be launched on Solana via Pump.fun (PumpPortal), non-custodial: the mint is signed in the page, the site never holds a key.</td><td><span class="chip ok">Confirmed</span></td></tr>
+  </tbody>
+</table></div>
+<p><em>The sections below describe the earlier SwogeFun V2 design (contract <code>0x4De26D…a426d</code>). The mechanics V4 keeps from it — instant mode, 1&nbsp;% trade fee, holder redistribution, a fixed 1,000,000,000 supply with no mint after creation — still hold.</em></p>
 
 <h3>Two launch modes</h3>
 <div class="grid2">
@@ -3657,6 +3668,7 @@ toute opération on-chain. Ce gas ne revient pas à SWOGE.
 
 <section id="fr-s7">
 <h2><span class="num">07</span> Acheter du $SWOGE</h2>
+<p class="note"><strong>Contrat officiel $SWOGE (Robinhood Chain) :</strong> <code>0x8a166Fb41Cd659a0a43396272FF73973Ce29F817</code> — <a href="https://dexscreener.com/robinhood/0x2dc0fb72d9284228046cc95910eeaabebfe48456" target="_blank" rel="noopener">vérifier sur DexScreener ↗</a>. Vérifiez toujours l'adresse avant d'acheter ; c'est le seul contrat officiel $SWOGE. Méfiez-vous des copies.</p>
 <div class="flow"><pre>
 ETH (RH) <i>— le gaz natif de Robinhood Chain</i>
  │
@@ -4059,12 +4071,17 @@ plutôt que par le revenu.
 <p class="part">Partie V · Le launchpad</p>
 
 <section id="fr-s17">
-<h2><span class="num">17</span> Le launchpad — SwogeFun V2</h2>
-<p>
-Contrat <code>0x4De26D120A4fF2d7c1875E6C7D611262b9cA426d</code>, déployé sur Robinhood
-Chain. <strong>23 jetons lancés à ce jour.</strong>
-<span class="chip ok">Confirmé</span>
-</p>
+<h2><span class="num">17</span> Le launchpad — SwogeFun V4</h2>
+<p class="note"><strong>Version actuelle : SwogeFun V4</strong> (<code>contracts/SwogeFunV4.sol</code>, vérifié sur Sourcify). Lancements instantanés sur Uniswap v3 (Robinhood Chain), appairés en <strong>$SWOGE</strong> ou <strong>ETH / WETH</strong>, visibles sur DexScreener. <strong>Liquidité verrouillée à jamais</strong> — la position de liquidité reste dans le contrat du launchpad, qui n'a aucune fonction pour la retirer ; <strong>aucun propriétaire, aucune frappe, 0&nbsp;% de taxe.</strong> Frais de lancement : 0,0001&nbsp;ETH (à la trésorerie) ou 10&nbsp;000&nbsp;$SWOGE (brûlés, pas empochés). <span class="chip ok">Confirmé</span></p>
+<p>Deux ajouts depuis la conception V2 décrite ci-dessous :</p>
+<div class="wrap"><table>
+  <thead><tr><th>Ajout</th><th>Détail</th><th>État</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Un agent IA par jeton lancé</strong></td><td>Chaque jeton peut recevoir son agent autonome — une persona qui poste sur X et Telegram sur de vrais événements on-chain (mouvement de prix, pression acheteuse, paliers de holders), répond aux holders, et lit le jeton (scan de sécurité, &laquo;&nbsp;puis-je vendre&nbsp;?&nbsp;&raquo;). Il n'invente jamais de chiffre. Le créateur le possède et le contrôle depuis son portefeuille (configurer, mettre en pause, relier X / Telegram). Le rachat-et-brûle on-chain reste éteint tant que le créateur ne l'active pas explicitement.</td><td><span class="chip pro">En déploiement</span></td></tr>
+    <tr><td><strong>Lancer sur Solana aussi</strong></td><td>Un jeton peut être lancé sur Solana via Pump.fun (PumpPortal), non custodial : le mint est signé dans la page, le site ne détient jamais de clé.</td><td><span class="chip ok">Confirmé</span></td></tr>
+  </tbody>
+</table></div>
+<p><em>Les sections ci-dessous décrivent la conception SwogeFun V2 antérieure (contrat <code>0x4De26D…a426d</code>). Les mécaniques que V4 en conserve — mode instantané, frais de 1&nbsp;%, redistribution aux holders, offre fixe de 1&nbsp;000&nbsp;000&nbsp;000 sans frappe après création — tiennent toujours.</em></p>
 
 <h3>Deux modes de lancement</h3>
 <div class="grid2">

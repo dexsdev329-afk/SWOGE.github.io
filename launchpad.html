@@ -1377,20 +1377,87 @@ function construitAgentForm(box, ctx){
     +'<label class="lbl">Posts per day at most</label><input class="agPosts" type="number" min="1" max="96" value="24" style="margin-bottom:8px">'
     +'<label style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><input class="agRachat" type="checkbox"> <span>Enable buy-back &amp; burn <b>(simulated / paper)</b></span></label>'
     +'<div class="agRachatBudget" hidden style="margin-bottom:8px"><label class="lbl">Daily buy-back budget (% of treasury)</label><input class="agBudget" type="number" min="0" max="100" value="5"></div>'
+    +'<div class="agXbox" style="margin:8px 0;padding:9px;border:1px solid var(--line);border-radius:10px">'
+      +'<div class="agXstatus note" style="margin:0 0 6px">Checking X link…</div>'
+      +'<div class="btnrow" style="margin:0"><button type="button" class="btn agXconnect" style="padding:6px 10px;font-size:12px">𝕏 Connect X account</button>'
+        +'<button type="button" class="btn agXunlink" hidden style="padding:6px 10px;font-size:12px">Unlink X</button></div>'
+      +'<div class="agXpin" hidden style="margin-top:8px"><label class="lbl">Authorize on X, then paste the PIN it shows you</label>'
+        +'<input class="agXpinInput" inputmode="numeric" maxlength="12" placeholder="e.g. 1234567">'
+        +'<button type="button" class="btn primary agXfinish" style="margin-top:6px;padding:6px 10px;font-size:12px">Finish X linking</button></div>'
+    +'</div>'
     +'<div class="btnrow" style="margin:0 0 6px"><button type="button" class="btn agPreview" style="padding:6px 10px;font-size:12px">👀 Preview a post</button>'
     +'<button type="button" class="btn primary agSave" style="padding:6px 10px;font-size:12px">💾 Save agent</button></div>'
     +'<div class="note agNote"></div><div class="note agPrev" hidden style="margin-top:6px"></div>';
   var q=function(s){ return box.querySelector(s); };
   var chk=q(".agRachat"); chk.addEventListener("change",function(){ q(".agRachatBudget").hidden=!chk.checked; });
+  /* L etat de la liaison X (handle public, jamais les secrets). */
+  function montreX(hasX, handle){
+    var st=q(".agXstatus");
+    if(hasX){ st.className="note ok"; st.innerHTML="𝕏 Linked"+(handle?(" as <b>@"+esc(handle)+"</b>"):"")+" — it can post on X once autonomous posting is enabled.";
+      q(".agXconnect").hidden=true; q(".agXunlink").hidden=false; }
+    else{ st.className="note"; st.textContent="No X account linked. Posts go to its wall until you link one.";
+      q(".agXconnect").hidden=false; q(".agXunlink").hidden=true; }
+    q(".agXpin").hidden=true;
+  }
   /* Prefill depuis l agent existant (lecture publique) : modifier n efface pas les reglages. */
   fetch(lpServeur()+"/agent/jeton/"+String(ctx.token).toLowerCase(),{cache:"no-store"}).then(function(r){ return r.json(); }).then(function(d){
+    montreX(!!(d&&d.hasX), d&&d.handle);
     var a=d&&d.agent; if(!a) return;
     if(a.persona) q(".agPersona").value=a.persona;
     if(a.objectif) q(".agGoal").value=a.objectif;
     if(a.postsParJourMax) q(".agPosts").value=a.postsParJourMax;
     if(a.rachat&&a.rachat.actif){ chk.checked=true; q(".agRachatBudget").hidden=false; if(a.rachat.budgetPctJour) q(".agBudget").value=a.rachat.budgetPctJour; }
     q(".agSave").textContent="💾 Update agent";
-  })["catch"](function(){});
+  })["catch"](function(){ montreX(false,null); });
+  /* Une preuve fraiche (signature liee au jeton) pour chaque geste createur. */
+  async function preuve(){ var ts=Date.now(); var sig=await signer.signMessage(agentSignMsg(ctx.token, ts)); return { token:String(ctx.token).toLowerCase(), ts:ts, signature:sig }; }
+  var xOauthToken=null;
+  q(".agXconnect").addEventListener("click",async function(){
+    var st=q(".agXstatus"), btn=q(".agXconnect");
+    if(!signer){ openWalletPicker(); return; }
+    st.className="note"; st.textContent="Sign to prove you created this token…"; btn.disabled=true;
+    try{
+      var p=await preuve();
+      st.textContent="Opening X to authorize…";
+      var r=await fetch(lpServeur()+"/agent/x/begin",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(p)});
+      var d=await r.json().catch(function(){ return null; });
+      if(!d||!d.ok){ st.className="note err"; st.textContent=(d&&d.raison)||"Could not start X linking."; return; }
+      xOauthToken=d.oauth_token;
+      window.open(d.authorizeUrl,"_blank","noopener");
+      q(".agXpin").hidden=false;
+      st.className="note"; st.textContent="A new tab opened on X. Authorize the account, then paste the PIN below.";
+    }catch(e){
+      var m=String((e&&(e.message||e))||"could not sign");
+      if(/user rejected|denied|4001/i.test(m)||(e&&(e.code===4001||e.code==="ACTION_REJECTED"))) m="You cancelled the signature.";
+      st.className="note err"; st.textContent=m.slice(0,200);
+    }finally{ btn.disabled=false; }
+  });
+  q(".agXfinish").addEventListener("click",async function(){
+    var st=q(".agXstatus"), btn=q(".agXfinish"), pin=q(".agXpinInput").value.trim();
+    if(!pin){ st.className="note err"; st.textContent="Paste the PIN X showed you."; return; }
+    if(!xOauthToken){ st.className="note err"; st.textContent="The linking session expired — start again."; return; }
+    st.className="note"; st.textContent="Finishing — sign once more to confirm…"; btn.disabled=true;
+    try{
+      var p=await preuve(); p.oauth_token=xOauthToken; p.pin=pin;
+      var r=await fetch(lpServeur()+"/agent/x/finish",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(p)});
+      var d=await r.json().catch(function(){ return null; });
+      if(!d||!d.ok){ st.className="note err"; st.textContent=(d&&d.raison)||"Could not finish X linking."; return; }
+      xOauthToken=null; montreX(true, d.handle);
+    }catch(e){ st.className="note err"; st.textContent=String((e&&(e.message||e))||"could not sign").slice(0,200); }
+    finally{ btn.disabled=false; }
+  });
+  q(".agXunlink").addEventListener("click",async function(){
+    var st=q(".agXstatus"), btn=q(".agXunlink");
+    if(!signer){ openWalletPicker(); return; }
+    st.className="note"; st.textContent="Sign to unlink…"; btn.disabled=true;
+    try{
+      var r=await fetch(lpServeur()+"/agent/x/unlink",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(await preuve())});
+      var d=await r.json().catch(function(){ return null; });
+      if(!d||!d.ok){ st.className="note err"; st.textContent=(d&&d.raison)||"Could not unlink."; return; }
+      montreX(false,null);
+    }catch(e){ st.className="note err"; st.textContent=String((e&&(e.message||e))||"could not sign").slice(0,200); }
+    finally{ btn.disabled=false; }
+  });
   q(".agPreview").addEventListener("click",function(){
     var out=q(".agPrev"), btn=q(".agPreview");
     out.hidden=false; out.className="note agPrev"; out.textContent="Composing a sample post…"; btn.disabled=true;

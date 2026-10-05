@@ -31,6 +31,12 @@ ok(/\/agent\/attach_createur/.test(html), 'le createur attache via /agent/attach
 ok(/signer\.signMessage\(agentSignMsg\(/.test(html), 'l attache est precedee d une SIGNATURE (preuve de creation), jamais en aveugle');
 ok(!/\/agent\/attach\b(?!_createur)/.test(html) && !/x-admin-key/.test(html), 'la page n appelle jamais la route admin /agent/attach ni n envoie de cle admin');
 
+console.log('\n-- le createur relie le compte X (OAuth PIN), signe, sans secret --');
+ok(/\/agent\/x\/begin/.test(html) && /\/agent\/x\/finish/.test(html), 'la liaison X passe par /agent/x/begin puis /agent/x/finish');
+ok(/authorizeUrl/.test(html) && /window\.open\(/.test(html), 'elle ouvre l URL d autorisation X (mode PIN), rien saisi en clair cote page');
+ok(/agXpinInput|paste the PIN/i.test(html), 'le createur colle le PIN que X lui montre');
+ok(!/accessToken|accessSecret|X_CONSUMER|oauth_token_secret/.test(html), 'la page ne voit jamais de jeton d acces ni de secret : X les donne au serveur, qui les chiffre');
+
 console.log('\n-- l honnetete de la promesse --');
 ok(/preview/i.test(html.slice(html.indexOf('id="cAgentChamp"'), html.indexOf('id="cAgentChamp"') + 1200)), 'le panneau se presente comme un APERCU');
 ok(/goes live after launch/i.test(html) || /autonomous X posting goes live once the team enables it/i.test(html), 'il dit que la publication autonome X vient APRES (rien n est deja en ligne)');

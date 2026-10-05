@@ -1225,6 +1225,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     recherche: "Searching the web…",
     jeton: "Reading the token: DexScreener, GoPlus, SWOGE AI…",
     pdfClaude: "PDFs are read by Claude models \u2014 pick Opus, Fable, Sonnet or Haiku (photos work with every model).",
+    photoTexte: "This model reads text only \u2014 pick another model to send a photo, or remove the image.",
     erreurReseau: "Connection lost — you were not charged for an unfinished answer.",
     arrete: "Stopped. The amount reserved for this answer is kept — ask again whenever you like.",
     arreteAvant: "Stopped before the model started — nothing was charged.",
@@ -1692,6 +1693,12 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     var ms = etat.compare ? modelesCompares() : [modeleCourant()];
     return ms.length && ms.every(function(m){ return m && m.pieces && m.pieces.pdf; });
   }
+  /* Comme lisentPdf, pour les photos : certains modeles (peu censures, texte
+     seul) ne lisent pas les images. On arrete la photo ICI, avant l'envoi. */
+  function lisentPhoto(){
+    var ms = etat.compare ? modelesCompares() : [modeleCourant()];
+    return ms.length && ms.every(function(m){ return m && m.pieces && m.pieces.images; });
+  }
   function vignette(src, cote, qualite){
     return new Promise(function(ok, ko){
       var im = new Image();
@@ -1746,6 +1753,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   function prendsPieces(){
     var pj = etat.pieces.slice();
     if (pj.some(function(p){ return p.genre === "pdf"; }) && !lisentPdf()) { dit(TXT.pdfClaude); return null; }
+    if (pj.some(function(p){ return p.genre === "image"; }) && !lisentPhoto()) { dit(TXT.photoTexte); return null; }
     etat.pieces = []; peintPieces();
     return pj;
   }
@@ -3295,7 +3303,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
         if (pdf && etat.pieces.some(function(x){ return x.genre === "pdf"; })) return dit("One PDF per question.");
         if (!pdf && etat.pieces.filter(function(x){ return x.genre === "image"; }).length >= 4) return dit("At most 4 photos per question.");
         return (pdf ? litPdf(f) : reduitPhoto(f)).then(function(p){
-          etat.pieces.push(p); peintPieces(); peintBoutons(); dit(pdf && !lisentPdf() ? TXT.pdfClaude : "");
+          etat.pieces.push(p); peintPieces(); peintBoutons(); dit(pdf && !lisentPdf() ? TXT.pdfClaude : (!pdf && !lisentPhoto() ? TXT.photoTexte : ""));
         }, function(){ dit("This file could not be read."); });
       });
     }, Promise.resolve());

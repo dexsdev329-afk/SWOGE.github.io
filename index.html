@@ -752,6 +752,16 @@ body{ background:#F7F9FC; }
 .acc-boutons .sw-b{ padding:14px 20px; font-size:13.5px; border-radius:12px; }
 .acc-puces{ list-style:none; margin:20px 0 0; padding:0; display:flex; flex-direction:column; gap:7px; }
 .acc-puces li{ font:600 13px/1.4 'Inter',system-ui,sans-serif; color:#33456B; }
+/* ---- LE CONTRAT OFFICIEL, COPIABLE (05/10, signale par @dodewl) : qu on n achete pas une copie. ---- */
+.acc-ca{ display:flex; flex-wrap:wrap; align-items:center; gap:8px 10px; margin:18px 0 0; padding:12px 14px;
+         background:#F3F6FF; border:1px solid #D4E0FF; border-radius:12px; max-width:100%; }
+.acc-ca-l{ flex:1 1 100%; font:700 11px/1.3 'Inter',system-ui,sans-serif; letter-spacing:.4px; text-transform:uppercase; color:#1652F0; }
+.acc-ca code{ font:600 13px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace; color:#0B1736; word-break:break-all;
+              background:#fff; border:1px solid #D4E0FF; border-radius:8px; padding:6px 9px; }
+.acc-ca .acc-ca-copy{ padding:8px 14px; font-size:12.5px; border-radius:10px; }
+.acc-ca-verif{ font:700 12px/1 'Inter',system-ui,sans-serif; color:#1652F0; text-decoration:none; }
+.acc-ca-verif:hover{ text-decoration:underline; }
+.acc-ca-note{ margin:8px 0 0; font:600 12px/1.4 'Inter',system-ui,sans-serif; color:#64748B; }
 /* L ecosysteme : les quatre portes gardent leur film. */
 .acc .univers{ gap:14px; }
 .acc .uni{ border-radius:18px; }
@@ -990,12 +1000,27 @@ body{ background:#F7F9FC; }
         <h1>SWOGE<br>WORLD</h1>
         <p class="acc-promesse">A casino, a sportsbook, an open world and a lab of AI agents &mdash; one token, one wallet.</p>
         <div class="acc-boutons">
+          <!-- BUY $SWOGE = le bouton MIS EN AVANT (05/10, signale par @dodewl : il manquait).
+               Il mene a la paire officielle sur DexScreener, d ou l on achete. -->
+          <a class="sw-b sw-b-plein vif" href="https://dexscreener.com/robinhood/0x2dc0fb72d9284228046cc95910eeaabebfe48456" target="_blank" rel="noopener">BUY $SWOGE &nbsp;&rarr;</a>
           <!-- Le meme geste que la marque, et par le meme chemin : deux
                promesses identiques qui ne feraient pas la meme chose
                seraient pires que l une des deux morte. -->
-          <button class="sw-b sw-b-plein vif" id="gxMonde2">ENTER SWOGE WORLD &nbsp;&rarr;</button>
+          <button class="sw-b sw-b-vide vif" id="gxMonde2">ENTER SWOGE WORLD</button>
           <a class="sw-b sw-b-vide vif" href="swoge_ai.html">SEE THE AI AT WORK</a>
         </div>
+        <!-- ---- LE CONTRAT OFFICIEL, COPIABLE (05/10, signale par @dodewl) ----
+             « le contrat de SWOGE manque, pour qu on n achete pas le mauvais jeton ».
+             Adresse exacte lue dans config.js (SWOGE_TOKEN) et confirmee sur DexScreener
+             (base token de la paire 0x2dc0...8456 : SWOGE / Swole Doge, Robinhood Chain).
+             Copiable d un clic, jamais tronquee dans le DOM, et un lien pour verifier. -->
+        <div class="acc-ca" role="group" aria-label="Official SWOGE contract address">
+          <span class="acc-ca-l">Official $SWOGE contract &middot; Robinhood Chain</span>
+          <code id="swogeCA">0x8a166Fb41Cd659a0a43396272FF73973Ce29F817</code>
+          <button type="button" class="sw-b sw-b-vide vif acc-ca-copy" id="swogeCACopy" data-ca="0x8a166Fb41Cd659a0a43396272FF73973Ce29F817">Copy</button>
+          <a class="acc-ca-verif vif" href="https://dexscreener.com/robinhood/0x2dc0fb72d9284228046cc95910eeaabebfe48456" target="_blank" rel="noopener">Verify on DexScreener &#8599;</a>
+        </div>
+        <p class="acc-ca-note">Always verify the address before buying &mdash; this is the only official $SWOGE contract. Beware of copycats.</p>
         <ul class="acc-puces">
           <li>&#128202; AI trading measured in public, losses included</li>
           <li>&#9939;&#65039; Supply and burn read on-chain</li>
@@ -1476,6 +1501,15 @@ body{ background:#F7F9FC; }
   ["gxMonde","gxMonde2","gxArcade","gxRangTout","gxMonde3","gxMonde4"].forEach(function(i){
     var e = document.getElementById(i);
     if (e) e.addEventListener("click", va);
+  });
+  /* Copier le contrat officiel $SWOGE (05/10, signale par @dodewl). L adresse vit
+     dans data-ca, jamais reconstruite : ce qu on copie est exactement ce qui s affiche. */
+  var cp = document.getElementById("swogeCACopy");
+  if (cp) cp.addEventListener("click", function(){
+    var ca = cp.getAttribute("data-ca"), v = cp.textContent;
+    try { navigator.clipboard.writeText(ca).then(function(){ cp.textContent = "Copied ✓"; setTimeout(function(){ cp.textContent = v; }, 1500); },
+                                                   function(){ cp.textContent = "Copy failed"; setTimeout(function(){ cp.textContent = v; }, 1500); }); }
+    catch (e) { cp.textContent = "Copy failed"; setTimeout(function(){ cp.textContent = v; }, 1500); }
   });
 })();
 </script>

@@ -37,6 +37,23 @@ ok(/authorizeUrl/.test(html) && /window\.open\(/.test(html), 'elle ouvre l URL d
 ok(/agXpinInput|paste the PIN/i.test(html), 'le createur colle le PIN que X lui montre');
 ok(!/accessToken|accessSecret|X_CONSUMER|oauth_token_secret/.test(html), 'la page ne voit jamais de jeton d acces ni de secret : X les donne au serveur, qui les chiffre');
 
+console.log('\n-- le GESTE entre dans la signature (constat de l audit) --');
+ok(/Action: "\+g\+"/.test(html), 'le message signe porte une ligne Action: <geste>');
+ok(/preuve\("link-x"\)/.test(html) && /preuve\("unlink-x"\)/.test(html) && /preuve\("pause"\)/.test(html) && /agentSignMsg\(ctx\.token, ts, "configure"\)/.test(html),
+   'chaque geste signe SON action (configure / pause / link-x / unlink-x)');
+
+console.log('\n-- un agent par jeton, accessible depuis la fiche du jeton --');
+ok(/id="tvAgentPanel"/.test(html) && /id="tvAgentBtn"/.test(html), 'la fiche du jeton (Trade) porte un panneau AI agent');
+ok(/construitAgentForm\(box, \{ token:curToken/.test(html), 'le panneau construit l agent DU jeton ouvert (curToken), un seul par jeton');
+ok(/removeAttribute\("data-built"\)/.test(html), 'changer de jeton repart propre (pas de melange entre jetons)');
+
+console.log('\n-- gestion par le createur : pause/reprise + historique + liens --');
+ok(/\/agent\/toggle_createur/.test(html) && /Pause agent|Resume agent/.test(html), 'le createur peut mettre en pause / relancer son agent (toggle_createur signe)');
+ok(/\/feed\?n=/.test(html) && /\/trades\?n=/.test(html), 'l historique lit le mur (posts) et le journal des gestes d argent');
+ok(/Fuel \(pays the API\)|Treasury \(paper\)/.test(html), 'il montre le carburant et le tresor du jeton');
+ok(/esc\(CHAIN\.scan\)\+'\/tx\/'\+esc\(x\.tx\)/.test(html), 'une depense reelle (quand elle existera) porte un lien vers la transaction on-chain');
+ok(/simulated — no on-chain tx yet/i.test(html), 'tant que l execution reste papier, c est dit clairement (aucun lien invente)');
+
 console.log('\n-- l honnetete de la promesse --');
 ok(/preview/i.test(html.slice(html.indexOf('id="cAgentChamp"'), html.indexOf('id="cAgentChamp"') + 1200)), 'le panneau se presente comme un APERCU');
 ok(/goes live after launch/i.test(html) || /autonomous X posting goes live once the team enables it/i.test(html), 'il dit que la publication autonome X vient APRES (rien n est deja en ligne)');

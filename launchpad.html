@@ -772,6 +772,13 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
         <h2>Recent trades</h2>
         <div id="tvTrades" style="overflow:auto;max-height:340px">—</div>
       </div>
+
+      <div class="panel" id="tvAgentPanel">
+        <h2>🧠 AI agent</h2>
+        <div class="note">One agent per token. If you created this token, set it up, pause it, link its X account, and see its activity &amp; spending here — just prove it with a signature (no gas).</div>
+        <button class="btn full" id="tvAgentBtn" type="button" style="margin-top:8px">🧠 Manage this token's agent</button>
+        <div id="tvAgentBox" style="margin-top:10px"></div>
+      </div>
     </div>
   </section>
 
@@ -1354,11 +1361,14 @@ function kit(o,res){
 }
 
 /* Le message EXACT que le portefeuille signe — doit coller a agent_createur.message()
-   cote serveur (jeton en minuscules, meme texte, meme horodatage). */
-function agentSignMsg(token, ts){
+   cote serveur (jeton en minuscules, GESTE, meme texte, meme horodatage). Le geste
+   entre dans la signature : une signature « configure » ne vaut pas pour « pause ». */
+function agentSignMsg(token, ts, action){
+  var g=["configure","pause","link-x","unlink-x"].indexOf(action)>=0?action:"configure";
   return "SWOGE AI Agent\n"
+    +"Action: "+g+"\n"
     +"I am the on-chain creator of token "+String(token).toLowerCase()+"\n"
-    +"and I authorize configuring its AI agent on swoge.\n"
+    +"and I authorize this action on its AI agent on swoge.\n"
     +"This signature moves no funds and grants no spending power.\n"
     +"Timestamp: "+Number(ts);
 }
@@ -1385,6 +1395,12 @@ function construitAgentForm(box, ctx){
         +'<input class="agXpinInput" inputmode="numeric" maxlength="12" placeholder="e.g. 1234567">'
         +'<button type="button" class="btn primary agXfinish" style="margin-top:6px;padding:6px 10px;font-size:12px">Finish X linking</button></div>'
     +'</div>'
+    +'<div class="agManage" style="margin:8px 0;padding:9px;border:1px solid var(--line);border-radius:10px">'
+      +'<div class="agStatus note" style="margin:0 0 6px">Agent status…</div>'
+      +'<div class="btnrow" style="margin:0"><button type="button" class="btn agPause" hidden style="padding:6px 10px;font-size:12px">⏸ Pause agent</button>'
+        +'<button type="button" class="btn agHist" style="padding:6px 10px;font-size:12px">📜 Activity &amp; spending</button></div>'
+      +'<div class="agHistBox" hidden style="margin-top:8px"></div>'
+    +'</div>'
     +'<div class="btnrow" style="margin:0 0 6px"><button type="button" class="btn agPreview" style="padding:6px 10px;font-size:12px">👀 Preview a post</button>'
     +'<button type="button" class="btn primary agSave" style="padding:6px 10px;font-size:12px">💾 Save agent</button></div>'
     +'<div class="note agNote"></div><div class="note agPrev" hidden style="margin-top:6px"></div>';
@@ -1399,25 +1415,36 @@ function construitAgentForm(box, ctx){
       q(".agXconnect").hidden=false; q(".agXunlink").hidden=true; }
     q(".agXpin").hidden=true;
   }
+  /* L etat de l agent (actif / en pause / pas encore cree) : statut + bouton pause. */
+  var agActif=null;
+  function montreStatut(){
+    var st=q(".agStatus"), pb=q(".agPause");
+    if(agActif===null){ st.className="note"; st.textContent="No agent yet — fill the fields and press Save below."; pb.hidden=true; return; }
+    pb.hidden=false;
+    if(agActif){ st.className="note ok"; st.textContent="● Agent is ACTIVE — it thinks and acts on its schedule."; pb.textContent="⏸ Pause agent"; }
+    else{ st.className="note"; st.textContent="⏸ Agent is PAUSED — it does nothing until you resume it."; pb.textContent="▶ Resume agent"; }
+  }
+  montreStatut();
   /* Prefill depuis l agent existant (lecture publique) : modifier n efface pas les reglages. */
   fetch(lpServeur()+"/agent/jeton/"+String(ctx.token).toLowerCase(),{cache:"no-store"}).then(function(r){ return r.json(); }).then(function(d){
     montreX(!!(d&&d.hasX), d&&d.handle);
-    var a=d&&d.agent; if(!a) return;
+    var a=d&&d.agent; if(!a){ agActif=null; montreStatut(); return; }
     if(a.persona) q(".agPersona").value=a.persona;
     if(a.objectif) q(".agGoal").value=a.objectif;
     if(a.postsParJourMax) q(".agPosts").value=a.postsParJourMax;
     if(a.rachat&&a.rachat.actif){ chk.checked=true; q(".agRachatBudget").hidden=false; if(a.rachat.budgetPctJour) q(".agBudget").value=a.rachat.budgetPctJour; }
+    agActif=!!a.actif; montreStatut();
     q(".agSave").textContent="💾 Update agent";
-  })["catch"](function(){ montreX(false,null); });
-  /* Une preuve fraiche (signature liee au jeton) pour chaque geste createur. */
-  async function preuve(){ var ts=Date.now(); var sig=await signer.signMessage(agentSignMsg(ctx.token, ts)); return { token:String(ctx.token).toLowerCase(), ts:ts, signature:sig }; }
+  })["catch"](function(){ montreX(false,null); agActif=null; montreStatut(); });
+  /* Une preuve fraiche (signature liee au jeton ET au geste) pour chaque action createur. */
+  async function preuve(action){ var ts=Date.now(); var sig=await signer.signMessage(agentSignMsg(ctx.token, ts, action)); return { token:String(ctx.token).toLowerCase(), ts:ts, signature:sig }; }
   var xOauthToken=null;
   q(".agXconnect").addEventListener("click",async function(){
     var st=q(".agXstatus"), btn=q(".agXconnect");
     if(!signer){ openWalletPicker(); return; }
     st.className="note"; st.textContent="Sign to prove you created this token…"; btn.disabled=true;
     try{
-      var p=await preuve();
+      var p=await preuve("link-x");
       st.textContent="Opening X to authorize…";
       var r=await fetch(lpServeur()+"/agent/x/begin",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(p)});
       var d=await r.json().catch(function(){ return null; });
@@ -1438,7 +1465,7 @@ function construitAgentForm(box, ctx){
     if(!xOauthToken){ st.className="note err"; st.textContent="The linking session expired — start again."; return; }
     st.className="note"; st.textContent="Finishing — sign once more to confirm…"; btn.disabled=true;
     try{
-      var p=await preuve(); p.oauth_token=xOauthToken; p.pin=pin;
+      var p=await preuve("link-x"); p.oauth_token=xOauthToken; p.pin=pin;
       var r=await fetch(lpServeur()+"/agent/x/finish",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(p)});
       var d=await r.json().catch(function(){ return null; });
       if(!d||!d.ok){ st.className="note err"; st.textContent=(d&&d.raison)||"Could not finish X linking."; return; }
@@ -1451,7 +1478,7 @@ function construitAgentForm(box, ctx){
     if(!signer){ openWalletPicker(); return; }
     st.className="note"; st.textContent="Sign to unlink…"; btn.disabled=true;
     try{
-      var r=await fetch(lpServeur()+"/agent/x/unlink",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(await preuve())});
+      var r=await fetch(lpServeur()+"/agent/x/unlink",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(await preuve("unlink-x"))});
       var d=await r.json().catch(function(){ return null; });
       if(!d||!d.ok){ st.className="note err"; st.textContent=(d&&d.raison)||"Could not unlink."; return; }
       montreX(false,null);
@@ -1472,7 +1499,7 @@ function construitAgentForm(box, ctx){
     if(!signer){ openWalletPicker(); return; }
     note.className="note"; note.textContent="Sign in your wallet to prove you created this token…"; btn.disabled=true;
     try{
-      var ts=Date.now(), sig=await signer.signMessage(agentSignMsg(ctx.token, ts));
+      var ts=Date.now(), sig=await signer.signMessage(agentSignMsg(ctx.token, ts, "configure"));
       var body={ token:String(ctx.token).toLowerCase(), ts:ts, signature:sig,
         persona:q(".agPersona").value, objectif:q(".agGoal").value.trim(),
         postsParJourMax:Math.max(1,Math.min(96,parseInt(q(".agPosts").value,10)||24)), langue:"en",
@@ -1486,11 +1513,62 @@ function construitAgentForm(box, ctx){
       note.innerHTML="🧠 Agent saved for $"+esc(ctx.symbole||"")+". It posts to its wall now; autonomous X posting goes live once the team enables it. Buy-back is simulated (paper). "
         +'<a href="token_agents.html?t='+esc(String(ctx.token).toLowerCase())+'" target="_blank">See it on the AI Agents page ↗</a>';
       btn.textContent="💾 Update agent";
+      agActif=true; montreStatut();        /* attache (re)active l agent */
     }catch(e){
       var m=String((e&&(e.message||e))||"could not sign");
       if(/user rejected|denied|4001/i.test(m)||(e&&(e.code===4001||e.code==="ACTION_REJECTED"))) m="You cancelled the signature — nothing was saved.";
       note.className="note err"; note.textContent=m.slice(0,200);
     }finally{ btn.disabled=false; }
+  });
+  /* PAUSE / REPRISE : met l agent en pause (ou le relance) — signe « pause ». */
+  q(".agPause").addEventListener("click",async function(){
+    var st=q(".agStatus"), pb=q(".agPause");
+    if(!signer){ openWalletPicker(); return; }
+    if(agActif===null) return;
+    st.className="note"; st.textContent="Sign to "+(agActif?"pause":"resume")+" the agent…"; pb.disabled=true;
+    try{
+      var p=await preuve("pause"); p.actif=!agActif;
+      var r=await fetch(lpServeur()+"/agent/toggle_createur",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(p)});
+      var d=await r.json().catch(function(){ return null; });
+      if(!d||!d.ok){ st.className="note err"; st.textContent=(d&&d.raison)||"Could not change the agent state."; return; }
+      agActif=d.agent?!!d.agent.actif:!agActif; montreStatut();
+    }catch(e){ st.className="note err"; st.textContent=String((e&&(e.message||e))||"could not sign").slice(0,200); }
+    finally{ pb.disabled=false; }
+  });
+  /* ACTIVITE & DEPENSES : le mur (posts, liens X) + le journal des gestes d argent
+     (papier pour l instant ; lien blockchain quand une transaction reelle existe). */
+  q(".agHist").addEventListener("click",function(){
+    var boxH=q(".agHistBox");
+    if(!boxH.hidden){ boxH.hidden=true; return; }
+    boxH.hidden=false; boxH.innerHTML='<div class="note">Loading activity…</div>';
+    var tk=String(ctx.token).toLowerCase(), S=lpServeur();
+    Promise.all([
+      fetch(S+"/agent/jeton/"+tk,{cache:"no-store"}).then(function(r){ return r.json(); })["catch"](function(){ return null; }),
+      fetch(S+"/agent/jeton/"+tk+"/feed?n=10",{cache:"no-store"}).then(function(r){ return r.json(); })["catch"](function(){ return null; }),
+      fetch(S+"/agent/jeton/"+tk+"/trades?n=10",{cache:"no-store"}).then(function(r){ return r.json(); })["catch"](function(){ return null; })
+    ]).then(function(res){
+      var info=res[0]||{}, feed=res[1]||{}, tr=res[2]||{};
+      var fuel=info.fuel&&info.fuel.soldeUsd, tres=info.tresor&&info.tresor.soldeUsd;
+      var h='<div class="kv" style="border:0"><span class="k">Fuel (pays the API)</span><span class="v">'+(fuel!=null?("$"+Number(fuel).toFixed(2)):"—")+'</span></div>'
+        +'<div class="kv" style="border:0"><span class="k">Treasury (paper)</span><span class="v">'+(tres!=null?("$"+Number(tres).toFixed(2)):"—")+'</span></div>';
+      var posts=(feed&&feed.posts)||[];
+      h+='<div style="margin-top:8px;font-weight:700;font-size:12px">Posts <span class="count">'+posts.length+'</span></div>';
+      if(!posts.length) h+='<div class="note" style="margin:4px 0">No posts yet.</div>';
+      else posts.forEach(function(p){
+        var when=p.quand?new Date(p.quand).toLocaleString():"";
+        h+='<div class="note" style="margin:4px 0">'+(p.surX&&p.url?('<a href="'+esc(p.url)+'" target="_blank">𝕏 ↗</a> '):'· ')+esc((p.texte||"").slice(0,140))+' <span style="opacity:.6">'+esc(when)+'</span></div>';
+      });
+      var trades=(tr&&tr.trades)||[];
+      h+='<div style="margin-top:8px;font-weight:700;font-size:12px">Money actions '+((tr&&tr.mode)==="paper"?'<span class="badge">paper</span>':'')+' <span class="count">'+trades.length+'</span></div>';
+      if(!trades.length) h+='<div class="note" style="margin:4px 0">No money actions yet.</div>';
+      else trades.forEach(function(x){
+        var when=x.quand?new Date(x.quand).toLocaleString():"";
+        var lien=x.tx?(' <a href="'+esc(CHAIN.scan)+'/tx/'+esc(x.tx)+'" target="_blank">on-chain ↗</a>'):' <span style="opacity:.6">(simulated — no on-chain tx yet)</span>';
+        h+='<div class="note" style="margin:4px 0">'+esc(x.action||"?")+' · $'+esc(String(x.montantUsd!=null?x.montantUsd:"?"))+(x.impactPct!=null?(' · impact '+esc(String(x.impactPct))+'%'):'')+lien+' <span style="opacity:.6">'+esc(when)+'</span></div>';
+      });
+      h+='<div class="note" style="margin-top:8px;opacity:.7">Money actions run in simulation (paper) today. When real on-chain execution is turned on, each spend will link to its transaction on the explorer.</div>';
+      boxH.innerHTML=h;
+    })["catch"](function(){ boxH.innerHTML='<div class="note err">Could not load activity.</div>'; });
   });
 }
 
@@ -2130,6 +2208,20 @@ function copyBtn(addr){
   return '<button class="btn" data-copy="'+esc(addr)+'" title="Copy contract address" '+
          'style="padding:5px 9px;font-size:12px;line-height:1">📋 Copy</button>';
 }
+/* La fiche du jeton : gerer SON agent ici (un seul par jeton). Construit a la demande,
+   borne au jeton ouvert ; la signature cote serveur verifie que tu en es le createur. */
+(function(){
+  var b=document.getElementById("tvAgentBtn"); if(!b) return;
+  b.addEventListener("click",function(){
+    if(!curToken) return;
+    var box=document.getElementById("tvAgentBox");
+    if(box.getAttribute("data-built")){ box.hidden=!box.hidden; return; }
+    var sym=($("#tvSym").textContent||"").replace(/^\$/,"").trim()||null;
+    var nom=($("#tvName").textContent||"").trim(); if(nom==="—") nom=null;
+    construitAgentForm(box, { token:curToken, pool:curPool||null, symbole:sym, nom:nom });
+    box.setAttribute("data-built","1"); box.hidden=false;
+  });
+})();
 function shortAddr(a){ return a.slice(0,6)+"…"+a.slice(-4); }
 function copyMini(addr){
   return '<span data-copy="'+esc(addr)+'" title="Copy contract" style="cursor:pointer;font-size:11px">📋</span>';
@@ -2158,6 +2250,9 @@ async function openTrade(addr){
   /* 03/10 : rien du jeton precedent ne reste affiche pendant que celui-ci se lit (sa
      capitalisation et son prix restaient a l'ecran sous le nom du nouveau). */
   ["#tvName","#tvMcap","#tvPrice"].forEach(function(id){ var e=$(id); if(e) e.textContent="—"; }); $("#tvSym").textContent="";
+  /* L agent appartient AU jeton : on repart propre a chaque fiche (un seul agent par jeton). */
+  var agBoxTV=$("#tvAgentBox"); if(agBoxTV){ agBoxTV.innerHTML=""; agBoxTV.removeAttribute("data-built"); }
+  var agBtnTV=$("#tvAgentBtn"); if(agBtnTV) agBtnTV.textContent="🧠 Manage this token's agent";
   /* De quel lanceur vient ce jeton ? La grille le sait deja ; sinon on
      interroge le V3 puis le V2. On ne devine pas : un mauvais lanceur
      donnerait un mauvais actif de cotation, donc de mauvais prix. */

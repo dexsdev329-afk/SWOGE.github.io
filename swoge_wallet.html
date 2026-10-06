@@ -68,7 +68,7 @@
      A savoir : cela ne sauve pas la page DEJA en cache chez quelqu'un, qui ne
      contient pas ces lignes. Ce garde-fou vaut a partir de celle-ci. -->
 <script>
-var MARQUE_PAGE = 'cfd7a871';
+var MARQUE_PAGE = '414303d2';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -106,7 +106,7 @@ var MARQUE_PAGE = 'cfd7a871';
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
 <!-- Le cerveau de l'assistant : il COMPREND une phrase et la rend lisible,
      il ne signe jamais. Code et essai a part (wallet_assistant.js). -->
-<script src="wallet_assistant.js?v=4b2f430e"></script>
+<script src="wallet_assistant.js?v=a7c2aad8"></script>
 
 <style>
 /* ==================================================================
@@ -4724,9 +4724,14 @@ function attendEthereum(ms){
  * session perdue, c'est un portefeuille ferme : on le dit, et on se rebranche
  * tout seul des qu'il s'ouvre, par `accountsChanged`. */
 var VERROUILLE = false;
+/* La reconnexion par e-mail est en cours (restauration de la session Privy).
+   Tant qu'elle dure, l'ecran dit « Reconnecting… » plutot que « Connect » :
+   la session est valide dans le localStorage, on ne la declare pas perdue
+   juste parce que l'iframe Privy met du temps a repondre. */
+var RECONNECTE = false;
 /* Les libelles qui ne sont PAS un nom : ce sont des etats, et le nom du compte
    doit pouvoir les remplacer des qu'il existe. */
-var EN_ATTENTE_NOM = ['Not connected', 'Wallet locked'];
+var EN_ATTENTE_NOM = ['Not connected', 'Wallet locked', 'Reconnecting…'];
 
 /* Reconnexion silencieuse au chargement, si une methode est memorisee. */
 async function reprend(){
@@ -4740,16 +4745,25 @@ async function reprend(){
       else { VERROUILLE = true; majCompte(); peintAccueil(); }
     }catch(e){}
   } else if(m==='email'){
+    /* La session est VALIDE dans le localStorage (jeton de rafraichissement
+       Privy) ; ce qui tarde, c'est la poignee de main de l'iframe du
+       portefeuille embarque — lente ou muette sur reseau mobile, Safari/ITP et
+       navigateurs integres. On le DIT (« Reconnecting… ») au lieu de retomber
+       sur « Connect », on laisse 25 s (l'ancien delai de 12 s abandonnait une
+       restauration qui aurait abouti), et on reessaie UNE fois. */
+    RECONNECTE = true; majCompte(); peintAccueil();
     try{
       await chargePrivy();
-      /* Le rappel du portefeuille embarque passe par une iframe qui, dans
-         certains navigateurs integres, ne repond JAMAIS. On abandonne au
-         bout de douze secondes plutot que de laisser la page en attente. */
-      var abandon = new Promise(function(r){ setTimeout(function(){ r(false); }, 12000); });
-      var ok = await Promise.race([ SwogePrivy.restore().then(function(){ return true; })['catch'](function(){ return false; }), abandon ]);
+      var essaieRestore = function(ms){
+        var abandon = new Promise(function(r){ setTimeout(function(){ r(false); }, ms); });
+        return Promise.race([ SwogePrivy.restore().then(function(){ return true; })['catch'](function(){ return false; }), abandon ]);
+      };
+      var ok = await essaieRestore(25000);
+      if(!(ok && SwogePrivy.isLoggedIn())) ok = await essaieRestore(25000);
       if(ok && SwogePrivy.isLoggedIn())
         await portefeuillePret(SwogePrivy.getProvider(), SwogePrivy.getAddress(), 'email');
     }catch(e){}
+    RECONNECTE = false; if(!moi){ majCompte(); peintAccueil(); }
   }
 }
 
@@ -5249,8 +5263,10 @@ function peintProfil(){
        a chaque rafraichissement. Le vrai geste est ailleurs : ouvrir son
        extension. Des qu'elle s'ouvre, `accountsChanged` nous rebranche sans
        qu'on touche a rien. */
-    nm.textContent = VERROUILLE ? 'Wallet locked' : 'Not connected';
-    if(rl) rl.textContent = VERROUILLE
+    nm.textContent = RECONNECTE ? 'Reconnecting…' : VERROUILLE ? 'Wallet locked' : 'Not connected';
+    if(rl) rl.textContent = RECONNECTE
+      ? 'Restoring your session…'
+      : VERROUILLE
       ? 'Unlock your browser wallet — you stay signed in'
       : 'Tap to sign in';
     /* ---- PAS D'ADRESSE QUAND IL N'Y EN A PAS ----
@@ -5301,7 +5317,7 @@ function peintProfil(){
 }
 
 function majCompte(){
-  $('cpEtat').textContent = moi ? 'Connected' : (VERROUILLE ? 'Wallet locked' : 'Not connected');
+  $('cpEtat').textContent = moi ? 'Connected' : (RECONNECTE ? 'Reconnecting…' : VERROUILLE ? 'Wallet locked' : 'Not connected');
   $('cpEtat').classList.toggle('on', !!moi);
   $('cpAdr').textContent = moi ? court(moi) : '—';
   $('cpMethode').textContent = methode==='email' ? 'Email' : methode==='wallet' ? 'Browser wallet' : '—';
@@ -11053,6 +11069,20 @@ function exposeVitrine(){
           va('ecPont');
           if(r.montant && r.montant.type === 'token') $('poMontant').value = r.montant.valeur;
           return 'Opened the bridge. Pick the chains and the amount, then tap Bridge — your wallet will ask you to sign.';
+        }
+        /* BRÛLER : on ouvre l'ecran de burn et on pre-remplit. L'adresse morte
+           est posee par la page, l'ecran de revue est obligatoire, et c'est le
+           portefeuille du joueur qui signe. L'assistant ne clique jamais « Burn ». */
+        if(r.action === 'burn'){
+          va('ecBruler');
+          var sb = $('brJeton'); if(opt(sb, r.jetonCle)) choisitPick(sb, r.jetonCle);
+          if(r.montant && r.montant.type === 'token') $('brMontant').value = r.montant.valeur;
+          var mb = [];
+          if(!r.jetonCle || !opt(sb, r.jetonCle)) mb.push('pick the token');
+          if(!r.montant) mb.push('enter the amount');
+          else if(r.montant.type === 'usd') mb.push('this screen takes a token amount, not dollars');
+          else if(r.montant.type === 'max') mb.push('tap MAX for the whole balance');
+          return 'Opened Burn. Burning is permanent. Check the amount, then tap Review burn — your wallet will ask you to sign.' + (mb.length ? ' (' + mb.join('; ') + ')' : '');
         }
         return '';
       }

@@ -89,5 +89,17 @@ ok(A.comprend('', JETONS, CHAINES).action === 'inconnu', 'phrase vide : inconnu,
 r = A.comprend('bridge my eth to base', JETONS, CHAINES);
 ok(r.action === 'bridge', '« bridge … to base » est un pont, pas un envoi, meme avec « to »');
 
+console.log('\n-- 8. brûler (06/10) : SWOGE/SWOGEBET seulement, aucune destination à taper --');
+r = A.comprend('burn 100 swoge', JETONS, CHAINES);
+ok(r.action === 'burn' && r.jetonCle === 'swoge' && r.montant.type === 'token' && r.montant.valeur === 100, 'burn 100 SWOGE : action burn, jeton et montant lus');
+ok(!('executer' in r) && !('execute' in r) && !('signer' in r) && !r.dest, 'aucun drapeau d execution, et AUCUNE destination (l adresse morte est posee par la page)');
+ok(/permanent/i.test(r.resume) && /review and sign it yourself/i.test(r.resume), 'le resume dit que c est permanent et que le joueur relit et signe lui-meme');
+r = A.comprend('brûle tout mon swogebet', JETONS, CHAINES);
+ok(r.action === 'burn' && r.jetonCle === 'swogebet' && r.montant.type === 'max', 'brûle tout mon SWOGEBET : max, et SWOGEBET n est pas lu « swoge »');
+r = A.comprend('burn 1 eth', JETONS, CHAINES);
+ok(r.action === 'inconnu' && /Only SWOGE and SWOGEBET/i.test(r.pourquoi), 'burn 1 ETH : REFUS — seuls SWOGE et SWOGEBET se brûlent');
+r = A.comprend('burn swoge', JETONS, CHAINES);
+ok(r.action === 'burn' && r.jetonCle === 'swoge' && r.montant === null, 'burn SWOGE sans montant : action lue, montant null (la page demandera combien)');
+
 console.log('\n' + (rates ? 'RATES : ' + rates + '/' + n : 'VERIFICATIONS : ' + n + ' — tout passe'));
 process.exit(rates ? 1 : 0);

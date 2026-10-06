@@ -101,6 +101,23 @@ const T = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css',
   }));
   ok(swap.ecran === 'ecSwap' && swap.de === 'eth' && swap.vers === 'swoge', 'un achat ouvre l echange, pre-rempli ETH -> SWOGE');
 
+  /* Un burn : ouvre l ecran de burn, pre-rempli, SANS adresse a taper (06/10). */
+  await page.evaluate(() => document.querySelector('[data-va="ecAssistant"]').click());
+  await page.fill('#asTexte', 'burn 100 SWOGE');
+  await page.click('#asGo');
+  await page.waitForTimeout(100);
+  const ficheBr = await page.evaluate(() => ({ resume: document.getElementById('asResume').textContent }));
+  ok(/permanent/i.test(ficheBr.resume) && /review and sign it yourself/i.test(ficheBr.resume),
+     'burn : la fiche dit que c est permanent et que le joueur relit et signe lui-meme');
+  await page.click('#asOuvre');
+  await page.waitForTimeout(250);
+  const burn = await page.evaluate(() => ({
+    ecran: [...document.querySelectorAll('.wl-ecran')].filter((e) => getComputedStyle(e).display !== 'none').map((e) => e.id)[0],
+    jeton: document.getElementById('brJeton').value, montant: document.getElementById('brMontant').value,
+  }));
+  ok(burn.ecran === 'ecBruler' && burn.jeton === 'swoge' && burn.montant === '100',
+     'un burn ouvre l ecran Burn reel, pre-rempli SWOGE / 100 — il ne reste qu a relire et signer');
+
   /* Rien n a signe : le portefeuille n est pas connecte, et l assistant
      n ouvre aucune voie de signature a lui. */
   ok(await page.evaluate(() => typeof signer === 'undefined' || signer === null),

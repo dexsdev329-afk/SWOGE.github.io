@@ -4980,11 +4980,11 @@ function servir(q, r, f, type) {
        icones sous le doigt de quelqu'un qui vise le meme bouton chaque jour
        est un vrai defaut. */
     ok(JSON.stringify(rang.gestes) === JSON.stringify(
-         ['ecEnvoyer', 'ecRecevoir', 'ecSwap', 'ecPont', 'ecBruler', 'ecBanc', 'ecSignaux']),
-       'la rangee porte les sept gestes, dans l ordre — chaque nouveau vient A LA SUITE, jamais '
+         ['ecEnvoyer', 'ecRecevoir', 'ecSwap', 'ecPont', 'ecBruler', 'ecBanc', 'ecSignaux', 'ecAssistant']),
+       'la rangee porte les huit gestes, dans l ordre — chaque nouveau vient A LA SUITE, jamais '
        + 'au milieu : quelqu un qui vise le meme bouton chaque jour ne doit pas le voir glisser ('
        + rang.gestes.join(', ') + ')');
-    ok(rang.deborde, 'et elle deborde : sept libelles ne tiennent pas dans la largeur de quatre');
+    ok(rang.deborde, 'et elle deborde : huit libelles ne tiennent pas dans la largeur de quatre');
     ok(rang.gCache && !rang.dCache,
        'au repos, seule la fleche de DROITE se voit : il n y a rien a gauche, et une fleche qui '
        + 'ne fait rien apprend a ne plus la toucher');

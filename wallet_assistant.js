@@ -56,9 +56,15 @@
   var VERBES = [
     { a: 'bridge', mots: ['bridge', 'pont', 'ponter', 'passe sur', 'passe vers', 'passer sur', 'traverse'] },
     { a: 'swap',   mots: ['swap', 'echange', 'échange', 'echanger', 'échanger', 'convertis', 'convertir', 'trade', 'troque'] },
+    { a: 'burn',   mots: ['burn', 'brule', 'brûle', 'bruler', 'brûler', 'incinere', 'incinère'] },
     { a: 'buy',    mots: ['buy', 'achete', 'achète', 'acheter', 'acheter plus', 'prends', 'prendre', 'get me', 'ape'] },
     { a: 'send',   mots: ['send', 'envoie', 'envoyer', 'envois', 'transfere', 'transfère', 'transferer', 'transférer', 'transfer', 'vire', 'virer', 'paie', 'payer'] }
   ];
+
+  /* Ce qui se brûle : SWOGE et SWOGEBET seulement, comme la page (`BRULABLES`).
+     Proposer de brûler autre chose (de l'ETH) serait un piège : une action
+     irréversible qui ne mène à rien. On le refuse, et on le dit. */
+  var BRULABLES = ['swoge', 'swogebet'];
 
   /* Des alias de jetons courants, en plus du symbole et du nom lus sur la
      liste reelle de la page. « eth » peut viser l'ETH natif de la Robinhood
@@ -203,6 +209,24 @@
         depuisAchat: true, resume: resume('swap', { deCle: deCle, versCle: vers, montant: montant }, jetons) };
     }
 
+    /* ---- BRÛLER ---- un envoi vers l'adresse morte, SANS destination à taper.
+       La destination (0x…dEaD) est fixe, publique, posée par la page : la règle
+       « l'adresse ne vient que de la phrase » est satisfaite d'office — il n'y a
+       rien à deviner. On refuse de brûler autre chose que SWOGE / SWOGEBET. */
+    if (action === 'burn') {
+      var jBr = trouveJeton(texte, jetons);
+      if (!jBr) {
+        return { action: 'inconnu', texte: texte,
+          pourquoi: 'Which token do you want to burn? Name it, e.g. “burn 100 SWOGE”.' };
+      }
+      if (BRULABLES.indexOf(sansAccent(jBr)) < 0) {
+        return { action: 'inconnu', texte: texte,
+          pourquoi: 'Only SWOGE and SWOGEBET can be burned — burning anything else is a permanent action that leads nowhere.' };
+      }
+      return { action: 'burn', jetonCle: jBr, montant: montant || null,
+        resume: resume('burn', { jetonCle: jBr, montant: montant }, jetons) };
+    }
+
     /* ---- SWAP ---- */
     if (action === 'swap') {
       /* « échange X contre/en/pour Y » : X avant le mot de liaison, Y apres. */
@@ -297,6 +321,9 @@
     }
     if (action === 'swap') {
       return 'Swap ' + (m ? qte : '') + symb(a.deCle) + ' for ' + symb(a.versCle) + '. You review and sign it yourself.';
+    }
+    if (action === 'burn') {
+      return 'Burn ' + (m ? qte : '') + symb(a.jetonCle) + ' — permanent, it cannot be undone. You review and sign it yourself.';
     }
     if (action === 'bridge') {
       var nomC = function (id) {

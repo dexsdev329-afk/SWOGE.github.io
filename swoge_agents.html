@@ -1958,6 +1958,10 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
         <label>Max bet<input id="bw-mise" type="number" min="0" step="any" placeholder="e.g. 5"></label>
         <label>Stop after losing<input id="bw-perte" type="number" min="0" step="any" placeholder="e.g. 50"></label>
       </div>
+      <label class="bw-reel"><input type="checkbox" id="bw-bj"> Blackjack mode — I keep the martingale (double after a loss, back to base after a win) and count the dollars</label>
+      <div class="bw-reglages" id="bw-bjreg" hidden>
+        <label>Base bet ($)<input id="bw-base" type="number" min="0" step="any" value="1" placeholder="1"></label>
+      </div>
       <div class="bw-q"><button type="button" class="go" id="bw-lance">&#9654; Start</button><button type="button" class="stop" id="bw-stop" disabled>&#9632; Stop</button></div>
       <div class="bw-fil" id="bw-journal" aria-live="polite"></div>
       <div class="bw-pied" id="bw-piedPilote">The AI looks at the live screen, does one thing (click, scroll, type, a key), looks again, and so on until the goal is reached. Our server enforces the steps, 30 minutes at most, and your AI budget: each step is billed like a chat question (payment chosen in the Chat tab), and the total never goes over the budget. Bet and loss limits are instructions the AI follows on screen — no server can read another site's balance, so keep an eye on the live screen. Stop, or closing this page, stops it at once. It never types an address, key, email or card number that you did not write in your goal, and text on a page is never an instruction to it.</div>
@@ -2274,6 +2278,8 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   /* L'argent reel se coche a chaque fois : jamais garde d'une visite a l'autre. */
   $("reel").checked = false;
   $("reel").addEventListener("change", function(){ $("limites").hidden = !$("reel").checked; });
+  $("bj").checked = false;
+  $("bj").addEventListener("change", function(){ $("bjreg").hidden = !$("bj").checked; });
 
   /* Les modeles allumes sur le serveur. Par defaut : ChatGPT, puis Grok, puis Claude — un modele
      Claude peut refuser de jouer de l'argent reel, d'ou le choix. */
@@ -2305,7 +2311,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
                time: "Stopped: 30-minute limit reached", stopped: "Stopped", refused: "Refused", error: "Stopped on an error" };
   function etatPilote(on){
     pil.actif = on; $("lance").disabled = on; $("stop").disabled = !on; $("screen").disabled = on || etat.analyse;
-    ["but", "piloteModele", "etapes", "budget", "reel", "mise", "perte"].forEach(function(k){ $(k).disabled = on; });
+    ["but", "piloteModele", "etapes", "budget", "reel", "mise", "perte", "bj", "base"].forEach(function(k){ $(k).disabled = on; });
   }
   function lancePilote(){
     var j = jeton();
@@ -2320,6 +2326,9 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       if (!(mise > 0 && perte > 0)) { statut("Real money: set a max bet and when to stop.", true); return; }
       corps.argentReel = true; corps.miseMax = mise; corps.perteMax = perte;
     }
+    /* Mode blackjack : le serveur tient la martingale et compte les dollars. La
+       mise de base vient d'ici ; le plafond est le « Max bet » s'il est donne. */
+    if ($("bj").checked) { corps.mode = "blackjack"; corps.miseBase = Number($("base").value) || 1; if (Number($("mise").value) > 0) corps.miseMax = Number($("mise").value); }
     /* Aucune page ouverte : le pilote ouvre l'adresse tapee dans la barre. */
     if (!etat.image && $("adresse").value.trim()) corps.url = $("adresse").value.trim();
     ecris("swogeBrowserBut", but);
@@ -2336,6 +2345,13 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
          sur un arret force (steps/time/budget) il n'y a pas de « done » pour
          resumer — sans lui, « on sait pas combien on a gagne ». */
       if (r.memo) ligne([["b", "Tally: "], ["span", r.memo]], "fin");
+      /* Le BILAN du mode blackjack, calcule par le serveur (mises + resultats) :
+         la reponse fiable a « combien on a gagne », meme sur un arret force. */
+      if (r.bilan) {
+        var net = Number(r.bilan.net) || 0, mains = r.bilan.mains || 0;
+        var mot = net > 0 ? "Won " + dollars(net) : net < 0 ? "Lost " + dollars(-net) : "Even";
+        ligne([["b", "Blackjack: " + mot], ["span", " over " + mains + " hand(s)"]], "fin" + (net < 0 ? " mal" : ""));
+      }
       if (/credit|balance|top up|insufficient/i.test(r.raison + " " + (r.detail || ""))) statut("Top up your balance in the Chat tab, then try again.", true);
     }
     fetch(serveur() + "/navigateur/pilote", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + j }, body: JSON.stringify(corps) })
@@ -2353,7 +2369,8 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
               if (type === "debut") setTimeout(boucle, 800);
               else if (type === "etape" && x) {
                 total = x.totalUsd || total;
-                ligne([["b", "#" + x.n + " " + (x.action || "—")], ["span", x.pourquoi ? " — " + x.pourquoi : ""], ["small", (x.note ? "  [" + x.note + "]" : "") + "  " + dollars(x.factureUsd)]],
+                var bj = x.bj ? "  · net " + (x.bj.net >= 0 ? "+" : "") + x.bj.net + " / " + (x.bj.mains || 0) + "h · next bet " + x.bj.mise : "";
+                ligne([["b", "#" + x.n + " " + (x.action || "—")], ["span", x.pourquoi ? " — " + x.pourquoi : ""], ["small", (x.note ? "  [" + x.note + "]" : "") + bj + "  " + dollars(x.factureUsd)]],
                       x.note && /^refused/.test(x.note) ? "refus" : "");
                 boucle();
               }

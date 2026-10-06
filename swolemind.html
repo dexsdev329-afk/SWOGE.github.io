@@ -863,6 +863,10 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 .plus{width:36px;height:36px;border-radius:50%;border:1px solid var(--line);background:transparent;font-size:20px;line-height:1;
   cursor:pointer;color:var(--paper);display:inline-flex;align-items:center;justify-content:center;padding:0}
 .plus[hidden]{display:none}
+/* Le micro en cours de dictee : rouge, et il pulse pour qu'on sache qu'il ecoute. */
+.plus.actif{border-color:var(--serpent,#d64541);color:var(--serpent,#d64541);background:rgba(214,69,65,.10);animation:micPulse 1.3s ease-in-out infinite}
+@keyframes micPulse{0%,100%{box-shadow:0 0 0 0 rgba(214,69,65,.35)}50%{box-shadow:0 0 0 6px rgba(214,69,65,0)}}
+@media (prefers-reduced-motion:reduce){.plus.actif{animation:none}}
 /* `display:inline-flex` l'emporte sur `hidden` : sans cette ligne, le choix du
    modele de chat et « Search » restaient affiches en mode Image et Video. */
 .outil[hidden],.puce[hidden]{display:none}
@@ -1125,6 +1129,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       <textarea id="question" rows="1" placeholder="Ask SwoleMind" aria-label="Your question"></textarea>
       <div class="outils">
         <button class="plus" id="joindre" type="button" title="Attach a photo" aria-label="Attach a photo" hidden>+</button>
+        <button class="plus" id="micro" type="button" title="Dictate your message" aria-label="Dictate your message" aria-pressed="false" hidden>&#127908;</button>
         <input type="file" id="fichier" accept="image/png,image/jpeg,image/webp" hidden>
         <input type="file" id="fichierChat" accept="image/png,image/jpeg,image/webp,application/pdf" multiple hidden>
         <div class="modes" role="group" aria-label="What to make">
@@ -1416,6 +1421,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     /* « + » partout : en Chat il joint une photo ou un PDF a la question. */
     $("joindre").hidden = m === "mission";
     $("joindre").title = m === "chat" ? "Attach a photo or a PDF" : "Attach a photo";
+    majMicro();
     $("pieces").hidden = m !== "chat" || !etat.pieces.length;
     $("reglages").hidden = m === "chat" || m === "mission";
     $("fournisseur").hidden = m !== "image";
@@ -2701,6 +2707,85 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   $("question").addEventListener("input", dimensionne);
   $("question").addEventListener("keydown", function(e){ if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); envoyer(); } });
   $("envoyer").addEventListener("click", function(){ if (etat.occupe && Object.keys(etat.enVol).length) arreter(); else envoyer(); });
+
+  /* ==================== LE VOCAL ====================
+   * « parler dans le chat, et qu'il comprenne » (06/10). On transcrit la voix en
+   * TEXTE, qui part ensuite au modele choisi (ils lisent le texte).
+   *   1. le micro du NAVIGATEUR (Web Speech API) d'abord : gratuit, rien ne part
+   *      au serveur, rien n'est facture. Chrome, Edge, Android le savent.
+   *   2. sinon, si le repli SERVEUR est allume (catalogue.voix.actif), on
+   *      enregistre un clip et on l'envoie a /studio/chat/voix : il revient en
+   *      texte, facture a la duree reelle comme le reste.
+   * Dans les deux cas le texte arrive dans le composeur : le joueur le relit et
+   * l'envoie lui-meme. On ne parle jamais a sa place. */
+  var REC = { on: false, sr: null, mr: null, flux: null, bouts: [], t0: 0, cap: null };
+  function speechAPI(){ return window.SpeechRecognition || window.webkitSpeechRecognition || null; }
+  function voixServeur(){ return !!(etat.cat && etat.cat.voix && etat.cat.voix.actif && navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder); }
+  function voixDispo(){ return !!(speechAPI() || voixServeur()); }
+  function majMicro(){ var b = $("micro"); if (b) b.hidden = etat.mode !== "chat" || !voixDispo(); }
+  function etatMicro(on){ REC.on = on; var b = $("micro"); if (b) { b.setAttribute("aria-pressed", on ? "true" : "false"); b.classList.toggle("actif", on); b.title = on ? "Stop" : "Dictate your message"; } }
+  function poseTexte(t){ t = String(t || "").trim(); if (!t) return; var q = $("question"); var base = q.value; q.value = (base && !/\s$/.test(base) ? base + " " : base) + t; dimensionne(); q.focus(); }
+
+  function demarreNavigateur(SR){
+    var r = new SR();
+    REC.sr = r;
+    r.lang = navigator.language || "en-US";
+    r.interimResults = false; r.continuous = false; r.maxAlternatives = 1;
+    r.onresult = function(e){ var fin = ""; for (var i = e.resultIndex; i < e.results.length; i++) if (e.results[i].isFinal) fin += e.results[i][0].transcript; poseTexte(fin); };
+    r.onerror = function(ev){ dit(ev && (ev.error === "not-allowed" || ev.error === "service-not-allowed") ? "Allow the microphone to dictate." : ""); etatMicro(false); REC.sr = null; };
+    r.onend = function(){ etatMicro(false); REC.sr = null; };
+    try { r.start(); etatMicro(true); dit("Listening…"); } catch (e) { etatMicro(false); }
+  }
+
+  function demarreServeur(){
+    if (!jeton()) { dit("Sign in with your wallet first."); return; }
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(function(flux){
+      REC.flux = flux; REC.bouts = []; REC.t0 = Date.now();
+      var mr; try { mr = new MediaRecorder(flux); } catch (e) { fermeFlux(); dit("Your browser can't record audio."); return; }
+      REC.mr = mr;
+      mr.ondataavailable = function(e){ if (e.data && e.data.size) REC.bouts.push(e.data); };
+      mr.onstop = function(){ fermeFlux(); envoieClip(mr.mimeType || "audio/webm"); REC.mr = null; };
+      mr.start(); etatMicro(true); dit("Recording… tap the mic to stop.");
+      var maxS = (etat.cat.voix && etat.cat.voix.dureeMaxS) || 120;
+      REC.cap = setTimeout(function(){ if (REC.on) arreteVoix(); }, maxS * 1000);
+    }, function(){ dit("Allow the microphone to use voice."); });
+  }
+
+  function fermeFlux(){ if (REC.flux) { try { REC.flux.getTracks().forEach(function(t){ t.stop(); }); } catch (e) {} REC.flux = null; } }
+
+  function envoieClip(mime){
+    var blob = new Blob(REC.bouts, { type: mime }); REC.bouts = [];
+    if (!blob.size) { dit(""); return; }
+    var sec = Math.round((Date.now() - REC.t0) / 1000);
+    dit("Transcribing…");
+    var fr = new FileReader();
+    fr.onload = function(){
+      var b64 = String(fr.result).split(",")[1] || "";
+      fetch(serveur() + "/studio/chat/voix", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + jeton() },
+        body: JSON.stringify({ audio: b64, mime: blob.type, secondes: sec, payeur: payeurServeur() }) })
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          if (d && d.ok) { poseTexte(d.texte || ""); dit(d.texte ? "" : "No speech detected — try again."); if (d.solde != null) $("solde").innerHTML = "Balance <b>" + nombre(d.solde) + " $SWOGE</b>"; }
+          else dit((d && d.raison) || "Voice failed.");
+        })["catch"](function(){ dit("Voice failed — check your connection."); });
+    };
+    fr.readAsDataURL(blob);
+  }
+
+  function arreteVoix(){
+    if (REC.cap) { clearTimeout(REC.cap); REC.cap = null; }
+    if (REC.sr) { try { REC.sr.stop(); } catch (e) {} etatMicro(false); return; }
+    if (REC.mr && REC.mr.state !== "inactive") { try { REC.mr.stop(); } catch (e) {} }   /* onstop -> envoieClip */
+    etatMicro(false);
+  }
+
+  $("micro").addEventListener("click", function(){
+    if (REC.on) { arreteVoix(); return; }
+    var SR = speechAPI();
+    if (SR) demarreNavigateur(SR);
+    else if (voixServeur()) demarreServeur();
+    else dit("Voice needs Chrome or Edge, or server voice switched on.");
+  });
   /* La page qui s'en va : ses requetes coupees ne sont pas des echecs. */
   window.addEventListener("pagehide", function(){ etat.quitte = true; });
   window.addEventListener("beforeunload", function(){ etat.quitte = true; });
@@ -3334,7 +3419,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     .then(function(c){
       etat.cat = c;
       if (!c.ouvert) dit(c.note || TXT.ferme);
-      peintPrix(); peintBoutons();
+      peintPrix(); peintBoutons(); majMicro();
     })["catch"](function(){ $("prixq").textContent = TXT.ferme; });
   /* Les missions : le catalogue de l'agent (modele par defaut, prix d'une mission en dollars et en $SWOGE). */
   fetch(serveur() + "/studio/agent/catalogue", { cache: "no-store" })

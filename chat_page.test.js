@@ -892,6 +892,91 @@ const sse = (evs) => evs.map(([t, d]) => 'event: ' + t + '\ndata: ' + JSON.strin
     await ctx.close();
   }
 
+  console.log('\n-- 16. le vocal : micro navigateur (gratuit) d abord, repli serveur ensuite (06/10) --');
+  {
+    const CATV = Object.assign({}, CAT, { voix: { actif: true, dureeMaxS: 120, prixTypiqueUsd: 0.001, prixTypiqueSwoge: 36 } });
+    /* Le decor commun : catalogue (avec voix), solde, et la route /studio/chat/voix. */
+    const monte = async (avant, voixRep) => {
+      const ctx = await nav.newContext({ viewport: { width: 1200, height: 900 } });
+      await ctx.addInitScript(() => { try { localStorage.setItem('swogeStudioMode', JSON.stringify('chat')); localStorage.setItem('swogeSession', 'j.voix'); } catch (e) {} });
+      await ctx.addInitScript(avant);
+      const page = await ctx.newPage();
+      const voix = [];
+      await page.route((u) => !u.href.startsWith('http://127.0.0.1:' + port), async (r) => {
+        const u = r.request().url();
+        if (/\/studio\/chat\/catalogue/.test(u)) return r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(CATV) });
+        if (/\/studio\/chat\/voix$/.test(u)) { voix.push(JSON.parse(r.request().postData() || '{}')); return r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(voixRep || { ok: true, texte: 'server heard this', secondes: 4, factureSwoge: '50', factureUsd: 0.001, solde: '199950.0' }) }); }
+        if (/\/studio\/chat\/solde/.test(u)) return r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, adresse: '0xabc', solde: '200000.0' }) });
+        if (/vitrine\.json/.test(u)) return r.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
+        return r.abort();
+      });
+      await page.goto('http://127.0.0.1:' + port + '/swolemind.html', { waitUntil: 'domcontentloaded' });
+      await page.waitForFunction(() => /per (question|mission)/.test(document.getElementById('prixq').textContent));
+      return { page, ctx, voix };
+    };
+
+    /* A. Le navigateur sait transcrire (Web Speech API) : gratuit, rien ne part au serveur. */
+    {
+      const { page, ctx, voix } = await monte(() => {
+        /* Chromium expose SpeechRecognition nativement : on remplace LES DEUX,
+           sinon le vrai (muet en headless) l emporte sur le faux. */
+        var faux = function () {
+          this.start = () => { setTimeout(() => { this.onresult && this.onresult({ resultIndex: 0, results: [{ 0: { transcript: 'hello from my voice' }, isFinal: true, length: 1 }] }); this.onend && this.onend(); }, 10); };
+          this.stop = () => { this.onend && this.onend(); };
+        };
+        window.SpeechRecognition = window.webkitSpeechRecognition = faux;
+      });
+      ok(await page.isVisible('#micro'), 'le micro est visible quand le navigateur sait transcrire');
+      await page.click('#micro');
+      await page.waitForFunction(() => document.getElementById('question').value.indexOf('hello from my voice') >= 0, null, { timeout: 4000 });
+      ok((await page.inputValue('#question')).indexOf('hello from my voice') >= 0, 'la dictee du navigateur remplit le composeur');
+      ok(voix.length === 0, 'et RIEN n est envoye au serveur : le micro navigateur est gratuit');
+      await ctx.close();
+    }
+
+    /* B. Le navigateur ne sait pas, mais le repli serveur est allume : on enregistre
+       un clip et on l envoie a /studio/chat/voix, qui le rend en texte. */
+    {
+      const { page, ctx, voix } = await monte(() => {
+        window.SpeechRecognition = undefined; window.webkitSpeechRecognition = undefined;
+        navigator.mediaDevices = navigator.mediaDevices || {};
+        navigator.mediaDevices.getUserMedia = () => Promise.resolve({ getTracks: () => [{ stop: () => {} }] });
+        window.MediaRecorder = function () {
+          this.state = 'inactive'; this.mimeType = 'audio/webm';
+          this.start = () => { this.state = 'recording'; };
+          this.stop = () => { this.state = 'inactive'; this.ondataavailable && this.ondataavailable({ data: new Blob(['clip-bytes'], { type: 'audio/webm' }) }); this.onstop && this.onstop(); };
+        };
+      });
+      ok(await page.isVisible('#micro'), 'le micro est visible quand le repli serveur est allume');
+      await page.click('#micro');                                   /* demarre l enregistrement */
+      await page.waitForFunction(() => document.getElementById('micro').getAttribute('aria-pressed') === 'true', null, { timeout: 4000 });
+      await page.click('#micro');                                   /* arrete -> envoie le clip */
+      await page.waitForFunction(() => document.getElementById('question').value.indexOf('server heard this') >= 0, null, { timeout: 4000 });
+      ok((await page.inputValue('#question')).indexOf('server heard this') >= 0, 'le texte transcrit par le serveur arrive dans le composeur');
+      ok(voix.length === 1 && typeof voix[0].audio === 'string' && voix[0].audio.length > 0 && 'payeur' in voix[0], 'le clip (audio base64) et le payeur sont POSTes a /studio/chat/voix');
+      await ctx.close();
+    }
+
+    /* C. Ni l un ni l autre : pas de micro du tout (aucun bouton trompeur). */
+    {
+      const CATF = Object.assign({}, CAT, { voix: { actif: false, dureeMaxS: 120 } });
+      const ctx = await nav.newContext({ viewport: { width: 1200, height: 900 } });
+      await ctx.addInitScript(() => { try { localStorage.setItem('swogeStudioMode', JSON.stringify('chat')); } catch (e) {} });
+      await ctx.addInitScript(() => { try { delete window.SpeechRecognition; delete window.webkitSpeechRecognition; } catch (e) {} if (navigator.mediaDevices) navigator.mediaDevices.getUserMedia = undefined; window.MediaRecorder = undefined; });
+      const page = await ctx.newPage();
+      await page.route((u) => !u.href.startsWith('http://127.0.0.1:' + port), async (r) => {
+        const u = r.request().url();
+        if (/\/studio\/chat\/catalogue/.test(u)) return r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(CATF) });
+        if (/vitrine\.json/.test(u)) return r.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
+        return r.abort();
+      });
+      await page.goto('http://127.0.0.1:' + port + '/swolemind.html', { waitUntil: 'domcontentloaded' });
+      await page.waitForFunction(() => /per (question|mission)/.test(document.getElementById('prixq').textContent));
+      ok(!(await page.isVisible('#micro')), 'aucun micro quand ni le navigateur ni le serveur ne savent transcrire');
+      await ctx.close();
+    }
+  }
+
   await nav.close(); srv.close();
   console.log('\nRATES : ' + rates + '/' + n);
   process.exit(rates ? 1 : 0);

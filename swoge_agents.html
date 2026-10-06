@@ -1987,6 +1987,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       <div class="bw-q"><button type="button" class="go" id="bw-lance">&#9654; Start</button><button type="button" class="stop" id="bw-stop" disabled>&#9632; Stop</button></div>
       <div class="bw-score" id="bw-score" hidden aria-live="polite">
         <span class="bw-net" id="bw-scoreNet">$0</span>
+        <span class="bw-wl">balance <b id="bw-scoreSolde">—</b></span>
         <span class="bw-wl"><b id="bw-scoreW">0</b> won</span>
         <span class="bw-wl"><b id="bw-scoreL">0</b> lost</span>
         <span class="bw-wl"><b id="bw-scoreP">0</b> push</span>
@@ -2383,6 +2384,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     var net = (bj.soldeNet != null && bj.soldeNet !== undefined) ? Number(bj.soldeNet) : (Number(bj.net) || 0), nel = $("scoreNet");
     nel.textContent = (net > 0 ? "+" : net < 0 ? "-" : "") + dollars(Math.abs(net));
     nel.className = "bw-net" + (net > 0 ? " up" : net < 0 ? " dn" : "");
+    $("scoreSolde").textContent = (bj.solde != null && bj.solde !== undefined) ? dollars(Number(bj.solde)) : "—";
     $("scoreW").textContent = bj.gagnees || 0; $("scoreL").textContent = bj.perdues || 0; $("scoreP").textContent = bj.nulles || 0;
     var w = bj.gagnees || 0, l = bj.perdues || 0, dec = w + l;
     $("scoreWR").textContent = dec ? Math.round(w / dec * 100) + "%" : "—";

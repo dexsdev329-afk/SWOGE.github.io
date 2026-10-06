@@ -2553,10 +2553,16 @@ async function auditDesVetos() {
     const tout = await lignes();
     ok(tout.length === 9, 'le scanner porte les 7 candidats du tour et les 2 surveilles (' + tout.length + ')');
     await onglet(page, 'tm-market');
+    /* Les filtres du scanner, reduits le 06/10 a l'axe des DECISIONS (All / Buy /
+       Watch / Reject) a la demande du proprietaire : « High Risk » et « New Tokens »
+       etaient deux vues en trop (le risque reste dans la colonne Risk, l'age dans
+       la colonne Age). On verifie donc que ces deux puces ont disparu, et que les
+       filtres restants narrent toujours la bonne population. */
+    const puces = async () => page.evaluate(() => [...document.querySelectorAll('#tmFiltres [data-f]')].map((b) => b.getAttribute('data-f')));
+    ok((await puces()).join() === 'tout,achat,veille,refus', 'le scanner ne garde que les 4 filtres de decision (' + (await puces()).join(' ') + ')');
     const filtre = async (f) => { await page.click('#tmFiltres [data-f="' + f + '"]'); await page.waitForTimeout(150); return lignes(); };
-    const refus = await filtre('refus'), risque = await filtre('risque'), veille = await filtre('veille');
+    const refus = await filtre('refus'), veille = await filtre('veille');
     ok(refus.length === 6 && refus.indexOf('$NOVA') < 0, 'Reject : les 6 refuses, pas NOVA (' + refus.join(' ') + ')');
-    ok(risque.sort().join() === '$BALEINE,$MIEL,$PIEGE,$VIDE', 'High Risk : ceux qu une garde de securite a refuses — contrat, detenteurs, sortie (' + risque.join(' ') + ')');
     ok(veille.sort().join() === '$PATIENT,$PRESQUE', 'Watch : la liste de surveillance (' + veille.join(' ') + ')');
     await filtre('tout');
     await page.fill('#tmCherche', 'miel'); await page.waitForTimeout(150);

@@ -134,9 +134,15 @@
         <label>Max bet<input id="bw-mise" type="number" min="0" step="any" placeholder="e.g. 5"></label>
         <label>Stop after losing<input id="bw-perte" type="number" min="0" step="any" placeholder="e.g. 50"></label>
       </div>
-      <label class="bw-reel"><input type="checkbox" id="bw-bj"> Blackjack mode — I keep the martingale (double after a loss, back to base after a win) and count the dollars</label>
+      <label class="bw-reel"><input type="checkbox" id="bw-bj"> Blackjack mode — I manage the bet, count the dollars, and learn the table (no goal needed)</label>
       <div class="bw-reglages" id="bw-bjreg" hidden>
         <label>Base bet ($)<input id="bw-base" type="number" min="0" step="any" value="1" placeholder="1"></label>
+        <label>Betting system<select id="bw-strategie" aria-label="Betting system">
+          <option value="martingale">Martingale — double after a loss</option>
+          <option value="paroli">Paroli — double after a win</option>
+          <option value="dalembert">D'Alembert — +1 after loss, -1 after win</option>
+          <option value="plat">Flat — same bet every hand</option>
+        </select></label>
       </div>
       <div class="bw-q"><button type="button" class="go" id="bw-lance">&#9654; Start</button><button type="button" class="stop" id="bw-stop" disabled>&#9632; Stop</button></div>
       <div class="bw-score" id="bw-score" hidden aria-live="polite">
@@ -523,7 +529,7 @@
                time: "Stopped: 30-minute limit reached", stopped: "Stopped", refused: "Refused", error: "Stopped on an error" };
   function etatPilote(on){
     pil.actif = on; $("lance").disabled = on; $("stop").disabled = !on; $("screen").disabled = on || etat.analyse;
-    ["but", "piloteModele", "etapes", "budget", "reel", "mise", "perte", "bj", "base"].forEach(function(k){ $(k).disabled = on; });
+    ["but", "piloteModele", "etapes", "budget", "reel", "mise", "perte", "bj", "base", "strategie"].forEach(function(k){ $(k).disabled = on; });
   }
   /* Le tableau de score du blackjack : gain/perte en direct, gagnees/perdues,
      mains, prochaine mise — calcules par le serveur, on ne fait que peindre. */
@@ -541,7 +547,9 @@
     if (!j) { statut("Sign in with your wallet (top right) first.", true); return; }
     if (pil.actif) return;
     var but = $("but").value.trim();
-    if (but.length < 3) { statut("Write what the autopilot should do.", true); $("but").focus(); return; }
+    /* En mode blackjack, le but n'est pas obligatoire : le mode EST le but. */
+    if (but.length < 3 && !$("bj").checked) { statut("Write what the autopilot should do.", true); $("but").focus(); return; }
+    if ($("bj").checked && but.length < 3) but = "Play blackjack with basic strategy";
     var corps = { but: but, modele: $("piloteModele").value, etapesMax: Number($("etapes").value) || 60, budgetUsd: Number($("budget").value) || 1,
                   payeur: lis("swogeChatPayeur", null) === "swoge" ? "swoge" : "credit", ecran: etat.ecran };
     if ($("reel").checked) {
@@ -551,7 +559,7 @@
     }
     /* Mode blackjack : le serveur tient la martingale et compte les dollars. La
        mise de base vient d'ici ; le plafond est le « Max bet » s'il est donne. */
-    if ($("bj").checked) { corps.mode = "blackjack"; corps.miseBase = Number($("base").value) || 1; if (Number($("mise").value) > 0) corps.miseMax = Number($("mise").value); }
+    if ($("bj").checked) { corps.mode = "blackjack"; corps.miseBase = Number($("base").value) || 1; corps.strategie = $("strategie").value; if (Number($("mise").value) > 0) corps.miseMax = Number($("mise").value); }
     /* Aucune page ouverte : le pilote ouvre l'adresse tapee dans la barre. */
     if (!etat.image && $("adresse").value.trim()) corps.url = $("adresse").value.trim();
     ecris("swogeBrowserBut", but);

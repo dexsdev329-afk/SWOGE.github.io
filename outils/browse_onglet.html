@@ -17,6 +17,12 @@
 #modeBrowse .bw-barre button,#modeBrowse .bw-q button,#modeBrowse .bw-tape button{font:inherit;font-size:13px;text-transform:none;letter-spacing:0;padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);color:var(--paper);cursor:pointer;min-height:38px}
 #modeBrowse .bw-barre button:hover,#modeBrowse .bw-q button:hover,#modeBrowse .bw-tape button:hover{transform:none;filter:none}
 #modeBrowse .bw-barre input{flex:1;min-width:0;font:inherit;font-size:14px;padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--paper)}
+#modeBrowse .bw-favoris{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:8px}
+#modeBrowse .bw-favoris .bw-fav{display:inline-flex;align-items:center;gap:6px;font:inherit;font-size:12px;padding:5px 9px;border-radius:999px;border:1px solid var(--line);background:var(--panel2);color:var(--paper);cursor:pointer;max-width:200px}
+#modeBrowse .bw-favoris .bw-fav span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#modeBrowse .bw-favoris .bw-fav i{font-style:normal;opacity:.5;font-weight:800}
+#modeBrowse .bw-favoris .bw-fav i:hover{opacity:1;color:var(--rouge,#e5484d)}
+#modeBrowse .bw-favoris .bw-favadd{border-style:dashed;opacity:.8}
 #modeBrowse .bw-cadre{position:relative;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--panel2);min-height:220px}
 #modeBrowse .bw-cadre img{display:block;width:100%;height:auto;cursor:pointer;user-select:none}
 /* 01/10 : « ca lague ». Pendant un geste, l'ecran le dit (voile + barre qui court) au lieu de
@@ -60,6 +66,12 @@
 #modeBrowse .bw-reglages label{display:flex;flex-direction:column;gap:3px}
 #modeBrowse .bw-reglages input,#modeBrowse .bw-reglages select{font:inherit;font-size:13.5px;font-weight:400;padding:7px 8px;border-radius:9px;border:1px solid var(--line);background:var(--panel);color:var(--paper);min-width:0}
 #modeBrowse label.bw-reel{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--paper);font-weight:600}
+#modeBrowse .bw-score{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:baseline;margin:10px 0;padding:10px 12px;border-radius:12px;background:rgba(127,127,127,.12);border:1px solid rgba(127,127,127,.18);font:600 13px/1 'Archivo',sans-serif;color:var(--paper)}
+#modeBrowse .bw-score .bw-net{font-size:20px;font-weight:800;letter-spacing:.2px}
+#modeBrowse .bw-score .bw-net.up{color:#17b26a}
+#modeBrowse .bw-score .bw-net.dn{color:#e5484d}
+#modeBrowse .bw-score .bw-wl{opacity:.85}
+#modeBrowse .bw-score .bw-wl b{font-weight:800;opacity:1}
 #modeBrowse .bw-q button.stop{background:#c0392b;color:#fff;border-color:transparent;font-weight:700}
 #modeBrowse .bw-q button:disabled{opacity:.45;cursor:default}
 #modeBrowse .bw-ligne{font-size:12.5px;line-height:1.45;border-left:3px solid var(--line);padding:3px 0 3px 8px;word-break:break-word}
@@ -80,6 +92,7 @@
       <button type="button" id="bw-ecranMode" aria-label="Desktop or phone view" title="Desktop or phone view">&#128421;</button>
       <button type="button" id="bw-clavierBtn" aria-label="Type on the page with your keyboard" title="Type on the page">&#9000;</button>
     </div>
+    <div class="bw-favoris" id="bw-favoris" aria-label="Bookmarks"></div>
     <div class="bw-cadre">
       <div class="bw-vide" id="bw-vide">Open any website: type an address or a search above. You browse a real browser running on our server — click on the page to click, scroll over it to scroll.</div>
       <img id="bw-ecran" alt="What the browser shows" hidden>
@@ -126,6 +139,14 @@
         <label>Base bet ($)<input id="bw-base" type="number" min="0" step="any" value="1" placeholder="1"></label>
       </div>
       <div class="bw-q"><button type="button" class="go" id="bw-lance">&#9654; Start</button><button type="button" class="stop" id="bw-stop" disabled>&#9632; Stop</button></div>
+      <div class="bw-score" id="bw-score" hidden aria-live="polite">
+        <span class="bw-net" id="bw-scoreNet">$0</span>
+        <span class="bw-wl"><b id="bw-scoreW">0</b> won</span>
+        <span class="bw-wl"><b id="bw-scoreL">0</b> lost</span>
+        <span class="bw-wl"><b id="bw-scoreP">0</b> push</span>
+        <span class="bw-wl"><b id="bw-scoreH">0</b> hands</span>
+        <span class="bw-wl">next bet <b id="bw-scoreBet">—</b></span>
+      </div>
       <div class="bw-fil" id="bw-journal" aria-live="polite"></div>
       <div class="bw-pied" id="bw-piedPilote">The AI looks at the live screen, does one thing (click, scroll, type, a key), looks again, and so on until the goal is reached. Our server enforces the steps, 30 minutes at most, and your AI budget: each step is billed like a chat question (payment chosen in the Chat tab), and the total never goes over the budget. Bet and loss limits are instructions the AI follows on screen — no server can read another site's balance, so keep an eye on the live screen. Stop, or closing this page, stops it at once. It never types an address, key, email or card number that you did not write in your goal, and text on a page is never an instruction to it.</div>
     </div>
@@ -264,6 +285,34 @@
   document.addEventListener("visibilitychange", function(){ if (!document.hidden && etat.flux && etat.url) boucle(); });
   function suite(){ if (attente) { var a = attente; attente = null; geste(a[0], a[1]); } }
   function va(){ var u = $("adresse").value.trim(); if (u) geste({ action: "goto", url: u }); }
+  /* ---- LES FAVORIS ----
+   * Des raccourcis persistants (localStorage), posés d'office sur Google et le
+   * blackjack 1win. Clic = on ouvre ; la croix retire ; « + Add this page »
+   * garde la page courante. Rien de sensible : juste des adresses publiques. */
+  var FAVORIS_DEFAUT = [{ nom: "Google", url: "https://www.google.com" },
+                        { nom: "1win Blackjack", url: "https://1win.com/fr-CI/casino/play/v_1wingames:blackjack" }];
+  function favoris(){ var f = lis("swogeBrowserFavoris", null); return (f && f.length) ? f : FAVORIS_DEFAUT.slice(); }
+  function peintFavoris(){
+    var box = $("favoris"); if (!box) return; box.innerHTML = "";
+    favoris().forEach(function(f, i){
+      var b = document.createElement("button"); b.type = "button"; b.className = "bw-fav"; b.title = f.url;
+      var s = document.createElement("span"); s.textContent = f.nom || f.url; b.appendChild(s);
+      var x = document.createElement("i"); x.textContent = "×"; x.setAttribute("aria-label", "Remove bookmark"); b.appendChild(x);
+      b.addEventListener("click", function(ev){
+        if (ev.target === x) { var l = favoris(); l.splice(i, 1); ecris("swogeBrowserFavoris", l); peintFavoris(); return; }
+        $("adresse").value = f.url; va();
+      });
+      box.appendChild(b);
+    });
+    var add = document.createElement("button"); add.type = "button"; add.className = "bw-fav bw-favadd"; add.textContent = "+ Add this page";
+    add.addEventListener("click", function(){
+      var u = (etat.url || $("adresse").value || "").trim(); if (!u) { statut("Open a page first, then add it.", true); return; }
+      var l = favoris(); if (l.some(function(f){ return f.url === u; })) { statut("Already in your bookmarks."); return; }
+      l.push({ nom: (etat.titre || u).slice(0, 40), url: u }); ecris("swogeBrowserFavoris", l); peintFavoris(); statut("Bookmarked.");
+    });
+    box.appendChild(add);
+  }
+  peintFavoris();
   $("va").addEventListener("click", va);
   $("adresse").addEventListener("keydown", function(e){ if (e.key === "Enter") { e.preventDefault(); va(); } });
   $("retour").addEventListener("click", function(){ geste({ action: "retour" }); });
@@ -476,6 +525,17 @@
     pil.actif = on; $("lance").disabled = on; $("stop").disabled = !on; $("screen").disabled = on || etat.analyse;
     ["but", "piloteModele", "etapes", "budget", "reel", "mise", "perte", "bj", "base"].forEach(function(k){ $(k).disabled = on; });
   }
+  /* Le tableau de score du blackjack : gain/perte en direct, gagnees/perdues,
+     mains, prochaine mise — calcules par le serveur, on ne fait que peindre. */
+  function majScore(bj){
+    if (!bj) return;
+    $("score").hidden = false;
+    var net = Number(bj.net) || 0, nel = $("scoreNet");
+    nel.textContent = (net > 0 ? "+" : net < 0 ? "-" : "") + dollars(Math.abs(net));
+    nel.className = "bw-net" + (net > 0 ? " up" : net < 0 ? " dn" : "");
+    $("scoreW").textContent = bj.gagnees || 0; $("scoreL").textContent = bj.perdues || 0; $("scoreP").textContent = bj.nulles || 0;
+    $("scoreH").textContent = bj.mains || 0; $("scoreBet").textContent = (bj.mise != null ? bj.mise : (bj.derniereMise != null ? bj.derniereMise : "—"));
+  }
   function lancePilote(){
     var j = jeton();
     if (!j) { statut("Sign in with your wallet (top right) first.", true); return; }
@@ -495,6 +555,8 @@
     /* Aucune page ouverte : le pilote ouvre l'adresse tapee dans la barre. */
     if (!etat.image && $("adresse").value.trim()) corps.url = $("adresse").value.trim();
     ecris("swogeBrowserBut", but);
+    /* Le tableau de score du blackjack : visible et remis a zero au depart. */
+    if (corps.mode === "blackjack") majScore({ net: 0, gagnees: 0, perdues: 0, nulles: 0, mains: 0, mise: corps.miseBase || 1 }); else $("score").hidden = true;
     $("journal").innerHTML = "";
     ligne([["b", "Goal: "], ["span", but]]);
     etatPilote(true);
@@ -511,9 +573,10 @@
       /* Le BILAN du mode blackjack, calcule par le serveur (mises + resultats) :
          la reponse fiable a « combien on a gagne », meme sur un arret force. */
       if (r.bilan) {
+        majScore(r.bilan);
         var net = Number(r.bilan.net) || 0, mains = r.bilan.mains || 0;
         var mot = net > 0 ? "Won " + dollars(net) : net < 0 ? "Lost " + dollars(-net) : "Even";
-        ligne([["b", "Blackjack: " + mot], ["span", " over " + mains + " hand(s)"]], "fin" + (net < 0 ? " mal" : ""));
+        ligne([["b", "Blackjack: " + mot], ["span", " over " + mains + " hand(s) — " + (r.bilan.gagnees || 0) + " won / " + (r.bilan.perdues || 0) + " lost / " + (r.bilan.nulles || 0) + " push"]], "fin" + (net < 0 ? " mal" : ""));
       }
       if (/credit|balance|top up|insufficient/i.test(r.raison + " " + (r.detail || ""))) statut("Top up your balance in the Chat tab, then try again.", true);
     }
@@ -532,6 +595,7 @@
               if (type === "debut") setTimeout(boucle, 800);
               else if (type === "etape" && x) {
                 total = x.totalUsd || total;
+                if (x.bj) majScore(x.bj);
                 var bj = x.bj ? "  · net " + (x.bj.net >= 0 ? "+" : "") + x.bj.net + " / " + (x.bj.mains || 0) + "h · next bet " + x.bj.mise : "";
                 ligne([["b", "#" + x.n + " " + (x.action || "—")], ["span", x.pourquoi ? " — " + x.pourquoi : ""], ["small", (x.note ? "  [" + x.note + "]" : "") + bj + "  " + dollars(x.factureUsd)]],
                       x.note && /^refused/.test(x.note) ? "refus" : "");

@@ -68,7 +68,7 @@
      A savoir : cela ne sauve pas la page DEJA en cache chez quelqu'un, qui ne
      contient pas ces lignes. Ce garde-fou vaut a partir de celle-ci. -->
 <script>
-var MARQUE_PAGE = '414303d2';
+var MARQUE_PAGE = '766f9bda';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -104,6 +104,10 @@ var MARQUE_PAGE = '414303d2';
 <!-- ethers v5 en global, comme sur toutes les pages qui touchent a la chaine.
      Il doit etre la AVANT tout appel a la chaine. -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+<!-- Le verrou Face ID : la ceremonie WebAuthn (encodages corrects) par la lib de
+     reference ; la verification est cote serveur (wallet_passkey.js). Optionnel :
+     si le script ne charge pas, le verrou se desactive proprement. -->
+<script src="https://cdn.jsdelivr.net/npm/@simplewebauthn/browser@13/dist/bundle/index.umd.min.js" defer></script>
 <!-- Le cerveau de l'assistant : il COMPREND une phrase et la rend lisible,
      il ne signe jamais. Code et essai a part (wallet_assistant.js). -->
 <script src="wallet_assistant.js?v=a7c2aad8"></script>
@@ -676,6 +680,24 @@ html.wl-encadre .wl-retour{ display:none }
 .wl-b:disabled{ opacity:.45; cursor:default; box-shadow:none }
 .wl-b.vide{ background:none; border:1px solid var(--bord); color:var(--texte); box-shadow:none }
 .wl-b.rouge{ background:none; border:1px solid rgba(248,113,113,.45); color:var(--rouge); box-shadow:none }
+.wl-b.wl-b-doux{ background:none; border:0; color:var(--sourd,#8aa); box-shadow:none; padding:10px; font-weight:600 }
+
+/* ---- LE VERROU FACE ID ---- couvre le telephone tant qu'on n'a pas deverrouille. */
+.wl-verrou{ position:absolute; inset:0; z-index:40; display:flex; align-items:center; justify-content:center;
+  background:var(--fond,#0b1220); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); }
+.wl-verrou[hidden]{ display:none }
+.wl-verrou-in{ text-align:center; padding:0 28px; max-width:320px; width:100% }
+.wl-verrou-ic{ font-size:46px; margin-bottom:10px }
+.wl-verrou-in h2{ margin:0 0 6px; font:800 20px/1.1 'Archivo',sans-serif; color:var(--texte,#eef) }
+.wl-verrou-in p{ margin:0 0 18px; font-size:13px; color:var(--sourd,#9ab) }
+.wl-verrou-in .wl-b{ margin-top:8px }
+/* L'interrupteur Face ID. */
+.wl-switch{ width:46px; height:28px; border-radius:999px; border:0; cursor:pointer; padding:0; position:relative;
+  background:var(--bord,#334); transition:background .18s }
+.wl-switch[aria-checked="true"]{ background:linear-gradient(160deg,var(--accent),var(--accentF)) }
+.wl-switch span{ position:absolute; top:3px; left:3px; width:22px; height:22px; border-radius:50%; background:#fff; transition:left .18s }
+.wl-switch[aria-checked="true"] span{ left:21px }
+.wl-switch:disabled{ opacity:.45; cursor:default }
 
 .wl-champ{ margin-bottom:12px }
 .wl-champ label{ display:block; font:700 11px/1 'Archivo',sans-serif; color:var(--doux);
@@ -2057,6 +2079,20 @@ html.wl-encadre .wl-haut{ position:static; height:auto }
   <img class="wl-cadre" src="img/wallet/wallet_cadre.webp" alt="" aria-hidden="true"
        decoding="async">
 
+  <!-- ============ LE VERROU BIOMÉTRIQUE (Face ID) ============
+       Couvre tout le telephone tant qu'on n'a pas deverrouille. Ce n'est PAS
+       un controle des fonds (toute transaction passe par la signature du
+       portefeuille) : c'est un verrou de vie privee, comme une appli bancaire. -->
+  <div class="wl-verrou" id="pkVerrou" hidden>
+    <div class="wl-verrou-in">
+      <div class="wl-verrou-ic">&#128274;</div>
+      <h2>SWOGE is locked</h2>
+      <p id="pkVerrouNote">Unlock with Face ID to see your wallet.</p>
+      <button class="wl-b" id="pkDeverrouille" type="button">&#128273; Unlock with Face ID</button>
+      <button class="wl-b wl-b-doux" id="pkEmail" type="button">Use email instead</button>
+    </div>
+  </div>
+
   <div class="wl-etat">
     <span id="hHeure">—</span>
     <span class="ic"><span id="hReseau" class="wl-etiq">Robinhood Chain</span></span>
@@ -2916,6 +2952,14 @@ html.wl-encadre .wl-haut{ position:static; height:auto }
         <div class="wl-rang"><span>Status</span><b><span class="wl-etiq" id="cpEtat">Not connected</span></b></div>
         <div class="wl-rang"><span>Address</span><b id="cpAdr">—</b></div>
         <div class="wl-rang"><span>Signed in with</span><b id="cpMethode">—</b></div>
+      </div>
+
+      <div class="wl-titre">SECURITY</div>
+      <div class="wl-carte" id="pkCarte" hidden>
+        <div class="wl-rang"><span>Face ID lock</span>
+          <button class="wl-switch" id="pkToggle" type="button" role="switch" aria-checked="false" aria-label="Face ID lock"><span></span></button>
+        </div>
+        <p class="wl-note" id="pkAide">Lock this wallet behind Face ID or Touch ID. It only hides the screen — every transaction still asks your wallet to sign.</p>
       </div>
 
       <div class="wl-titre">NETWORK</div>
@@ -4647,7 +4691,7 @@ $('cnVerifier').addEventListener('click', async function(){
     await SwogePrivy.verifyCode(window._email, c);
     try{ localStorage.setItem('swogeAuth','email'); }catch(e){}
     fermeConnexion();
-    await portefeuillePret(SwogePrivy.getProvider(), SwogePrivy.getAddress(), 'email');
+    await portefeuillePret(SwogePrivy.getProvider(), SwogePrivy.getAddress(), 'email', true);
   }catch(err){ $('cnMsg').textContent='That code did not work: '+(err.message||err); }
   this.disabled=false;
 });
@@ -4659,7 +4703,7 @@ $('cnExtension').addEventListener('click', async function(){
     await basculeChaine(window.ethereum);
     fermeConnexion();
     try{ localStorage.setItem('swogeAuth','wallet'); }catch(e){}
-    await portefeuillePret(window.ethereum, comptes[0], 'wallet');
+    await portefeuillePret(window.ethereum, comptes[0], 'wallet', true);
   }catch(err){ toast(err.message||'Connection refused'); }
 });
 
@@ -4681,16 +4725,99 @@ async function basculeChaine(eth){
   }
 }
 
-async function portefeuillePret(eth, adr, comment){
+async function portefeuillePret(eth, adr, comment, frais){
   var p = new ethers.providers.Web3Provider(eth, 'any');
   signer = p.getSigner();
   moi = (adr || await signer.getAddress()).toLowerCase();
   methode = comment;
+  /* Une connexion FRAICHE (on vient de taper le code, ou de deverrouiller son
+     extension) prouve deja l'identite : pas de verrou. Une reprise SILENCIEUSE
+     au chargement, elle, demande le Face ID si le joueur l'a pose. */
+  if(frais) PK.ouvert = true;
   journalCharge();
   majCompte();
   await rafraichit();
   toast('Connected');
+  pkAuConnecte();
 }
+
+/* ==================== LE VERROU FACE ID ====================
+ * Verrou de vie privee, verifie cote serveur (wallet_passkey.js). Il CACHE
+ * l'ecran ; il ne garde JAMAIS les fonds — toute transaction fait signer le
+ * portefeuille. La ceremonie WebAuthn passe par @simplewebauthn/browser (les
+ * bons encodages). Si le navigateur ou le script ne savent pas : rien ne
+ * s'affiche, et le portefeuille marche comme avant. */
+var PK = { actif: false, ouvert: false };
+function pkDispo(){ return !!(window.PublicKeyCredential && window.SimpleWebAuthnBrowser); }
+function pkPost(chemin, corps){
+  return fetch(SERVEUR + chemin, { method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(Object.assign({ origine: location.origin }, corps || {})) })
+    .then(function(r){ return r.json()['catch'](function(){ return {}; }).then(function(j){ return { status: r.status, j: j }; }); });
+}
+function pkVerrouille(on){ var v = $('pkVerrou'); if(v) v.hidden = !on; }
+function majPkCarte(){
+  var c = $('pkCarte'), t = $('pkToggle'); if(!c || !t) return;
+  c.hidden = !(moi && pkDispo());
+  t.setAttribute('aria-checked', PK.actif ? 'true' : 'false');
+}
+/* Apres connexion : ce portefeuille a-t-il un passkey ? si oui, et si ce n'est
+   pas une connexion fraiche, on verrouille. Serveur muet -> pas de verrou (on
+   ne bloque jamais le portefeuille sur une panne du verrou de confort). */
+function pkAuConnecte(){
+  if(!moi || !pkDispo()){ pkVerrouille(false); majPkCarte(); return; }
+  pkPost('/wallet/passkey/etat', { addr: moi }).then(function(r){
+    PK.actif = !!(r.j && r.j.actif); majPkCarte();
+    if(PK.actif && !PK.ouvert) pkVerrouille(true);
+  })['catch'](function(){ pkVerrouille(false); });
+}
+function pkDeverrouille(){
+  if(!moi) return;
+  $('pkDeverrouille').disabled = true;
+  pkPost('/wallet/passkey/auth/options', { addr: moi }).then(function(r){
+    if(!(r.j && r.j.ok)) throw new Error((r.j && r.j.raison) || 'locked');
+    return SimpleWebAuthnBrowser.startAuthentication({ optionsJSON: r.j.options });
+  }).then(function(rep){ return pkPost('/wallet/passkey/auth/verifie', { addr: moi, reponse: rep }); })
+  .then(function(r){
+    if(r.j && r.j.ok){ PK.ouvert = true; pkVerrouille(false); toast('Unlocked'); }
+    else toast((r.j && r.j.raison) || 'Could not unlock');
+  })['catch'](function(){ toast('Face ID failed — try again, or use email.'); })
+  ['finally'](function(){ var b = $('pkDeverrouille'); if(b) b.disabled = false; });
+}
+function pkActive(){
+  if(!moi || !signer){ toast('Connect first'); return; }
+  if(!pkDispo()){ toast('Face ID is not available on this browser.'); return; }
+  toast('Setting up Face ID…'); $('pkToggle').disabled = true;
+  var opts = null, sig = null;
+  pkPost('/wallet/passkey/inscription/options', { addr: moi }).then(function(r){
+    if(!(r.j && r.j.ok)) throw new Error((r.j && r.j.raison) || 'setup failed');
+    opts = r.j.options;
+    return signer.signMessage(r.j.aSigner);          /* prouve qu'on controle l'adresse */
+  }).then(function(s){ sig = s; return SimpleWebAuthnBrowser.startRegistration({ optionsJSON: opts }); })
+  .then(function(rep){ return pkPost('/wallet/passkey/inscription/verifie', { addr: moi, reponse: rep, sig: sig }); })
+  .then(function(r){
+    if(r.j && r.j.ok){ PK.actif = true; PK.ouvert = true; majPkCarte(); toast('Face ID enabled'); }
+    else toast((r.j && r.j.raison) || 'Could not enable Face ID');
+  })['catch'](function(e){ toast('Could not enable Face ID — ' + ((e && e.message) || 'cancelled')); })
+  ['finally'](function(){ var t = $('pkToggle'); if(t) t.disabled = false; });
+}
+function pkRetire(){
+  if(!moi || !signer) return;
+  toast('Turning off Face ID…'); $('pkToggle').disabled = true;
+  pkPost('/wallet/passkey/inscription/options', { addr: moi }).then(function(r){
+    if(!(r.j && r.j.aSigner)) throw new Error('x');
+    return signer.signMessage(r.j.aSigner);
+  }).then(function(sig){ return pkPost('/wallet/passkey/retire', { addr: moi, sig: sig }); })
+  .then(function(r){
+    if(r.j && r.j.ok){ PK.actif = false; majPkCarte(); toast('Face ID turned off'); }
+    else toast((r.j && r.j.raison) || 'Could not turn off Face ID');
+  })['catch'](function(){ toast('Could not turn off Face ID'); })
+  ['finally'](function(){ var t = $('pkToggle'); if(t) t.disabled = false; });
+}
+if($('pkToggle')) $('pkToggle').addEventListener('click', function(){ if(PK.actif) pkRetire(); else pkActive(); });
+if($('pkDeverrouille')) $('pkDeverrouille').addEventListener('click', pkDeverrouille);
+/* « Use email instead » : se reconnecter par e-mail prouve l'identite, donc
+   deverrouille. On ferme le verrou, on deconnecte, et on rouvre la connexion. */
+if($('pkEmail')) $('pkEmail').addEventListener('click', function(){ PK.ouvert = true; pkVerrouille(false); var b = $('cpSortir'); if(b) b.click(); ouvreConnexion(); });
 
 /* ---- ATTENDRE QUE L'EXTENSION SOIT LA ----
  *
@@ -4771,6 +4898,9 @@ $('cpSortir').addEventListener('click', function(){
   try{ localStorage.removeItem('swogeAuth'); }catch(e){}
   try{ if(window.SwogePrivy) SwogePrivy.logout(); }catch(e){}
   signer=null; moi=null; methode=null; soldes={};
+  /* Le verrou Face ID se remet a zero : le prochain qui se connecte (silencieusement)
+     devra le refaire s'il l'a pose. On retire aussi le voile s'il etait la. */
+  PK.actif=false; PK.ouvert=false; pkVerrouille(false); majPkCarte();
   /* Le journal RESTE sur l'appareil, range sous son adresse : il revient
      si le meme compte se reconnecte. Seul l'affichage se vide. */
   JOURNAL=[]; peintEnCours();
@@ -10948,7 +11078,7 @@ reprend();
         /* Compte change OU portefeuille deverrouille : dans les deux cas ce
            qui est a l'ecran appartient a quelqu'un d'autre. On repart de la
            nouvelle adresse plutot que de melanger les deux. */
-        portefeuillePret(eth, c[0], 'wallet')['catch'](function(){});
+        portefeuillePret(eth, c[0], 'wallet', true)['catch'](function(){});
       }else{
         /* Verrouille, pas deconnecte : on garde la methode memorisee, sinon
            le simple fait de verrouiller son portefeuille effacerait la

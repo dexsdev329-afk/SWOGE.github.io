@@ -864,6 +864,10 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 .plus{width:36px;height:36px;border-radius:50%;border:1px solid var(--line);background:transparent;font-size:20px;line-height:1;
   cursor:pointer;color:var(--paper);display:inline-flex;align-items:center;justify-content:center;padding:0}
 .plus[hidden]{display:none}
+/* Le micro en cours de dictee : rouge, et il pulse pour qu'on sache qu'il ecoute. */
+.plus.actif{border-color:var(--serpent,#d64541);color:var(--serpent,#d64541);background:rgba(214,69,65,.10);animation:micPulse 1.3s ease-in-out infinite}
+@keyframes micPulse{0%,100%{box-shadow:0 0 0 0 rgba(214,69,65,.35)}50%{box-shadow:0 0 0 6px rgba(214,69,65,0)}}
+@media (prefers-reduced-motion:reduce){.plus.actif{animation:none}}
 /* `display:inline-flex` l'emporte sur `hidden` : sans cette ligne, le choix du
    modele de chat et « Search » restaient affiches en mode Image et Video. */
 .outil[hidden],.puce[hidden]{display:none}
@@ -1640,6 +1644,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       <textarea id="question" rows="1" placeholder="Ask SwoleMind" aria-label="Your question"></textarea>
       <div class="outils">
         <button class="plus" id="joindre" type="button" title="Attach a photo" aria-label="Attach a photo" hidden>+</button>
+        <button class="plus" id="micro" type="button" title="Dictate your message" aria-label="Dictate your message" aria-pressed="false" hidden>&#127908;</button>
         <input type="file" id="fichier" accept="image/png,image/jpeg,image/webp" hidden>
         <input type="file" id="fichierChat" accept="image/png,image/jpeg,image/webp,application/pdf" multiple hidden>
         <div class="modes" role="group" aria-label="What to make">
@@ -1945,8 +1950,8 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       <textarea id="bw-but" rows="3" maxlength="1000" placeholder="e.g. Open a free blackjack game, play 5 hands with basic strategy, then tell me the result."></textarea>
       <div class="bw-reglages">
         <label>Model<select id="bw-piloteModele" aria-label="Model for the autopilot"></select></label>
-        <label>Max steps<input id="bw-etapes" type="number" min="1" max="150" step="1" value="40"></label>
-        <label>AI budget ($)<input id="bw-budget" type="number" min="0.05" max="10" step="0.05" value="1"></label>
+        <label>Max steps<input id="bw-etapes" type="number" min="1" max="300" step="1" value="60"></label>
+        <label>AI budget ($)<input id="bw-budget" type="number" min="0.05" max="20" step="0.05" value="1"></label>
       </div>
       <label class="bw-reel"><input type="checkbox" id="bw-reel"> Real money on this site</label>
       <div class="bw-reglages" id="bw-limites" hidden>
@@ -2308,7 +2313,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     if (pil.actif) return;
     var but = $("but").value.trim();
     if (but.length < 3) { statut("Write what the autopilot should do.", true); $("but").focus(); return; }
-    var corps = { but: but, modele: $("piloteModele").value, etapesMax: Number($("etapes").value) || 40, budgetUsd: Number($("budget").value) || 1,
+    var corps = { but: but, modele: $("piloteModele").value, etapesMax: Number($("etapes").value) || 60, budgetUsd: Number($("budget").value) || 1,
                   payeur: lis("swogeChatPayeur", null) === "swoge" ? "swoge" : "credit", ecran: etat.ecran };
     if ($("reel").checked) {
       var mise = Number($("mise").value), perte = Number($("perte").value);
@@ -2327,6 +2332,10 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       var r = x || {}, titre = FINS[r.raison] || (mal ? "Stopped" : "Finished");
       ligne([["b", titre + (r.detail ? ": " : ".")], ["span", r.detail || ""], ["small", "  " + (r.etapes || 0) + " steps · " + dollars(r.totalUsd != null ? r.totalUsd : total) + " of AI"]],
             "fin" + (mal || r.raison === "error" || r.raison === "refused" ? " mal" : ""));
+      /* Le carnet de bord du modele (solde de depart/actuel, gain/perte, mains) :
+         sur un arret force (steps/time/budget) il n'y a pas de « done » pour
+         resumer — sans lui, « on sait pas combien on a gagne ». */
+      if (r.memo) ligne([["b", "Tally: "], ["span", r.memo]], "fin");
       if (/credit|balance|top up|insufficient/i.test(r.raison + " " + (r.detail || ""))) statut("Top up your balance in the Chat tab, then try again.", true);
     }
     fetch(serveur() + "/navigateur/pilote", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + j }, body: JSON.stringify(corps) })
@@ -2662,6 +2671,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     recherche: "Searching the web…",
     jeton: "Reading the token: DexScreener, GoPlus, SWOGE AI…",
     pdfClaude: "PDFs are read by Claude models \u2014 pick Opus, Fable, Sonnet or Haiku (photos work with every model).",
+    photoTexte: "This model reads text only \u2014 pick another model to send a photo, or remove the image.",
     erreurReseau: "Connection lost — you were not charged for an unfinished answer.",
     arrete: "Stopped. The amount reserved for this answer is kept — ask again whenever you like.",
     arreteAvant: "Stopped before the model started — nothing was charged.",
@@ -2852,6 +2862,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     /* « + » partout : en Chat il joint une photo ou un PDF a la question. */
     $("joindre").hidden = m === "mission";
     $("joindre").title = m === "chat" ? "Attach a photo or a PDF" : "Attach a photo";
+    majMicro();
     $("pieces").hidden = m !== "chat" || !etat.pieces.length;
     $("reglages").hidden = m === "chat" || m === "mission";
     $("fournisseur").hidden = m !== "image";
@@ -3129,6 +3140,12 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     var ms = etat.compare ? modelesCompares() : [modeleCourant()];
     return ms.length && ms.every(function(m){ return m && m.pieces && m.pieces.pdf; });
   }
+  /* Comme lisentPdf, pour les photos : certains modeles (peu censures, texte
+     seul) ne lisent pas les images. On arrete la photo ICI, avant l'envoi. */
+  function lisentPhoto(){
+    var ms = etat.compare ? modelesCompares() : [modeleCourant()];
+    return ms.length && ms.every(function(m){ return m && m.pieces && m.pieces.images; });
+  }
   function vignette(src, cote, qualite){
     return new Promise(function(ok, ko){
       var im = new Image();
@@ -3183,6 +3200,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   function prendsPieces(){
     var pj = etat.pieces.slice();
     if (pj.some(function(p){ return p.genre === "pdf"; }) && !lisentPdf()) { dit(TXT.pdfClaude); return null; }
+    if (pj.some(function(p){ return p.genre === "image"; }) && !lisentPhoto()) { dit(TXT.photoTexte); return null; }
     etat.pieces = []; peintPieces();
     return pj;
   }
@@ -4130,6 +4148,85 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   $("question").addEventListener("input", dimensionne);
   $("question").addEventListener("keydown", function(e){ if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); envoyer(); } });
   $("envoyer").addEventListener("click", function(){ if (etat.occupe && Object.keys(etat.enVol).length) arreter(); else envoyer(); });
+
+  /* ==================== LE VOCAL ====================
+   * « parler dans le chat, et qu'il comprenne » (06/10). On transcrit la voix en
+   * TEXTE, qui part ensuite au modele choisi (ils lisent le texte).
+   *   1. le micro du NAVIGATEUR (Web Speech API) d'abord : gratuit, rien ne part
+   *      au serveur, rien n'est facture. Chrome, Edge, Android le savent.
+   *   2. sinon, si le repli SERVEUR est allume (catalogue.voix.actif), on
+   *      enregistre un clip et on l'envoie a /studio/chat/voix : il revient en
+   *      texte, facture a la duree reelle comme le reste.
+   * Dans les deux cas le texte arrive dans le composeur : le joueur le relit et
+   * l'envoie lui-meme. On ne parle jamais a sa place. */
+  var REC = { on: false, sr: null, mr: null, flux: null, bouts: [], t0: 0, cap: null };
+  function speechAPI(){ return window.SpeechRecognition || window.webkitSpeechRecognition || null; }
+  function voixServeur(){ return !!(etat.cat && etat.cat.voix && etat.cat.voix.actif && navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder); }
+  function voixDispo(){ return !!(speechAPI() || voixServeur()); }
+  function majMicro(){ var b = $("micro"); if (b) b.hidden = etat.mode !== "chat" || !voixDispo(); }
+  function etatMicro(on){ REC.on = on; var b = $("micro"); if (b) { b.setAttribute("aria-pressed", on ? "true" : "false"); b.classList.toggle("actif", on); b.title = on ? "Stop" : "Dictate your message"; } }
+  function poseTexte(t){ t = String(t || "").trim(); if (!t) return; var q = $("question"); var base = q.value; q.value = (base && !/\s$/.test(base) ? base + " " : base) + t; dimensionne(); q.focus(); }
+
+  function demarreNavigateur(SR){
+    var r = new SR();
+    REC.sr = r;
+    r.lang = navigator.language || "en-US";
+    r.interimResults = false; r.continuous = false; r.maxAlternatives = 1;
+    r.onresult = function(e){ var fin = ""; for (var i = e.resultIndex; i < e.results.length; i++) if (e.results[i].isFinal) fin += e.results[i][0].transcript; poseTexte(fin); };
+    r.onerror = function(ev){ dit(ev && (ev.error === "not-allowed" || ev.error === "service-not-allowed") ? "Allow the microphone to dictate." : ""); etatMicro(false); REC.sr = null; };
+    r.onend = function(){ etatMicro(false); REC.sr = null; };
+    try { r.start(); etatMicro(true); dit("Listening…"); } catch (e) { etatMicro(false); }
+  }
+
+  function demarreServeur(){
+    if (!jeton()) { dit("Sign in with your wallet first."); return; }
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(function(flux){
+      REC.flux = flux; REC.bouts = []; REC.t0 = Date.now();
+      var mr; try { mr = new MediaRecorder(flux); } catch (e) { fermeFlux(); dit("Your browser can't record audio."); return; }
+      REC.mr = mr;
+      mr.ondataavailable = function(e){ if (e.data && e.data.size) REC.bouts.push(e.data); };
+      mr.onstop = function(){ fermeFlux(); envoieClip(mr.mimeType || "audio/webm"); REC.mr = null; };
+      mr.start(); etatMicro(true); dit("Recording… tap the mic to stop.");
+      var maxS = (etat.cat.voix && etat.cat.voix.dureeMaxS) || 120;
+      REC.cap = setTimeout(function(){ if (REC.on) arreteVoix(); }, maxS * 1000);
+    }, function(){ dit("Allow the microphone to use voice."); });
+  }
+
+  function fermeFlux(){ if (REC.flux) { try { REC.flux.getTracks().forEach(function(t){ t.stop(); }); } catch (e) {} REC.flux = null; } }
+
+  function envoieClip(mime){
+    var blob = new Blob(REC.bouts, { type: mime }); REC.bouts = [];
+    if (!blob.size) { dit(""); return; }
+    var sec = Math.round((Date.now() - REC.t0) / 1000);
+    dit("Transcribing…");
+    var fr = new FileReader();
+    fr.onload = function(){
+      var b64 = String(fr.result).split(",")[1] || "";
+      fetch(serveur() + "/studio/chat/voix", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + jeton() },
+        body: JSON.stringify({ audio: b64, mime: blob.type, secondes: sec, payeur: payeurServeur() }) })
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          if (d && d.ok) { poseTexte(d.texte || ""); dit(d.texte ? "" : "No speech detected — try again."); if (d.solde != null) $("solde").innerHTML = "Balance <b>" + nombre(d.solde) + " $SWOGE</b>"; }
+          else dit((d && d.raison) || "Voice failed.");
+        })["catch"](function(){ dit("Voice failed — check your connection."); });
+    };
+    fr.readAsDataURL(blob);
+  }
+
+  function arreteVoix(){
+    if (REC.cap) { clearTimeout(REC.cap); REC.cap = null; }
+    if (REC.sr) { try { REC.sr.stop(); } catch (e) {} etatMicro(false); return; }
+    if (REC.mr && REC.mr.state !== "inactive") { try { REC.mr.stop(); } catch (e) {} }   /* onstop -> envoieClip */
+    etatMicro(false);
+  }
+
+  $("micro").addEventListener("click", function(){
+    if (REC.on) { arreteVoix(); return; }
+    var SR = speechAPI();
+    if (SR) demarreNavigateur(SR);
+    else if (voixServeur()) demarreServeur();
+    else dit("Voice needs Chrome or Edge, or server voice switched on.");
+  });
   /* La page qui s'en va : ses requetes coupees ne sont pas des echecs. */
   window.addEventListener("pagehide", function(){ etat.quitte = true; });
   window.addEventListener("beforeunload", function(){ etat.quitte = true; });
@@ -4732,7 +4829,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
         if (pdf && etat.pieces.some(function(x){ return x.genre === "pdf"; })) return dit("One PDF per question.");
         if (!pdf && etat.pieces.filter(function(x){ return x.genre === "image"; }).length >= 4) return dit("At most 4 photos per question.");
         return (pdf ? litPdf(f) : reduitPhoto(f)).then(function(p){
-          etat.pieces.push(p); peintPieces(); peintBoutons(); dit(pdf && !lisentPdf() ? TXT.pdfClaude : "");
+          etat.pieces.push(p); peintPieces(); peintBoutons(); dit(pdf && !lisentPdf() ? TXT.pdfClaude : (!pdf && !lisentPhoto() ? TXT.photoTexte : ""));
         }, function(){ dit("This file could not be read."); });
       });
     }, Promise.resolve());
@@ -4763,7 +4860,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     .then(function(c){
       etat.cat = c;
       if (!c.ouvert) dit(c.note || TXT.ferme);
-      peintPrix(); peintBoutons();
+      peintPrix(); peintBoutons(); majMicro();
     })["catch"](function(){ $("prixq").textContent = TXT.ferme; });
   /* Les missions : le catalogue de l'agent (modele par defaut, prix d'une mission en dollars et en $SWOGE). */
   fetch(serveur() + "/studio/agent/catalogue", { cache: "no-store" })

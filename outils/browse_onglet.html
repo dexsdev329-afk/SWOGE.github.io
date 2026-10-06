@@ -113,8 +113,8 @@
       <textarea id="bw-but" rows="3" maxlength="1000" placeholder="e.g. Open a free blackjack game, play 5 hands with basic strategy, then tell me the result."></textarea>
       <div class="bw-reglages">
         <label>Model<select id="bw-piloteModele" aria-label="Model for the autopilot"></select></label>
-        <label>Max steps<input id="bw-etapes" type="number" min="1" max="150" step="1" value="40"></label>
-        <label>AI budget ($)<input id="bw-budget" type="number" min="0.05" max="10" step="0.05" value="1"></label>
+        <label>Max steps<input id="bw-etapes" type="number" min="1" max="300" step="1" value="60"></label>
+        <label>AI budget ($)<input id="bw-budget" type="number" min="0.05" max="20" step="0.05" value="1"></label>
       </div>
       <label class="bw-reel"><input type="checkbox" id="bw-reel"> Real money on this site</label>
       <div class="bw-reglages" id="bw-limites" hidden>
@@ -476,7 +476,7 @@
     if (pil.actif) return;
     var but = $("but").value.trim();
     if (but.length < 3) { statut("Write what the autopilot should do.", true); $("but").focus(); return; }
-    var corps = { but: but, modele: $("piloteModele").value, etapesMax: Number($("etapes").value) || 40, budgetUsd: Number($("budget").value) || 1,
+    var corps = { but: but, modele: $("piloteModele").value, etapesMax: Number($("etapes").value) || 60, budgetUsd: Number($("budget").value) || 1,
                   payeur: lis("swogeChatPayeur", null) === "swoge" ? "swoge" : "credit", ecran: etat.ecran };
     if ($("reel").checked) {
       var mise = Number($("mise").value), perte = Number($("perte").value);
@@ -495,6 +495,10 @@
       var r = x || {}, titre = FINS[r.raison] || (mal ? "Stopped" : "Finished");
       ligne([["b", titre + (r.detail ? ": " : ".")], ["span", r.detail || ""], ["small", "  " + (r.etapes || 0) + " steps · " + dollars(r.totalUsd != null ? r.totalUsd : total) + " of AI"]],
             "fin" + (mal || r.raison === "error" || r.raison === "refused" ? " mal" : ""));
+      /* Le carnet de bord du modele (solde de depart/actuel, gain/perte, mains) :
+         sur un arret force (steps/time/budget) il n'y a pas de « done » pour
+         resumer — sans lui, « on sait pas combien on a gagne ». */
+      if (r.memo) ligne([["b", "Tally: "], ["span", r.memo]], "fin");
       if (/credit|balance|top up|insufficient/i.test(r.raison + " " + (r.detail || ""))) statut("Top up your balance in the Chat tab, then try again.", true);
     }
     fetch(serveur() + "/navigateur/pilote", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + j }, body: JSON.stringify(corps) })

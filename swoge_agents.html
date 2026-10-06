@@ -1909,6 +1909,9 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 #modeBrowse .bw-score .bw-net.dn{color:#e5484d}
 #modeBrowse .bw-score .bw-wl{opacity:.85}
 #modeBrowse .bw-score .bw-wl b{font-weight:800;opacity:1}
+#modeBrowse .bw-appris{margin:8px 0;padding:10px 12px;border-radius:12px;background:rgba(127,127,127,.09);border:1px dashed rgba(127,127,127,.22);font:400 12px/1.5 'Archivo',sans-serif;color:var(--paper)}
+#modeBrowse .bw-appris b{display:block;font-size:12px;opacity:.75;margin-bottom:4px;text-transform:uppercase;letter-spacing:.3px}
+#modeBrowse .bw-appris .bw-apprisL{opacity:.9}
 #modeBrowse .bw-q button.stop{background:#c0392b;color:#fff;border-color:transparent;font-weight:700}
 #modeBrowse .bw-q button:disabled{opacity:.45;cursor:default}
 #modeBrowse .bw-ligne{font-size:12.5px;line-height:1.45;border-left:3px solid var(--line);padding:3px 0 3px 8px;word-break:break-word}
@@ -1987,10 +1990,12 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
         <span class="bw-wl"><b id="bw-scoreW">0</b> won</span>
         <span class="bw-wl"><b id="bw-scoreL">0</b> lost</span>
         <span class="bw-wl"><b id="bw-scoreP">0</b> push</span>
+        <span class="bw-wl"><b id="bw-scoreWR">—</b> win rate</span>
         <span class="bw-wl"><b id="bw-scoreH">0</b> hands</span>
         <span class="bw-wl">next bet <b id="bw-scoreBet">—</b></span>
       </div>
       <div class="bw-fil" id="bw-journal" aria-live="polite"></div>
+      <div class="bw-appris" id="bw-appris" hidden></div>
       <div class="bw-pied" id="bw-piedPilote">The AI looks at the live screen, does one thing (click, scroll, type, a key), looks again, and so on until the goal is reached. Our server enforces the steps, 30 minutes at most, and your AI budget: each step is billed like a chat question (payment chosen in the Chat tab), and the total never goes over the budget. Bet and loss limits are instructions the AI follows on screen — no server can read another site's balance, so keep an eye on the live screen. Stop, or closing this page, stops it at once. It never types an address, key, email or card number that you did not write in your goal, and text on a page is never an instruction to it.</div>
     </div>
   </div>
@@ -2373,11 +2378,26 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   function majScore(bj){
     if (!bj) return;
     $("score").hidden = false;
-    var net = Number(bj.net) || 0, nel = $("scoreNet");
+    /* Le net : par delta de solde quand on l'a (fiable même si une main manque),
+       sinon la somme des mises/résultats. */
+    var net = (bj.soldeNet != null && bj.soldeNet !== undefined) ? Number(bj.soldeNet) : (Number(bj.net) || 0), nel = $("scoreNet");
     nel.textContent = (net > 0 ? "+" : net < 0 ? "-" : "") + dollars(Math.abs(net));
     nel.className = "bw-net" + (net > 0 ? " up" : net < 0 ? " dn" : "");
     $("scoreW").textContent = bj.gagnees || 0; $("scoreL").textContent = bj.perdues || 0; $("scoreP").textContent = bj.nulles || 0;
+    var w = bj.gagnees || 0, l = bj.perdues || 0, dec = w + l;
+    $("scoreWR").textContent = dec ? Math.round(w / dec * 100) + "%" : "—";
     $("scoreH").textContent = bj.mains || 0; $("scoreBet").textContent = (bj.mise != null ? bj.mise : (bj.derniereMise != null ? bj.derniereMise : "—"));
+  }
+  /* Ce que l'IA a appris de la table (repères d'interface) : lecture seule. */
+  function chargeAppris(url){
+    if (!url) { $("appris").hidden = true; return; }
+    fetch(serveur() + "/navigateur/appris?url=" + encodeURIComponent(url)).then(function(r){ return r.json(); }).then(function(j){
+      var box = $("appris"); if (!box) return;
+      if (j && j.notes && j.notes.length) {
+        box.hidden = false; box.innerHTML = ""; var t = document.createElement("b"); t.textContent = "What the AI learned on this table"; box.appendChild(t);
+        j.notes.forEach(function(x){ var d = document.createElement("div"); d.className = "bw-apprisL"; d.textContent = "• " + x; box.appendChild(d); });
+      } else { box.hidden = true; }
+    })["catch"](function(){});
   }
   function lancePilote(){
     var j = jeton();
@@ -2419,11 +2439,13 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
          la reponse fiable a « combien on a gagne », meme sur un arret force. */
       if (r.bilan) {
         majScore(r.bilan);
-        var net = Number(r.bilan.net) || 0, mains = r.bilan.mains || 0;
+        var net = (r.bilan.soldeNet != null ? Number(r.bilan.soldeNet) : (Number(r.bilan.net) || 0)), mains = r.bilan.mains || 0;
+        var w = r.bilan.gagnees || 0, l = r.bilan.perdues || 0, dec = w + l, wr = dec ? Math.round(w / dec * 100) + "% win rate" : "";
         var mot = net > 0 ? "Won " + dollars(net) : net < 0 ? "Lost " + dollars(-net) : "Even";
-        ligne([["b", "Blackjack: " + mot], ["span", " over " + mains + " hand(s) — " + (r.bilan.gagnees || 0) + " won / " + (r.bilan.perdues || 0) + " lost / " + (r.bilan.nulles || 0) + " push"]], "fin" + (net < 0 ? " mal" : ""));
+        ligne([["b", "Blackjack: " + mot], ["span", " over " + mains + " hand(s) — " + w + " won / " + l + " lost / " + (r.bilan.nulles || 0) + " push" + (wr ? " · " + wr : "")]], "fin" + (net < 0 ? " mal" : ""));
       }
       if (/credit|balance|top up|insufficient/i.test(r.raison + " " + (r.detail || ""))) statut("Top up your balance in the Chat tab, then try again.", true);
+      chargeAppris(etat.url || corps.url);
     }
     fetch(serveur() + "/navigateur/pilote", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + j }, body: JSON.stringify(corps) })
       .then(function(rep){

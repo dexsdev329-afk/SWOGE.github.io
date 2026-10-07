@@ -161,6 +161,15 @@ réinvente le perso à chaque clip.
    oblige à recalculer le marqueur (`node cache_marqueur.test.js`). Une nouvelle
    page de vitrine qui ne référence que des scripts partagés inchangés n'a rien
    à recalculer.
+9. **Les décors casino/sport font FUIR du texte** (scores, cotes, tickets,
+   compteurs de jackpot, enseignes) → Veo le rend en charabia (« WI8NG »,
+   « BEETING »). Deux parades combinées : (a) ne PAS décrire de prop à texte —
+   pas d'« écran de score », pas de « ticket gagnant », pas de « compteur » ;
+   remplacer par des props VIERGES (« blank golden ticket », « blank gold coin »,
+   « meter of pure rising light bars », « plain-faced cards ») ; (b) un bloc
+   NO-TEXT durci répété : « ABSOLUTELY NO text anywhere: no words, letters,
+   numbers, scoreboards, odds, writing on any ticket/card/screen/coin/wall/neon ;
+   screens and meters show only abstract colorful light ; every prop is blank ».
 
 ---
 

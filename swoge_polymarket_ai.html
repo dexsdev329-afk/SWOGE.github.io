@@ -76,6 +76,10 @@ main{ max-width:1180px; margin:0 auto; padding:18px 16px 48px; }
 .temoin{ font-size:11px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:var(--ds-violet); background:#F1ECFE; border-radius:999px; padding:3px 8px; }
 .classement tr.peu td{ color:var(--ds-pale); }
 .classement tr.peu td.pos, .classement tr.peu td.neg{ opacity:.75; }
+/* Les temoins (Coin, Crowd, Fair Value, Last Minute, Longshot) sont censes perdre :
+   on les met a part en violet pour qu'on ne lise pas leur perte comme une strategie SWOGE. */
+.classement tr.ctrl td{ background:#F6F3FD; }
+.classement tr.ctrl td.nom{ font-style:italic; color:var(--ds-violet); }
 td.nom{ white-space:normal !important; min-width:170px; }
 .preuve{ border:1px solid var(--ds-ligne); border-radius:16px; padding:14px 16px; background:var(--ds-fond); margin-bottom:16px; }
 .preuve h3{ margin-top:0 !important; }
@@ -763,15 +767,22 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
     if (!l || !l.length) { bloc.hidden = true; return; }
     l.sort(function(x, y){ return (Number(y.pnl) || 0) - (Number(x.pnl) || 0) || (y.resolved || 0) - (x.resolved || 0); });
     var s = d.summary || {}, min = Number(d.minResolved) || 100;
+    /* Les temoins sont marques "type:baseline" par le serveur (poly_papier.js). On les nomme
+       tous, pas seulement Coin : leur perte est voulue, ce n'est pas une strategie SWOGE ratee. */
+    var temoins = l.filter(function(c){ return c.type === "baseline"; });
     $("clResume").textContent = (s.total || l.length) + " strategies: " + (s.inProfit || 0) + " in profit, " + (s.inLoss || 0) + " at a loss, " +
       (s.noSettledBet || 0) + " with no settled bet yet \u00b7 combined P&L " + signe(s.totalPnl || 0) + ". " +
       (s.judgeable ? s.judgeable + " have " + min + "+ settled bets." : "None has " + min + " settled bets yet:") +
-      " below " + min + ", a rank says as much about luck as about skill, and grey rows are not a verdict.";
+      " below " + min + ", a rank says as much about luck as about skill, and grey rows are not a verdict." +
+      (temoins.length ? " The " + temoins.length + " violet row" + (temoins.length === 1 ? " is a control" : "s are controls") + " (" +
+        temoins.map(function(c){ return c.name; }).join(", ") + ") \u2014 deliberately simple bets meant to lose; they mark the bar to beat, not SWOGE\u2019s own strategies, and their losses are expected." : "");
     var tb = $("clLignes"); tb.textContent = "";
     l.forEach(function(c, i){
-      var tr = el("tr", (c.resolved || 0) < min ? "peu" : null);
+      var estTemoin = c.type === "baseline";
+      var cls = []; if (estTemoin) cls.push("ctrl"); if ((c.resolved || 0) < min) cls.push("peu");
+      var tr = el("tr", cls.length ? cls.join(" ") : null);
       tr.appendChild(el("td", "num", String(i + 1)));
-      tr.appendChild(el("td", "nom", c.name + (c.id === "coin" ? " (control)" : "")));
+      tr.appendChild(el("td", "nom", c.name + (estTemoin ? " (control)" : "")));
       tr.appendChild(el("td", "num", (c.resolved || 0) < min ? c.resolved + "/" + min : String(c.resolved)));
       tr.appendChild(el("td", "num", c.resolved ? pct(c.won / c.resolved) : "\u2014"));
       tr.appendChild(el("td", "num " + (Number(c.pnl) > 0 ? "pos" : Number(c.pnl) < 0 ? "neg" : ""), c.resolved ? signe(c.pnl) : "\u2014"));

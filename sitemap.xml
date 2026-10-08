@@ -197,8 +197,14 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://swoleeswoge.dog/swoge_colonies.html</loc>
-    <lastmod>2026-10-03</lastmod>
+    <loc>https://swoleeswoge.dog/swoge_sol_ai.html</loc>
+    <lastmod>2026-10-08</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://swoleeswoge.dog/swoge_eth_ai.html</loc>
+    <lastmod>2026-10-08</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>

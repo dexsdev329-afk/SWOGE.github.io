@@ -20,8 +20,10 @@ const PAGES = [
   { f: 'swoge_perp.html', ic: '&#128200;', nom: 'AI Perps', sous: 'Agents on BTC, ETH, SOL perps' },
   { f: 'swoge_predict.html', ic: '&#128302;', nom: 'Predict', sous: 'PancakeSwap rounds, 5 min' },
   { f: 'swoge_polymarket_ai.html', ic: '&#127919;', nom: 'Polymarket AI', sous: '15-minute crypto markets' },
-  /* 03/10 : la colonie Solana / Ethereum (etape 1, observer) a sa page ; elle rejoint la barre. */
-  { f: 'swoge_colonies.html', ic: '&#127760;', nom: 'Solana & ETH', sous: 'New tokens, 3 chains observed' },
+  /* 08/10 : la colonie Solana/Ethereum, scindee en DEUX pages propres (demande du proprietaire) :
+     chaque chaine est sa propre colonie papier. swoge_colonies.html redirige vers swoge_sol_ai.html. */
+  { f: 'swoge_sol_ai.html', ic: '&#9728;&#65039;', nom: 'Solana AI', sous: 'New Solana tokens, paper colony' },
+  { f: 'swoge_eth_ai.html', ic: '&#9670;&#65039;', nom: 'Ethereum AI', sous: 'New Ethereum tokens, paper colony' },
 ];
 const DEBUT = '<!-- ONGLETS-IA:debut (genere par outils/onglets_ia.js, ne pas editer ici) -->';
 const FIN = '<!-- ONGLETS-IA:fin -->';

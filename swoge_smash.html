@@ -143,6 +143,7 @@ video{ max-width:100%; }
      pour ecouter ce qui passe deja, et doit donc etre en place avant que la page
      n ouvre sa connexion. -->
 <script src="stakebubble.min.js?v=c324151c"></script>
+<script src="coffre.js?v=cd03f9be"></script>
 <script src="swogeprofil.js?v=aa21d613" defer></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
 <script src="swogebuy.js?v=9d7c39e5"></script>
@@ -1111,21 +1112,29 @@ html::before{
   function fmtBal(b){ b=parseFloat(b||0); return b>=1e9?(b/1e9).toFixed(2)+"B":b>=1e6?(b/1e6).toFixed(2)+"M":b>=1000?(b/1000).toFixed(1)+"k":b.toFixed(2); }
   function setBalance(b){ balance=parseFloat(b||0); balEl.textContent=fmtBal(balance); updateSmash(); }
   function setDot(on){ dot.className="statusdot "+(on?"on":"off"); }
+  /* ---- le coffre choisi ($SWOGE vault ou $SWOGEBET bet) : c'est coffre.js
+     qui tient l'interface ; ici on lit juste le solde et le symbole du coffre
+     actif pour borner la mise et nommer le bouton. Sans $SWOGEBET, c'est
+     toujours $SWOGE — comportement d'avant a l'identique. */
+  function soldeActif(){ return (window.SwogeCoffre && SwogeCoffre.jeton()==="swogebet") ? SwogeCoffre.soldeBet() : balance; }
+  function symActif(){ return (window.SwogeCoffre && SwogeCoffre.jeton()==="swogebet") ? "$SWOGEBET" : "$SWOGE"; }
+  function jetonActif(){ return (window.SwogeCoffre && SwogeCoffre.jeton()) || "swoge"; }
   var SMASH_MIN=1, SMASH_MAX=1000;
   function getBet(){
     var el=$("betin"); if(!el) return SMASH_MIN;
     var v=Math.floor(Number(el.value)||0);
     if(v<SMASH_MIN) v=SMASH_MIN;
     if(v>SMASH_MAX) v=SMASH_MAX;
-    var cap=Math.floor(balance); if(authed && cap>=SMASH_MIN && v>cap) v=cap;
+    var cap=Math.floor(soldeActif()); if(authed && cap>=SMASH_MIN && v>cap) v=cap;
     el.value=v; return v;
   }
   function updateSmash(){
     if(!authed){ return; }
     var bet=getBet();
-    var can=balance>=bet && inflight<3;
+    var av=soldeActif();
+    var can=av>=bet && inflight<3;
     smashBtn.disabled=!can;
-    smashBtn.textContent = balance>=bet ? ("💥 SMASH · "+bet+" $SWOGE") : "Need $SWOGE — deposit first";
+    smashBtn.textContent = av>=bet ? ("💥 SMASH · "+bet+" "+symActif()) : ("Need "+symActif()+" — deposit first");
   }
 
   // ---- sound (WebAudio, no external files) ----
@@ -1153,6 +1162,7 @@ html::before{
     ws.onerror=function(){ setDot(false); };
     ws.onmessage=function(ev){
       var m; try{ m=JSON.parse(ev.data); }catch(e){ return; }
+      if(window.SwogeCoffre) SwogeCoffre.vu(m);         // suit le solde $SWOGEBET (auth, betBalance, resultats)
       if(m.type==="state") return;                     // pusher table — ignore here
       if(m.type==="hello"){ loginNonce=m.loginNonce; /* Le jeton de session evite de resigner : on le presente des que le nonce est connu. Le serveur repond soit par 'auth' — connecte, sans SDK ni signature — soit par 'resumeFailed'. */
         var reprise=false;
@@ -1166,10 +1176,10 @@ html::before{
            `doLogin()` depuis 'resumeFailed'. */
         if(myAddr && !reprise) doLogin(); }
       if(m.type==="resumeFailed"){ /* jeton perime ou revoque : on l oublie et on repart du chemin long */ try{ localStorage.removeItem("swogeSession"); }catch(e){} if(typeof autoReconnect==="function") autoReconnect(); else if(myAddr) doLogin(); return; }
-      else if(m.type==="auth"){ authed=true; myAddr=m.address; if(m.session){ try{ localStorage.setItem("swogeSession",m.session); }catch(e){} } result.textContent="Smash the gem!"; setBalance(m.balance); showPlay(); if(m.fairness) showFair(m.fairness.serverSeedHash,m.fairness.nonce); if(m.stake) setStakeInfo(m.stake); if(m.quests) renderQuests(m.quests); }
+      else if(m.type==="auth"){ authed=true; myAddr=m.address; if(m.session){ try{ localStorage.setItem("swogeSession",m.session); }catch(e){} } result.textContent="Smash the gem!"; setBalance(m.balance); showPlay(); if(window.SwogeCoffre){ SwogeCoffre.monte($("betUI"), function(){ updateSmash(); }); } if(m.fairness) showFair(m.fairness.serverSeedHash,m.fairness.nonce); if(m.stake) setStakeInfo(m.stake); if(m.quests) renderQuests(m.quests); }
       else if(m.type==="balance"||m.type==="deposit"){ setBalance(m.balance); if(m.type==="deposit") toast("💰 Deposit credited"); }
       else if(m.type==="spinResult"){ onSpin(m); }
-      else if(m.type==="need_deposit"){ setBalance(m.balance); inflight=0; updateSmash(); toast("Not enough $SWOGE — deposit in the Pusher"); }
+      else if(m.type==="need_deposit"){ if(m.balance!=null)setBalance(m.balance); inflight=0; updateSmash(); toast("Not enough "+symActif()+(jetonActif()==="swogebet"?" — top up in the Wallet":" — deposit in the Pusher")); }
       else if(m.type==="error"){ inflight=Math.max(0,inflight-1); toast(m.error||"error"); updateSmash(); }
       else if(m.type==="voucher"){ setBalance(m.balance); submitWithdraw(m.voucher); }
       else if(m.type==="stakeInfo"){ setStakeInfo(m); }
@@ -1238,12 +1248,12 @@ html::before{
   function smash(){
     if(!authed||inflight>=3) return;
     var bet=getBet();
-    if(balance<bet){ toast("Not enough $SWOGE for that bet"); return; }
+    if(soldeActif()<bet){ toast("Not enough "+symActif()+" for that bet"); return; }
     inflight++;
     SFX.hit();
     gem.classList.remove("win","big");
     gem.classList.remove("hit"); void gem.offsetWidth; gem.classList.add("hit");
-    send({type:"spin",bet:bet});
+    send({type:"spin",bet:bet,jeton:jetonActif()});
     updateSmash();
   }
   gem.addEventListener("click",smash);

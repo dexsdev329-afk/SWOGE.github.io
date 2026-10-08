@@ -87,8 +87,22 @@ function servirLeSite() {
     sports: [{ cle: 'foot', nom: 'Football', actif: true },
              { cle: 'nba', nom: 'NBA', actif: true }],
     matchs: [mk('epl-live', 'Chelsea', 'Everton', ENCOURS),
-             mk('epl-plus-tard', 'Arsenal', 'Fulham', APRES)],
+             mk('epl-plus-tard', 'Arsenal', 'Fulham', APRES),
+             /* 08/10/2026 — le second verrou. ESPN la voit EN JEU, notre heure est
+                dans dix minutes : elle doit quitter le tableau des paris. */
+             mk('epl-tot', 'Tottenham Hotspur', 'Brentford', T + 10 * 60000),
+             /* Au catalogue dans vingt heures ; avancee et deja JOUEE pour ESPN.
+                Seule la passe large du verrou (36 h, au demarrage) la voit :
+                l'affichage ne regarde qu'un quart d'heure devant. */
+             mk('epl-avancee', 'Newcastle United', 'Burnley', T + 20 * 3600000),
+             /* L'ancienne entree d'une rencontre deplacee, fermee par l'import :
+                meme evenement que epl-live. LIVE NOW ne doit la montrer qu'une fois. */
+             Object.assign(mk('epl-live-ancienne', 'Chelsea', 'Everton', ENCOURS),
+               { source: { ligue: 'soccer_epl', evenement: 'epl-live' },
+                 ferme: new Date(T - 3600000).toISOString(), fermeRaison: 'avancee' })],
   }, null, 1));
+  process.env.PARIS_VERROU_PROCHE_MS = '200';
+  process.env.PARIS_VERROU_LARGE_MS = '200';
 
   /* ---- LE TABLEAU D'ESPN, ENREGISTRE ----
    * Chelsea mene 2-1 a la 67e ; et la NBA ne reprend que dans cinq semaines.
@@ -108,7 +122,11 @@ function servirLeSite() {
     const rep = (d) => ({ ok: true, status: 200, json: async () => d });
     if (/soccer\/eng\.1/.test(u)) {
       return rep({ events: [ev('Chelsea', 'Everton', '2', '1',
-                               new Date(ENCOURS).toISOString(), 'in', false, "67'")] });
+                               new Date(ENCOURS).toISOString(), 'in', false, "67'"),
+                            ev('Tottenham Hotspur', 'Brentford', '1', '0',
+                               new Date(T - 2 * 60000).toISOString(), 'in', false, "3'"),
+                            ev('Newcastle United', 'Burnley', '2', '0',
+                               new Date(T - 3 * 3600000).toISOString(), 'post', true, 'FT')] });
     }
     if (/basketball\/nba/.test(u)) {
       return rep({ events: [ev('Miami Heat', 'Toronto Raptors', '0', '0',
@@ -154,6 +172,15 @@ function servirLeSite() {
   }
   ok(!(cal.directs || []).some((m) => m.id === 'epl-plus-tard'),
      'et celle qui n a pas commence n y est pas');
+  /* ---- LE SECOND VERROU, BRANCHE DANS LE VRAI SERVEUR (08/10/2026) ---- */
+  ok(!(cal.matchs || []).some((m) => m.id === 'epl-tot'),
+     'ESPN la voit en jeu dix minutes avant notre heure : elle quitte le tableau des paris');
+  const tot = (cal.directs || []).find((m) => m.id === 'epl-tot');
+  ok(tot && tot.etat === 'in', 'et passe au DIRECT plutot que de disparaitre des deux listes');
+  ok(!(cal.matchs || []).some((m) => m.id === 'epl-avancee'),
+     'avancee et deja jouee pour ESPN, au catalogue dans 20 h : fermee par la passe large du verrou, sans visiteur');
+  eq((cal.directs || []).filter((m) => m.domicile === 'Chelsea').length, 1,
+     'une rencontre deplacee (ancienne entree fermee + nouvelle) n apparait qu UNE fois au direct');
   const rn = cal.reprises && Number(cal.reprises.nba);
   ok(!!rn && isFinite(rn),
      `la NBA annonce son retour (${rn ? new Date(rn).toISOString().slice(0, 10) : '—'})`);
@@ -225,8 +252,13 @@ function servirLeSite() {
   ok(!!chip, 'l onglet NBA existe');
   ok(chip && !chip.grise,
      'et il est TOUCHABLE — grise, sa raison n etait pas lisible');
-  ok(chip && /Oct/i.test(chip.texte),
-     `la pastille porte la date du retour (${chip ? JSON.stringify(chip.texte) : '—'})`);
+  /* Le mois se CALCULE sur RETOUR : « Oct » ecrit en dur valait le 03/09
+     (T + 36 j = 9 octobre) et tombait faux des la fin septembre, sans que
+     personne le voie — l'essai n'etait pas dans verifie.sh (08/10/2026). */
+  const moisRetour = [{ timeZone: 'UTC' }, {}].map((o) =>
+    new Date(RETOUR).toLocaleString('en-US', Object.assign({ month: 'short' }, o)));
+  ok(chip && moisRetour.some((mo) => chip.texte.indexOf(mo) >= 0),
+     `la pastille porte la date du retour (${chip ? JSON.stringify(chip.texte) : '—'}, attendu ${moisRetour[0]})`);
   const vide = await p.evaluate(() => {
     const v = document.getElementById('sbVide');
     return { vu: v && !v.hidden, texte: (v || {}).textContent || '' };

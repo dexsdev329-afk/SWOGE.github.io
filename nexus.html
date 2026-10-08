@@ -66,6 +66,9 @@ canvas{ touch-action:none; }
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <script src="stakebubble.min.js?v=c324151c"></script>
+<!-- Le choix du coffre de la mise ($SWOGE vault ou $SWOGEBET bet) a la table
+     de blackjack. Il ne decide rien : le serveur revalide tout sur la session. -->
+<script src="coffre.js?v=7ce0ad09"></script>
 <!-- ---- LE COMPTE DE JEU, DANS LE MONDE AUSSI ----
      Le tiroir se construit a partir du `#menu` de la page, et cette page n'en
      avait pas : « My Wallet » n'y etait qu'un lien vers une autre page.
@@ -1130,6 +1133,62 @@ body{ font-family:'Archivo',system-ui,sans-serif; }
 .nxbj-res.vide{ padding-bottom:0; line-height:0; }
 .nxbj-solde{ font-size:11.5px; color:#8DA0C4; margin-top:10px; }
 .nxbj-solde b{ color:#FFC53D; }
+/* ---- LE SELECTEUR DE COFFRE (coffre.js) ----
+ * Pose en frere apres .nxbj-corps, donc sous la ligne de solde. Ses pastilles
+ * sont peintes pour un fond sombre, ce qu'est la carte (#141a24) : on ne
+ * touche qu'a l'espacement et au libelle (plus bas). Pendant une main (`nxbj-enmain`, pose par
+ * peintBj), il se lit sans se toucher : la main garde le coffre fige a la
+ * donne, un clic ferait croire le contraire. */
+#nxBjVoile .coffre-choix{ margin:10px 0 0; }
+/* « Stake from » : coffre.js ne lui donne pas de couleur (seulement .7
+ * d'opacite), il heritait donc du noir de #nxBjVoile — 1,23:1 mesure sur la
+ * carte (#252a3a). Meme bleu-gris que la ligne de solde (.nxbj-solde,
+ * 5,41:1), comme crash.html et swoge_spin.html le font chez eux. */
+#nxBjVoile .coffre-choix .cf-lab{ color:#8DA0C4; opacity:1; }
+/* ---- PETITS ECRANS : LE SELECTEUR SUR UNE SEULE LIGNE ----
+ * Mesure le 08/10/2026 a 390x844, apres une main : « Stake from » + les deux
+ * pastilles passaient sur deux lignes, la carte grandissait jusqu'a son
+ * plafond et la pastille « Bet $SWOGEBET » restait coupee sous le bord tant
+ * qu'on ne faisait pas defiler la carte — avant le selecteur, elle tenait.
+ * Plus petit sous 480 px (le libelle tient encore a 412), sans libelle sous
+ * 400 px (les pastilles disent deja « Vault » et « Bet ») ; le retour a la
+ * ligne reste permis, pour qu'a 320 px rien ne deborde de cote. */
+/* A 412 px, mesure : boite 358 px pour libelle 60 + pastilles 108 + 190
+ * (pressee, donc en gras) + 2 ecarts = 368 — dix de trop. 11,5 px et un
+ * rembourrage de 8 px rendent ~16 px. */
+@media (max-width:480px){
+  #nxBjVoile .coffre-choix{ gap:4px; }
+  #nxBjVoile .coffre-choix .cf-lab{ font-size:11px; }
+  #nxBjVoile .coffre-choix .cf-btn{ font-size:11.5px; padding:5px 8px; white-space:nowrap; }
+}
+@media (max-width:400px){
+  #nxBjVoile .coffre-choix .cf-lab{ display:none; }
+}
+/* Le bouton rond du portefeuille (.swwb, pose par stakebubble, fixe a
+ * right:84px bottom:16px) flotte PAR-DESSUS la carte de la table : a 390 px
+ * il couvrait la fin de la pastille « Bet $SWOGEBET · 510 » (mesure le
+ * 08/10/2026). Table ouverte et petit ecran seulement, on le range — comme
+ * la pastille des duels l'est deja sur cette page (.swdb, plus haut). Il
+ * revient des que la table se ferme. */
+@media (max-width:480px){
+  body:has(#nxBjVoile.on) .swwb{ display:none !important; }
+}
+#nxBjVoile.nxbj-enmain .coffre-choix{ pointer-events:none; opacity:.42; filter:grayscale(.35); }
+/* Pendant la main, la pastille pressee est celle du coffre FIGE a la donne
+ * (data-main = st.jeton, pose par peintBj), pas le choix local : sinon une
+ * main $SWOGEBET reprise a l'auth se lisait a cote de « Vault $SWOGE » presse.
+ * Memes couleurs que les deux etats de coffre.js ; l'id l'emporte sur sa
+ * regle [aria-pressed]. */
+#nxBjVoile.nxbj-enmain[data-main="swoge"] .cf-btn[data-coffre="swoge"],
+#nxBjVoile.nxbj-enmain[data-main="swogebet"] .cf-btn[data-coffre="swogebet"]{
+  background:#cdbf9f; color:#1a1a1a; border-color:#cdbf9f; font-weight:700; }
+#nxBjVoile.nxbj-enmain[data-main="swoge"] .cf-btn[data-coffre="swogebet"],
+#nxBjVoile.nxbj-enmain[data-main="swogebet"] .cf-btn[data-coffre="swoge"]{
+  background:rgba(0,0,0,.25); color:#cdbf9f; border-color:rgba(205,191,159,.4); font-weight:400; }
+/* Le coffre de la prochaine mise, dans la rangee de Deal : apres une main,
+ * le solde et le selecteur passent sous le pli, pas ce bouton. */
+.nxbj-de{ flex:0 0 auto; font-size:12px; color:#8DA0C4; }
+.nxbj-de b{ color:#FFC53D; font-weight:700; }
 .nxsh-cof .o b{ color:#F2F6FF; }
 /* Le lot d'achat : personne n'achete des potions une par une. */
 .nxsh-lots{ display:flex; gap:6px; margin-top:10px; justify-content:center; }
@@ -3428,7 +3487,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
      racine ; c'est le seul endroit d'ou elle peut couvrir tout le reste. -->
 <div id="nxFiche"></div>
 
-<script src="nexus.js?v=270efb59" defer></script>
+<script src="nexus.js?v=4675b020" defer></script>
 <script>window.addEventListener('load',function(){setTimeout(function(){var p=document.getElementById('preloader');if(p){p.classList.add('done');setTimeout(function(){p.style.display='none';},700);}},450);});setTimeout(function(){var p=document.getElementById('preloader');if(p&&!p.classList.contains('done')){p.classList.add('done');}},9000);</script>
 
 <script>

@@ -78,6 +78,10 @@
    * les reposer par les memes chemins que d'habitude — pas en ecrire une
    * seconde version qui, un jour, oubliera quelque chose. */
   function traite(m) {
+    /* Le solde $SWOGEBET suit tout message qui le porte. On donne TOUT a
+       coffre.js : sa liste blanche ne retient que les types adresses a la
+       session — les instantanes du monde, eux, n'y passent pas. */
+    if (window.SwogeCoffre) SwogeCoffre.vu(m);
     if (m.type === 'auth' && !demande) {
       demande = true;
       MON_ADRESSE = String(m.address || '').toLowerCase();
@@ -375,6 +379,13 @@
     if (m.type === 'bj') {
       BJ = m.state || null;
       bjErreur = '';
+      /* l'etat porte betBalance DANS state, pas au premier niveau : on le
+         donne nous-memes a coffre.js (objet sans type = accepte). APRES
+         l'effacement de l'erreur : si le solde change, coffre.js rappelle et
+         la table se peint tout de suite — avec l'erreur d'avant, la peinture
+         suivante aurait change de signature et rebati le tapis en pleine
+         donne, cartes en vol comprises. */
+      if (window.SwogeCoffre && BJ) SwogeCoffre.vu(BJ);
       if (BJ && BJ.balance != null && BOUTIQUE) BOUTIQUE.balance = BJ.balance;
       /* ---- LE SOLDE DU HAUT SUIT LA TABLE ----
        * Il ne bougeait pas d'une main a l'autre : `majSolde` s'accroche a
@@ -386,6 +397,26 @@
       if (BJ && BJ.balance != null) majSolde(BJ.balance);
       if (bjOuvert) peintBj();
       peintPanneau();
+    }
+    /* ---- UNE MAIN OUVERTE AILLEURS ----
+     * Le serveur ne tient qu'UNE main par joueur, quelle que soit la page qui
+     * l'a donnee, et `auth` la renvoie (m.bj). Sans la reprendre ici, une main
+     * laissee ouverte sur swoge_blackjack.html rendait la table du monde
+     * muette : on voyait « Deal », on misait, et le serveur repondait « hand
+     * in progress » sans qu'on puisse jamais la finir d'ici. On l'adopte donc
+     * telle quelle — le jeton fige est dans l'etat, hit/stand n'en portent
+     * pas. Et si l'on croyait une main ouverte que le serveur ne connait plus
+     * ouverte (reconnexion), c'est lui qui a raison. */
+    if (m.type === 'auth') {
+      var mb = (m.bj && m.bj.stage) ? m.bj : null;
+      var ouverteLa = mb && mb.stage !== 'done';
+      var ouverteIci = BJ && BJ.stage && BJ.stage !== 'done';
+      if (ouverteLa || ouverteIci) {
+        BJ = mb;
+        bjErreur = '';
+        if (window.SwogeCoffre && BJ) SwogeCoffre.vu(BJ);
+        if (bjOuvert) peintBj();
+      }
     }
     /* Le serveur refuse par `error`, comme partout ailleurs. On ne le montre
        QUE si la table est ouverte : la meme socket porte les erreurs de tout
@@ -2128,6 +2159,17 @@
   var elBjVoile = document.getElementById('nxBjVoile');
   var elBjCorps = elBjVoile ? elBjVoile.querySelector('.nxbj-corps') : null;
   var bjOuvert = false, BJ = null, bjMise = 10, bjErreur = '';
+  /* ---- LE COFFRE DE LA MISE ($SWOGE vault ou $SWOGEBET bet) ----
+   * coffre.js tient le selecteur ; on n'en lit que le jeton choisi. Sans
+   * $SWOGEBET, `jeton()` rend toujours 'swoge' : la table se voit comme avant
+   * (selecteur cache, aucun libelle a cote de Deal) ; seul change le message
+   * de mise, qui porte desormais jeton:'swoge' — la valeur par defaut du
+   * serveur. Le serveur revalide tout sur ws.addr et fige le jeton a la
+   * donne : ce choix ne vaut que pour la PROCHAINE main. */
+  var bjCoffrePose = false;
+  function bjJetonActif() {
+    return (window.SwogeCoffre && SwogeCoffre.jeton() === 'swogebet') ? 'swogebet' : 'swoge';
+  }
 
   /* rang 0=A, 1..8 = 2..9, 9=10, 10=J, 11=Q, 12=K — et quatre enseignes. La
      table est celle de swoge_blackjack.html, recopiee ici parce que c'est de
@@ -6432,11 +6474,52 @@
   function peintBj() {
     if (!elBjCorps) return;
     var st = BJ;
-    /* Celui de l'etat s'il y en a un — il est plus frais que tout le reste,
-       puisqu'il vient de la main qu'on vient de jouer. Sinon celui du
-       panneau, qui arrive avec la connexion. */
-    var solde = (st && st.balance != null) ? Number(st.balance) : SOLDE_NUM;
+    /* Le selecteur de coffre, pose UNE fois, en FRERE apres .nxbj-corps : il
+       survit ainsi aux reconstructions de innerHTML ci-dessous. Il rappelle a
+       chaque changement de choix ou de solde $SWOGEBET. */
+    if (!bjCoffrePose && window.SwogeCoffre) {
+      bjCoffrePose = true;
+      /* Pas de BJ_SIG = null ici : la signature porte deja le coffre montre
+         et son solde, donc un changement qui se VOIT repeint, et un solde
+         $SWOGEBET qui bouge pendant une main $SWOGE ne rebatit pas le tapis
+         sous des cartes en plein vol. */
+      SwogeCoffre.monte(elBjCorps, function () { if (bjOuvert) peintBj(); });
+    }
     var enMain = st && st.stage && st.stage !== 'done';
+    /* Pendant une main, le selecteur se LIT, il ne se touche plus : la main
+       garde le coffre fige a la donne, et un clic laisserait croire le
+       contraire. Meme regle que body.bj-jeu sur swoge_blackjack.html. */
+    if (elBjVoile) elBjVoile.classList.toggle('nxbj-enmain', !!enMain);
+    /* Le coffre dont on parle : celui de la main tant qu'elle court (st.jeton,
+       renvoye par le serveur), celui du selecteur sinon — c'est sur lui que
+       partira la prochaine mise. */
+    var jMain = (st && st.jeton === 'swogebet') ? 'swogebet' : 'swoge';
+    /* ---- PENDANT LA MAIN, LA PASTILLE PRESSEE EST CELLE DE LA MAIN ----
+     * Gele, le selecteur montrait encore le choix LOCAL : une main $SWOGEBET
+     * reprise a l'auth s'affichait « Balance 490 $SWOGEBET » a cote d'une
+     * pastille « Vault $SWOGE » pressee — le defaut deja decrit sur
+     * swoge_blackjack.html (l. ~3013). On ne touche ni au choix memorise ni a
+     * coffre.js : nexus.html repeint les pastilles d'apres data-main tant que
+     * la main court, et le choix local revient tel quel a la fin. */
+    if (elBjVoile) elBjVoile.setAttribute('data-main', enMain ? jMain : '');
+    var jVu = enMain ? jMain : bjJetonActif();
+    var sym = jVu === 'swogebet' ? '$SWOGEBET' : '$SWOGE';
+    /* $SWOGE : celui de l'etat s'il y en a un — il est plus frais que tout le
+       reste, puisqu'il vient de la main qu'on vient de jouer. Sinon celui du
+       panneau, qui arrive avec la connexion.
+       $SWOGEBET : celui de coffre.js, nourri par l'etat de chaque main (vu(BJ))
+       ET par tout message posterieur — un depot $SWOGEBET apres une main finie
+       doit se voir, ce que st.betBalance, fige a la main, ne dirait pas. */
+    var solde = jVu === 'swogebet'
+      ? (window.SwogeCoffre ? SwogeCoffre.soldeBet() : Number((st && st.betBalance) || 0))
+      : ((st && st.balance != null) ? Number(st.balance) : SOLDE_NUM);
+    /* Y a-t-il un coffre a nommer a cote de Deal ? (voir la rangee de Deal) */
+    var aChoix = !!((window.SwogeCoffre && SwogeCoffre.actif()) || jMain === 'swogebet');
+    /* Pendant la main, le selecteur grise ne se touche pas non plus au
+       clavier : pointer-events ne bloque que la souris, `inert` retire aussi
+       le focus (Tab + Entree changeait le choix en pleine main). */
+    var cfBoite = elBjVoile ? elBjVoile.querySelector('.coffre-choix') : null;
+    if (cfBoite) { if (enMain) cfBoite.setAttribute('inert', ''); else cfBoite.removeAttribute('inert'); }
 
     /* ---- ON NE REPEINT QUE SI QUELQUE CHOSE A CHANGE ----
      * Sans ce garde-fou, le message de solde qui suit la donne reconstruisait
@@ -6446,7 +6529,7 @@
     var sig = [st ? st.stage : '-', st ? st.player.cards.join(',') : '',
                st ? st.dealer.cards.join(',') : '', st ? (st.dealer.hidden ? 'h' : '') : '',
                st ? st.result : '', st ? st.payout : '', st ? st.canDouble : '',
-               st ? st.insuranceMax : '', Math.floor(solde), bjMise, bjErreur].join('|');
+               st ? st.insuranceMax : '', Math.floor(solde), sym, jMain, aChoix ? 1 : 0, bjMise, bjErreur].join('|');
     if (sig === BJ_SIG) return;
     BJ_SIG = sig;
 
@@ -6557,9 +6640,12 @@
         /* Quand la banniere DIT le resultat, le mot en dessous ne fait que le
            repeter. On ne garde alors que ce que le dessin ne peut pas dire :
            combien on a recupere. */
-        var txt = ban ? (st.payout ? '+' + st.payout + ' $SWOGE' : '')
+        /* Le gain se compte dans le coffre FIGE de cette main (st.jeton),
+           pas dans celui que le selecteur montre depuis. */
+        var symMain = jMain === 'swogebet' ? '$SWOGEBET' : '$SWOGE';
+        var txt = ban ? (st.payout ? '+' + st.payout + ' ' + symMain : '')
           : ech(String(st.result).replace(/_/g, ' ').toUpperCase()) +
-            (st.payout ? ' &middot; +' + st.payout + ' $SWOGE' : '');
+            (st.payout ? ' &middot; +' + st.payout + ' ' + symMain : '');
         html += '<div class="nxbj-res ' + (nul ? 'nul' : gagne ? 'gagne' : 'perdu') +
           (ban ? ' ban ' + ban : '') + (ban && !txt ? ' vide' : '') +
           '" data-res="' + ech(st.result) + '">' + txt + '</div>';
@@ -6577,9 +6663,23 @@
         }).join('') +
         '<button type="button" class="nxbj-jeton" data-mise="max">Max</button>' +
         '</div>' +
-        '<div class="nxbj-act"><button type="button" class="plaque" data-bj="deal">Deal</button></div>';
+        /* ---- LE COFFRE NOMME A COTE DU BOUTON QUI LE MISE ----
+         * Apres une main, la banniere et le Deal remplissent la carte : la
+         * ligne de solde et le selecteur passent sous le pli (1280x800 : le
+         * selecteur a y 838-865 pour une carte qui finit a 804). Or coffre.js
+         * peut rebasculer le choix sur $SWOGE sans un geste du joueur — une
+         * main $SWOGEBET misee a Max vide le coffre Bet pendant la main. On
+         * lisait « +1000 $SWOGEBET » et Deal, et Deal misait $SWOGE. Le coffre
+         * de la prochaine mise se dit donc DANS la rangee du bouton, sans
+         * ajouter de hauteur (la plaque plafonne a 190 px). `sym` est ici le
+         * coffre du selecteur (jVu hors main), deja dans BJ_SIG. */
+        '<div class="nxbj-act"><button type="button" class="plaque" data-bj="deal">Deal</button>' +
+        /* Seulement s'il y a un choix a faire (un solde $SWOGEBET) ou si la
+           main d'avant etait en $SWOGEBET (coffre bet vide, choix rebascule) :
+           sans $SWOGEBET, la rangee reste celle d'avant. */
+        (aChoix ? '<span class="nxbj-de">from <b>' + sym + '</b></span>' : '') + '</div>';
     }
-    html += '<div class="nxbj-solde">Balance <b>' + Math.floor(solde) + '</b> $SWOGE</div>';
+    html += '<div class="nxbj-solde">Balance <b>' + Math.floor(solde) + '</b> ' + sym + '</div>';
     elBjCorps.innerHTML = html;
 
     var champ = document.getElementById('nxBjMise');
@@ -6605,7 +6705,9 @@
         var q = b.getAttribute('data-bj');
         clic(true);
         bjErreur = '';
-        if (q === 'deal') { envoie({ type: 'bj_bet', amount: bjMise }); return; }
+        /* Seule la DONNE porte le jeton : hit, stand, double et assurance
+           relisent cote serveur celui fige a la mise. */
+        if (q === 'deal') { envoie({ type: 'bj_bet', amount: bjMise, jeton: bjJetonActif() }); return; }
         if (q === 'hit') { envoie({ type: 'bj_hit' }); return; }
         if (q === 'stand') { envoie({ type: 'bj_stand' }); return; }
         if (q === 'double') { envoie({ type: 'bj_double' }); return; }

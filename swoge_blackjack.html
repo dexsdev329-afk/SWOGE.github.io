@@ -168,6 +168,7 @@ video{ max-width:100%; }
      pour ecouter ce qui passe deja, et doit donc etre en place avant que la page
      n ouvre sa connexion. -->
 <script src="stakebubble.min.js?v=c324151c"></script>
+<script src="coffre.js?v=7ce0ad09"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
 <script src="swogebuy.js?v=9d7c39e5"></script>
 <script src="https://sad.adsgram.ai/js/sad.min.js" async></script>
@@ -1912,6 +1913,20 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   function toast(t){ var e=$("toast"); e.textContent=t; e.classList.add("show"); clearTimeout(e._t); e._t=setTimeout(function(){e.classList.remove("show");},2200); }
   function fmtBal(b){ b=parseFloat(b||0); return b>=1e9?(b/1e9).toFixed(2)+"B":b>=1e6?(b/1e6).toFixed(2)+"M":b>=1000?(b/1000).toFixed(1)+"k":b.toFixed(2); }
   function setBalance(b){ balance=parseFloat(b||0); balEl.textContent=fmtBal(balance); }
+  /* ---- le coffre choisi ($SWOGE vault ou $SWOGEBET bet) : coffre.js tient
+     l'interface ; ici on lit le solde et le symbole du coffre actif pour borner
+     le MAX, controler la donne et nommer le bouton. Sans $SWOGEBET, c'est
+     toujours $SWOGE — comportement d'avant a l'identique. Le serveur revalide
+     tout sur ws.addr. */
+  function soldeActif(){ return (window.SwogeCoffre && SwogeCoffre.jeton()==="swogebet") ? SwogeCoffre.soldeBet() : balance; }
+  function symActif(){ return (window.SwogeCoffre && SwogeCoffre.jeton()==="swogebet") ? "$SWOGEBET" : "$SWOGE"; }
+  function jetonActif(){ return (window.SwogeCoffre && SwogeCoffre.jeton()) || "swoge"; }
+  /* Une main EN COURS garde le coffre fige a la donne (st.jeton, renvoye par
+     le serveur) : le double et le resultat se lisent sur CE coffre, pas sur
+     le selecteur, que le joueur peut avoir change entre-temps. */
+  var mainJeton="swoge";
+  function soldeMain(){ return (mainJeton==="swogebet" && window.SwogeCoffre) ? SwogeCoffre.soldeBet() : balance; }
+  function symMain(){ return mainJeton==="swogebet" ? "$SWOGEBET" : "$SWOGE"; }
   function setDot(on){ dot.className="statusdot "+(on?"on":"off"); }
   function showFair(f){ if(f&&f.serverSeedHash) fairEl.innerHTML="Provably fair · seed hash <b>"+String(f.serverSeedHash).slice(0,16)+"…</b> · nonce <b>"+f.nonce+"</b>"; }
 
@@ -2312,6 +2327,10 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     playerVal.textContent = st.player.value;
     playerVal.className = "val" + (st.player.value>21?" bust":(st.player.value===21&&st.player.cards.length===2?" bj":""));
     setBalance(st.balance);
+    /* l'etat bj porte betBalance et jeton DANS st (pas au premier niveau du
+       message) : on les donne nous-memes a coffre.js */
+    if(window.SwogeCoffre) SwogeCoffre.vu(st);
+    mainJeton = st.jeton==="swogebet" ? "swogebet" : "swoge";
     if(st.fairness) showFair(st.fairness);
 
     /* Les annexes sont reglees DES LA DONNE : leur sort s'affiche donc des le
@@ -2350,12 +2369,12 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 
   function showResult(st){
     var r=st.result, txt="", cls="result";
-    if(r==="blackjack"){ txt="+"+st.payout+" $SWOGE"; cls+=" win res-blackjack"; SFX.win(true); }
-    else if(r==="win"){ txt="+"+st.payout+" $SWOGE"; cls+=" win res-win"; SFX.win(false); }
+    if(r==="blackjack"){ txt="+"+st.payout+" "+symMain(); cls+=" win res-blackjack"; SFX.win(true); }
+    else if(r==="win"){ txt="+"+st.payout+" "+symMain(); cls+=" win res-win"; SFX.win(false); }
     else if(r==="push"){ txt=""; cls+=" push res-push"; SFX.push(); }
-    else if(r==="bust"){ txt="−"+(st.doubled?st.bet*2:st.bet)+" $SWOGE"; cls+=" lose res-bust"; SFX.lose(); }
+    else if(r==="bust"){ txt="−"+(st.doubled?st.bet*2:st.bet)+" "+symMain(); cls+=" lose res-bust"; SFX.lose(); }
     else if(r==="dealer_blackjack"){ txt=""; cls+=" lose res-bust"; SFX.lose(); }
-    else if(r==="lose"){ txt="Dealer wins − "+(st.doubled?st.bet*2:st.bet)+" $SWOGE"; cls+=" lose"; SFX.lose(); }
+    else if(r==="lose"){ txt="Dealer wins − "+(st.doubled?st.bet*2:st.bet)+" "+symMain(); cls+=" lose"; SFX.lose(); }
     result.textContent=txt; result.className=cls;
   }
 
@@ -2378,6 +2397,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     ws.onerror=function(){ setDot(false); };
     ws.onmessage=function(ev){
       var m; try{ m=JSON.parse(ev.data); }catch(e){ return; }
+      if(window.SwogeCoffre) SwogeCoffre.vu(m);         // suit le solde $SWOGEBET (auth, betBalance, balance)
       if(m.type==="state") return;
       if(m.type==="hello"){ loginNonce=m.loginNonce; /* Le jeton de session evite de resigner : on le presente des que le nonce est connu. Le serveur repond soit par 'auth' — connecte, sans SDK ni signature — soit par 'resumeFailed'. */
         var reprise=false;
@@ -2391,10 +2411,10 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
            La reprise ratee, elle, appelle deja `doLogin()` depuis 'resumeFailed'. */
         if(myAddr && !reprise) doLogin(); }
       if(m.type==="resumeFailed"){ /* jeton perime ou revoque : on l oublie et on repart du chemin long */ try{ localStorage.removeItem("swogeSession"); }catch(e){} if(typeof autoReconnect==="function") autoReconnect(); else if(myAddr) doLogin(); return; }
-      else if(m.type==="auth"){ authed=true; myAddr=m.address; bjBornes(m); if(m.session){ try{ localStorage.setItem("swogeSession",m.session); }catch(e){} } setBalance(m.balance); showPlay(); if(m.fairness) showFair(m.fairness); if(m.bj) render(m.bj); else idleUI(); if(m.stake) setStakeInfo(m.stake); if(m.quests) renderQuests(m.quests); if(m.bonus) renderBonus(m.bonus); if(m.welcomeGranted>0) toast("🎁 Welcome! +"+m.welcomeGranted+" $SWOGE to try"); }
+      else if(m.type==="auth"){ authed=true; myAddr=m.address; bjBornes(m); if(m.session){ try{ localStorage.setItem("swogeSession",m.session); }catch(e){} } setBalance(m.balance); showPlay(); if(window.SwogeCoffre){ SwogeCoffre.monte(betin.parentNode, function(){ majDeal(); }); } majDeal(); if(m.fairness) showFair(m.fairness); if(m.bj) render(m.bj); else idleUI(); if(m.stake) setStakeInfo(m.stake); if(m.quests) renderQuests(m.quests); if(m.bonus) renderBonus(m.bonus); if(m.welcomeGranted>0) toast("🎁 Welcome! +"+m.welcomeGranted+" $SWOGE to try"); }
       else if(m.type==="balance"||m.type==="deposit"){ setBalance(m.balance); if(m.type==="deposit") toast("💰 Deposit credited"); }
       else if(m.type==="bj"){ render(m.state); }
-      else if(m.type==="need_deposit"){ setBalance(m.balance); busy=false; toast("Not enough $SWOGE — deposit in the Pusher"); }
+      else if(m.type==="need_deposit"){ if(m.balance!=null)setBalance(m.balance); busy=false; toast("Not enough "+symActif()+(jetonActif()==="swogebet"?" — top up in the Wallet":" — deposit in the Pusher")); }
       else if(m.type==="error"){ busy=false; toast(m.error||"error"); }
       else if(m.type==="voucher"){ setBalance(m.balance); submitWithdraw(m.voucher); }
       else if(m.type==="stakeInfo"){ setStakeInfo(m); }
@@ -2482,7 +2502,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
      Il pose desormais le plus petit des deux — et les annexes deja posees
      sont retranchees, sinon le total depasserait encore le solde. */
   function maxJouable(){
-    var libre=Math.floor(balance)-SIDE.pp-SIDE.tp;
+    var libre=Math.floor(soldeActif())-SIDE.pp-SIDE.tp;
     return Math.max(BJ_MIN, Math.min(BJ_MAX, libre));
   }
   /* La croix ne s'affiche que s'il y a des jetons a ramasser. */
@@ -2504,10 +2524,14 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
        lui envoyer une donne qu'il rejettera ferait clignoter le tapis pour
        rien. */
     var total=b+SIDE.pp+SIDE.tp;
-    if(balance<total){ toast("Not enough $SWOGE"); return; }
+    if(soldeActif()<total){ toast("Not enough "+symActif()); return; }
     busy=true; sideRes.innerHTML="";
     resetCardCount(); playShuffle();
-    send({type:"bj_bet",amount:b,annexes:{pp:SIDE.pp,tp:SIDE.tp}}); }
+    send({type:"bj_bet",amount:b,annexes:{pp:SIDE.pp,tp:SIDE.tp},jeton:jetonActif()}); }
+  /* #dealBtn est un bouton-image : son texte est masque (color:transparent,
+     text-indent). Ce qui se VOIT, c'est le selecteur de coffre pose sous la
+     mise. Ici on ne nomme le coffre que pour le nom accessible et l'infobulle. */
+  function majDeal(){ var d=$("dealBtn"); if(!d) return; var t="Deal"+(jetonActif()==="swogebet"?" · $SWOGEBET":""); d.setAttribute("aria-label",t); d.title=t; }
   /* melange du sabot : son + cartes qui defilent sur le tapis avant la donne */
   function playShuffle(){
     SFX.shuffle();
@@ -2555,7 +2579,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   $("insMax").addEventListener("click",function(){ insin.value=insin.max||0; });
   hitBtn.addEventListener("click",function(){ if(busy)return; busy=true; SFX.deal(); send({type:"bj_hit"}); });
   standBtn.addEventListener("click",function(){ if(busy)return; busy=true; send({type:"bj_stand"}); });
-  doubleBtn.addEventListener("click",function(){ if(busy)return; if(balance<getBet()){ toast("Not enough to double"); return;} busy=true; SFX.deal(); send({type:"bj_double"}); });
+  doubleBtn.addEventListener("click",function(){ if(busy)return; if(soldeMain()<getBet()){ toast("Not enough "+symMain()+" to double"); return;} busy=true; SFX.deal(); send({type:"bj_double"}); });
 
   // bet chips
   [].forEach.call(document.querySelectorAll("[data-add]"),function(b){ b.addEventListener("click",function(){ betin.value=Math.min(BJ_MAX,getBet()+parseInt(b.getAttribute("data-add"),10)); getBet(); }); });
@@ -2985,7 +3009,12 @@ function renderBonus(b){ if(!b) return; bonusData=b;
   body.bj-ins #betUI{ display:none !important; }
   /* eteints des que la donne est partie : on les LIT, on n'y touche plus */
   body.bj-jeu #betUI .sidebets, body.bj-jeu #betUI .betrow,
-  body.bj-fin #betUI .sidebets, body.bj-fin #betUI .betrow{
+  body.bj-fin #betUI .sidebets, body.bj-fin #betUI .betrow,
+  /* le selecteur de coffre (coffre.js) est pose APRES .betrow, hors d'elle :
+     sans cette ligne il restait cliquable pendant la main, et le joueur
+     voyait un coffre presse different de celui que le serveur a fige a la
+     donne (st.jeton). On le lit, on n'y touche plus, comme les jetons. */
+  body.bj-jeu #betUI .coffre-choix, body.bj-fin #betUI .coffre-choix{
     pointer-events:none; opacity:.42; filter:grayscale(.35); }
   /* la rangee du bouton Deal, elle, s'efface : c'est la seule qui change */
   body.bj-jeu #betUI .act, body.bj-fin #betUI .act{ display:none; }

@@ -142,6 +142,7 @@ video{ max-width:100%; }
      pour ecouter ce qui passe deja, et doit donc etre en place avant que la page
      n ouvre sa connexion. -->
 <script src="stakebubble.min.js?v=c324151c"></script>
+<script src="coffre.js?v=7ce0ad09"></script>
 <script src="swogeprofil.js?v=aa21d613" defer></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
 <script src="swogebuy.js?v=9d7c39e5"></script>
@@ -1016,6 +1017,9 @@ html,body{ background:#EEF3FB; color:#0B1B36; }
 /* La ligne du dessous : MAX d'un cote, le son de l'autre. */
 .bz-sous{ display:flex; align-items:center; justify-content:center;
   gap:10px; margin:2px auto 0; max-width:min(100%,560px); }
+/* Le choix du coffre (coffre.js) se pose sous la barre de commande : centre
+   comme elle. On ne touche pas a `display`, que coffre.js tient lui-meme. */
+.bz-barre + .coffre-choix{ justify-content:center; }
 /* PAYTABLE et HISTORY sur la MEME ligne : deux boutons pleine largeur l'un
    sous l'autre coutaient cent pixels pour deux mots. */
 .bz-onglets{ display:flex; gap:clamp(8px,3cqi,18px); justify-content:center;
@@ -1939,6 +1943,14 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   function fmtBal(b){ b=parseFloat(b||0); return b>=1e9?(b/1e9).toFixed(2)+"B":b>=1e6?(b/1e6).toFixed(2)+"M":b>=1000?(b/1000).toFixed(1)+"k":b.toFixed(2); }
   function setBalance(b){ balance=parseFloat(b||0); balEl.textContent=fmtBal(balance); }
   function setDot(on){ dot.className="statusdot "+(on?"on":"off"); }
+  /* ---- le coffre choisi ($SWOGE vault ou $SWOGEBET bet) : c'est coffre.js
+     qui tient l'interface ; ici on lit juste le solde et le symbole du coffre
+     actif pour borner les crans, nommer les refus et envoyer `jeton`. Sans
+     $SWOGEBET, c'est toujours $SWOGE — comportement d'avant a l'identique.
+     Le serveur revalide chaque mise sur le bon coffre de toute facon. */
+  function soldeActif(){ return (window.SwogeCoffre && SwogeCoffre.jeton()==="swogebet") ? SwogeCoffre.soldeBet() : balance; }
+  function symActif(){ return (window.SwogeCoffre && SwogeCoffre.jeton()==="swogebet") ? "$SWOGEBET" : "$SWOGE"; }
+  function jetonActif(){ return (window.SwogeCoffre && SwogeCoffre.jeton()) || "swoge"; }
   function showFair(f){ if(f&&f.serverSeedHash) fairEl.innerHTML="Provably fair · seed hash <b>"+String(f.serverSeedHash).slice(0,16)+"…</b> · nonce <b>"+f.nonce+"</b>"; }
 
   // ---- sound ----
@@ -2204,7 +2216,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   /* L'etat de la page. `anime` est le verrou : tant qu'une cascade se joue, on
      ne mise plus et on ne relance plus. Sans lui, deux tours se chevauchent et
      la grille montre les symboles de l'un avec les gains de l'autre. */
-  var BZ={ mise:0, chip:0, bareme:null, anime:false, hist:[], grille:null };
+  var BZ={ mise:0, chip:0, bareme:null, anime:false, hist:[], grille:null, sym:"$SWOGE" };
 
   /* ==================== LE BUS AUDIO ====================
    *
@@ -2387,10 +2399,11 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
      fois presse est un bouton qu'il fallait eteindre avant : on eteint. */
   function bzPasMaj(){
     var l=bzPaliers(), k=bzCran();
-    var jouable = l.filter(function(v){ return v<=balance; });
+    var av = soldeActif();
+    var jouable = l.filter(function(v){ return v<=av; });
     var plafond = jouable.length ? jouable[jouable.length-1] : 0;
     $("bzMoins").disabled = BZ.anime || k<=0;
-    $("bzPlus").disabled  = BZ.anime || k>=l.length-1 || l[k+1]>balance;
+    $("bzPlus").disabled  = BZ.anime || k>=l.length-1 || l[k+1]>av;
     $("bzMax").disabled   = BZ.anime || !plafond || BZ.mise===plafond;
   }
   function bzMiseAff(){
@@ -2403,7 +2416,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     /* « $SWOGE » sort de la pastille : dans une colonne de cent pixels il la
        faisait passer sur deux lignes, et c'est la seule monnaie de la page.
        Il reste dit a voix haute pour qui lit la page a l'oreille. */
-    e.setAttribute("aria-label","Bet "+bzFmt(BZ.mise)+" $SWOGE");
+    e.setAttribute("aria-label","Bet "+bzFmt(BZ.mise)+" "+symActif());
     e.innerHTML='<span>Bet '+bzFmt(BZ.mise)+'</span>'+
       '<button id="bzClear" type="button" title="Clear bet" aria-label="Clear bet">×</button>';
   }
@@ -2453,8 +2466,8 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
        lieu d'aller dans le bandeau prevu pour lui. Il s'affichait, ce qui
        est pire que s'il avait disparu. */
     e.querySelector("b").textContent = bzFmt(cout);
-    e.title = "Buy the bonus — " + bzFmt(cout) + " $SWOGE (" + prix + "× your bet)";
-    e.disabled = BZ.anime || !BZ.mise || cout > balance;
+    e.title = "Buy the bonus — " + bzFmt(cout) + " " + symActif() + " (" + prix + "× your bet)";
+    e.disabled = BZ.anime || !BZ.mise || cout > soldeActif();
   }
   function bzRender(){ bzPasMaj(); bzMiseAff(); bzHist(); bzAchatMaj(); $("bzSpin").disabled=BZ.anime; }
 
@@ -2941,7 +2954,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       var detail = e.amas.map(function(a){ return a.nombre + " " + a.symbole.replace(/_/g," "); }).join(" · ");
       g.innerHTML = '<b></b> <i>' + detail + '</i>';
       var fort = g.firstChild;
-      bzMonte(avant, apresC, 340, function(v){ fort.textContent = "+" + bzFmt(Math.round(v)) + " $SWOGE"; });
+      bzMonte(avant, apresC, 340, function(v){ fort.textContent = "+" + bzFmt(Math.round(v)) + " " + BZ.sym; });
 
       /* On laisse le temps de VOIR ce qui gagne avant de le faire sauter.
          Sans cette pause, la grille change avant qu'on ait compris pourquoi. */
@@ -2986,7 +2999,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     var e = $("bzBandeau");
     if(!e) return fin();
     e.firstChild.src = "img/bonanza/ui/" + p.img + ".webp";
-    e.lastChild.textContent = "+" + bzFmt(Math.round(montant)) + " $SWOGE";
+    e.lastChild.textContent = "+" + bzFmt(Math.round(montant)) + " " + BZ.sym;
     e.className = "bz-bandeau";
     e.hidden = false;
     void e.offsetWidth;                       // on force le rendu de l'etat de depart
@@ -3112,6 +3125,11 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   }
 
   function bzJoueTour(t){
+    /* le gain se dit dans la monnaie du coffre que le serveur a FIGE a
+       l'ouverture (t.jeton), pas dans celle que le selecteur montre
+       maintenant : le joueur peut changer de coffre pendant l'animation.
+       Sans t.jeton (serveur d'avant), c'est $SWOGE comme toujours. */
+    BZ.sym = t.jeton==="swogebet" ? "$SWOGEBET" : "$SWOGE";
     BZ.anime=true; bzRender();
     $("bzGain").innerHTML="";
     BZ_CUMUL = 0;
@@ -3132,7 +3150,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
         if(BZ.hist.length>60) BZ.hist.pop();
         var g=$("bzGain");
         g.style.color = t.net>0 ? "#0E6B32" : t.net<0 ? "#C0392B" : "#0B1B36";
-        g.innerHTML = "<b>"+(t.net>0?"+":"")+bzFmt(t.net)+" $SWOGE</b>"+
+        g.innerHTML = "<b>"+(t.net>0?"+":"")+bzFmt(t.net)+" "+BZ.sym+"</b>"+
           (t.multi?" <i>"+t.multi.toFixed(2)+"×</i>":"");
         if(t.net>0){ son(t.multi>=20?"gros":"gain"); if(t.multi>=20) sonDuck(2600); }
         else son("rien");
@@ -3182,6 +3200,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     ws.onerror=function(){ setDot(false); };
     ws.onmessage=function(ev){
       var m; try{ m=JSON.parse(ev.data); }catch(e){ return; }
+      if(window.SwogeCoffre) SwogeCoffre.vu(m);         // suit le solde $SWOGEBET (auth, betBalance, resultats)
       if(m.type==="state") return;
       if(m.type==="hello"){ loginNonce=m.loginNonce; /* Le jeton de session evite de resigner : on le presente des que le nonce est connu. Le serveur repond soit par 'auth' — connecte, sans SDK ni signature — soit par 'resumeFailed'. */ var reprise=false;
         (function(){ var j=null; try{ j=localStorage.getItem("swogeSession"); }catch(e){} if(j){ reprise=true; send({type:"resume", token:j, tgId:(typeof TG_ID!=="undefined"?TG_ID:null)}); } })(); if(m.vault)VAULT=m.vault; if(m.token)TOKEN=m.token; if(m.minWithdraw)MIN_WITHDRAW=m.minWithdraw; showFair({serverSeedHash:m.serverSeedHash,nonce:0});
@@ -3210,10 +3229,15 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
            SPIN refuse — l'ecran d'accueil du jeu ressemblerait a une panne.
            On prend le plus petit cran que le solde permette. */
         if(BZ.mise<=0){
-          var _l=bzPaliers().filter(function(v){ return v<=balance; });
+          var _av=soldeActif();
+          var _l=bzPaliers().filter(function(v){ return v<=_av; });
           BZ.mise = _l.length ? _l[0] : bzPaliers()[0];
         }
         if(m.bonanzaBareme){ BZ.bareme=m.bonanzaBareme; bzBareme(); }
+        /* le selecteur de coffre sous la barre de commande ; a chaque
+           changement de choix ou de solde $SWOGEBET, les crans, MAX et
+           l'achat se recalculent sur le coffre actif */
+        if(window.SwogeCoffre){ var _barre=document.querySelector(".bz-barre"); SwogeCoffre.monte(_barre, function(){ bzRender(); }); }
         bzRender(); if(m.stake) setStakeInfo(m.stake); if(m.quests) renderQuests(m.quests); if(m.bonus) renderBonus(m.bonus); if(m.welcomeGranted>0) toast("🎁 Welcome! +"+m.welcomeGranted+" $SWOGE to try"); }
       else if(m.type==="balance"||m.type==="deposit"){ setBalance(m.balance); if(m.type==="deposit") toast("💰 Deposit credited"); }
       else if(m.type==="bonanza"){
@@ -3221,7 +3245,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
         if(m.fairness) showFair(m.fairness);
         if(m.tour) bzJoueTour(m.tour);
       }
-      else if(m.type==="need_deposit"){ setBalance(m.balance); busy=false; toast("Not enough $SWOGE — deposit in the Pusher"); }
+      else if(m.type==="need_deposit"){ if(m.balance!=null) setBalance(m.balance); busy=false; bzRender(); toast("Not enough "+symActif()+(jetonActif()==="swogebet"?" — top up in the Wallet":" — deposit in the Pusher")); }
       else if(m.type==="error"){ busy=false; toast(m.error||"error"); }
       else if(m.type==="voucher"){ setBalance(m.balance); submitWithdraw(m.voucher); }
       else if(m.type==="stakeInfo"){ setStakeInfo(m); }
@@ -3288,16 +3312,17 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     if(BZ.anime) return;
     var l=bzPaliers(), k=bzCran()+sens;
     if(k<0) return;
-    if(k>l.length-1) return toast("Table maximum: "+bzFmt(BZ_MAX)+" $SWOGE");
-    if(l[k]>balance) return toast("Not enough $SWOGE");
+    if(k>l.length-1) return toast("Table maximum: "+bzFmt(BZ_MAX)+" "+symActif());
+    if(l[k]>soldeActif()) return toast("Not enough "+symActif());
     BZ.mise=l[k]; if(SFX.chip) SFX.chip(); bzRender();
   }
   $("bzMoins").addEventListener("click", function(){ bzBouge(-1); });
   $("bzPlus").addEventListener("click", function(){ bzBouge(1); });
   $("bzMax").addEventListener("click", function(){
     if(BZ.anime) return;
-    var l=bzPaliers().filter(function(v){ return v<=balance; });
-    if(!l.length) return toast("Not enough $SWOGE");
+    var av=soldeActif();
+    var l=bzPaliers().filter(function(v){ return v<=av; });
+    if(!l.length) return toast("Not enough "+symActif());
     BZ.mise=l[l.length-1]; if(SFX.chip) SFX.chip(); bzRender();
   });
   $("bzMise").addEventListener("click", function(e){
@@ -3319,16 +3344,16 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     var prix = BZ.bareme && BZ.bareme.prixBonus;
     if(!prix) return;
     var cout = BZ.mise * prix;
-    if(BZ.mise<BZ_MIN) return toast("Minimum bet: "+bzFmt(BZ_MIN)+" $SWOGE");
-    if(balance<cout) return toast("Buying the bonus costs "+bzFmt(cout)+" $SWOGE");
-    send({type:"bonanzaAchat", bet:BZ.mise});
+    if(BZ.mise<BZ_MIN) return toast("Minimum bet: "+bzFmt(BZ_MIN)+" "+symActif());
+    if(soldeActif()<cout) return toast("Buying the bonus costs "+bzFmt(cout)+" "+symActif());
+    send({type:"bonanzaAchat", bet:BZ.mise, jeton:jetonActif()});
   });
   $("bzSpin").addEventListener("click", function(){
     if(!authed){ toast("Sign in to play"); return openEmailLogin(); }
     if(BZ.anime) return;
-    if(BZ.mise<BZ_MIN) return toast("Minimum bet: "+bzFmt(BZ_MIN)+" $SWOGE");
-    if(balance<BZ.mise) return toast("Not enough $SWOGE");
-    send({type:"bonanzaSpin", bet:BZ.mise});
+    if(BZ.mise<BZ_MIN) return toast("Minimum bet: "+bzFmt(BZ_MIN)+" "+symActif());
+    if(soldeActif()<BZ.mise) return toast("Not enough "+symActif());
+    send({type:"bonanzaSpin", bet:BZ.mise, jeton:jetonActif()});
   });
   connectBtn.addEventListener("click",doConnect);
   (function(){ var b=$("emailBtn"); if(b) b.addEventListener("click",openEmailLogin); })();

@@ -54,8 +54,29 @@
 
   function previent() { if (onCh) { try { onCh(jeton()); } catch (e) {} } }
 
+  /* ---- seuls les messages qui parlent DU JOUEUR touchent le coffre ----
+     Le 08/10/2026, la copie publique d'un encaissement Crash (diffusee a toute
+     la table) portait le betBalance du joueur qui encaissait ; les pages
+     appellent vu(m) sur TOUT message, et le selecteur aurait pris le solde d'un
+     inconnu pour celui du joueur. Le serveur ne l'envoie plus (crash.js
+     retraitPublic), et ce fichier ne le croirait plus : LISTE BLANCHE des types
+     adresses a la session. Un type oublie rate une mise a jour d'affichage — le
+     serveur revalide chaque mise de toute facon ; un type de trop montrerait
+     l'argent d'un autre. Un objet SANS type (l'etat d'une main que la page passe
+     elle-meme, ex. blackjack) est accepte. */
+  var A_MOI = {
+    auth: 1, betBalance: 1, betDeposit: 1, balance: 1, voucher: 1, pariPose: 1,
+    spinResult: 1, volcanoResult: 1, casino: 1, hilo: 1, mines: 1, plinko: 1,
+    chenil: 1, dod: 1, bonanza: 1, crashBet: 1,
+  };
+  function aMoi(m) {
+    if (m.type == null) return true;
+    if (m.type === 'crashRetrait') return m.moi === true;   // la copie publique n'a pas `moi`
+    return A_MOI.hasOwnProperty(m.type);
+  }
+
   function vu(m) {
-    if (!m || m.betBalance == null) return;
+    if (!m || m.betBalance == null || !aMoi(m)) return;
     var b = parseFloat(m.betBalance) || 0;
     if (b === bet) return;
     bet = b;

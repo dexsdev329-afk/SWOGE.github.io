@@ -143,6 +143,7 @@ video{ max-width:100%; }
      pour ecouter ce qui passe deja, et doit donc etre en place avant que la page
      n ouvre sa connexion. -->
 <script src="stakebubble.min.js?v=c324151c"></script>
+<script src="coffre.js?v=7ce0ad09"></script>
 <script src="swogeprofil.js?v=aa21d613" defer></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
 <script src="swogebuy.js?v=9d7c39e5"></script>
@@ -1887,6 +1888,18 @@ html::before{
   function toast(t){ var e=$("toast"); e.textContent=t; e.classList.add("show"); clearTimeout(e._t); e._t=setTimeout(function(){e.classList.remove("show");},2200); }
   function fmtBal(b){ b=parseFloat(b||0); return b>=1e9?(b/1e9).toFixed(2)+"B":b>=1e6?(b/1e6).toFixed(2)+"M":b>=1000?(b/1000).toFixed(1)+"k":b.toFixed(2); }
   function setBalance(b){ balance=parseFloat(b||0); balEl.textContent=fmtBal(balance); }
+  /* ---- le coffre choisi ($SWOGE vault ou $SWOGEBET bet) : c'est coffre.js
+     qui tient l'interface ; ici on lit juste le solde et le symbole du coffre
+     actif pour borner la mise et nommer les messages. Sans $SWOGEBET, c'est
+     toujours $SWOGE — comportement d'avant a l'identique. Le serveur revalide
+     chaque mise sur le bon coffre de ws.addr : la page ne fait que montrer. */
+  function soldeActif(){ return (window.SwogeCoffre && SwogeCoffre.jeton()==="swogebet") ? SwogeCoffre.soldeBet() : balance; }
+  function symActif(){ return (window.SwogeCoffre && SwogeCoffre.jeton()==="swogebet") ? "$SWOGEBET" : "$SWOGE"; }
+  function jetonActif(){ return (window.SwogeCoffre && SwogeCoffre.jeton()) || "swoge"; }
+  /* Une main ou une partie DEJA ouverte garde le coffre fige a l'ouverture
+     (le serveur le renvoie dans son etat) : on nomme ses montants avec CE
+     coffre-la, pas avec le choix courant, qui a pu changer depuis. */
+  function symDe(e){ return (e && e.jeton==="swogebet") ? "$SWOGEBET" : "$SWOGE"; }
   function setDot(on){ dot.className="statusdot "+(on?"on":"off"); }
   function showFair(f){ if(f&&f.serverSeedHash) fairEl.innerHTML="Provably fair · seed hash <b>"+String(f.serverSeedHash).slice(0,16)+"…</b> · nonce <b>"+f.nonce+"</b>"; }
 
@@ -2164,7 +2177,7 @@ html::before{
     [].forEach.call(rail.children, function(b){
       var v=Number(b.dataset.v);
       b.style.display = v>CA_MAX ? "none" : "";
-      b.disabled = v>balance;                  // le reste est verifie a la pose
+      b.disabled = v>soldeActif();             // coffre actif ; le reste est verifie a la pose
       b.classList.toggle("sel", v===CA.chip);
     });
     // premier affichage : le plus petit jeton disponible est deja en main
@@ -2285,11 +2298,11 @@ html::before{
     }
     hlPose(e.carte);
     note.classList.remove("mode-emploi");
-    multi.innerHTML=e.multi.toFixed(2)+'&times;<small>'+caFmt(e.gain)+' $SWOGE if you stop now</small>';
+    multi.innerHTML=e.multi.toFixed(2)+'&times;<small>'+caFmt(e.gain)+' '+symDe(e)+' if you stop now</small>';
     up.disabled=!e.peutMonter; down.disabled=!e.peutDescendre; cash.disabled=false;
     up.querySelector("i").textContent   = e.peutMonter   ? '&times;'.replace('&times;','x')+e.multHigher.toFixed(2) : '—';
     down.querySelector("i").textContent = e.peutDescendre ? 'x'+e.multLower.toFixed(2) : '—';
-    note.textContent="Step "+e.pas+" · stake "+caFmt(e.mise)+" $SWOGE";
+    note.textContent="Step "+e.pas+" · stake "+caFmt(e.mise)+" "+symDe(e);
     hlSuite();
   }
   /* La suite des cartes deja tombees : sans elle on oublie d'ou on vient, et
@@ -2393,8 +2406,8 @@ html::before{
       b.className="ca-banner"; b.innerHTML=""; $("caOver").className="ca-over"; return; }
     $("caOver").className="ca-over on";
     var r=st.result, art, txt;
-    if(r.outcome==="win"){ art=CAA.bnWin||CAA.bnPush; txt="+"+caFmt(r.payout)+" $SWOGE"; }
-    else if(r.outcome==="dealer_not_qualified"){ art=CAA.bnNotQualified; txt="+"+caFmt(r.payout)+" $SWOGE"; }
+    if(r.outcome==="win"){ art=CAA.bnWin||CAA.bnPush; txt="+"+caFmt(r.payout)+" "+symDe(st); }
+    else if(r.outcome==="dealer_not_qualified"){ art=CAA.bnNotQualified; txt="+"+caFmt(r.payout)+" "+symDe(st); }
     else if(r.outcome==="push"){ art=CAA.bnPush; txt="Returned "+caFmt(r.payout); }
     else if(r.outcome==="fold"){ art=CAA.bnDealerWins; txt=r.payout>0?"Side bet +"+caFmt(r.payout):"Folded"; }
     else { art=CAA.bnDealerWins; txt=r.dealerHand||""; }
@@ -2412,7 +2425,7 @@ html::before{
        et le montant exact est dans l'historique juste en dessous. */
     if(net<=0){ box.className="ca-net"; return; }
     box.className="ca-net on gain";
-    box.firstChild.textContent="+"+caFmt(net)+" $SWOGE";
+    box.firstChild.textContent="+"+caFmt(net)+" "+symDe(st);
   }
 
   /* Historique : ce qu'on cherche quand on se demande si on gagne sur la duree.
@@ -2472,7 +2485,7 @@ html::before{
     }).join("");
 
     $("mnMulti").innerHTML = enCours
-      ? e.multi.toFixed(2)+'&times;<small>'+caFmt(e.gain)+' $SWOGE if you stop now</small>'
+      ? e.multi.toFixed(2)+'&times;<small>'+caFmt(e.gain)+' '+symDe(e)+' if you stop now</small>'
       : e && e.perdu ? '<span style="color:#F2685E">Boom</span><small>Place a bet and deal to play again</small>'
       : e && e.encaisse ? '+'+caFmt(e.gain)+'<small>cashed out</small>'
       : '&mdash;<small>Tap a chip, pick your mines, then Deal</small>';
@@ -2481,7 +2494,7 @@ html::before{
     $("mnCash").disabled = !(enCours && e.ouvertes.length) && !(e && e.complet && !e.encaisse);
     $("mnNote").classList.toggle("mode-emploi", !enCours);
     $("mnNote").textContent = enCours
-      ? "Tile "+e.ouvertes.length+" of "+(25-e.nbMines)+" \u00b7 stake "+caFmt(e.mise)+" $SWOGE \u00b7 max "+e.maximum.toFixed(2)+"\u00d7"
+      ? "Tile "+e.ouvertes.length+" of "+(25-e.nbMines)+" \u00b7 stake "+caFmt(e.mise)+" "+symDe(e)+" \u00b7 max "+e.maximum.toFixed(2)+"\u00d7"
       : "Turn over tiles without hitting a mine. Cash out whenever you like \u2014 the more tiles, the higher the multiplier.";
   }
 
@@ -2588,6 +2601,7 @@ html::before{
     ws.onerror=function(){ setDot(false); };
     ws.onmessage=function(ev){
       var m; try{ m=JSON.parse(ev.data); }catch(e){ return; }
+      if(window.SwogeCoffre) SwogeCoffre.vu(m);         // suit le solde $SWOGEBET (auth, betBalance, resultats)
       if(m.type==="state") return;
       if(m.type==="hello"){ loginNonce=m.loginNonce; /* Le jeton de session evite de resigner : on le presente des que le nonce est connu. Le serveur repond soit par 'auth' — connecte, sans SDK ni signature — soit par 'resumeFailed'. */ var reprise=false;
         (function(){ var j=null; try{ j=localStorage.getItem("swogeSession"); }catch(e){} if(j){ reprise=true; send({type:"resume", token:j, tgId:(typeof TG_ID!=="undefined"?TG_ID:null)}); } })(); if(m.vault)VAULT=m.vault; if(m.token)TOKEN=m.token; if(m.minWithdraw)MIN_WITHDRAW=m.minWithdraw; showFair({serverSeedHash:m.serverSeedHash,nonce:0});
@@ -2607,7 +2621,7 @@ html::before{
            `swoge_blackjack.html`, `swoge_smash.html` et `swogebet.html`. */
         if(myAddr && !reprise) doLogin(); }
       if(m.type==="resumeFailed"){ /* jeton perime ou revoque : on l oublie et on repart du chemin long */ try{ localStorage.removeItem("swogeSession"); }catch(e){} if(typeof autoReconnect==="function") autoReconnect(); else if(myAddr) doLogin(); return; }
-      else if(m.type==="auth"){ authed=true; myAddr=m.address; if(m.session){ try{ localStorage.setItem("swogeSession",m.session); }catch(e){} } setBalance(m.balance); showPlay(); if(m.fairness) showFair(m.fairness); if(m.casinoPay){ CA_PAY=m.casinoPay; CA_MIN=m.casinoMin||CA_MIN; CA_MAX=m.casinoMax||CA_MAX; }
+      else if(m.type==="auth"){ authed=true; myAddr=m.address; if(m.session){ try{ localStorage.setItem("swogeSession",m.session); }catch(e){} } setBalance(m.balance); showPlay(); if(window.SwogeCoffre){ SwogeCoffre.monte($("caRail"), function(){ caRail(); }); } if(m.fairness) showFair(m.fairness); if(m.casinoPay){ CA_PAY=m.casinoPay; CA_MIN=m.casinoMin||CA_MIN; CA_MAX=m.casinoMax||CA_MAX; }
         if(m.hiloEdgeBps!=null) HL.edgeBps=m.hiloEdgeBps;
         if(m.hilo){ HL.etat=m.hilo; if(!m.hilo.fini){ CA.game="hilo"; CA.ante=m.hilo.mise; } }
         /* Les paliers et leur bareme viennent du serveur : changer la liste
@@ -2674,7 +2688,7 @@ html::before{
         }
         caRender();
       }
-      else if(m.type==="need_deposit"){ setBalance(m.balance); busy=false; toast("Not enough $SWOGE — deposit in the Pusher"); }
+      else if(m.type==="need_deposit"){ if(m.balance!=null)setBalance(m.balance); busy=false; toast("Not enough "+symActif()+(jetonActif()==="swogebet"?" — top up in the Wallet":" — deposit in the Pusher")); }
       else if(m.type==="error"){ busy=false; toast(m.error||"error"); }
       else if(m.type==="voucher"){ setBalance(m.balance); submitWithdraw(m.voucher); }
       else if(m.type==="stakeInfo"){ setStakeInfo(m); }
@@ -2806,8 +2820,8 @@ html::before{
     if(HL.etat && !HL.etat.fini) return;
     if(MN.etat && !MN.etat.fini) return;
     var m=(CA.ante||0)+v;
-    if(m>CA_MAX) return toast("Table maximum: "+caFmt(CA_MAX)+" $SWOGE");
-    if(m>balance) return toast("Not enough $SWOGE");
+    if(m>CA_MAX) return toast("Table maximum: "+caFmt(CA_MAX)+" "+symActif());
+    if(m>soldeActif()) return toast("Not enough "+symActif());
     CA.ante=m; if(SFX.chip) SFX.chip(); caRender();
   }
 
@@ -2818,8 +2832,8 @@ html::before{
     var v=CA.chip||0;
     if(!(v>0)) return toast("Pick a chip first");
     var pose = quoi==="side" ? CA.side : CA.ante;
-    if(pose+v>CA_MAX) return toast("Table maximum: "+caFmt(CA_MAX)+" $SWOGE");
-    if(CA.ante+CA.side+v>balance) return toast("Not enough $SWOGE");
+    if(pose+v>CA_MAX) return toast("Table maximum: "+caFmt(CA_MAX)+" "+symActif());
+    if(CA.ante+CA.side+v>soldeActif()) return toast("Not enough "+symActif());
     if(quoi==="side") CA.side=pose+v; else CA.ante=pose+v;
     if(SFX.chip) SFX.chip();          // un jeton pose, un vrai bruit de jeton
     caRender();
@@ -2882,29 +2896,29 @@ html::before{
     var a=b.dataset.act;
     if(!authed){ toast("Sign in to play"); return openEmailLogin(); }
     if(a==="deal"){
-      if(CA.ante<CA_MIN) return toast("Minimum bet: "+caFmt(CA_MIN)+" $SWOGE");
+      if(CA.ante<CA_MIN) return toast("Minimum bet: "+caFmt(CA_MIN)+" "+symActif());
       // Suivre coute 2x l'Ante au Hold'em : on previent AVANT de distribuer
       // plutot que de laisser le joueur decouvrir son flop sans pouvoir payer.
       if(CA.game==="hilo"){
-        if(CA.ante<CA_MIN) return toast("Minimum bet: "+caFmt(CA_MIN)+" $SWOGE");
-        if(balance<CA.ante) return toast("Not enough $SWOGE");
+        if(CA.ante<CA_MIN) return toast("Minimum bet: "+caFmt(CA_MIN)+" "+symActif());
+        if(soldeActif()<CA.ante) return toast("Not enough "+symActif());
         HL.hist=[];
         if(SFX.shuffle) SFX.shuffle();
-        send({type:"hiloStart", bet:CA.ante});
+        send({type:"hiloStart", bet:CA.ante, jeton:jetonActif()});
         return;
       }
       if(CA.game==="mines"){
-        if(CA.ante<CA_MIN) return toast("Minimum bet: "+caFmt(CA_MIN)+" $SWOGE");
-        if(balance<CA.ante) return toast("Not enough $SWOGE");
+        if(CA.ante<CA_MIN) return toast("Minimum bet: "+caFmt(CA_MIN)+" "+symActif());
+        if(soldeActif()<CA.ante) return toast("Not enough "+symActif());
         if(SFX.shuffle) SFX.shuffle();
-        send({type:"minesStart", bet:CA.ante, mines:MN.bombes});
+        send({type:"minesStart", bet:CA.ante, mines:MN.bombes, jeton:jetonActif()});
         return;
       }
       var requis = CA.ante*(CA.game==="holdem"?3:2)+CA.side;
-      if(balance<requis) return toast("You need "+caFmt(requis)+" $SWOGE to see this hand through");
+      if(soldeActif()<requis) return toast("You need "+caFmt(requis)+" "+symActif()+" to see this hand through");
       if(SFX.shuffle) SFX.shuffle();
       caAnnulerNettoyage();
-      send({type:"casinoDeal", game:CA.game, ante:CA.ante, side:CA.side});
+      send({type:"casinoDeal", game:CA.game, ante:CA.ante, side:CA.side, jeton:jetonActif()});
       return;
     }
     if(a==="rebet"){ caRebet(); return; }
@@ -2966,8 +2980,8 @@ html::before{
     if(side>CA_MAX){ side=CA_MAX; plafonne=true; }
     // rien n'est modifie tant qu'on n'est pas sur que la main tient au solde
     var requis=ante*(CA.game==="holdem"?3:2)+side;
-    if(balance<requis)
-      return toast("Not enough $SWOGE to double — a doubled hand needs "+caFmt(requis));
+    if(soldeActif()<requis)
+      return toast("Not enough "+symActif()+" to double — a doubled hand needs "+caFmt(requis));
     caAnnulerNettoyage();
     CA.state=null; CA.ante=ante; CA.side=side; caRender();
     if(SFX.chips) SFX.chips();

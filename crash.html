@@ -142,6 +142,7 @@ video{ max-width:100%; }
      pour ecouter ce qui passe deja, et doit donc etre en place avant que la page
      n ouvre sa connexion. -->
 <script src="stakebubble.min.js?v=c324151c"></script>
+<script src="coffre.js?v=7ce0ad09"></script>
 <!-- La bulle de profil : elle dessine #gxMenu en relisant les lignes du
      tiroir de stakebubble, ou a defaut le #menu cache de cette page. -->
 <script src="swogeprofil.js?v=aa21d613" defer></script>
@@ -616,6 +617,15 @@ html,body{ background:#EEF3FB; color:#0B1B36; }
   background-position:center; background-size:100% 100%; transition:transform .1s; }
 .cr-rail button:active{ transform:translateY(3px) scale(.94); }
 .cr-rail button[disabled]{ opacity:.3; pointer-events:none; }
+/* Le choix du coffre (coffre.js) se pose juste sous la mise. Sa feuille est
+   pensee pour un fond sombre : sur le #EEF3FB de cette page, le beige sur gris
+   ne se lisait pas. On le centre et on le peint comme `.cr-mise`. */
+.cr-reglages + .coffre-choix{ justify-content:center; }
+.cr-reglages + .coffre-choix .cf-lab{ color:#6B7C99; opacity:1; font-weight:800; }
+.cr-reglages + .coffre-choix .cf-btn{ background:rgba(12,10,7,.72); color:#ffe680;
+  border-color:rgba(231,201,122,.45); }
+.cr-reglages + .coffre-choix .cf-btn[aria-pressed="true"]{ background:#ffe680; color:#17110a;
+  border-color:#ffe680; }
 
 /* ---- les deux boutons ----
    Un seul est visible a la fois : miser pendant l'attente, encaisser en vol.
@@ -1513,6 +1523,16 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   function toast(t){ var e=$("toast"); e.textContent=t; e.classList.add("show"); clearTimeout(e._t); e._t=setTimeout(function(){e.classList.remove("show");},2200); }
   function fmtBal(b){ b=parseFloat(b||0); return b>=1e9?(b/1e9).toFixed(2)+"B":b>=1e6?(b/1e6).toFixed(2)+"M":b>=1000?(b/1000).toFixed(1)+"k":b.toFixed(2); }
   function setBalance(b){ balance=parseFloat(b||0); balEl.textContent=fmtBal(balance); }
+  /* ---- le coffre choisi ($SWOGE vault ou $SWOGEBET bet) : coffre.js tient
+     l'interface ; ici on lit le solde et le symbole du coffre actif pour
+     borner la mise et nommer les messages. Sans $SWOGEBET, c'est toujours
+     $SWOGE — comportement d'avant a l'identique. Le serveur revalide tout. */
+  function soldeActif(){ return (window.SwogeCoffre && SwogeCoffre.jeton()==="swogebet") ? SwogeCoffre.soldeBet() : balance; }
+  function symActif(){ return (window.SwogeCoffre && SwogeCoffre.jeton()==="swogebet") ? "$SWOGEBET" : "$SWOGE"; }
+  function jetonActif(){ return (window.SwogeCoffre && SwogeCoffre.jeton()) || "swoge"; }
+  /* Le symbole d'une mise DEJA posee : son coffre est fige a l'ouverture
+     (le serveur le rend dans `jeton`), il ne suit plus le selecteur. */
+  function symDe(j){ return j==="swogebet" ? "$SWOGEBET" : "$SWOGE"; }
   function setDot(on){ dot.className="statusdot "+(on?"on":"off"); }
   function showFair(f){ if(f&&f.serverSeedHash) fairEl.innerHTML="Provably fair · seed hash <b>"+String(f.serverSeedHash).slice(0,16)+"…</b> · nonce <b>"+f.nonce+"</b>"; }
 
@@ -1961,7 +1981,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   function crMiseAff(){
     var t=$("crMiseTxt"), x=$("crClear");
     var en = CR.moi ? CR.moi.mise : CR.mise;
-    if(t) t.textContent = en>0 ? crFmt(en)+" $SWOGE" : "—";
+    if(t) t.textContent = en>0 ? crFmt(en)+" "+(CR.moi ? symDe(CR.moi.jeton) : symActif()) : "—";
     if(x) x.hidden = !(CR.mise>0 && !CR.moi);
   }
 
@@ -2049,7 +2069,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       var bout=crDessine(ms,m);
       crFusee(bout,ms);
       crSonSuit(m);
-      if(CR.moi && !CR.moi.multi) crEtat("cash out to keep "+crFmt(Math.floor(CR.moi.mise*m))+" $SWOGE");
+      if(CR.moi && !CR.moi.multi) crEtat("cash out to keep "+crFmt(Math.floor(CR.moi.mise*m))+" "+symDe(CR.moi.jeton));
       else crEtat("");
     } else if(CR.phase==="attente"){
       var reste=Math.max(0, CR.resteA-Date.now());
@@ -2118,7 +2138,15 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     } else {
       CR.phase=c.phase||"attente";
       CR.resteA=Date.now()+(c.reste||0);
-      if(c.phase==="apres"&&c.point) crCrash(c.point); else crAttente();
+      if(c.phase==="apres"&&c.point) crCrash(c.point);
+      else {
+        /* crAttente() vide la table pour une manche NEUVE ; ici l'etat vient
+           du serveur et fait foi : on lui rend les mises deja posees (la
+           notre comprise, avec son coffre), sinon une page rechargee pendant
+           l'attente oublierait le pari et rouvrirait « Place bet ». */
+        crAttente();
+        CR.joueurs=c.joueurs||[]; CR.moi=c.moi||null;
+      }
     }
     crRender();
   }
@@ -2273,8 +2301,8 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       if(!authed){ toast("Sign in to play"); return openEmailLogin(); }
       if(CR.moi) return toast("you already have a bet in this round");
       var v=parseInt(j.getAttribute("data-v"),10)||0, m=CR.mise+v;
-      if(m>CR.max) return toast("Table maximum: "+crFmt(CR.max)+" $SWOGE");
-      if(m>balance) return toast("Not enough $SWOGE");
+      if(m>CR.max) return toast("Table maximum: "+crFmt(CR.max)+" "+symActif());
+      if(m>soldeActif()) return toast("Not enough "+symActif());
       CR.mise=m;
       try{ SFX.joue("jeton",.7,true); }catch(err){}
       crMiseAff(); crBoutons(); return;
@@ -2284,12 +2312,13 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       if(!authed){ toast("Sign in to play"); return openEmailLogin(); }
       if(CR.moi) return toast("you already have a bet in this round");
       if(CR.phase!=="attente") return toast("bets are closed for this round");
-      if(!(CR.mise>=CR.min)) return toast("Minimum bet: "+crFmt(CR.min)+" $SWOGE");
-      if(CR.mise>balance) return toast("Not enough $SWOGE");
+      if(!(CR.mise>=CR.min)) return toast("Minimum bet: "+crFmt(CR.min)+" "+symActif());
+      if(CR.mise>soldeActif()) return toast("Not enough "+symActif());
       var a=(($("crAuto")||{}).value||"").replace(",",".").trim();
       var auto=a?parseFloat(a):0;
       if(a && !(auto>=1.01)) return toast("auto cash out must be at least 1.01x");
-      send({type:"crashBet", bet:CR.mise, auto:auto||0});
+      // le coffre est fige ici, a l'ouverture : le retrait (crashCashOut) le relit cote serveur
+      send({type:"crashBet", bet:CR.mise, auto:auto||0, jeton:jetonActif()});
       return;
     }
     if(e.target.closest && e.target.closest("#crOut")){
@@ -2308,7 +2337,13 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     for(var i=0;i<CR.joueurs.length;i++)
       if(String(CR.joueurs[i].addr||"").toLowerCase()===a){
         var j=CR.joueurs[i];
-        return {mise:j.mise, auto:j.auto, multi:j.multi, payout:j.payout};
+        /* La liste publique de la table (crashDepart, crashJoueur) ne porte
+           PAS le coffre de la mise : on garde celui deja connu (rendu par
+           crashBet ou crashEtat). Inconnu — mise posee depuis un autre
+           onglet — on redemande l'etat : son `moi` porte le jeton. */
+        var jt=j.jeton || (CR.moi && CR.moi.jeton) || null;
+        if(!jt) send({type:"crashState"});
+        return {mise:j.mise, auto:j.auto, multi:j.multi, payout:j.payout, jeton:jt};
       }
     return null;
   }
@@ -2342,6 +2377,11 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     ws.onerror=function(){ setDot(false); };
     ws.onmessage=function(ev){
       var m; try{ m=JSON.parse(ev.data); }catch(e){ return; }
+      /* suit le solde $SWOGEBET (auth, betBalance, resultats). SAUF la copie
+         publique d'un 'crashRetrait' (sans `moi`) : elle part a toute la table
+         et porte le betBalance de CELUI qui encaisse, pas le notre. Notre
+         propre copie, elle, arrive avec `moi:true`. */
+      if(window.SwogeCoffre && !(m.type==="crashRetrait" && !m.moi)) SwogeCoffre.vu(m);
       if(m.type==="state") return;
       if(m.type==="hello"){ loginNonce=m.loginNonce; /* Le jeton de session evite de resigner : on le presente des que le nonce est connu. Le serveur repond soit par 'auth' — connecte, sans SDK ni signature — soit par 'resumeFailed'. */ var reprise=false;
         (function(){ var j=null; try{ j=localStorage.getItem("swogeSession"); }catch(e){} if(j){ reprise=true; send({type:"resume", token:j, tgId:(typeof TG_ID!=="undefined"?TG_ID:null)}); } })(); if(m.vault)VAULT=m.vault; if(m.token)TOKEN=m.token; if(m.minWithdraw)MIN_WITHDRAW=m.minWithdraw; showFair({serverSeedHash:m.serverSeedHash,nonce:0});
@@ -2363,6 +2403,9 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       if(m.type==="resumeFailed"){ /* jeton perime ou revoque : on l oublie et on repart du chemin long */ try{ localStorage.removeItem("swogeSession"); }catch(e){} if(typeof autoReconnect==="function") autoReconnect(); else if(myAddr) doLogin(); return; }
       else if(m.type==="auth"){ authed=true; myAddr=m.address; if(m.session){ try{ localStorage.setItem("swogeSession",m.session); }catch(e){} } setBalance(m.balance); showPlay(); if(m.fairness) showFair(m.fairness);
         if(m.crash) crEtatServeur(m.crash);
+        /* le choix du coffre, sous la mise ; a chaque changement de choix ou de
+           solde on repeint le montant et les boutons */
+        if(window.SwogeCoffre){ var crRegl=document.querySelector(".cr-reglages"); SwogeCoffre.monte(crRegl, function(){ crMiseAff(); crBoutons(); }); }
         crRender(); if(m.stake) setStakeInfo(m.stake); if(m.quests) renderQuests(m.quests); if(m.bonus) renderBonus(m.bonus); if(m.welcomeGranted>0) toast("🎁 Welcome! +"+m.welcomeGranted+" $SWOGE to try"); }
       else if(m.type==="balance"||m.type==="deposit"){ setBalance(m.balance); if(m.type==="deposit") toast("💰 Deposit credited"); }
       else if(m.type==="crash"){ crEtatServeur(m); }
@@ -2390,9 +2433,9 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       }
       else if(m.type==="crashBet"){
         if(m.balance!=null) setBalance(m.balance);
-        CR.mise=0; CR.moi={mise:m.mise,auto:m.auto,multi:null,payout:0};
+        CR.mise=0; CR.moi={mise:m.mise,auto:m.auto,multi:null,payout:0,jeton:m.jeton};
         try{ SFX.joue("jeton",.85); }catch(e){}
-        toast("Bet placed — "+crFmt(m.mise)+" $SWOGE"+(m.auto?" · auto "+m.auto+"×":""));
+        toast("Bet placed — "+crFmt(m.mise)+" "+symDe(m.jeton)+(m.auto?" · auto "+m.auto+"×":""));
         crRender();
       }
       else if(m.type==="crashRetrait"){
@@ -2406,10 +2449,10 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
           }
         if(m.moi){
           if(m.balance!=null) setBalance(m.balance);
-          CR.moi={mise:m.mise,auto:m.auto,multi:m.multi,payout:m.payout};
+          CR.moi={mise:m.mise,auto:m.auto,multi:m.multi,payout:m.payout,jeton:m.jeton};
           try{ SFX.joue("ramasse",.95); }catch(e){}
           crSonRetrait(m.multi);
-          toast((m.auto?"Auto cash out ":"Cashed out ")+m.multi.toFixed(2)+"× · +"+crFmt(m.net)+" $SWOGE");
+          toast((m.auto?"Auto cash out ":"Cashed out ")+m.multi.toFixed(2)+"× · +"+crFmt(m.net)+" "+symDe(m.jeton));
         }
         crListe(); crFlash(m.addr); crBoutons();
       }
@@ -2426,7 +2469,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
         if(CR.moi) CR.moi.multi=null;
         crBoutons();
       }
-      else if(m.type==="need_deposit"){ setBalance(m.balance); busy=false; toast("Not enough $SWOGE — deposit in the Pusher"); }
+      else if(m.type==="need_deposit"){ if(m.balance!=null) setBalance(m.balance); busy=false; toast("Not enough "+symActif()+(jetonActif()==="swogebet"?" — top up in the Wallet":" — deposit in the Pusher")); }
       else if(m.type==="error"){ busy=false; toast(m.error||"error"); }
       else if(m.type==="voucher"){ setBalance(m.balance); submitWithdraw(m.voucher); }
       else if(m.type==="stakeInfo"){ setStakeInfo(m); }

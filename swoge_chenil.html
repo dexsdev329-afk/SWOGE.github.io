@@ -142,6 +142,7 @@ video{ max-width:100%; }
      pour ecouter ce qui passe deja, et doit donc etre en place avant que la page
      n ouvre sa connexion. -->
 <script src="stakebubble.min.js?v=c324151c"></script>
+<script src="coffre.js?v=7ce0ad09"></script>
 <script src="swogeprofil.js?v=aa21d613" defer></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
 <script src="swogebuy.js?v=9d7c39e5"></script>
@@ -844,6 +845,14 @@ html,body{ background:#EEF3FB; color:#0B1B36; }
 .ch-pas{ height:clamp(38px,7cqi,52px) }
 .ch-large{ height:clamp(34px,6cqi,46px) }
 .ch-rangee{ display:flex; align-items:center; gap:8px; flex-wrap:nowrap }
+/* Le choix du coffre (pose par coffre.js juste apres la barre) se centre
+   sous elle, comme les boutons de mise. */
+.ddwrap > .coffre-choix{ justify-content:center }
+/* coffre.js peint ses pastilles pour un fond SOMBRE (texte beige sur voile
+   noir) : sur le fond clair du Chenil, la pastille non choisie devenait
+   illisible. On les repeint aux couleurs de la page. */
+.ddwrap > .coffre-choix .cf-btn{ background:#fff; color:#0B1B36; border-color:#C9D3E3 }
+.ddwrap > .coffre-choix .cf-btn[aria-pressed="true"]{ background:#0B1B36; color:#fff; border-color:#0B1B36 }
 /* Le groupe principal reste ENTIER quand la barre passe a la ligne : sans
    `flex-wrap:nowrap` le PLUS se retrouvait seul sur la rangee suivante. */
 .ch-principal{ display:flex; align-items:center; justify-content:center;
@@ -1467,7 +1476,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       <div class="ch-vole" id="chVole" hidden></div>
     </div>
 
-    <div class="ch-barre">
+    <div class="ch-barre" id="chBarre">
       <!-- SPIN AU CENTRE, ENTRE MOINS ET PLUS. Il etait au bout d'une rangee
            de quatre boutons, donc colle au bord droit sur telephone : c'est
            le bouton qu'on presse cent fois, il doit tomber sous le pouce et
@@ -1730,6 +1739,18 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   function toast(t){ var e=$("toast"); e.textContent=t; e.classList.add("show"); clearTimeout(e._t); e._t=setTimeout(function(){e.classList.remove("show");},2200); }
   function fmtBal(b){ b=parseFloat(b||0); return b>=1e9?(b/1e9).toFixed(2)+"B":b>=1e6?(b/1e6).toFixed(2)+"M":b>=1000?(b/1000).toFixed(1)+"k":b.toFixed(2); }
   function setBalance(b){ balance=parseFloat(b||0); balEl.textContent=fmtBal(balance); }
+  /* ---- le coffre choisi ($SWOGE vault ou $SWOGEBET bet) : c'est coffre.js
+     qui tient l'interface ; ici on lit juste le solde et le symbole du coffre
+     actif pour borner la mise et nommer la mise. Sans $SWOGEBET, c'est
+     toujours $SWOGE — comportement d'avant a l'identique. Le serveur revalide
+     le jeton et debite le bon coffre sur la session. */
+  function soldeActif(){ return (window.SwogeCoffre && SwogeCoffre.jeton()==="swogebet") ? SwogeCoffre.soldeBet() : balance; }
+  function symActif(){ return (window.SwogeCoffre && SwogeCoffre.jeton()==="swogebet") ? "$SWOGEBET" : "$SWOGE"; }
+  function jetonActif(){ return (window.SwogeCoffre && SwogeCoffre.jeton()) || "swoge"; }
+  /* Les GAINS d'un tour se nomment dans le coffre ou ce tour a ete joue
+     (pose par chJoueTour depuis t.jeton) : basculer le choix pendant
+     l'animation ne doit pas renommer un gain deja paye. */
+  function chSymTour(){ return (typeof CH!=="undefined" && CH.symTour) || "$SWOGE"; }
   function setDot(on){ dot.className="statusdot "+(on?"on":"off"); }
   function showFair(f){ if(fairEl&&f&&f.serverSeedHash) fairEl.innerHTML="Provably fair · seed hash <b>"+String(f.serverSeedHash).slice(0,16)+"…</b> · nonce <b>"+f.nonce+"</b>"; }
 
@@ -2247,7 +2268,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     e.querySelector("u").innerHTML="";
     /* EXACT, pas abrege : c'est ce que le joueur encaisse. `chFmt` rendait
        « +1.1k » pour 1 080. */
-    e.querySelector("b").textContent="+"+chExact(Math.round(montant))+" $SWOGE";
+    e.querySelector("b").textContent="+"+chExact(Math.round(montant))+" "+chSymTour();
     e.querySelector("u").innerHTML="";
     e.className="ch-bandeau"; e.hidden=false;
     void e.offsetWidth;
@@ -2319,7 +2340,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
         var d=(t.lignes||[]).map(function(l){ return l.rouleaux+"x "+l.symbole; }).join(" · ");
         chVole(montant);
         if(ctx.serie){ ctx.serie.total += montant; chSerieAff(ctx.serie, d); }
-        else $("chGain").innerHTML='<small>WIN</small><b>+'+chExact(montant)+' $SWOGE</b> <i>'+d+'</i>';
+        else $("chGain").innerHTML='<small>WIN</small><b>+'+chExact(montant)+' '+chSymTour()+'</b> <i>'+d+'</i>';
       } else {
         /* Rien n'est tombe : on EFFACE. Laisser le gain precedent en place
            etait le defaut n°1. */
@@ -2348,13 +2369,13 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     if(el._c) cancelAnimationFrame(el._c);
     var doux=false;
     try{ doux=matchMedia("(prefers-reduced-motion: reduce)").matches; }catch(e){}
-    if(doux || de===a || ms<=0){ el.textContent=a>0?"+"+chExact(a)+" $SWOGE":""; return; }
+    if(doux || de===a || ms<=0){ el.textContent=a>0?"+"+chExact(a)+" "+chSymTour():""; return; }
     var t0=performance.now();
     (function pas(t){
       var k=Math.min(1,(t-t0)/ms);
       k = 1-Math.pow(1-k,3);                       /* freine a l'arrivee */
       var v=Math.round(de+(a-de)*k);
-      el.textContent = v>0 ? "+"+chExact(v)+" $SWOGE" : "";
+      el.textContent = v>0 ? "+"+chExact(v)+" "+chSymTour() : "";
       if(k<1) el._c=requestAnimationFrame(pas); else el._c=0;
     })(t0);
   }
@@ -2366,11 +2387,14 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     chCompte(t, serie.vu||0, serie.total, 340);
     serie.vu=serie.total;
     $("chGain").innerHTML='<small>FREE SPINS · '+serie.i+' / '+serie.n+'</small>'
-      +'<b style="color:#0E6B32">'+(serie.total>0?"+"+chExact(serie.total)+" $SWOGE":"—")+'</b>'
+      +'<b style="color:#0E6B32">'+(serie.total>0?"+"+chExact(serie.total)+" "+chSymTour():"—")+'</b>'
       +(detail?' <i>'+detail+'</i>':'');
   }
 
   function chJoueTour(t){
+    /* Le symbole du TOUR, pas celui du choix courant : c'est le serveur qui
+       dit dans quel coffre la manche a ete debitee et payee (t.jeton). */
+    CH.symTour = t.jeton==="swogebet" ? "$SWOGEBET" : "$SWOGE";
     CH.anime=true; chRender();
     $("chGain").innerHTML="";
     $("chSerie").hidden=true; $("chVole").hidden=true;
@@ -2390,11 +2414,11 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
            que le compteur des tours gratuits ait affiche 464. La ligne
            RESULT, juste dessous, porte le net. */
         chBandeau(t.multi, t.payout||0, function(){
-          CH.hist.unshift({ mise:t.mise, multi:t.multi, net:t.net, mode:t.mode });
+          CH.hist.unshift({ mise:t.mise, multi:t.multi, net:t.net, mode:t.mode, sym:chSymTour() });
           if(CH.hist.length>60) CH.hist.pop();
           var g=$("chGain");
           g.innerHTML='<small>RESULT</small><b style="color:'+(t.net>0?"#0E6B32":t.net<0?"#C0392B":"#0B1B36")+'">'
-            +(t.net>0?"+":"")+chExact(t.net)+' $SWOGE</b>'+(t.multi?' <i>'+t.multi.toFixed(2)+'×</i>':'');
+            +(t.net>0?"+":"")+chExact(t.net)+' '+chSymTour()+'</b>'+(t.multi?' <i>'+t.multi.toFixed(2)+'×</i>':'');
           if(t.net>0) son(t.multi>=20?"gros":"gain"); else son("rien");
           CH.anime=false; chRender();
         });
@@ -2459,7 +2483,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     chRender();
   }
 
-  function chMiseAff(){ var e=$("chMise"); if(e) e.textContent=chFmt(CH.mise)+" $SWOGE"; }
+  function chMiseAff(){ var e=$("chMise"); if(e) e.textContent=chFmt(CH.mise)+" "+symActif(); }
   function chHist(){
     var e=$("chHist"); if(!e) return;
     var out="";
@@ -2501,6 +2525,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     ws.onerror=function(){ setDot(false); };
     ws.onmessage=function(ev){
       var m; try{ m=JSON.parse(ev.data); }catch(e){ return; }
+      if(window.SwogeCoffre) SwogeCoffre.vu(m);         // suit le solde $SWOGEBET (auth, betBalance, resultats)
       if(m.type==="state") return;
       if(m.type==="hello"){ loginNonce=m.loginNonce; /* Le jeton de session evite de resigner : on le presente des que le nonce est connu. Le serveur repond soit par 'auth' — connecte, sans SDK ni signature — soit par 'resumeFailed'. */ var reprise=false;
         (function(){ var j=null; try{ j=localStorage.getItem("swogeSession"); }catch(e){} if(j){ reprise=true; send({type:"resume", token:j, tgId:(typeof TG_ID!=="undefined"?TG_ID:null)}); } })(); if(m.vault)VAULT=m.vault; if(m.token)TOKEN=m.token; if(m.minWithdraw)MIN_WITHDRAW=m.minWithdraw; showFair({serverSeedHash:m.serverSeedHash,nonce:0});
@@ -2529,7 +2554,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
            SPIN refuse — l'ecran d'accueil du jeu ressemblerait a une panne.
            On prend le plus petit cran que le solde permette. */
         if(CH.mise<=0){
-          var _l=chPaliers().filter(function(v){ return v<=balance; });
+          var _l=chPaliers().filter(function(v){ return v<=soldeActif(); });
           CH.mise = _l.length ? _l[0] : chPaliers()[0];
         }
         /* ---- CE SERVEUR CONNAIT-IL SEULEMENT CE JEU ? ----
@@ -2542,6 +2567,10 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
            le serveur ne sait pas jouer, et il vaut mieux le dire que laisser
            un bouton mort. */
         CH.serveurConnait = !!m.chenilBareme;
+        /* Le selecteur de coffre se pose sous la barre de mise ; a chaque
+           changement de choix ou de solde $SWOGEBET, la mise affichee et son
+           symbole sont repeints. */
+        if(window.SwogeCoffre){ SwogeCoffre.monte($("chBarre"), function(){ chRender(); }); }
         if(m.chenilBareme){ CH.bareme=m.chenilBareme; chBareme(); }
         chRender(); if(m.stake) setStakeInfo(m.stake); if(m.quests) renderQuests(m.quests); if(m.bonus) renderBonus(m.bonus); if(m.welcomeGranted>0) toast("🎁 Welcome! +"+m.welcomeGranted+" $SWOGE to try"); }
       else if(m.type==="balance"||m.type==="deposit"){ setBalance(m.balance); if(m.type==="deposit") toast("💰 Deposit credited"); }
@@ -2550,7 +2579,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
         if(m.fairness) showFair(m.fairness);
         chJoueTour(m.tour);
       }
-      else if(m.type==="need_deposit"){ setBalance(m.balance); busy=false; toast("Not enough $SWOGE — deposit in the Pusher"); }
+      else if(m.type==="need_deposit"){ if(m.balance!=null)setBalance(m.balance); busy=false; toast("Not enough "+symActif()+(jetonActif()==="swogebet"?" — top up in the Wallet":" — deposit in the Pusher")); }
       else if(m.type==="error"){ busy=false; toast(m.error||"error"); }
       else if(m.type==="voucher"){ setBalance(m.balance); submitWithdraw(m.voucher); }
       else if(m.type==="stakeInfo"){ setStakeInfo(m); }
@@ -2621,24 +2650,24 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     if(CH.anime) return;
     var l=chPaliers(), k=chCran()+sens;
     if(k<0) return;
-    if(k>l.length-1) return toast("Table maximum: "+chFmt(CH_MAX)+" $SWOGE");
-    if(l[k]>balance) return toast("Not enough $SWOGE");
+    if(k>l.length-1) return toast("Table maximum: "+chFmt(CH_MAX)+" "+symActif());
+    if(l[k]>soldeActif()) return toast("Not enough "+symActif());
     CH.mise=l[k]; if(SFX.chip) SFX.chip(); chRender();
   }
   $("chSpin").addEventListener("click", function(){
     if(!authed){ toast("Sign in to play"); return openEmailLogin(); }
     if(CH.serveurConnait===false) return toast("SWOGE Kennel isn't live on this server yet");
     if(CH.anime) return;
-    if(CH.mise<CH_MIN) return toast("Minimum bet: "+chFmt(CH_MIN)+" $SWOGE");
-    if(balance<CH.mise) return toast("Not enough $SWOGE");
-    send({type:"chenilSpin", bet:CH.mise});
+    if(CH.mise<CH_MIN) return toast("Minimum bet: "+chFmt(CH_MIN)+" "+symActif());
+    if(soldeActif()<CH.mise) return toast("Not enough "+symActif());
+    send({type:"chenilSpin", bet:CH.mise, jeton:jetonActif()});
   });
   $("chMoins").addEventListener("click", function(){ chBougeSolde(-1); });
   $("chPlus").addEventListener("click",  function(){ chBougeSolde(1); });
   $("chMax").addEventListener("click",   function(){
     if(CH.anime) return;
-    var l=chPaliers().filter(function(v){ return v<=balance; });
-    if(!l.length) return toast("Not enough $SWOGE");
+    var l=chPaliers().filter(function(v){ return v<=soldeActif(); });
+    if(!l.length) return toast("Not enough "+symActif());
     CH.mise=l[l.length-1]; if(SFX.chip) SFX.chip(); chRender();
   });
   /* Les deux tableaux ne sont pas encore ecrits : on le DIT plutot que de
@@ -2687,8 +2716,8 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     var h='<table>';
     for(var i=0;i<CH.hist.length;i++){
       var x=CH.hist[i];
-      var net=(x.net>0?"+":"")+chExact(x.net)+" $SWOGE";
-      h+='<tr><td>'+chExact(x.mise)+' $SWOGE'
+      var net=(x.net>0?"+":"")+chExact(x.net)+" "+(x.sym||"$SWOGE");
+      h+='<tr><td>'+chExact(x.mise)+' '+(x.sym||"$SWOGE")
         + (x.mode?' <span class="note">· '+(x.mode==="deader"?"DEADER":"DEAD")+' SPINS</span>':'')
         + '</td><td style="color:'+(x.net>0?"#7CFF9B":x.net<0?"#FF9B8E":"#CFC7B8")+'">'
         + net+' · '+x.multi.toFixed(2)+'×</td></tr>';
@@ -2730,7 +2759,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 
     var ordre=(b.bas||[]).concat(b.hauts||[]);
     if(b.bareme && ordre.length){
-      h+='<h4>SYMBOLS &mdash; PER '+chExact(mise)+' $SWOGE BET, ON ONE LINE</h4><div class="sym">';
+      h+='<h4>SYMBOLS &mdash; PER '+chExact(mise)+' '+symActif()+' BET, ON ONE LINE</h4><div class="sym">';
       ordre.slice().sort(function(x,y){
         return ((b.bareme[y]||{})[5]||0)-((b.bareme[x]||{})[5]||0); })
       .forEach(function(sy){
@@ -2749,8 +2778,8 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
         var p2=b.bareme[sy]; if(!p2) return false;
         return [3,4,5].some(function(n){ return p2[n]!=null && Math.round(p2[n]*mise)===0; });
       });
-      if(zero) h+='<p class="note">Wins are rounded down to whole $SWOGE. At a '
-        + chExact(mise)+' $SWOGE bet the smallest combinations above come to 0 —'
+      if(zero) h+='<p class="note">Wins are rounded down to whole '+symActif()+'. At a '
+        + chExact(mise)+' '+symActif()+' bet the smallest combinations above come to 0 —'
         + ' raise your bet and they pay.</p>';
       h+='<p class="note">Those figures are multiples of your WHOLE bet, for one'
        + ' line. Several lines can win on the same spin, and they add up.</p>';
@@ -2824,7 +2853,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       if(b.bonusPaie!=null)
         h+='<p class="note">The Bonus symbols PAY as well as opening the round:'
          + ' '+b.bonusPourTours+' of them are worth '+b.bonusPaie+'&times; your bet'
-         + ' — '+chExact(Math.round(b.bonusPaie*mise))+' $SWOGE at this bet — on top'
+         + ' — '+chExact(Math.round(b.bonusPaie*mise))+' '+symActif()+' at this bet — on top'
          + ' of the free spins.</p>';
       h+='<p class="note">During the round every Wild that lands <b>STAYS in its'
        + ' cell</b>, with its multiplier, until the round ends. A Wild falling on a'
@@ -2856,8 +2885,8 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       h+='<tr><td>Reels</td><td>'+b.rouleaux+' &times; '+b.rangees+'</td></tr>';
     if(nLignes) h+='<tr><td>Lines</td><td>'+nLignes+', fixed</td></tr>';
     if(b.gainMax) h+='<tr><td>Maximum win</td><td>'+chExact(b.gainMax)+'&times; bet</td></tr>';
-    if(b.min) h+='<tr><td>Minimum bet</td><td>'+chExact(b.min)+' $SWOGE</td></tr>';
-    if(b.max) h+='<tr><td>Maximum bet</td><td>'+chExact(b.max)+' $SWOGE</td></tr>';
+    if(b.min) h+='<tr><td>Minimum bet</td><td>'+chExact(b.min)+' '+symActif()+'</td></tr>';
+    if(b.max) h+='<tr><td>Maximum bet</td><td>'+chExact(b.max)+' '+symActif()+'</td></tr>';
     if(b.rtp) h+='<tr><td>Return to player</td><td>'+b.rtp.toFixed(2)+' %</td></tr>';
     if(b.bonusUnSur) h+='<tr><td>Bonus frequency</td><td>1 in '+chExact(b.bonusUnSur)+'</td></tr>';
     h+='</table>';

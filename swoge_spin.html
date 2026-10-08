@@ -163,6 +163,7 @@ video{ max-width:100%; }
 })();
 </script>
 <script src="stakebubble.min.js?v=c324151c"></script>
+<script src="coffre.js?v=7ce0ad09"></script>
 <script src="swogeprofil.js?v=aa21d613" defer></script>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
@@ -576,6 +577,27 @@ video{ max-width:100%; }
   .bet-val .l { font-size:1.4vh; color:#6B7C99; letter-spacing:1px; }
   .bet-val .n { font-size:2.6vh; font-weight:900; color:#1B5FE0; }
   #buy-bonus span { line-height:1.15; }
+  /* ---- LE CHOIX DU COFFRE ($SWOGE vault / $SWOGEBET bet), pose par coffre.js
+   * juste apres #bet-ctrl, DANS #bottom. Mesure a l'ecran (08/10/2026) : en
+   * paysage la barre du bas deborde DEJA de la fenetre a 1200 et 1024 px de
+   * large (de -71 a 1271 px) ; le selecteur dans le fil l'elargissait encore
+   * de ~280 px. Il sort donc du fil en paysage et se pose, centre, dans
+   * l'espace de 29 a 37 px entre la machine et la barre. En portrait il prend
+   * sa propre ligne, sans libelle : a 360x640, sur deux lignes, il poussait
+   * TURBO hors de l'ecran (bas a 654 px pour 640). Jamais de `display` ici :
+   * coffre.js le pose lui-meme (cache sans $SWOGEBET). Couleurs de la page
+   * (fond blanc) au lieu de celles du module, pensees pour un fond sombre. */
+  #bottom > .coffre-choix { margin:0; gap:5px; flex-wrap:nowrap; justify-content:center; white-space:nowrap; }
+  #bottom > .coffre-choix .cf-lab { color:#6B7C99; opacity:1; font-size:11px; }
+  #bottom > .coffre-choix .cf-btn { font-size:12px; padding:4px 10px; color:#0B1B36; background:#EEF3FB; border-color:#E1E9F6; }
+  #bottom > .coffre-choix .cf-btn[aria-pressed="true"] { color:#FFFFFF; background:#1B5FE0; border-color:#1B5FE0; }
+  @media (min-width:821px) and (orientation:landscape) {
+    #bottom > .coffre-choix { position:absolute; bottom:calc(100% + 2px); left:50%; transform:translateX(-50%); z-index:6; }
+  }
+  @media (max-width:820px), (orientation:portrait) {
+    #bottom > .coffre-choix { flex:0 0 100%; }
+    #bottom > .coffre-choix .cf-lab { display:none; }
+  }
   /* ---- LE SON REJOINT LA BARRE DU HAUT ----
    * Il vivait cale en fixe dans le coin haut-gauche, hors du HUD. La nouvelle
    * barre blanche (plus bas dans le fichier) le prend maintenant DANS son
@@ -1965,7 +1987,7 @@ async function doSpin(){
       // ===== VRAI ARGENT : le serveur calcule le spin (provably fair) et débite/crédite le solde =====
       let r;
       try { r = await serverSpin(BET); }
-      catch(e){ if(e&&e.needDeposit){ gtoast('Solde insuffisant — dépose du $SWOGE'); openPanel('dep'); } busy=false; $('spin-btn').disabled=false; return; }
+      catch(e){ if(e&&e.needDeposit){ manqueSolde(e.jeton,''); } busy=false; $('spin-btn').disabled=false; return; }
       const s = r.outcome;
       await animateSpin(s);
       if (s.erupt){ collectMeter=COLLECT_CAP; await collectSwoge(s.grid); await animateEruption(); collectMeter=s.meter; setMeterUI(); }
@@ -1985,7 +2007,26 @@ async function doSpin(){
     }
   } catch(e){}
   busy=false; $('spin-btn').disabled=false;
-  if (auto) setTimeout(()=>{ if(auto && !busy) doSpin(); }, 400);
+  suiteAuto();
+}
+/* L'AUTO EST LIE AU COFFRE QUI L'A LANCE. Verifie le 08/10/2026 (faux serveur,
+   $SWOGEBET 20, mise 10) : des que le coffre bet tombe a 0, coffre.js retombe
+   sur $SWOGE, et l'auto enchainait 60 spins sur le $SWOGE vault que le joueur
+   n'avait pas choisi. Un changement de coffre en cours d'auto l'arrete donc :
+   relancer AUTO est un geste explicite du joueur. */
+let autoJeton='swoge';
+function arreteAuto(){ auto=false; const b=$('auto-btn'); b.classList.remove('on'); b.textContent='AUTO'; }
+function suiteAuto(){
+  if (!auto) return;
+  setTimeout(()=>{
+    if (!auto || busy) return;
+    if (authed && jetonActif()!==autoJeton){
+      const vide = autoJeton==='swogebet' && !(window.SwogeCoffre && SwogeCoffre.actif());
+      arreteAuto(); gtoast(vide ? 'Autoplay stopped — your $SWOGEBET is empty' : 'Autoplay stopped — stake vault changed');
+      return;
+    }
+    doSpin();
+  }, 400);
 }
 async function forceBonus(){
   if (busy) return; busy=true; $('spin-btn').disabled=true;
@@ -1993,28 +2034,28 @@ async function forceBonus(){
     if (authed) {
       let r;
       try { r = await serverBuyBonus(BET); }
-      catch(e){ if(e&&e.needDeposit){ gtoast('Solde insuffisant pour acheter le bonus'); openPanel('dep'); } busy=false; $('spin-btn').disabled=false; return; }
+      catch(e){ if(e&&e.needDeposit){ manqueSolde(e.jeton,' to buy the bonus'); } busy=false; $('spin-btn').disabled=false; return; }
       await animateBonus(r.outcome.bonus); setBalance(r.balance);
     } else {
       const b = runBonus(3); await animateBonus(b);
     }
   } catch(e){}
   busy=false; $('spin-btn').disabled=false;
-  if (auto) setTimeout(()=>{ if(auto && !busy) doSpin(); }, 400);
+  suiteAuto();
 }
 // ===== MISE : sélecteur + mise à jour des affichages proportionnels =====
 function updateBetUI(){
   BET = BET_LEVELS[betIdx];
   $('bet-amt').textContent = fmtNum(BET);
   renderLadderValues();
-  const bb=$('buy-bonus').querySelector('span'); if(bb) bb.innerHTML = fmtNum(BET*BONUS_COST_MULT)+' 🪙';   /* le texte BUY BONUS est dans l'image, on n'affiche que le coût */
+  const bb=$('buy-bonus').querySelector('span'); if(bb) bb.innerHTML = fmtNum(BET*BONUS_COST_MULT)+(jetonActif()==='swogebet'?' $SWOGEBET':' 🪙');   /* le texte BUY BONUS est dans l'image, on n'affiche que le coût */
 }
 $('bet-dn').addEventListener('click', ()=>{ if(busy) return; if(betIdx>0){ betIdx--; updateBetUI(); } });
 $('bet-up').addEventListener('click', ()=>{ if(busy) return; if(betIdx<BET_LEVELS.length-1){ betIdx++; updateBetUI(); } });
 updateBetUI();
 
 $('spin-btn').addEventListener('click', ()=>{ ac(); doSpin(); });
-$('auto-btn').addEventListener('click', function(){ auto=!auto; this.classList.toggle('on',auto); this.textContent=auto?'AUTO ⏸':'AUTO'; if(auto && !busy){ ac(); doSpin(); } });
+$('auto-btn').addEventListener('click', function(){ auto=!auto; if(auto) autoJeton=jetonActif(); this.classList.toggle('on',auto); this.textContent=auto?'AUTO ⏸':'AUTO'; if(auto && !busy){ ac(); doSpin(); } });
 /* TURBO à 3 niveaux : normal -> rapide -> très rapide (3 appuis) */
 let turboLvl=0; const TURBO_TF=[1, 0.6, 0.35]; const TURBO_LBL=['⚡ TURBO','⚡⚡ TURBO','⚡⚡⚡ TURBO'];
 $('turbo-btn').addEventListener('click', function(){
@@ -2060,13 +2101,27 @@ function gtoast(t){ var e=$('g-toast'); e.textContent=t; e.classList.add('show')
 function fmtBig(n){ n=parseFloat(n||0); if(n>=1e9)return (n/1e9).toFixed(2)+"B"; if(n>=1e6)return (n/1e6).toFixed(2)+"M"; if(n>=1e3)return (n/1e3).toFixed(2)+"K"; return (Math.round(n*100)/100).toString(); }
 function setDot(on){ $('dot').className='statusdot'+(on?' on':''); }
 function setBalance(b){ balance=parseFloat(b||0); $('bal').textContent=fmtBig(balance); }
+/* ---- le coffre choisi ($SWOGE vault ou $SWOGEBET bet) : coffre.js tient
+   l'interface ; ici on lit seulement le coffre actif pour nommer le prix du
+   bonus, le message d'erreur, et poser `jeton` sur chaque mise. La page ne
+   bloque rien sur le solde : le serveur revalide sur ws.addr et repond
+   need_deposit. Sans $SWOGEBET, c'est toujours $SWOGE — comme avant. */
+function soldeActif(){ return (window.SwogeCoffre && SwogeCoffre.jeton()==='swogebet') ? SwogeCoffre.soldeBet() : balance; }
+function symActif(){ return (window.SwogeCoffre && SwogeCoffre.jeton()==='swogebet') ? '$SWOGEBET' : '$SWOGE'; }
+function jetonActif(){ return (window.SwogeCoffre && SwogeCoffre.jeton()) || 'swoge'; }
+/* need_deposit ne dit pas quel coffre manquait : on nomme celui de la mise
+   envoyee (fige dans pendingVolcano), pas le choix courant du selecteur. */
+function manqueSolde(jeton, quoi){
+  if(jeton==='swogebet'){ gtoast('Not enough $SWOGEBET'+quoi+' — top up in the Wallet'); return; }
+  gtoast('Not enough $SWOGE'+quoi+' — deposit first'); openPanel('dep');
+}
 function send(o){ if(ws&&ws.readyState===1) ws.send(JSON.stringify(o)); }
 function esc(s){ return String(s==null?'':s).replace(/[<>&]/g,function(c){return{'<':'&lt;','>':'&gt;','&':'&amp;'}[c];}); }
 
 function serverSpin(bet){ return new Promise((res,rej)=>{ if(!(ws&&ws.readyState===1)) return rej(new Error('offline'));
-  pendingVolcano={res,rej}; send({type:'volcanoSpin',bet}); setTimeout(()=>{ if(pendingVolcano){ var p=pendingVolcano; pendingVolcano=null; p.rej(new Error('timeout')); } },9000); }); }
+  var jeton=jetonActif(); pendingVolcano={res,rej,jeton}; send({type:'volcanoSpin',bet,jeton:jeton}); setTimeout(()=>{ if(pendingVolcano){ var p=pendingVolcano; pendingVolcano=null; p.rej(new Error('timeout')); } },9000); }); }
 function serverBuyBonus(bet){ return new Promise((res,rej)=>{ if(!(ws&&ws.readyState===1)) return rej(new Error('offline'));
-  pendingVolcano={res,rej}; send({type:'volcanoBuyBonus',bet}); setTimeout(()=>{ if(pendingVolcano){ var p=pendingVolcano; pendingVolcano=null; p.rej(new Error('timeout')); } },12000); }); }
+  var jeton=jetonActif(); pendingVolcano={res,rej,jeton}; send({type:'volcanoBuyBonus',bet,jeton:jeton}); setTimeout(()=>{ if(pendingVolcano){ var p=pendingVolcano; pendingVolcano=null; p.rej(new Error('timeout')); } },12000); }); }
 
 function connect(){
   try{ ws=new WebSocket(SERVER_URL); }catch(e){ setDot(false); return; }
@@ -2074,6 +2129,7 @@ function connect(){
   ws.onclose=function(){ setDot(false); authed=false; setTimeout(connect,3000); };
   ws.onerror=function(){ setDot(false); };
   ws.onmessage=function(ev){ var m; try{ m=JSON.parse(ev.data); }catch(e){ return; }
+    if(window.SwogeCoffre) SwogeCoffre.vu(m);   // suit le solde $SWOGEBET (auth, betBalance, volcanoResult)
     if(m.type==='state') return;
     if(m.type==='hello'){ loginNonce=m.loginNonce; /* Le jeton de session evite de resigner : on le presente des que le nonce est connu. Le serveur repond soit par 'auth' — connecte, sans SDK ni signature — soit par 'resumeFailed'. */
       var reprise=false;
@@ -2089,10 +2145,10 @@ function connect(){
          sa chance ('resumeFailed', plus bas, signe si elle rate vraiment). */
       if(myAddr && !reprise) doLogin(); }
     if(m.type==="resumeFailed"){ /* jeton perime ou revoque : on l oublie et on repart du chemin long */ try{ localStorage.removeItem("swogeSession"); }catch(e){} if(typeof autoReconnect==="function") autoReconnect(); else if(myAddr) doLogin(); return; }
-      else if(m.type==='auth'){ authed=true; myAddr=m.address; if(m.session){ try{ localStorage.setItem("swogeSession",m.session); }catch(e){} } onAuthed(); setBalance(m.balance); if(m.stake) setStakeInfo(m.stake); if(m.quests) renderQuests(m.quests); if(m.bonus) renderBonus(m.bonus); if(m.welcomeGranted>0) gtoast('🎁 Welcome! +'+m.welcomeGranted+' $SWOGE to try'); if(m.volcano&&m.volcano.meter!=null){ collectMeter=m.volcano.meter; setMeterUI(); } }
+      else if(m.type==='auth'){ authed=true; myAddr=m.address; if(m.session){ try{ localStorage.setItem("swogeSession",m.session); }catch(e){} } onAuthed(); setBalance(m.balance); if(window.SwogeCoffre){ SwogeCoffre.monte($('bet-ctrl'), function(){ updateBetUI(); }); } if(m.stake) setStakeInfo(m.stake); if(m.quests) renderQuests(m.quests); if(m.bonus) renderBonus(m.bonus); if(m.welcomeGranted>0) gtoast('🎁 Welcome! +'+m.welcomeGranted+' $SWOGE to try'); if(m.volcano&&m.volcano.meter!=null){ collectMeter=m.volcano.meter; setMeterUI(); } }
     else if(m.type==='balance'||m.type==='deposit'){ setBalance(m.balance); if(m.type==='deposit') gtoast('💰 Deposit credited'); }
     else if(m.type==='volcanoResult'){ if(pendingVolcano){ var pv=pendingVolcano; pendingVolcano=null; pv.res(m); } }
-    else if(m.type==='need_deposit'){ setBalance(m.balance); if(pendingVolcano){ var p2=pendingVolcano; pendingVolcano=null; p2.rej({needDeposit:true}); } }
+    else if(m.type==='need_deposit'){ if(m.balance!=null) setBalance(m.balance); if(pendingVolcano){ var p2=pendingVolcano; pendingVolcano=null; p2.rej({needDeposit:true, jeton:p2.jeton}); } }
     else if(m.type==='error'){ if(pendingVolcano){ var p3=pendingVolcano; pendingVolcano=null; p3.rej(new Error(m.error||'error')); } gtoast(m.error||'error'); }
     else if(m.type==='voucher'){ setBalance(m.balance); submitWithdraw(m.voucher); }
     else if(m.type==='stakeInfo'){ setStakeInfo(m); }

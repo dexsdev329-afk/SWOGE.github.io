@@ -142,6 +142,7 @@ video{ max-width:100%; }
      pour ecouter ce qui passe deja, et doit donc etre en place avant que la page
      n ouvre sa connexion. -->
 <script src="stakebubble.min.js?v=c324151c"></script>
+<script src="coffre.js?v=7ce0ad09"></script>
 <script src="swogeprofil.js?v=aa21d613" defer></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
 <script src="swogebuy.js?v=9d7c39e5"></script>
@@ -848,6 +849,8 @@ html,body{ background:#EEF3FB; color:#0B1B36; }
  * Quatre crans, du moins cher au plus cher, et les PRIX viennent du serveur.
  * Les images ne les portent pas : un prix dessine dans une image se dement le
  * jour ou le moteur est remesure, et personne ne pense a refaire l'image. */
+/* le selecteur de coffre (coffre.js) se pose sous la barre : centre comme elle */
+.ddwrap > .coffre-choix{ justify-content:center }
 .dd-achats{ max-width:1040px; margin:12px auto 0; padding:0 10px;
   display:grid; gap:8px; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)) }
 .dd-a{ position:relative; background:none; border:0; padding:0; cursor:pointer;
@@ -1730,6 +1733,18 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   function toast(t){ var e=$("toast"); e.textContent=t; e.classList.add("show"); clearTimeout(e._t); e._t=setTimeout(function(){e.classList.remove("show");},2200); }
   function fmtBal(b){ b=parseFloat(b||0); return b>=1e9?(b/1e9).toFixed(2)+"B":b>=1e6?(b/1e6).toFixed(2)+"M":b>=1000?(b/1000).toFixed(1)+"k":b.toFixed(2); }
   function setBalance(b){ balance=parseFloat(b||0); balEl.textContent=fmtBal(balance); }
+  /* ---- le coffre choisi ($SWOGE vault ou $SWOGEBET bet) : c'est coffre.js
+     qui tient l'interface ; ici on lit juste le solde et le symbole du coffre
+     actif pour borner la mise, nommer les montants et choisir le jeton envoye.
+     Sans $SWOGEBET, c'est toujours $SWOGE — comportement d'avant a l'identique.
+     Le serveur revalide chaque mise sur le coffre de la session. */
+  function soldeActif(){ return (window.SwogeCoffre && SwogeCoffre.jeton()==="swogebet") ? SwogeCoffre.soldeBet() : balance; }
+  function symActif(){ return (window.SwogeCoffre && SwogeCoffre.jeton()==="swogebet") ? "$SWOGEBET" : "$SWOGE"; }
+  function jetonActif(){ return (window.SwogeCoffre && SwogeCoffre.jeton()) || "swoge"; }
+  /* Le symbole d'un tour DEJA joue : celui du jeton fige par le serveur a
+     l'ouverture (t.jeton), pas celui du selecteur — le joueur peut changer
+     de coffre pendant que les rouleaux tournent. */
+  function symJeton(j){ return j==="swogebet" ? "$SWOGEBET" : "$SWOGE"; }
   function setDot(on){ dot.className="statusdot "+(on?"on":"off"); }
   function showFair(f){ if(fairEl&&f&&f.serverSeedHash) fairEl.innerHTML="Provably fair · seed hash <b>"+String(f.serverSeedHash).slice(0,16)+"…</b> · nonce <b>"+f.nonce+"</b>"; }
 
@@ -2257,7 +2272,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     e.querySelector("img").src="img/dod/"+p.img+".webp";
     /* EXACT, pas abrege : c'est ce que le joueur encaisse. `ddFmt` rendait
        « +1.1k » pour 1 080. */
-    e.querySelector("b").textContent="+"+ddExact(Math.round(montant))+" $SWOGE";
+    e.querySelector("b").textContent="+"+ddExact(Math.round(montant))+" "+symJeton(DD.jetonTour);
     e.querySelector("u").innerHTML="";
     e.className="dd-bandeau"; e.hidden=false;
     void e.offsetWidth;
@@ -2333,7 +2348,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
         var d=(t.lignes||[]).map(function(l){ return l.rouleaux+"x "+l.symbole; }).join(" · ");
         ddVole(montant);
         if(ctx.serie){ ctx.serie.total += montant; ddSerieAff(ctx.serie, d); }
-        else $("ddGain").innerHTML='<small>WIN</small><b>+'+ddExact(montant)+' $SWOGE</b> <i>'+d+'</i>';
+        else $("ddGain").innerHTML='<small>WIN</small><b>+'+ddExact(montant)+' '+symJeton(DD.jetonTour)+'</b> <i>'+d+'</i>';
       } else {
         /* Rien n'est tombe : on EFFACE. Laisser le gain precedent en place
            etait le defaut n°1. */
@@ -2395,13 +2410,13 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     if(el._c) cancelAnimationFrame(el._c);
     var doux=false;
     try{ doux=matchMedia("(prefers-reduced-motion: reduce)").matches; }catch(e){}
-    if(doux || de===a || ms<=0){ el.textContent=a>0?"+"+ddExact(a)+" $SWOGE":""; return; }
+    if(doux || de===a || ms<=0){ el.textContent=a>0?"+"+ddExact(a)+" "+symJeton(DD.jetonTour):""; return; }
     var t0=performance.now();
     (function pas(t){
       var k=Math.min(1,(t-t0)/ms);
       k = 1-Math.pow(1-k,3);                       /* freine a l'arrivee */
       var v=Math.round(de+(a-de)*k);
-      el.textContent = v>0 ? "+"+ddExact(v)+" $SWOGE" : "";
+      el.textContent = v>0 ? "+"+ddExact(v)+" "+symJeton(DD.jetonTour) : "";
       if(k<1) el._c=requestAnimationFrame(pas); else el._c=0;
     })(t0);
   }
@@ -2413,11 +2428,12 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     ddCompte(t, serie.vu||0, serie.total, 340);
     serie.vu=serie.total;
     $("ddGain").innerHTML='<small>FREE SPINS · '+serie.i+' / '+serie.n+'</small>'
-      +'<b style="color:#0E6B32">'+(serie.total>0?"+"+ddExact(serie.total)+" $SWOGE":"—")+'</b>'
+      +'<b style="color:#0E6B32">'+(serie.total>0?"+"+ddExact(serie.total)+" "+symJeton(DD.jetonTour):"—")+'</b>'
       +(detail?' <i>'+detail+'</i>':'');
   }
 
   function ddJoueTour(t){
+    DD.jetonTour = (t&&t.jeton)||"swoge";   /* le coffre de CE tour, fige par le serveur */
     DD.anime=true; ddRender();
     $("ddGain").innerHTML="";
     $("ddSerie").hidden=true; $("ddVole").hidden=true;
@@ -2439,11 +2455,11 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
            que le compteur des tours gratuits ait affiche 464. La ligne
            RESULT, juste dessous, porte le net. */
         ddBandeau(t.multi, t.payout||0, function(){
-          DD.hist.unshift({ mise:t.mise, multi:t.multi, net:t.net, mode:t.mode });
+          DD.hist.unshift({ mise:t.mise, multi:t.multi, net:t.net, mode:t.mode, jeton:t.jeton||"swoge" });
           if(DD.hist.length>60) DD.hist.pop();
           var g=$("ddGain");
           g.innerHTML='<small>RESULT</small><b style="color:'+(t.net>0?"#0E6B32":t.net<0?"#C0392B":"#0B1B36")+'">'
-            +(t.net>0?"+":"")+ddExact(t.net)+' $SWOGE</b>'+(t.multi?' <i>'+t.multi.toFixed(2)+'×</i>':'');
+            +(t.net>0?"+":"")+ddExact(t.net)+' '+symJeton(t.jeton)+'</b>'+(t.multi?' <i>'+t.multi.toFixed(2)+'×</i>':'');
           if(t.net>0) son(t.multi>=20?"gros":"gain"); else son("rien");
           DD.anime=false; ddRender();
         });
@@ -2527,7 +2543,17 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       btn.onclick=function(){
         if(DD.anime) return;
         if(!authed){ toast("Connect to play"); return; }
-        send({type:"dodAchat", bet:DD.mise, cran:btn.dataset.cran});
+        /* Le cout d'un achat est mise x prix, debite sur le coffre ACTIF :
+           c'est lui qu'on compare, jamais le seul solde $SWOGE (un joueur a
+           0 $SWOGE et 500 $SWOGEBET doit pouvoir acheter en $SWOGEBET). Le
+           serveur refait le controle de toute facon. */
+        var _b=DD.bareme, _c=btn.dataset.cran;
+        var _px=(_b&&_b.crans&&_b.crans[_c]&&_b.crans[_c].prix)||0;
+        /* Math.floor, comme game.dodAchat (cout = floor(mise x prix)) : a 50 de
+           mise, wild = 85,5 -> le serveur debite 85 ; un arrondi ici aurait
+           refuse un joueur qui a exactement 85. */
+        if(_px && Math.floor(_px*DD.mise)>soldeActif()) return toast("Not enough "+symActif()+" for this buy");
+        send({type:"dodAchat", bet:DD.mise, cran:_c, jeton:jetonActif()});
       };
     });
     ddAchatMaj();
@@ -2570,7 +2596,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     ddRender();
   }
 
-  function ddMiseAff(){ var e=$("ddMise"); if(e) e.textContent=ddFmt(DD.mise)+" $SWOGE"; }
+  function ddMiseAff(){ var e=$("ddMise"); if(e) e.textContent=ddFmt(DD.mise)+" "+symActif(); }
   function ddHist(){
     var e=$("ddHist"); if(!e) return;
     var out="";
@@ -2612,6 +2638,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     ws.onerror=function(){ setDot(false); };
     ws.onmessage=function(ev){
       var m; try{ m=JSON.parse(ev.data); }catch(e){ return; }
+      if(window.SwogeCoffre) SwogeCoffre.vu(m);         // suit le solde $SWOGEBET (auth, betBalance, resultats)
       if(m.type==="state") return;
       if(m.type==="hello"){ loginNonce=m.loginNonce; /* Le jeton de session evite de resigner : on le presente des que le nonce est connu. Le serveur repond soit par 'auth' — connecte, sans SDK ni signature — soit par 'resumeFailed'. */ var reprise=false;
         (function(){ var j=null; try{ j=localStorage.getItem("swogeSession"); }catch(e){} if(j){ reprise=true; send({type:"resume", token:j, tgId:(typeof TG_ID!=="undefined"?TG_ID:null)}); } })(); if(m.vault)VAULT=m.vault; if(m.token)TOKEN=m.token; if(m.minWithdraw)MIN_WITHDRAW=m.minWithdraw; showFair({serverSeedHash:m.serverSeedHash,nonce:0});
@@ -2632,6 +2659,10 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
         if(myAddr && !reprise) doLogin(); }
       if(m.type==="resumeFailed"){ /* jeton perime ou revoque : on l oublie et on repart du chemin long */ try{ localStorage.removeItem("swogeSession"); }catch(e){} if(typeof autoReconnect==="function") autoReconnect(); else if(myAddr) doLogin(); return; }
       else if(m.type==="auth"){ authed=true; myAddr=m.address; if(m.session){ try{ localStorage.setItem("swogeSession",m.session); }catch(e){} } setBalance(m.balance); showPlay(); if(m.fairness) showFair(m.fairness); 
+        /* Le selecteur de coffre se pose sous la barre de mise ; a chaque
+           changement de choix ou de solde $SWOGEBET on repeint la mise et
+           les prix d'achat (leur unite suit le coffre actif). */
+        if(window.SwogeCoffre){ SwogeCoffre.monte(document.querySelector(".dd-barre"), function(){ ddRender(); }); }
         if(m.casinoMin) DD_MIN=m.casinoMin;
         if(m.casinoMax) DD_MAX=m.casinoMax;
         /* Une mise posee d'entree. Avec l'ancien tapis de jetons, partir de
@@ -2640,7 +2671,8 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
            SPIN refuse — l'ecran d'accueil du jeu ressemblerait a une panne.
            On prend le plus petit cran que le solde permette. */
         if(DD.mise<=0){
-          var _l=ddPaliers().filter(function(v){ return v<=balance; });
+          var _sa=soldeActif();
+          var _l=ddPaliers().filter(function(v){ return v<=_sa; });
           DD.mise = _l.length ? _l[0] : ddPaliers()[0];
         }
         /* ---- CE SERVEUR CONNAIT-IL SEULEMENT CE JEU ? ----
@@ -2661,7 +2693,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
         if(m.fairness) showFair(m.fairness);
         ddJoueTour(m.tour);
       }
-      else if(m.type==="need_deposit"){ setBalance(m.balance); busy=false; toast("Not enough $SWOGE — deposit in the Pusher"); }
+      else if(m.type==="need_deposit"){ if(m.balance!=null) setBalance(m.balance); busy=false; toast("Not enough "+symActif()+(jetonActif()==="swogebet"?" — top up in the Wallet":" — deposit in the Pusher")); }
       else if(m.type==="error"){ busy=false; toast(m.error||"error"); }
       else if(m.type==="voucher"){ setBalance(m.balance); submitWithdraw(m.voucher); }
       else if(m.type==="stakeInfo"){ setStakeInfo(m); }
@@ -2732,24 +2764,28 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     if(DD.anime) return;
     var l=ddPaliers(), k=ddCran()+sens;
     if(k<0) return;
-    if(k>l.length-1) return toast("Table maximum: "+ddFmt(DD_MAX)+" $SWOGE");
-    if(l[k]>balance) return toast("Not enough $SWOGE");
+    if(k>l.length-1) return toast("Table maximum: "+ddFmt(DD_MAX)+" "+symActif());
+    /* On ne refuse que la MONTEE : apres un changement de coffre, la mise
+       peut depasser le nouveau solde, et c'est justement en la baissant que
+       le joueur la ramene a sa portee. */
+    if(sens>0 && l[k]>soldeActif()) return toast("Not enough "+symActif());
     DD.mise=l[k]; if(SFX.chip) SFX.chip(); ddRender();
   }
   $("ddSpin").addEventListener("click", function(){
     if(!authed){ toast("Sign in to play"); return openEmailLogin(); }
     if(DD.serveurConnait===false) return toast("DEAD SWOGE isn't live on this server yet");
     if(DD.anime) return;
-    if(DD.mise<DD_MIN) return toast("Minimum bet: "+ddFmt(DD_MIN)+" $SWOGE");
-    if(balance<DD.mise) return toast("Not enough $SWOGE");
-    send({type:"dodSpin", bet:DD.mise});
+    if(DD.mise<DD_MIN) return toast("Minimum bet: "+ddFmt(DD_MIN)+" "+symActif());
+    if(soldeActif()<DD.mise) return toast("Not enough "+symActif());
+    send({type:"dodSpin", bet:DD.mise, jeton:jetonActif()});
   });
   $("ddMoins").addEventListener("click", function(){ ddBougeSolde(-1); });
   $("ddPlus").addEventListener("click",  function(){ ddBougeSolde(1); });
   $("ddMax").addEventListener("click",   function(){
     if(DD.anime) return;
-    var l=ddPaliers().filter(function(v){ return v<=balance; });
-    if(!l.length) return toast("Not enough $SWOGE");
+    var _sa=soldeActif();
+    var l=ddPaliers().filter(function(v){ return v<=_sa; });
+    if(!l.length) return toast("Not enough "+symActif());
     DD.mise=l[l.length-1]; if(SFX.chip) SFX.chip(); ddRender();
   });
   /* Les deux tableaux ne sont pas encore ecrits : on le DIT plutot que de
@@ -2789,8 +2825,8 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     var h='<table>';
     for(var i=0;i<DD.hist.length;i++){
       var x=DD.hist[i];
-      var net=(x.net>0?"+":"")+ddExact(x.net)+" $SWOGE";
-      h+='<tr><td>'+ddExact(x.mise)+' $SWOGE'
+      var net=(x.net>0?"+":"")+ddExact(x.net)+" "+symJeton(x.jeton);
+      h+='<tr><td>'+ddExact(x.mise)+' '+symJeton(x.jeton)
         + (x.mode?' <span class="note">· '+(x.mode==="deader"?"DEADER":"DEAD")+' SPINS</span>':'')
         + '</td><td style="color:'+(x.net>0?"#7CFF9B":x.net<0?"#FF9B8E":"#CFC7B8")+'">'
         + net+' · '+x.multi.toFixed(2)+'×</td></tr>';
@@ -2820,7 +2856,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
        « 0.30x » ne dit rien tant qu'on ne l'a pas converti soi-meme. */
     var ordre=(b.bas||[]).concat(b.hauts||[]);
     if(b.bareme && ordre.length){
-      h+='<h4>SYMBOLS &mdash; PER '+ddExact(mise)+' $SWOGE BET</h4><div class="sym">';
+      h+='<h4>SYMBOLS &mdash; PER '+ddExact(mise)+' '+symActif()+' BET</h4><div class="sym">';
       /* du plus riche au plus pauvre : c'est ce qu'on cherche en ouvrant. */
       ordre.slice().sort(function(x,y){
         return ((b.bareme[y]||{})[5]||0)-((b.bareme[x]||{})[5]||0); })
@@ -2845,8 +2881,8 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
         var p2=b.bareme[sy]; if(!p2) return false;
         return [3,4,5].some(function(n){ return p2[n]!=null && Math.round(p2[n]*mise)===0; });
       });
-      if(zero) h+='<p class="note">Wins are rounded down to whole $SWOGE. At a '
-        + ddExact(mise)+' $SWOGE bet the smallest combinations above come to 0 —'
+      if(zero) h+='<p class="note">Wins are rounded down to whole '+symActif()+'. At a '
+        + ddExact(mise)+' '+symActif()+' bet the smallest combinations above come to 0 —'
         + ' raise your bet and they pay.</p>';
     }
 
@@ -2935,7 +2971,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     }
 
     if(b.crans && b.cransOrdre){
-      h+='<h4>BUY A BONUS &mdash; AT '+ddExact(mise)+' $SWOGE BET</h4><table>';
+      h+='<h4>BUY A BONUS &mdash; AT '+ddExact(mise)+' '+symActif()+' BET</h4><table>';
       b.cransOrdre.forEach(function(k){
         var cr=b.crans[k]; if(!cr) return;
         h+='<tr><td>'+ddEch(DD_ACHAT_NOM[k]||k)
@@ -2956,8 +2992,8 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     /* Le plafond seul se lit comme une promesse. Le plus gros gain REELLEMENT
        vu pendant la mesure du retour dit ce que le jeu fait vraiment. */
     if(b.gainVu) h+='<tr><td>Biggest win measured</td><td>'+ddExact(b.gainVu)+'&times; bet</td></tr>';
-    if(b.min) h+='<tr><td>Minimum bet</td><td>'+ddExact(b.min)+' $SWOGE</td></tr>';
-    if(b.max) h+='<tr><td>Maximum bet</td><td>'+ddExact(b.max)+' $SWOGE</td></tr>';
+    if(b.min) h+='<tr><td>Minimum bet</td><td>'+ddExact(b.min)+' '+symActif()+'</td></tr>';
+    if(b.max) h+='<tr><td>Maximum bet</td><td>'+ddExact(b.max)+' '+symActif()+'</td></tr>';
     if(b.rtp) h+='<tr><td>Return to player</td><td>'+b.rtp.toFixed(2)+' %</td></tr>';
     if(b.bonusUnSur) h+='<tr><td>Bonus frequency</td><td>1 in '+ddExact(b.bonusUnSur)+'</td></tr>';
     h+='</table>';

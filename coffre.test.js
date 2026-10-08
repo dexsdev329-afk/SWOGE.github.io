@@ -123,6 +123,28 @@ const HARNESS = '<!doctype html><meta charset="utf-8"><title>coffre</title>'
     await page.close();
   }
 
+  console.log('-- 6. un message qui ne parle pas du joueur ne touche jamais son coffre --');
+  {
+    const page = await page0();
+    await page.evaluate(() => { SwogeCoffre.monte(document.getElementById('anc'), function () {}); SwogeCoffre.vu({ type: 'auth', betBalance: '500' }); SwogeCoffre.set('swogebet'); });
+    // la copie publique d'un encaissement Crash d'un AUTRE joueur (sans `moi`)
+    await page.evaluate(() => SwogeCoffre.vu({ type: 'crashRetrait', addr: '0xautre', mise: 50, multi: 2, payout: 100, betBalance: '0' }));
+    eq(await page.evaluate(() => SwogeCoffre.soldeBet()), 500, 'crashRetrait public (sans moi) : ignore');
+    eq(await page.evaluate(() => SwogeCoffre.jeton()), 'swogebet', 'et le choix du joueur ne bouge pas');
+    // un type diffuse inconnu de la liste blanche
+    await page.evaluate(() => SwogeCoffre.vu({ type: 'crashJoueur', addr: '0xautre', betBalance: '1' }));
+    eq(await page.evaluate(() => SwogeCoffre.soldeBet()), 500, 'type hors liste blanche : ignore');
+    // SA copie a lui (moi:true) est prise
+    await page.evaluate(() => SwogeCoffre.vu({ type: 'crashRetrait', moi: true, betBalance: '600' }));
+    eq(await page.evaluate(() => SwogeCoffre.soldeBet()), 600, 'crashRetrait avec moi : pris');
+    // un resultat de jeu adresse au joueur est pris ; un etat sans type aussi
+    await page.evaluate(() => SwogeCoffre.vu({ type: 'plinko', betBalance: '650' }));
+    eq(await page.evaluate(() => SwogeCoffre.soldeBet()), 650, 'resultat de jeu (plinko) : pris');
+    await page.evaluate(() => SwogeCoffre.vu({ stage: 'done', betBalance: '700' }));
+    eq(await page.evaluate(() => SwogeCoffre.soldeBet()), 700, 'etat sans type passe par la page (blackjack) : pris');
+    await page.close();
+  }
+
   await nav.close();
   await new Promise((s) => srv.close(s));
   console.log('\ncoffre.test.js : ' + n + ' verifications, ' + rates + ' RATE(S)');

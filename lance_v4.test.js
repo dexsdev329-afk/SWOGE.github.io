@@ -42,6 +42,8 @@ const offre = (o) => Object.assign({ id: 'a1', chainId: 4663, pool: 'swoge', lau
         compte: '0x' + '9'.repeat(40),
         reseau: () => Promise.resolve(o.reseau || 4663),
         soldeEth: () => Promise.resolve(o.eth || '1000000000000000000'),
+        /* le prix du gaz lu sur la chaine les 08 et 09/10 : ~0,021 gwei */
+        prixGaz: () => (o.prix === 'casse' ? Promise.reject(new Error('rpc indisponible')) : Promise.resolve(o.prix || '21500000')),
         soldeSwoge: () => Promise.resolve(o.swoge || '50000000000000000000000'),
         autorisation: () => Promise.resolve(o.autorise || '0'),
         autorise: (s, m) => { j.gestes.push(['autorise', s, m]); return Promise.resolve({ status: 1 }); },
@@ -86,8 +88,26 @@ const offre = (o) => Object.assign({ id: 'a1', chainId: 4663, pool: 'swoge', lau
   r = await page.evaluate((o) => { const f = window.faux({}); return window.SwogeLance.lance(o, { chaine: f.chaine }).then(() => f.gestes); }, offre({ pool: 'eth', launchpad: ETHLP, feeWei: '100000000000000', feeToken: 'ETH', fee: 0.0001, swoge: null }));
   const e2 = r.find((x) => x[0] === 'envoie');
   ok(e2 && e2[1] === ETHLP && e2[2] === true && e2[4] === '100000000000000' && !r.some((x) => x[0] === 'autorise'), 'createToken payable, 0,0001 ETH exactement, aucune autorisation $SWOGE');
-  const sec = await page.evaluate((o) => { const f = window.faux({ eth: '100000000000000' }); return window.SwogeLance.lance(o, { chaine: f.chaine }).then(() => 'lance !', (e) => e.message); }, offre({ pool: 'eth', launchpad: ETHLP, feeWei: '100000000000000', swoge: null }));
-  ok(/a little more than 0\.0001 ETH/.test(sec), 'juste le frais, rien pour le gaz : on le dit avant de signer');
+  /* ---- LE GAZ COMPTE (09/10/2026) ----
+     Un lancement consomme ~5,85 M de gaz : au prix lu (0,0215 gwei), avec la marge x2 d'un
+     portefeuille, 0,00026 ETH de gaz en plus du frais, 0,00036 ETH en tout. L'ancien controle
+     acceptait 0,0001 ETH et un wei : le portefeuille refusait ensuite, sans explication. */
+  const ETHO = offre({ pool: 'eth', launchpad: ETHLP, feeWei: '100000000000000', swoge: null });
+  const essaie = (o, f) => page.evaluate(([o, f]) => { const x = window.faux(f); return window.SwogeLance.lance(o, { chaine: x.chaine }).then(() => 'lance !|' + x.gestes.length, (e) => e.message + '|' + x.gestes.length); }, [o, f]);
+  const sec = await essaie(ETHO, { eth: '100000000000000' });
+  ok(/about 0\.00036 ETH/.test(sec) && /0\.0001 ETH fee plus about 0\.00026 ETH of gas/.test(sec) && /you have 0\.00010 ETH/.test(sec) && /\|0$/.test(sec),
+     'juste le frais, rien pour le gaz : le besoin chiffre (frais + gaz) est dit AVANT de signer, rien n est signe — ' + sec.split('|')[0]);
+  const juste = await essaie(ETHO, { eth: '350000000000000' });
+  ok(/about 0\.00036 ETH/.test(juste) && /\|0$/.test(juste), '0,00035 ETH : encore court, refuse sans rien signer');
+  const assez = await essaie(ETHO, { eth: '400000000000000' });
+  ok(/^lance !/.test(assez), '0,0004 ETH : le frais et le gaz passent, on lance');
+  const casse = await essaie(ETHO, { eth: '400000000000000', prix: 'casse' });
+  ok(/about 0\.00070 ETH/.test(casse) && /\|0$/.test(casse), 'prix du gaz illisible : on compte 0,05 gwei (plus que tout ce qui a ete lu), jamais zero');
+  const swSansEth = await essaie(offre(), { eth: '0' });
+  ok(/for gas/.test(swSansEth) && /\$SWOGE fee is paid in \$SWOGE, the gas in ETH/.test(swSansEth) && /\|0$/.test(swSansEth),
+     'pool $SWOGE sans ETH : refuse AVANT l approbation (elle partait, puis le lancement echouait faute de gaz) — ' + swSansEth.split('|')[0]);
+  const swAssez = await essaie(offre(), { eth: '300000000000000' });
+  ok(/^lance !/.test(swAssez), 'pool $SWOGE avec 0,0003 ETH : le gaz de l approbation et du lancement passe, on lance');
 
   console.log('\n-- 4. sel pris, annulation --');
   r = await page.evaluate((o) => { const f = window.faux({ selPris: true }); return window.SwogeLance.lance(o, { chaine: f.chaine }).then(() => f.gestes); }, offre());

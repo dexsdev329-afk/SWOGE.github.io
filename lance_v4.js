@@ -29,6 +29,19 @@
   var PARAMS = "(string name,string symbol,bytes32 salt,string telegram,string twitter,string website,string logo)";
   var EVT = "event LaunchedInstant(address indexed token, address indexed creator, address pool, uint256 lpTokenId)";
 
+  /* ---- LE GAZ, PAS SEULEMENT LE FRAIS (09/10/2026) ----
+     Le controle ne regardait que le frais (solde > 0,0001 ETH), et pas du tout l'ETH du pool
+     $SWOGE : l'approbation partait, puis le lancement echouait faute de gaz. Mesure de l'audit
+     du 09/10 (recus des lancements de test et simulations sans cle) : createToken consomme
+     5,75 a 5,90 M de gaz, l'approbation 46 813 ; prix du gaz lu 0,021 gwei les 08 et 09/10. Le
+     noeud exige solde >= gaz x prix max + valeur, et un portefeuille pose souvent le prix max
+     vers 2 x le prix de base : d'ou gaz x prix x 2 en plus du frais, soit environ 0,00036 ETH
+     au pool ETH. Prix illisible : 0,05 gwei, plus que tout ce qui a ete lu. */
+  var GAZ_LANCEMENT = 6000000n, GAZ_APPROBATION = 60000n, PRIX_SECOURS = "50000000";
+  function besoinEth(valeur, gaz, prix) { return BigInt(valeur || 0) + gaz * BigInt(prix) * 2n; }
+  /* en ETH, arrondi AU-DESSUS au cent-millieme : on ne promet jamais moins que le besoin */
+  function enEth(wei) { var u = 10n ** 13n, n = (BigInt(wei) + u - 1n) / u; return (Number(n) / 1e5).toFixed(5); }
+
   /* createToken prend UNE structure : ses parentheses font partie de la signature (et du selecteur). */
   function abiCreate(payable) { return "function createToken(" + PARAMS + " p) " + (payable ? "payable " : "") + "returns (address)"; }
   function erreur(t) { return new Error(t); }
@@ -74,6 +87,7 @@
           compte: moi,
           reseau: function () { return prov.getNetwork().then(function (n) { return Number(n.chainId); }); },
           soldeEth: function () { return prov.getBalance(moi).then(String); },
+          prixGaz: function () { return prov.getGasPrice().then(String); },
           soldeSwoge: function () { return erc(SWOGE).balanceOf(moi).then(String); },
           autorisation: function (spender) { return erc(SWOGE).allowance(moi, spender).then(String); },
           autorise: function (spender, montant) { return erc(SWOGE).approve(spender, montant).then(function (tx) { return tx.wait(); }); },
@@ -108,18 +122,30 @@
       return C.reseau();
     }).then(function (id) {
       if (Number(id) !== CHAIN.id) throw erreur("Switch your wallet to Robinhood Chain, then press Launch again.");
+      return C.prixGaz ? Promise.resolve(C.prixGaz())["catch"](function () { return PRIX_SECOURS; }) : PRIX_SECOURS;
+    }).then(function (prix) {
+      if (!/^[0-9]+$/.test(String(prix)) || BigInt(prix) === 0n) prix = PRIX_SECOURS;
       if (o.pool === "eth") {
         return C.soldeEth().then(function (b) {
-          if (BigInt(b) <= BigInt(frais)) throw erreur("You need a little more than 0.0001 ETH on Robinhood Chain (fee + gas).");
+          var besoin = besoinEth(frais, GAZ_LANCEMENT, prix);
+          if (BigInt(b) < besoin) throw erreur("You need about " + enEth(besoin) + " ETH on Robinhood Chain: the 0.0001 ETH fee plus about "
+            + enEth(besoin - BigInt(frais)) + " ETH of gas (you have " + enEth(b) + " ETH).");
         });
       }
       return C.soldeSwoge().then(function (b) {
         if (BigInt(b) < BigInt(frais)) throw erreur("You need 10,000 $SWOGE for the launch fee (you have " + (Number(BigInt(b) / 10n ** 18n)).toLocaleString("en-US") + ").");
         return C.autorisation(lp.adresse);
       }).then(function (a) {
-        if (BigInt(a) >= BigInt(frais)) return null;
-        statut("Step 1 of 2: approve the 10,000 $SWOGE launch fee in your wallet (it is burned at launch)…");
-        return C.autorise(lp.adresse, frais);
+        var deja = BigInt(a) >= BigInt(frais);
+        /* le gaz se paie en ETH, meme au pool $SWOGE : controle AVANT l'approbation */
+        return C.soldeEth().then(function (b) {
+          var besoin = besoinEth(0, GAZ_LANCEMENT + (deja ? 0n : GAZ_APPROBATION), prix);
+          if (BigInt(b) < besoin) throw erreur("You need about " + enEth(besoin) + " ETH on Robinhood Chain for gas (you have " + enEth(b)
+            + " ETH): the 10,000 $SWOGE fee is paid in $SWOGE, the gas in ETH.");
+          if (deja) return null;
+          statut("Step 1 of 2: approve the 10,000 $SWOGE launch fee in your wallet (it is burned at launch)…");
+          return C.autorise(lp.adresse, frais);
+        });
       });
     }).then(function () {
       /* Un sel deja pris, ou un pool amorce par un tiers : on essaie AVANT de faire signer, et

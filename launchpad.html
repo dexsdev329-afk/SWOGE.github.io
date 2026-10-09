@@ -139,7 +139,7 @@ video{ max-width:100%; }
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
-<script src="lance_v4.js?v=836cf91c"></script>
+<script src="lance_v4.js?v=6f7f9ced"></script>
 <script src="https://cdn.jsdelivr.net/npm/@walletconnect/ethereum-provider@2.13.3/dist/index.umd.js"></script>
 <style>
 /* ==================== LA PALETTE PASSE AU CLAIR ====================
@@ -650,7 +650,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       <div class="note" id="modeInfo" style="margin-bottom:12px"></div>
       <div class="two">
         <div class="field"><label>Name</label><input id="cName" placeholder="Swoge Inu" maxlength="40"></div>
-        <div class="field"><label>Symbol</label><input id="cSym" placeholder="SWINU" maxlength="12"></div>
+        <div class="field"><label>Symbol</label><input id="cSym" placeholder="SWINU" maxlength="12" autocapitalize="characters" spellcheck="false" style="text-transform:uppercase"></div>
       </div>
       <div class="field" id="cLogoChamp">
         <label>Logo (optional)</label>
@@ -1821,6 +1821,26 @@ $("#createBtn").onclick=async function(){
 /* 03/10 : un lien du bot Telegram (/launch) : ?pool=&name=&symbol=&tg=. On remplit, on ne lance
    rien : le joueur relit et signe lui-meme. `tg` ne sert qu'a annoncer le jeton dans le chat. */
 var lpTg=null;
+/* 09/10/2026 : le symbole s'ecrit en majuscules SOUS LES YEUX du createur. La page,
+   le serveur (lancement_v4.js) et lance_v4.js l'envoyaient deja en majuscules pendant
+   que le champ montrait « TeslaSI » : on signait un symbole qu'on n'avait pas vu
+   (audit du launchpad, 09/10). Ce qui s'affiche est maintenant ce qui part. */
+(function(){
+  var s=$("#cSym"); if(!s) return;
+  /* Pendant une composition (claviers mobiles, IME), reecrire le champ double des lettres :
+     on attend sa fin. Le CSS (text-transform) montre deja des majuscules entre-temps. */
+  function norme(e){
+    if(e && e.isComposing) return;
+    var v=s.value, n=v.replace(/^\$/,"").toUpperCase();
+    if(n===v) return;
+    var p=s.selectionStart, d=v.length-n.length;
+    s.value=n;
+    try{ if(p!=null) s.setSelectionRange(Math.max(0,p-d), Math.max(0,p-d)); }catch(x){}
+  }
+  s.addEventListener("input", norme);
+  s.addEventListener("compositionend", function(){ norme(); });
+  s.addEventListener("change", function(){ norme(); });
+})();
 (function(){
   var q; try{ q=new URLSearchParams(location.search); }catch(e){ return choisisPool("agent"); }
   var p=q.get("pool"); choisisPool(p==="eth"||p==="swoge"?p:"agent");   /* defaut = la vedette AI Agent Launch (pool ETH) */

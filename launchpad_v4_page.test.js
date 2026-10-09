@@ -146,7 +146,12 @@ const gp = (taxe) => ({ is_honeypot: '0', is_mintable: '0', hidden_owner: '0', c
   ok(/reserved for official SWOGE/.test(await pg.textContent('#createNote')), 'un nom en « SWOGE » est refuse');
 
   console.log('\n-- un vrai lancement : l offre, puis le kit --');
+  /* 09/10/2026 : ce que le champ montre est ce qui part. Il montrait « TeslaSI » pendant que
+     la page, le serveur et lance_v4.js signaient « TESLASI » (audit du launchpad). */
+  await pg.fill('#cSym', ''); await pg.type('#cSym', 'TeslaSI');
+  ok(await pg.inputValue('#cSym') === 'TESLASI', 'tape lettre a lettre, « TeslaSI » s affiche « TESLASI » : le symbole qui sera signe');
   await pg.fill('#cName', 'Paw Patrol'); await pg.fill('#cSym', '$paws');
+  ok(await pg.inputValue('#cSym') === 'PAWS', 'colle, « $paws » s affiche « PAWS »');
   await pg.fill('#cTw', '@pawscoin').catch(() => {});
   await pg.click('#createBtn');
   await pg.waitForFunction(() => !document.querySelector('#lpKit').hidden, { timeout: 5000 }).catch(() => {});

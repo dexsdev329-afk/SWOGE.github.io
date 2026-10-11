@@ -54,6 +54,16 @@ ok(/id="tvAgentPanel"/.test(html) && /id="tvAgentBtn"/.test(html), 'la fiche du 
 ok(/construitAgentForm\(box, \{ token:curToken/.test(html), 'le panneau construit l agent DU jeton ouvert (curToken), un seul par jeton');
 ok(/removeAttribute\("data-built"\)/.test(html), 'changer de jeton repart propre (pas de melange entre jetons)');
 
+console.log('\n-- le choix de l apercu est repris apres lancement, sans jamais ecraser un agent existant (11/10/2026) --');
+/* Intention : le createur ne ressaisit pas sa persona apres le lancement, mais un jeton
+   qui a DEJA un agent garde ses reglages — le pre-remplissage par le choix de l apercu
+   vient AVANT la lecture de l agent enregistre, qui le remplace s il existe. */
+const iChoix = html.indexOf('if(ctx.persona && AGENT_PERSONAS.some('), iServeur = html.indexOf('if(a.persona) q(".agPersona").value=a.persona;');
+ok(iChoix > 0 && iServeur > iChoix, 'le choix de l apercu pre-remplit d abord, l agent enregistre cote serveur passe devant ensuite');
+ok(/kit\(o,res,agentChoix\)/.test(html) && /var agentChoix=\{ persona:\$\("#cAgentPersona"\)\.value/.test(html),
+   'le choix est lu au clic de lancement (avant la signature) et passe au kit');
+ok(/AGENT_PERSONAS\.some\(function\(p\)\{ return p\[0\]===ctx\.persona; \}\)/.test(html), 'seule une persona de la liste est reprise (une valeur trafiquee est ignoree)');
+
 console.log('\n-- recharge payante du carburant (notre revenu), signee --');
 ok(/\/agent\/fuel\/buy/.test(html) && /preuve\("fuel"\)/.test(html), 'le createur recharge le carburant via /agent/fuel/buy (signe geste fuel)');
 ok(/Fuel pays the AI API from your dollar credit/i.test(html), 'c est dit : le carburant paie l API depuis le credit en dollars');

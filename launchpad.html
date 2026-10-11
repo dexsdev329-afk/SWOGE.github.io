@@ -674,7 +674,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       </div>
       <div class="field" id="cAgentChamp">
         <label>AI agent (preview) 🐾</label>
-        <div class="note" style="margin:0 0 8px">Give your token an on-brand AI agent: pick a personality and an objective, then preview the first post it would write. It posts only the facts, never invents numbers. (Autonomous posting goes live after launch.)</div>
+        <div class="note" style="margin:0 0 8px">Give your token an on-brand AI agent: pick a personality and an objective, then preview the first post it would write. It posts only the facts, never invents numbers. Your pick is filled in right after launch: you just sign to save it. (Autonomous posting goes live after launch.)</div>
         <select id="cAgentPersona" style="margin-bottom:8px">
           <option value="">No agent</option>
           <option value="hype">Hype — high energy, meme-forward</option>
@@ -1338,6 +1338,10 @@ async function lanceV4(){
   var btn=$("#createBtn"), note=$("#createNote");
   if(!name||!sym){ note.className="note err"; note.textContent="Name and symbol required."; return; }
   if(!window.SwogeLance){ note.className="note err"; note.textContent="The launch module is still loading - try again in a second."; return; }
+  /* 11/10/2026 : le choix de l apercu (persona, objectif) est lu AU CLIC, avant la
+     signature, et repris dans le formulaire de l agent du kit : le createur n a plus
+     qu a signer. Rien n est enregistre sans sa signature. */
+  var agentChoix={ persona:$("#cAgentPersona").value, objectif:$("#cAgentGoal").value.trim() };
   btn.disabled=true; btn.innerHTML='<span class="spin"></span> preparing…'; note.className="note"; note.textContent="Checking the name against copies…";
   $("#lpKit").hidden=true;
   try{
@@ -1352,7 +1356,7 @@ async function lanceV4(){
        transaction sur la chaine (le serveur ne croit pas la page sur parole). */
     if(lpTg) fetch(lpServeur()+"/launchpad/v4/lance",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({tg:lpTg,tx:res.tx})})
       .then(function(r){ return r.json(); }).then(function(d){ if(d&&d.ok) toast("Announced in your Telegram chat ✓"); })["catch"](function(){});
-    kit(o,res);
+    kit(o,res,agentChoix);
     toast("Token launched 🚀");
   }catch(e){
     var m=String((e&&(e.reason||(e.data&&e.data.message)||e.message))||e||"the launch failed");
@@ -1361,7 +1365,7 @@ async function lanceV4(){
   }finally{ btn.disabled=false; updateFeeSummary(); }
 }
 /* Le kit du createur : tout ce qu'il faut pour le partager tout de suite. */
-function kit(o,res){
+function kit(o,res,choix){
   var k=$("#lpKit"), dex="https://dexscreener.com/robinhood/"+String(res.pool).toLowerCase();
   var tweet="I just launched $"+o.symbol+" ("+o.name+") on Robinhood Chain with SWOGE FUN 🚀\nLiquidity locked forever, no owner, no tax.\nCA: "+res.token;
   k.innerHTML="<h3>🎉 $"+esc(o.symbol)+" is live — your creator kit</h3>"
@@ -1381,7 +1385,8 @@ function kit(o,res){
      et le serveur revérifie `instant(token).creator` sur la chaine. */
   var mind=document.createElement("div"); mind.className="field"; mind.style.marginTop="12px";
   k.appendChild(mind);
-  construitAgentForm(mind, { token:res.token, pool:res.pool, symbole:o.symbol, nom:o.name });
+  construitAgentForm(mind, { token:res.token, pool:res.pool, symbole:o.symbol, nom:o.name,
+                             persona:choix&&choix.persona, objectif:choix&&choix.objectif });
 }
 
 /* Le message EXACT que le portefeuille signe — doit coller a agent_createur.message()
@@ -1443,6 +1448,11 @@ function construitAgentForm(box, ctx){
     +'<button type="button" class="btn primary agSave" style="padding:6px 10px;font-size:12px">💾 Save agent</button></div>'
     +'<div class="note agNote"></div><div class="note agPrev" hidden style="margin-top:6px"></div>';
   var q=function(s){ return box.querySelector(s); };
+  /* 11/10/2026 : le choix de l apercu d avant lancement (kit seulement), s il est une
+     persona de la liste. L agent deja enregistre cote serveur, lu plus bas, passe
+     DEVANT : un jeton qui a deja un agent garde ses reglages. */
+  if(ctx.persona && AGENT_PERSONAS.some(function(p){ return p[0]===ctx.persona; })) q(".agPersona").value=ctx.persona;
+  if(ctx.objectif) q(".agGoal").value=String(ctx.objectif).slice(0,280);
   var chk=q(".agRachat"); chk.addEventListener("change",function(){ q(".agRachatBudget").hidden=!chk.checked; });
   /* L etat de la liaison X (handle public, jamais les secrets). */
   function montreX(hasX, handle){

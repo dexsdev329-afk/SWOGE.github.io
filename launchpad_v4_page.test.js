@@ -201,9 +201,15 @@ const gp = (taxe) => ({ is_honeypot: '0', is_mintable: '0', hidden_owner: '0', c
   await pt.click('#wpickList .wrow:has-text("Browser wallet")');
   await pt.waitForFunction(() => /0x49eE/i.test(document.querySelector('#walletBtn').textContent || ''), { timeout: 10000 }).catch(() => {});
   await pt.evaluate(({ jeton, pool }) => { window.SwogeLance.lance = function (o, opts) { opts.statut('…'); return Promise.resolve({ token: jeton, pool, tx: '0x' + '4'.repeat(64) }); }; }, { jeton: JETON, pool: POOL });
+  /* 11/10/2026 : le choix de l apercu d avant lancement est repris dans le formulaire
+     de l agent du kit (il ne reste qu a signer). Persona et objectif choisis ici. */
+  await pt.selectOption('#cAgentPersona', 'hype');
+  await pt.fill('#cAgentGoal', 'make the community laugh every day');
   await pt.click('#createBtn');
   await pt.waitForFunction(() => !document.querySelector('#lpKit').hidden, { timeout: 5000 }).catch(() => {});
   await pt.waitForTimeout(300);
+  ok(await pt.inputValue('#lpKit .agPersona') === 'hype' && await pt.inputValue('#lpKit .agGoal') === 'make the community laugh every day',
+     'le kit reprend la persona et l objectif choisis avant le lancement (« ' + await pt.inputValue('#lpKit .agPersona') + ' ») : il ne reste qu a signer');
   ok(annonces.length === 1 && annonces[0].tg === '0123456789abcdef' && annonces[0].tx === '0x' + '4'.repeat(64) && Object.keys(annonces[0]).length === 2,
      'lance : la page envoie l identifiant Telegram et la transaction, rien d autre ' + JSON.stringify(annonces[0] || {}));
   await pt.close();

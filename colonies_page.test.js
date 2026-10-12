@@ -11,6 +11,21 @@
  *      battre) et les ARMS (strategies) sont montres SEPAREMENT ;
  *   B. le verdict compare la meilleure arm au controle, pas une moyenne lumpee.
  * Et le miroir reel : OFF/owner-gated sur Ethereum, « paper only » sur Solana.
+ *
+ * Audit du 11/10 (instantanes publics de 22:24 UTC, audit_1110.instantanes.json) — ce que la page
+ * affirmait de faux, et ce que l'essai tient desormais :
+ *   C. une case dont le BRAS de la banque a ete retire aux vrais devis est « refuted at real quotes »,
+ *      avec le net, le n et le t de son bras — jamais en vert ;
+ *   D. « Best arm » n'est jamais un bras retire ;
+ *   E. l'avertissement premier prix / prix d'acheteur s'affiche des que la banque mesure l'ecart,
+ *      meme banque en perte et reference sous zero (Solana : 26 points) ;
+ *   F. un P&L papier positif dans le hasard ne se lit pas comme un rendement (Ethereum : +1 130 $).
+ * Relecture du 12/10 :
+ *   G. un bras qui perd deja au-dela du hasard (30 achats ou plus, t au plus moins la barre de la banque)
+ *      refute sa case avant meme que le serveur le retire (60 achats) ; sous 30, ou dans le hasard, non ;
+ *   H. un bras retire est dit avec la mesure DU RETRAIT (retiredBecause), sa serie d'aujourd'hui a part ;
+ *   I. la borne « sans les doubles » prend son plancher dans les achats visibles ;
+ *   J. une case par ligne, en vert comme en rouge.
  * ==========================================================================*/
 const fs = require('fs'), path = require('path'), http = require('http');
 const SITE = __dirname;
@@ -65,6 +80,36 @@ const ETAT = { actif: true, note: 'Observation only.', horizonMin: 30, chaines: 
     pushers: [{ dev: ETH_DEV, tokens: 9, plausibleLaunches: 5, doubled: 3, medianMultiple: 2.1, vanished: 1, reached100k: 1 },
       { dev: PIEGE, tokens: 4, plausibleLaunches: 3, doubled: 1, medianMultiple: 0.8, vanished: 2 }], bestAvgPeak: [], mostVanished: [] },
     derniers: [{ addr: ETH_A, dex: 'uniswap', r: 3, t: Date.parse('2026-10-03T15:00:00Z') }] }) } };
+/* Une seule case sort (Pool size = $20-100k) et son bras a ete RETIRE : rien ne doit rester en vert. */
+const REFUTE = JSON.parse(JSON.stringify(ETAT));
+Object.assign(REFUTE.chaines.solana.bank.arms[0], { state: 'retired', retiredBecause: 'losing beyond chance', n: 64, net: -58.2, t: -6.1, moitie1: -55, moitie2: -61, gagnants: 9, buys: 64 });
+/* Ethereum sans banque : l'ancien avertissement (la reference monte au-dela du hasard) reste le seul. */
+const SANS_BANQUE = JSON.parse(JSON.stringify(ETAT)); SANS_BANQUE.chaines.eth.bank = null;
+/* Les instantanes publics du 11/10/2026 22:24 UTC (/ai/observatoire), remis dans la forme du serveur :
+   toutes les cases jugees (la barre en depend), la reference, la banque et ses bras tels quels. */
+const I = JSON.parse(fs.readFileSync(path.join(SITE, 'audit_1110.instantanes.json'), 'utf8'));
+const deplie = (c) => { const o = I.observatoire[c];
+  return chaine(o.nom, o.cases.map(([trait, cas, nb, nCapped, avgCapped, t, partMontes, partEffondres, median]) =>
+    ({ trait, case: cas, n: nb, nCapped, avgCapped, t, partMontes, partEffondres, median, assez: true, disparus: 0 })), {
+    bank: Object.assign({}, o.bank, { arms: o.bank.arms.map(([cas, state, nb, net, t, moitie1, moitie2, gagnants, buys, retiredBecause]) =>
+      ({ case: cas, state, n: nb, net, t, moitie1, moitie2, gagnants, buys, control: state === 'control', retiredBecause: retiredBecause || null })),
+      refusedByVenue: {}, recent: o.bank.recent || [] }) }); };
+const REEL = { actif: true, note: 'Observation only.', horizonMin: 30, chaines: { solana: deplie('solana'), eth: deplie('eth') } };
+/* Variantes de l'instantane (relecture du 12/10). PERD : trois bras des cases encore vertes de Solana, autour
+   du seuil de la page (barre de la banque 2,61) — 45 achats a t −12,4 (refute avant le retrait du serveur a 60),
+   29 achats a t −9 (sous 30 : aucune conclusion), 40 achats a t −2,5 (dans le hasard). */
+const varie = (f) => { const x = JSON.parse(JSON.stringify(REEL)); f(x); return x; };
+const brasDe = (x, c, cas) => x.chaines[c].bank.arms.find((a) => a.case === cas);
+const PERD = varie((x) => {
+  Object.assign(brasDe(x, 'solana', 'Token program = SPL Token'), { n: 45, net: -80.2, t: -12.4, buys: 45 });
+  Object.assign(brasDe(x, 'solana', 'Top 10 holders = top 10 20-50%'), { n: 29, net: -60, t: -9, buys: 29 });
+  Object.assign(brasDe(x, 'solana', 'Top 10 holders = top 10 under 20%'), { n: 40, net: -20, t: -2.5, buys: 40 }); });
+/* RECUP : un bras retire dont la serie a continue de grossir et revient dans le hasard (cas reel de Robinhood
+   le 11/10 : retire a −69,6 % sur 65, t −6,82, aujourd'hui −24,4 % sur 910, t −1,07). */
+const RECUP = varie((x) => Object.assign(brasDe(x, 'solana', 'Venue = meteoradbc'), { n: 910, net: -24.4, t: -1.07, buys: 910 }));
+/* PLANCHER : un achat visible sous −110 % (gaz de revente) — a −160 % la borne s'affaiblit, a −300 % elle disparait. */
+const PLANCHER160 = varie((x) => { x.chaines.eth.bank.recent[3].r30 = -160; });
+const PLANCHER300 = varie((x) => { x.chaines.eth.bank.recent[3].r30 = -300; });
 const VIDE = JSON.parse(JSON.stringify(ETAT));
 for (const c of Object.values(VIDE.chaines)) c.cases = c.cases.map((x) => kase(x.trait, x.case, 10, 0, 0, {}));
 
@@ -76,6 +121,11 @@ for (const c of Object.values(VIDE.chaines)) c.cases = c.cases.map((x) => kase(x
     if (u === '/api/ai/observatoire') { r.writeHead(200, { 'content-type': 'application/json' }); return r.end(JSON.stringify(ETAT)); }
     if (u === '/vide/ai/observatoire') { r.writeHead(200, { 'content-type': 'application/json' }); return r.end(JSON.stringify(VIDE)); }
     if (u === '/panne/ai/observatoire') { r.writeHead(503); return r.end(); }
+    if (u === '/refute/ai/observatoire') { r.writeHead(200, { 'content-type': 'application/json' }); return r.end(JSON.stringify(REFUTE)); }
+    if (u === '/sansbanque/ai/observatoire') { r.writeHead(200, { 'content-type': 'application/json' }); return r.end(JSON.stringify(SANS_BANQUE)); }
+    if (u === '/reel/ai/observatoire') { r.writeHead(200, { 'content-type': 'application/json' }); return r.end(JSON.stringify(REEL)); }
+    const V = { '/perd/ai/observatoire': PERD, '/recup/ai/observatoire': RECUP, '/plancher160/ai/observatoire': PLANCHER160, '/plancher300/ai/observatoire': PLANCHER300 }[u];
+    if (V) { r.writeHead(200, { 'content-type': 'application/json' }); return r.end(JSON.stringify(V)); }
     const f = path.join(SITE, decodeURIComponent(u));
     if (!f.startsWith(SITE)) { r.writeHead(403); return r.end(); }
     fs.readFile(f, (e, d) => { if (e) { r.writeHead(404); return r.end(); } r.writeHead(200, { 'content-type': T[path.extname(f)] || 'application/octet-stream' }); r.end(d); });
@@ -95,6 +145,10 @@ for (const c of Object.values(VIDE.chaines)) c.cases = c.cases.map((x) => kase(x
     return { kpis: [...document.querySelectorAll('#kpis .ds-kpi')].map((k) => k.textContent), verdict: t('#verdict'), vcls: ($('#verdict') || {}).className,
       lignes: [...document.querySelectorAll('#cases tr')].map((tr) => [...tr.children].map((td) => td.textContent)),
       vertes: [...document.querySelectorAll('#cases td')].filter((td) => td.style.color === 'rgb(14, 138, 79)').map((td) => td.parentNode.children[1].textContent),
+      vertesCles: [...document.querySelectorAll('#cases td')].filter((td) => td.style.color === 'rgb(14, 138, 79)').map((td) => td.parentNode.children[0].textContent + ' = ' + td.parentNode.children[1].textContent),
+      rouges: [...document.querySelectorAll('#cases td')].filter((td) => td.style.color === 'rgb(210, 67, 62)').map((td) => td.parentNode.children[0].textContent + ' = ' + td.parentNode.children[1].textContent),
+      refutesLi: [...document.querySelectorAll('#refutes li')].map((li) => li.textContent), verdictLi: [...document.querySelectorAll('#verdict li')].map((li) => li.textContent),
+      refutes: $('#refutes') && !$('#refutes').hidden ? t('#refutes') : null, refutesCls: ($('#refutes') || {}).className, ecart: $('#ecart') && !$('#ecart').hidden ? t('#ecart') : null, ecartCls: ($('#ecart') || {}).className,
       devsCache: $('#carteDevs').hidden, devs: [...document.querySelectorAll('#devs tr')].map((tr) => [...tr.children].map((td) => td.textContent)),
       devsNote: t('#devsNote'), derniers: [...document.querySelectorAll('#derniers tr')].map((tr) => tr.textContent),
       liens: [...document.querySelectorAll('main a[href]')].map((a) => a.getAttribute('href')),
@@ -132,7 +186,8 @@ for (const c of Object.values(VIDE.chaines)) c.cases = c.cases.map((x) => kase(x
   console.log('\n-- 1b. la banque Solana : controle et arms SEPARES, pas lumpes --');
   ok(r.bkCache === false && r.bkKpis.length === 4 && /\$1,012\.5/.test(r.bkKpis[0]) && /\+\$12\.5/.test(r.bkKpis[1]), 'la banque : valeur 1 012,5 $, +12,5 $');
   ok(/Control \(benchmark\)/.test(r.bkKpis[2]) && /-2%/.test(r.bkKpis[2]) && /3 settled/.test(r.bkKpis[2]) && /the bar to beat/.test(r.bkKpis[2]), 'KPI « Control (benchmark) » : le temoin seul, la barre a battre (' + r.bkKpis[2].slice(0, 70) + ')');
-  ok(/Strategy arms/.test(r.bkKpis[3]) && /^.*2/.test(r.bkKpis[3]) && /none proven yet/.test(r.bkKpis[3]) && !/net avg/.test(r.bkKpis.join()), 'KPI « Strategy arms » : le nombre d arms, aucun agregat lumpe « net avg » en tete');
+  ok(/Strategy arms/.test(r.bkKpis[3]) && /^.*2/.test(r.bkKpis[3]) && /none holds in paper · 1 retired at real quotes/.test(r.bkKpis[3]) && !/proven/.test(r.bkKpis[3]) && !/net avg/.test(r.bkKpis.join()),
+     'KPI « Strategy arms » : le nombre d arms, combien sont retires, aucun « proven », aucun agregat lumpe « net avg » en tete');
   ok(/^ds-verdict peu$/.test(r.bkVcls) && /Too early: 4 settled paper buy/.test(r.bkVerdict) && /control needs 30/.test(r.bkVerdict), 'sous 30 achats regles : « Too early », aucune conclusion');
   ok(r.bkBras[0][0] === 'Control (any token)' && r.bkBras[0][2] === '3' && r.bkBras.some((l) => l[0] === PIEGE && l[1] === 'retired'), 'le temoin d abord ; un bras retire le dit ; un nom piege reste du texte');
   ok(/cannot sell 2/.test(r.bkRefus) && /median cost of the refused round trips 21%/.test(r.bkRefus) && /By venue: cannot sell · Pump\.fun \(2\)/.test(r.bkRefus), 'les refus dits, avec leur place et le cout median des allers-retours refuses');
@@ -146,8 +201,9 @@ for (const c of Object.values(VIDE.chaines)) c.cases = c.cases.map((x) => kase(x
   r = await lit(p);
   ok(r.toggle === 0, 'page mono-chaine Ethereum : aucun toggle');
   ok(/^ds-verdict non$/.test(r.vcls) && /Nothing stands out on Ethereum/.test(r.verdict) && /none of the 2 cases/.test(r.verdict), 'rien ne sort : dit, avec le nombre de cases jugees');
-  ok(/even the reference, all tokens, moves \+8\.2%/.test(r.verdict) && /only paper trades at real quotes can tell/.test(r.verdict) && !r.vertes.includes('all tokens'),
-     'la reference elle-meme monte (+8,2 %) : la page previent que le premier prix lu n est pas celui paye');
+  ok(r.ecart && /^The first price is not what a buyer pays\./.test(r.ecart) && /all tokens move \+8\.2% on average in 30 minutes \(2,041 tokens\)/.test(r.ecart)
+     && /blind control, buying at KyberSwap quotes, fees included, settles at -4\.1% net \(60 buys\) — 12\.3 points lower/.test(r.ecart) && !r.vertes.includes('all tokens'),
+     'la reference monte (+8,2 %) et la banque mesure l ecart : la page previent que le premier prix lu n est pas celui paye, chiffres et effectifs dits [' + String(r.ecart).slice(0, 60) + ']');
   ok(r.devsCache === false && r.devs.length === 2 && r.devs[0][1] === '5' && r.devs[0][2] === '3 (60%)' && r.devs[0][3] === '×2.1', 'Ethereum (EVM) : la carte des devs, le premier pousseur avec ses chiffres');
   ok(r.liens.includes('https://etherscan.io/address/' + ETH_DEV) && r.liens.filter((h) => /etherscan/.test(h)).length === 1, 'lien Etherscan pour l adresse valide, aucun pour le nom piege');
   ok(r.pirate === undefined && r.imgs === 0, 'un dev au nom piege reste du texte');
@@ -178,6 +234,107 @@ for (const c of Object.values(VIDE.chaines)) c.cases = c.cases.map((x) => kase(x
   ok(r.pastille === 'Unreachable' && r.kpis.length === 0, 'serveur injoignable : « Unreachable », aucun chiffre invente');
   await ctx.close();
 
+  console.log('\n-- 3b. la seule case qui sort a un bras retire : rien en vert --');
+  ({ p, ctx } = await ouvre('swoge_sol_ai.html', 'server=' + encodeURIComponent(base + 'refute')));
+  await p.waitForFunction(() => document.querySelectorAll('#cases tr').length > 0);
+  r = await lit(p);
+  ok(/^ds-verdict non$/.test(r.vcls) && /Nothing stands out on Solana that holds at real quotes/.test(r.verdict) && /refuted by the paper bank/.test(r.verdict) && r.vertes.length === 0,
+     'la seule case au-dessus de la barre est refutee : verdict rouge, aucune case en vert [' + r.verdict.slice(0, 70) + ']');
+  ok(r.refutesCls === 'ds-verdict non' && /Refuted at real quotes/.test(r.refutes) && r.refutesLi.length === 1
+     && /^Pool size = \$20-100k — \+8\.5% at the first price over 1,078 tokens; its arm was retired, losing beyond chance\. Today, over every bank buy in this case: -58\.2% net over 64 tokens, t -6\.1\.$/.test(r.refutesLi[0]),
+     'elle est dite a part, en rouge, avec le net, le n et le t de son bras [' + r.refutesLi[0] + ']');
+  ok(r.rouges.join() === 'Pool size = $20-100k — refuted at real quotes', 'dans le tableau : son t en rouge, « refuted at real quotes » ecrit a cote');
+  await ctx.close();
+
+  console.log('\n-- 3c. sans banque, l ancien avertissement reste --');
+  ({ p, ctx } = await ouvre('swoge_eth_ai.html', 'server=' + encodeURIComponent(base + 'sansbanque')));
+  await p.waitForFunction(() => document.querySelectorAll('#cases tr').length > 0);
+  r = await lit(p);
+  ok(r.ecart && /^Careful: on Ethereum even the reference, all tokens, moves \+8\.2% on average \(t 9\.9\)/.test(r.ecart) && /only paper trades at real quotes can tell/.test(r.ecart) && r.refutes === null,
+     'aucune banque pour mesurer l ecart : la reference qui monte au-dela du hasard suffit a prevenir');
+  await ctx.close();
+
+  console.log('\n-- 3d. les instantanes du 11/10 (audit) : Solana --');
+  const brasRetires = (c) => new Set(I.observatoire[c].bank.arms.filter((a) => a[1] === 'retired').map((a) => a[0]));
+  ({ p, ctx } = await ouvre('swoge_sol_ai.html', 'server=' + encodeURIComponent(base + 'reel')));
+  await p.waitForFunction(() => document.querySelectorAll('#cases tr').length > 0 && !document.querySelector('#carteBanque').hidden);
+  r = await lit(p);
+  let ret = brasRetires('solana');
+  ok(ret.size === 6 && r.vertesCles.length === 4 && r.vertesCles.every((k) => !ret.has(k)), 'Solana : 6 bras retires, aucune de leurs cases en vert ; 4 cases encore en vert, toutes a bras a l essai [' + r.vertesCles.join(' | ') + ']');
+  ok(r.rouges.length === 6 && r.rouges.every((k) => ret.has(k.replace(' — refuted at real quotes', ''))), 'les 6 cases refutees : t en rouge, « refuted at real quotes » ecrit');
+  ok(/^ds-verdict ok$/.test(r.vcls) && /^4 cases stand out before fees \(t ≥ 3\.31, 53 cases tested\)/.test(r.verdict) && [...ret].every((k) => !r.verdict.includes(k + ' (')),
+     'le verdict vert ne nomme que les 4 cases non refutees, avec la barre (3,31 pour 53 cases)');
+  ok(/Top 10 holders = top 10 20-50% \(\+79\.7%, t 9\.98, 289 tokens\) — its arm: 4 tokens at real quotes, under 30/.test(r.verdict) && /its arm: no settled buy yet/.test(r.verdict),
+     'chaque case encore verte dit ou en est son bras (4 jetons : sous 30, aucune conclusion)');
+  ok(r.refutesCls === 'ds-verdict non' && /^Refuted at real quotes: 6 cases stand out at the first price/.test(r.refutes)
+     && r.refutesLi.includes('Venue = meteora — +49.1% at the first price over 1,659 tokens; its arm was retired, losing beyond chance: -88.5% net over 60 buys, t -16.27. Today, over every bank buy in this case: -91.1% net over 78 tokens, t -21.64.')
+     && r.refutesLi.includes('Pool size = pool $100k+ — +68.3% at the first price over 728 tokens; its arm was retired, losing beyond chance: -41.2% net over 60 buys, t -5.15. Today, over every bank buy in this case: -41.5% net over 62 tokens, t -5.3.'),
+     'les cases refutees : a part, en rouge, chacune avec la mesure du retrait (meteora −88,5 % sur 60, t −16,27) puis la serie d aujourd hui (−91,1 % sur 78)');
+  ok(r.refutesLi.length === 6 && r.verdictLi.length === 4 && r.refutesLi.every((l) => !/back within chance/.test(l)),
+     'une case par ligne : 6 refutees, 4 vertes ; aucune serie revenue dans le hasard aujourd hui');
+  ok(!/Best arm/.test(r.bkVerdict) && !/Pool size = pool \$100k\+/.test(r.bkVerdict) && /Arms still testing are all under 30 settled tokens\. 6 arms retired for losing beyond chance at real quotes\./.test(r.bkVerdict),
+     'aucun « Best arm » : tous les bras a 30 jetons et plus sont retires (avant : « Pool size = pool $100k+ », −41,5 %, retire) [' + r.bkVerdict.slice(0, 90) + ']');
+  ok(/none holds in paper · 6 retired at real quotes/.test(r.bkKpis[3]) && /−\$7,187\.17/.test(r.bkKpis[1]), 'KPI : 6 bras retires dits ; la banque en perte (−7 187 $)');
+  ok(r.ecart && r.ecartCls === 'ds-verdict peu' && /^The first price is not what a buyer pays\./.test(r.ecart) && /all tokens move -4% on average in 30 minutes \(70,593 tokens\)/.test(r.ecart)
+     && /buying at Jupiter quotes, fees included, settles at -30\.1% net \(391 buys\) — 26\.1 points lower/.test(r.ecart),
+     'banque en perte, reference sous zero (−4 %) : l avertissement s affiche quand meme, 26,1 points d ecart mesures [' + String(r.ecart).slice(0, 50) + ']');
+  await ctx.close();
+
+  console.log('\n-- 3e. les instantanes du 11/10 (audit) : Ethereum --');
+  ({ p, ctx } = await ouvre('swoge_eth_ai.html', 'server=' + encodeURIComponent(base + 'reel')));
+  await p.waitForFunction(() => document.querySelectorAll('#cases tr').length > 0 && !document.querySelector('#carteBanque').hidden);
+  r = await lit(p);
+  ret = brasRetires('eth');
+  ok(ret.size === 3 && r.vertesCles.join(' | ') === 'Pool size = pool $20-100k | Market cap = cap $10-50k' && r.rouges.length === 3, 'Ethereum : 3 bras retires, leurs cases en rouge ; les 2 autres en vert [' + r.vertesCles.join(' | ') + ']');
+  ok(/^2 cases stand out before fees \(t ≥ 3\.26, 45 cases tested\)/.test(r.verdict) && /its arm: \+17% net at real quotes over 162 tokens, t 1\.99, still testing/.test(r.verdict) && !/Quoted in = ETH \(/.test(r.verdict),
+     'le verdict vert : 2 cases, l etat de leur bras ; « Quoted in = ETH » (bras retire) n y est pas');
+  ok(r.refutesLi.includes('Quoted in = ETH — +9.9% at the first price over 913 tokens; its arm was retired, losing beyond chance: -42.4% net over 60 buys, t -3.16. Today, over every bank buy in this case: -37.4% net over 114 tokens, t -4.32.'),
+     'Quoted in = ETH : refutee, retiree a −42,4 % sur 60 (t −3,16), aujourd hui −37,4 % net sur 114 jetons, t −4,32');
+  const meilleur = (/Best arm still testing: (.+?) \(/.exec(r.bkVerdict) || [])[1];
+  ok(meilleur === 'Pool size = pool $20-100k' && !ret.has(meilleur), '« Best arm » : un bras encore a l essai, jamais un retire [' + meilleur + ']');
+  ok(/\+\$1,130\.11/.test(r.bkKpis[1]) && /not a return: avg buy \+2\.9% net over 649 tokens, t 0\.31, within chance/.test(r.bkKpis[1]) && !/\+37\.7%/.test(r.bkKpis[1]),
+     'le +1 130 $ de la banque ne se lit pas comme un rendement : « not a return », la moyenne et son t, plus de « +37.7% » [' + r.bkKpis[1] + ']');
+  ok(/The bank’s \+\$1,130\.11 is not a return: the average buy is \+2\.9% net over 649 tokens \(t 0\.31, within chance\), and the gain rests on the minority of tokens that more than doubled — without them, the rest average -4\.9% or worse; 28% of buys made money\./.test(r.bkVerdict)
+     && /^No arm holds in paper yet\./.test(r.bkVerdict), 'et le verdict dit sur quoi il repose (les jetons qui ont plus que double, −4,9 % sans eux) et qu aucun bras ne tient');
+  ok(r.ecart && /^First price against real quotes\./.test(r.ecart) && /-0\.7% on average in 30 minutes \(4,660 tokens\)/.test(r.ecart) && /settles at \+4\.3% net \(201 buys\)\./.test(r.ecart),
+     'Ethereum : l ecart est mesure aussi, et dit tel quel quand le temoin fait mieux que la lecture');
+  ok(!/proven/i.test(r.corps), 'aucune page de l observatoire ne dit « proven »');
+  await ctx.close();
+
+  console.log('\n-- 3f. un bras qui perd deja au-dela du hasard, avant le retrait du serveur (60 achats) --');
+  ({ p, ctx } = await ouvre('swoge_sol_ai.html', 'server=' + encodeURIComponent(base + 'perd')));
+  await p.waitForFunction(() => document.querySelectorAll('#cases tr').length > 0 && !document.querySelector('#carteBanque').hidden);
+  r = await lit(p);
+  ok(!r.vertesCles.includes('Token program = SPL Token') && r.rouges.includes('Token program = SPL Token — refuted at real quotes') && r.verdictLi.length === 3 && !/SPL Token/.test(r.verdict),
+     '45 achats, t −12,4 (barre de la banque 2,61) : la case sort du vert avant que le serveur retire le bras [' + r.vertesCles.join(' | ') + ']');
+  ok(r.refutesLi.includes('Token program = SPL Token — +4.7% at the first price over 1,888 tokens; its arm: -80.2% net over 45 tokens, t -12.4 — losing beyond chance already; the bank checks retirement at 60 buys.') && r.refutesLi.length === 7,
+     'elle est listee avec les refutees : son net, son n, son t, et quand le serveur juge le retrait');
+  ok(r.vertesCles.includes('Top 10 holders = top 10 20-50%') && /Top 10 holders = top 10 20-50% \(\+79\.7%, t 9\.98, 289 tokens\) — its arm: 29 tokens at real quotes, under 30/.test(r.verdict),
+     'sous 30 achats (29, t −9) : aucune conclusion, la case reste verte avec l etat de son bras');
+  ok(r.vertesCles.includes('Top 10 holders = top 10 under 20%') && /its arm: -20% net at real quotes over 40 tokens, t -2\.5, still testing/.test(r.verdict),
+     '40 achats a t −2,5, dans le hasard (au-dessus de −2,61) : la case reste verte, l etat du bras dit');
+  await ctx.close();
+
+  console.log('\n-- 3g. un bras retire dont la serie revient dans le hasard --');
+  ({ p, ctx } = await ouvre('swoge_sol_ai.html', 'server=' + encodeURIComponent(base + 'recup')));
+  await p.waitForFunction(() => document.querySelectorAll('#cases tr').length > 0 && !document.querySelector('#carteBanque').hidden);
+  r = await lit(p);
+  const dbc = r.refutesLi.find((l) => /^Venue = meteoradbc/.test(l)) || '';
+  ok(/its arm was retired, losing beyond chance: -97\.6% net over 60 buys, t -52\.44\. Today, over every bank buy in this case: -24\.4% net over 910 tokens, t -1\.07, back within chance\.$/.test(dbc)
+     && !r.vertesCles.includes('Venue = meteoradbc'),
+     'la perte au-dela du hasard citee est celle du retrait (−97,6 % sur 60, t −52,44) ; la serie d aujourd hui, revenue dans le hasard, est dite comme telle [' + dbc.slice(0, 90) + ']');
+  await ctx.close();
+
+  console.log('\n-- 3h. la borne « sans les doubles » prend son plancher dans les achats visibles --');
+  for (const [src, attendu] of [['plancher160', / — without them, the rest average -3\.4% or worse;/], ['plancher300', null]]) {
+    ({ p, ctx } = await ouvre('swoge_eth_ai.html', 'server=' + encodeURIComponent(base + src)));
+    await p.waitForFunction(() => !document.querySelector('#carteBanque').hidden && /not a return/.test(document.querySelector('#bkVerdict').textContent));
+    r = await lit(p);
+    ok(attendu ? attendu.test(r.bkVerdict) : !/more than doubled|or worse/.test(r.bkVerdict) && /not a return: the average buy is \+2\.9% net over 649 tokens \(t 0\.31, within chance\); 28% of buys made money\./.test(r.bkVerdict),
+       src === 'plancher160' ? 'un achat visible a −160 % : la borne se recalcule sur ce plancher (−3,4 % ou pire, au lieu de −4,9 %)' : 'un achat visible a −300 % : la dispersion n oblige plus a rien, la page ne dit que la moyenne, son t et la part gagnante');
+    await ctx.close();
+  }
+
   console.log('\n-- 4. a 1440 px : la colonne du milieu ne passe pas sous celle de droite --');
   for (const pg of ['swoge_sol_ai.html', 'swoge_eth_ai.html']) {
     ({ p, ctx } = await ouvre(pg, 'server=' + encodeURIComponent(base + 'api'), 1440));
@@ -191,12 +348,12 @@ for (const c of Object.values(VIDE.chaines)) c.cases = c.cases.map((x) => kase(x
     await ctx.close();
   }
 
-  console.log('\n-- 5. a 360 px : rien ne deborde --');
-  for (const pg of ['swoge_sol_ai.html', 'swoge_eth_ai.html']) {
-    ({ p, ctx } = await ouvre(pg, 'server=' + encodeURIComponent(base + 'api'), 360));
+  console.log('\n-- 5. a 360 px : rien ne deborde (faux etat, puis instantanes du 11/10 et leurs longues listes) --');
+  for (const src of ['api', 'reel']) for (const pg of ['swoge_sol_ai.html', 'swoge_eth_ai.html']) {
+    ({ p, ctx } = await ouvre(pg, 'server=' + encodeURIComponent(base + src), 360));
     await p.waitForFunction(() => document.querySelectorAll('#cases tr').length > 0);
     const l = await p.evaluate(() => document.documentElement.scrollWidth);
-    ok(l <= 361, pg + ' a 360 px : rien ne deborde (' + l + ' px)');
+    ok(l <= 361, pg + ' (' + src + ') a 360 px : rien ne deborde (' + l + ' px)');
     await ctx.close();
   }
   await nav.close(); srv.close();

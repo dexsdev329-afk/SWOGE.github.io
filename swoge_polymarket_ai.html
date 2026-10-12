@@ -677,7 +677,7 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
       <li><b>The bets</b>$10 of paper money per bet, one bet per agent per window, bought at the ask like a taker, walking up the book. No maker orders: whether they would fill cannot be known without really placing them.</li>
       <li><b>The fees</b>Polymarket&rsquo;s published formula: shares &times; rate &times; p &times; (1 &minus; p), with the rate read on each market (7% on the day this started).</li>
       <li><b>The model</b>The price move since the window opened, against the volatility of the last 90 minutes, gives a probability of &ldquo;Up&rdquo;. Prices come from Hyperliquid, not Chainlink: the gap between the two is part of what is measured.</li>
-      <li><b>The verdicts</b>No verdict under 100 settled bets. The skill score compares each result with the price paid: around 0 is luck, 2 or more starts to be unusual.</li>
+      <li><b>The verdicts</b>No verdict under 100 settled bets. The skill score compares each result with the price paid: around 0 is luck, 2 or more starts to be unusual &mdash; except on favourites at 90&cent; and up, where a high score comes by luck far more often. A strategy above the bar is a candidate, unconfirmed, not a result.</li>
     </ol>
   </section>
 
@@ -719,6 +719,7 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
   function el(tag, cls, txt){ var e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; }
   function usd(x){ var n = Number(x); if (!isFinite(n)) return "\u2014"; var a = Math.abs(n); return (n < 0 ? "\u2212$" : "$") + (a >= 1000 ? Math.round(a).toLocaleString("en-US") : a.toFixed(2)); }
   function signe(x){ var n = Number(x); return (n > 0 ? "+" : "") + usd(n); }
+  function nb(x){ return Number(x || 0).toLocaleString("en-US"); }
   function pct(x){ return Math.round(Number(x) * 1000) / 10 + "%"; }
   function cents(x){ return x == null ? "\u2014" : Math.round(Number(x) * 1000) / 10 + "\u00a2"; }
   function heure(s){ return String(s || "").slice(5, 16).replace("T", " "); }
@@ -796,25 +797,56 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
   /* Le tournoi (30/09) : la regle telle que la dit le serveur, ce qui a ete essaye, et les
      derniers retires avec leur bilan. Tout en texte, jamais en HTML. */
   /* Ou en est-on d un resultat (30/09) : tout vient du serveur (evidence), ecrit en texte. */
+  /* ---- AU-DESSUS DE LA BARRE : UNE CANDIDATE, PAS UN RESULTAT (audit du 11/10, instantane 22:24 UTC) ----
+     La page disait « 1 strategy has an edge above the 3.98 bar, in profit after fees » et comptait des
+     « Proven edges ». Faux tel quel, pour trois raisons mesurees :
+       1. la barre suppose un score par fenetre de loi normale ; sous H0 (aucun avantage), 200 000 series de
+          185 fenetres a 91-99 ¢ le font passer 3,98 dans 0,126 % des cas, contre 0,0034 % suppose (37 fois) —
+          et la seule « prouvee », P·Crowd>90¢ · 7:00–5:00 (419 paris, 413 gagnes), achete le favori a ~95,5 ¢ ;
+       2. les gardees du tournoi PERDENT apres selection : −0,60 $ par pari de 10 $ sur 89 050 paris regles,
+          contre −0,92 $ pour Coin sur 3 839 ;
+       3. evidence.proven ne regarde pas le carnet relu apres le delai d un ordre.
+     Tant que la barre n est pas recalculee pour les prix extremes, la page dit « candidate, unconfirmed »,
+     jamais « edge » ni « proven ». Le champ s appelle encore `proven` cote serveur : seul le mot change. */
+  function pourquoiCandidate(d){
+    var v = d.survivors, apres = v && v.enough && v.pnlPerBet != null && v.pnl < 0;
+    return "The skill score behind that bar is not valid at extreme prices: on favourites at 90¢ and up it clears the bar by luck far more often than the bar assumes." +
+      (apres ? " And kept strategies lose after selection: " + signe(v.pnlPerBet) + " per bet over " + Number(v.resolved).toLocaleString("en-US") + " settled bets" +
+        (v.coinPerBet != null ? " (Coin: " + signe(v.coinPerBet) + ")" : "") + "." : "") +
+      " The bar does not check the order book re-read after the order delay either. Until it is recomputed, nothing here is a result.";
+  }
   function peintPreuve(d){
     var bloc = $("preuve"), e = d.evidence;
     if (!e || !e.minWindows) { bloc.hidden = true; return; }
     var v = $("prVerdict");
-    if (e.proven > 0) v.textContent = e.proven + " strateg" + (e.proven === 1 ? "y has" : "ies have") + " an edge above the " + e.bar + " bar, in profit after fees.";
-    else if (e.promising > 0) v.textContent = "Not yet. " + e.promising + " promising (skill 2+ per window), none above the " + e.bar + " bar that " + e.tested + " strategies tested require.";
+    if (e.proven > 0) v.textContent = e.proven + " strateg" + (e.proven === 1 ? "y is" : "ies are") + " above the " + e.bar + " bar and in profit after fees: " +
+      (e.proven === 1 ? "a candidate" : "candidates") + ", unconfirmed. " + pourquoiCandidate(d);
+    /* « Promising » (zF ≥ 2) repose sur le meme score par fenetre que la barre, gonfle lui aussi sur les favoris
+       (relecture du 12/10, H0 : y ~ Bernoulli(prix paye), graine fixe, 100 000 series a 91-99 ¢ : P(zF ≥ 2) =
+       7,3 % sur 50 fenetres, 5,3 % sur 100, 4,4 % sur 185, contre 2,3 % suppose ; a 40-60 ¢ : 2,2 %). */
+    else if (e.promising > 0) v.textContent = "Not yet. " + e.promising + " promising (skill 2+ per window), none above the " + e.bar + " bar that " + e.tested + " strategies tested require." +
+      " On favourites at 90¢ and up, a skill of 2 comes by luck two to three times more often than the bar assumes.";
     else if (e.measured > 0) v.textContent = "Not yet. " + e.measured + " strateg" + (e.measured === 1 ? "y" : "ies") + " measured over " + e.minWindows + "+ windows, none promising.";
     else v.textContent = "Not yet: no strategy has " + e.minWindows + " windows counted since " + String(e.since || "").slice(0, 10) + ".";
-    $("prRegle").textContent = String(e.rule || "");
+    /* La regle, telle que la dit le serveur (evidence.rule) — sauf si elle appelle « edge » ce qui passe la barre :
+       celle d avant le 11/10 disait « only called an edge above the bar », ce que la barre ne permet pas
+       d affirmer aux prix extremes, et un serveur pas encore redeploye peut la servir encore. La page ecrit
+       alors la sienne, avec la mesure du serveur (72 % : Hyperliquid, 289 fenetres, 30/09, poly_papier.js). */
+    var regle = String(e.rule || "");
+    $("prRegle").textContent = regle && !/\bedge\b/i.test(regle) ? regle :
+      "Bets placed in the same 15 minutes count as one observation: BTC, ETH, SOL and XRP finish the same way about 72% of the time. A strategy is only measured after " +
+      e.minWindows + " windows counted since " + String(e.since || "").slice(0, 10) + ". Above the bar set by the number of strategies tested (" +
+      nb(e.tested) + " so far: " + e.bar + ") and in profit after fees, it is only a candidate, unconfirmed.";
     var r = d.reality, pr = $("prReel");
     if (r && r.repriced) {
       var vols = [], mv = r.medianVolumeUsd || {};
       Object.keys(mv).forEach(function(k){ if (mv[k] != null) vols.push(k + " " + usd(mv[k])); });
       var tr = r.trades || {};
-      pr.textContent = "Could these bets really be placed? A real order takes time to arrive: " + r.repriced + " settled bets were re-priced on the real Polymarket order book " + r.orderDelaySeconds + " s after the decision. " +
+      pr.textContent = "Could these bets really be placed? A real order takes time to arrive: " + nb(r.repriced) + " settled bets were re-priced on the real Polymarket order book " + r.orderDelaySeconds + " s after the decision. " +
         "At those prices: " + signe(r.pnlAfterDelay) + ", against " + signe(r.paperPnl) + " on paper" +
         (r.avgPriceMoveAfterDelay == null ? "" : " (the price moved " + (r.avgPriceMoveAfterDelay >= 0 ? "+" : "\u2212") + Math.abs(Math.round(r.avgPriceMoveAfterDelay * 1000) / 10) + "\u00a2 on average)") +
-        (r.emptyBook ? "; " + r.emptyBook + " bets would have found nothing left to buy" : "") + "." +
-        (tr.betsChecked ? " Compared with the trades really made: " + tr.confirmedAtOurPrice + " of " + tr.betsChecked + " saw our side trade at our price within " + tr.withinSeconds + " s." : "") +
+        (r.emptyBook ? "; " + nb(r.emptyBook) + " bets would have found nothing left to buy" : "") + "." +
+        (tr.betsChecked ? " Compared with the trades really made: " + nb(tr.confirmedAtOurPrice) + " of " + nb(tr.betsChecked) + " saw our side trade at our price within " + tr.withinSeconds + " s." : "") +
         (vols.length ? " Median volume traded per 15-minute market: " + vols.join(", ") + "." : "") + " " + String(r.rule || "");
       pr.hidden = false;
     } else if (r) { pr.textContent = "Real order book check: no settled bet re-priced yet. " + String(r.rule || ""); pr.hidden = false; }
@@ -823,8 +855,8 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
     var l = Array.isArray(e.leaders) && e.leaders.length ? e.leaders : (Array.isArray(e.closest) ? e.closest : []);
     var mesure = Array.isArray(e.leaders) && e.leaders.length > 0;
     l.forEach(function(c){
-      var tr = el("tr");
-      tr.appendChild(el("td", "nom", String(c.name || c.id)));
+      var tr = el("tr"), cand = mesure && Number(c.skillPerWindow) >= Number(e.bar) && Number(c.pnl) > 0;
+      tr.appendChild(el("td", "nom", String(c.name || c.id) + (cand ? " (candidate, unconfirmed)" : "")));
       tr.appendChild(el("td", "num", mesure ? String(c.windows) : c.windows + "/" + e.minWindows));
       tr.appendChild(el("td", "num", c.skillPerWindow == null ? "\u2014" : String(c.skillPerWindow)));
       tr.appendChild(el("td", "num " + (Number(c.pnl) > 0 ? "pos" : Number(c.pnl) < 0 ? "neg" : ""), signe(c.pnl || 0)));
@@ -849,7 +881,10 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
       var mieux = v.coinPerBet != null && v.pnlPerBet > v.coinPerBet;
       verdict.textContent = (v.pnl > 0 ? "So far, the kept strategies made money after being kept: " : "So far, the kept strategies lost money after being kept: ") + signe(v.pnl) + " over " + nb(v.resolved) + " settled bets" +
         (v.coinPerBet != null ? " (" + signe(v.pnlPerBet) + " per bet, against " + signe(v.coinPerBet) + " for Coin over the same period" + (mieux ? ")." : " \u2014 no better than luck).") : ".") +
-        " Only a skill score above the bar over enough windows would make it an edge.";
+        /* 11/10 : « Only a skill score above the bar ... would make it an edge » promettait ce que la barre ne
+           tient pas aux prix extremes (voir pourquoiCandidate). Les gardees perdent : on le dit, sans promesse. */
+        (v.pnl < 0 ? " Losing less than Coin is still losing: keeping the winners has not produced strategies that keep making money." :
+          " Paper money, after selection: a strategy above the bar would still only be a candidate, unconfirmed.");
     }
     var k = $("svKpis"); k.textContent = "";
     k.appendChild(kpi("Strategies kept", nb(v.kept), v.kept ? nb(v.stillRunning) + " still running \u00b7 " + nb(v.retiredAfterKept) + " retired later" : "First checks at " + nb(v.minResolved) + " bets"));
@@ -970,8 +1005,9 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
     g.appendChild(kpi("Settled paper bets", l.length ? nombre(regles) : "--", l.length ? nombre(ouverts || (d.open || []).length) + " open right now" : "--"));
     g.appendChild(kpi("Combined paper P&L", s.total ? signe(s.totalPnl || 0) : "--",
       s.total ? (s.inProfit || 0) + " in profit \u00b7 " + (s.inLoss || 0) + " at a loss \u00b7 fake money" : "--", s.total ? (Number(s.totalPnl) > 0 ? "pos" : Number(s.totalPnl) < 0 ? "neg" : null) : null));
-    g.appendChild(kpi("Proven edges", e && e.minWindows ? String(e.proven || 0) : "--",
-      e && e.minWindows ? "Skill above " + e.bar + " over " + e.minWindows + "+ windows, out of " + nombre(e.tested) + " tested" : "--"));
+    /* 11/10 : « Proven edges » → candidates non confirmees (voir pourquoiCandidate). */
+    g.appendChild(kpi("Candidates, unconfirmed", e && e.minWindows ? String(e.proven || 0) : "--",
+      e && e.minWindows ? "Skill above " + e.bar + " over " + e.minWindows + "+ windows, out of " + nombre(e.tested) + " tested — the bar is not valid at extreme prices yet" : "--"));
     g.appendChild(kpi("Model vs market", c.n ? c.brierModel + " / " + c.brierMarket : "--",
       c.n ? "Brier, model / market, over " + nombre(c.n) + " windows" + (c.enough ? "" : " \u2014 too few to compare") : "No window scored yet"));
     var tr = r && r.trades;

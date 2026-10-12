@@ -1681,7 +1681,13 @@ body{ background:#F7F9FC; }
       var e = d && d.evidence, c = (d && d.calibration) || {};
       if(!e || !e.tested) return pose("poly", "--", "No strategy measured yet.");
       var cal = c.enough ? " Over " + nb(c.n) + " windows, the " + (c.brierMarket < c.brierModel ? "market was better calibrated than the model." : "model was better calibrated than the market.") : "";
-      pose("poly", nb(e.proven || 0) + " proven", "Strategies with an edge, out of " + nb(e.tested) + " tested on Polymarket\u2019s 15-minute markets." + cal);
+      /* 11/10 : « N proven », « Strategies with an edge » — faux tel quel. La barre du score par fenetre n est
+         pas valide aux prix extremes (sous H0, a 91-99 ¢, elle est franchie 37 fois plus souvent que suppose),
+         et les gardees perdent apres selection (−0,60 $ par pari sur 89 050, Coin −0,92 $). Une strategie
+         au-dessus de la barre est une candidate, non confirmee (voir swoge_polymarket_ai.html, pourquoiCandidate). */
+      var sv = d.survivors, apres = sv && sv.enough && sv.pnlPerBet != null && sv.pnl < 0
+        ? " Kept strategies lose after selection: " + (sv.pnlPerBet < 0 ? "\u2212$" : "$") + Math.abs(sv.pnlPerBet).toFixed(2) + " per bet over " + nb(sv.resolved) + " settled bets." : "";
+      pose("poly", nb(e.proven || 0) + " candidate" + (e.proven === 1 ? "" : "s"), "Above the skill bar and unconfirmed, out of " + nb(e.tested) + " strategies tested on Polymarket\u2019s 15-minute markets: the bar is not valid at extreme prices yet." + apres + cal);
     })["catch"](function(){ pose("poly", "--", "The server did not answer."); });
   }
   if("IntersectionObserver" in window){

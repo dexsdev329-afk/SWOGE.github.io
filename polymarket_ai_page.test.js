@@ -8,7 +8,10 @@
  *   3. paris ouverts et regles ; un lien seulement vers polymarket.com ;
  *   4. tout est du texte ; serveur injoignable dit ; rien ne deborde a 360 px ;
  *   5. un redemarrage du serveur n'efface rien a l'ecran : la derniere lecture reste, datee
- *      (29/09 : « on dirait que ca a perdu toutes ses donnees » pendant une mise en ligne).
+ *      (29/09 : « on dirait que ca a perdu toutes ses donnees » pendant une mise en ligne) ;
+ *   8. (audit du 11/10, instantane public de 22:24 UTC, audit_1110.instantanes.json) une strategie
+ *      au-dessus de la barre est une CANDIDATE, non confirmee : la page ne dit jamais « edge » ni
+ *      « proven » pour elle, et reste honnete sur ce que disent les gardees et le carnet reel.
  * ==========================================================================*/
 const fs = require('fs'), path = require('path'), http = require('http');
 const SITE = __dirname;
@@ -21,9 +24,10 @@ const agent = (id, name, o) => Object.assign({ id, name, role: 'Role of ' + name
 const ETAT = (calib) => ({ ok: true, depuis: '2026-09-29T14:00:00.000Z', stakeUsd: 10, bankUsd: 1000, minResolved: 100,
   totalStrategies: 200, parametric: { running: 100, distinct: 2460, combinations: 110700, note: '<img src=x onerror=window.pirate=9> not simulated.' },
   /* Le classement, volontairement MELANGE : la page doit le trier elle-meme. */
-  ranking: [{ id: 'p_a', name: 'P·FV 1.5pt', resolved: 74, won: 41, pnl: 352.99, nextJudgedAt: 500 }, { id: 'fade', name: 'Longshot', resolved: 224, won: 8, pnl: -1224.77, nextJudgedAt: null },
-    { id: 'p_b', name: '<img src=x onerror=window.pirate=8>', resolved: 12, won: 3, pnl: -80.1, nextJudgedAt: 500 }, { id: 'coin', name: 'Coin', resolved: 365, won: 195, pnl: -393.75, nextJudgedAt: null },
-    { id: 'crowd', name: 'Crowd', resolved: 366, won: 313, pnl: 30.14, nextJudgedAt: null }, { id: 'p_c', name: 'P·Crowd>55¢', resolved: 0, won: 0, pnl: 0, nextJudgedAt: 500 }],
+  /* Les temoins portent type:baseline, comme le serveur les marque depuis le 07/10 (poly_papier.js). */
+  ranking: [{ id: 'p_a', name: 'P·FV 1.5pt', resolved: 74, won: 41, pnl: 352.99, nextJudgedAt: 500 }, { id: 'fade', name: 'Longshot', type: 'baseline', resolved: 224, won: 8, pnl: -1224.77, nextJudgedAt: null },
+    { id: 'p_b', name: '<img src=x onerror=window.pirate=8>', resolved: 12, won: 3, pnl: -80.1, nextJudgedAt: 500 }, { id: 'coin', name: 'Coin', type: 'baseline', resolved: 365, won: 195, pnl: -393.75, nextJudgedAt: null },
+    { id: 'crowd', name: 'Crowd', type: 'baseline', resolved: 366, won: 313, pnl: 30.14, nextJudgedAt: null }, { id: 'p_c', name: 'P·Crowd>55¢', resolved: 0, won: 0, pnl: 0, nextJudgedAt: 500 }],
   /* Le tournoi (30/09) : un retire au nom piege, un autre dont les paris se reglent encore ;
      sans aucune calibration (etat « vide »), aucun retire : la page doit le dire. */
   tournament: { threshold: 500, slots: 400, controls: 5, running: 405, retired: calib.n ? 2 : 0, parametricTried: calib.n ? 307 : 305, parametricUntried: calib.n ? 2153 : 2155,
@@ -51,6 +55,15 @@ const ETAT = (calib) => ({ ok: true, depuis: '2026-09-29T14:00:00.000Z', stakeUs
   recent: [{ agent: 'coin', asset: 'ETH', window: '2026-09-29T14:00:00.000Z', side: 'Down', price: 0.47, fee: 0.37, result: 'Up', pnl: -10.37, url: 'javascript:alert(1)' },
     { agent: 'fair', asset: 'SOL', window: '2026-09-29T14:00:00.000Z', side: 'Up', price: 0.6, fee: 0.28, result: 'Up', pnl: 6.39, url: 'https://polymarket.com/event/sol-updown-15m-1790690400' }],
   health: { ticks: 10, errors: 0 } });
+/* L instantane public /poly/etat du 11/10/2026 22:24 UTC (sous-ensemble, chiffres tels quels) : 1 strategie
+   au-dessus de la barre de 3,98 sur 1 458 essayees (P·Crowd>90¢ · 7:00–5:00, zF 4,24 sur 185 fenetres),
+   les gardees a −0,598 $ par pari apres selection contre −0,917 $ pour Coin, et la regle du serveur d avant
+   le 11/10 (« only called an edge above the bar ») que la page ne doit plus reprendre. */
+const INSTANTANE = JSON.parse(fs.readFileSync(path.join(SITE, 'audit_1110.instantanes.json'), 'utf8')).poly;
+/* Le meme instantane servi par le serveur corrige (poly_papier.js, 11-12/10) : sa regle ne dit plus « edge »,
+   la page la montre alors telle quelle — c est elle qui porte la mesure (72 %) et ses evolutions. */
+const REGLE_NEUVE = 'Bets placed in the same 15 minutes count as one observation: BTC, ETH, SOL and XRP finish the same way about 72% of the time. A strategy is only measured after 50 windows counted since 2026-09-30. Above the bar set by the number of strategies tested (1458 so far: 3.98) and in profit after fees, it is only a candidate, unconfirmed: at extreme prices (favourites at 90¢ and up) the per-window score clears that bar by luck far more often than the bar assumes.';
+const INSTANTANE_NEUF = JSON.parse(JSON.stringify(INSTANTANE)); INSTANTANE_NEUF.evidence.rule = REGLE_NEUVE;
 const CALIBS = {
   vide: { n: 0, pending: 3, brierModel: null, brierMarket: null, enough: false, minN: 100, buckets: [] },
   peu: { n: 12, pending: 1, brierModel: 0.21, brierMarket: 0.19, enough: false, minN: 100, buckets: [{ range: '0.6–0.7', n: 12, upRate: 0.58, model: 0.65, market: 0.61 }] },
@@ -73,7 +86,7 @@ CALIBS.peu.hourly = []; CALIBS.peu.hourlySince = null;
   async function ouvre(calib, larg, panne) {
     const ctx = await nav.newContext({ viewport: { width: larg || 1100, height: 900 } }), page = await ctx.newPage();
     await page.route((u) => !u.href.startsWith('http://127.0.0.1:' + port), (r) => {
-      if (/\/poly\/etat$/.test(r.request().url()) && !(panne === true || (panne && panne.en))) return r.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify(ETAT(CALIBS[calib])) });
+      if (/\/poly\/etat$/.test(r.request().url()) && !(panne === true || (panne && panne.en))) return r.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify(calib === 'instantane' ? INSTANTANE : calib === 'instantane_neuf' ? INSTANTANE_NEUF : ETAT(CALIBS[calib])) });
       return r.fulfill({ status: 503, body: '' });
     });
     await page.goto('http://127.0.0.1:' + port + '/swoge_polymarket_ai.html', { waitUntil: 'domcontentloaded' });
@@ -85,7 +98,9 @@ CALIBS.peu.hourly = []; CALIBS.peu.hourlySince = null;
     const { page, ctx } = await ouvre('vide');
     await page.waitForFunction(() => document.querySelectorAll('#agents .agent').length === 5);
     const t = await page.textContent('#agents');
-    ok(/Coin\s*control/.test(t) && (await page.$$('#agents .temoin')).length === 1, 'cinq agents, et Coin est marque comme le temoin');
+    /* 05/10 : Crowd est marque « the market » (l etalon, c est le marche) ; Coin reste le seul « control ». */
+    const marques = (await page.$$eval('#agents .temoin', (l) => l.map((e) => e.closest('.agent').querySelector('.nom').textContent + ':' + e.textContent))).sort();
+    ok(/Coin\s*control/.test(t) && marques.join('|') === 'Coin:control|Crowd:the market', 'cinq agents, Coin marque comme le temoin, Crowd comme le marche [' + marques.join(' | ') + ']');
     ok(/118 settled/.test(t) && /57 \(48\.3%, 95% range 39\.5%–57\.2%\)/.test(t) && /−\$41\.20/.test(t) && /\$20\.30/.test(t), 'chaque chiffre avec son effectif et sa marge : gagnes, taux et intervalle, gain apres frais, frais');
     ok(/No edge: loses after the spread and fees/.test(t) && /Too few resolved bets to judge \(0\/100\)/.test(t), 'le verdict du serveur tel quel, y compris « trop peu »');
     ok((await page.$('#agents img')) === null && !(await page.evaluate(() => window.pirate)), 'ce que dit le serveur est du texte, jamais du HTML');
@@ -96,7 +111,7 @@ CALIBS.peu.hourly = []; CALIBS.peu.hourlySince = null;
        && await page.evaluate(() => !document.querySelector('#effectif img') && window.pirate === undefined), 'l effectif reel est dit en tete, en texte seulement [' + ef.slice(0, 60) + ']');
     /* 30/09 : « classe du plus gagnant au plus perdant ». */
     const cl = await page.evaluate(() => [...document.querySelectorAll('#clLignes tr')].map((tr) => ({ nom: tr.children[1].textContent, pnl: tr.children[4].textContent, gris: tr.classList.contains('peu') })));
-    ok(cl.map((c) => c.nom).join('|') === 'P·FV 1.5pt|Crowd|P·Crowd>55¢|<img src=x onerror=window.pirate=8>|Coin (control)|Longshot',
+    ok(cl.map((c) => c.nom).join('|') === 'P·FV 1.5pt|Crowd (control)|P·Crowd>55¢|<img src=x onerror=window.pirate=8>|Coin (control)|Longshot (control)',
        'le tableau classe les strategies du plus gagnant au plus perdant, meme si le serveur les envoie en desordre [' + cl.map((c) => c.pnl).join(' ') + ']');
     ok(cl[0].gris && !cl[1].gris && cl[4].gris === false, 'sous 100 paris regles, la ligne est grisee (pas un verdict) ; au-dela, non');
     ok(await page.evaluate(() => !document.querySelector('#clLignes img') && window.pirate === undefined), 'un nom de strategie est ecrit en texte, jamais en HTML');
@@ -151,8 +166,9 @@ CALIBS.peu.hourly = []; CALIBS.peu.hourlySince = null;
     await ctx.close();
     ({ page, ctx } = await ouvre('peu'));
     await page.waitForFunction(() => /promising/.test(document.getElementById('prVerdict').textContent));
-    ok(/^Not yet\. 1 promising \(skill 2\+ per window\), none above the 3\.67 bar that 405 strategies tested require\.$/.test(await page.textContent('#prVerdict')),
-       'une prometteuse sous la barre : « pas encore », avec la barre et le nombre essaye');
+    /* 12/10 : « promising » repose sur le meme score que la barre, gonfle lui aussi sur les favoris a 90 ¢ et plus. */
+    ok(/^Not yet\. 1 promising \(skill 2\+ per window\), none above the 3\.67 bar that 405 strategies tested require\. On favourites at 90¢ and up, a skill of 2 comes by luck two to three times more often than the bar assumes\.$/.test(await page.textContent('#prVerdict')),
+       'une prometteuse sous la barre : « pas encore », avec la barre, le nombre essaye, et la reserve sur les favoris');
     const l = await page.evaluate(() => [...document.querySelectorAll('#prLignes tr')].map((tr) => [...tr.children].map((td) => td.textContent)));
     ok(l[0][0] === '<img src=x onerror=window.pirate=6>' && l[0][1] === '61' && l[0][2] === '2.4' && await page.evaluate(() => !document.querySelector('#preuve img') && window.pirate === undefined),
        'le meneur : nom en texte, fenetres, score par fenetre [' + l[0].join(' | ') + ']');
@@ -230,7 +246,7 @@ CALIBS.peu.hourly = []; CALIBS.peu.hourlySince = null;
     const k = await page.evaluate(() => [...document.querySelectorAll('#kpis .ds-kpi')].map((e) => e.textContent));
     ok(/Strategies running200/.test(k[0]) && /Settled paper bets1,041/.test(k[1]) && /Combined paper P&L−\$1,315/.test(k[2]) && /fake money/.test(k[2]),
        'les cartes d etat : strategies, paris regles (somme du classement), P&L papier dit comme tel [' + k.slice(0, 3).join(' | ') + ']');
-    ok(/Proven edges0/.test(k[3]) && /above 3\.67/.test(k[3]) && /0\.21 \/ 0\.19/.test(k[4]) && /too few to compare/.test(k[4]) && /75%/.test(k[5]) && /of 200 bets/.test(k[5]),
+    ok(/Candidates, unconfirmed0/.test(k[3]) && /above 3\.67/.test(k[3]) && !/proven|edge/i.test(k[3]) && /0\.21 \/ 0\.19/.test(k[4]) && /too few to compare/.test(k[4]) && /75%/.test(k[5]) && /of 200 bets/.test(k[5]),
        'aucune preuve, calibration sous le minimum dite « trop peu », controle des vrais echanges (150/200)');
     const m = await page.evaluate(() => [...document.querySelectorAll('#marches .marche')].map((e) => [e.textContent, e.querySelector('a') && e.querySelector('a').href]));
     ok(m.length === 1 && /BTC/.test(m[0][0]) && /1 open bet/.test(m[0][0]) && /Up 71\.6%/.test(m[0][0]) && /Up at 55¢/.test(m[0][0]) && m[0][1] === 'https://polymarket.com/event/btc-updown-15m-1790691300',
@@ -277,6 +293,41 @@ CALIBS.peu.hourly = []; CALIBS.peu.hourlySince = null;
     const l = await page.evaluate(() => [...document.querySelectorAll('#svLignes tr')].map((tr) => [...tr.children].map((td) => td.textContent)));
     ok(l[0][0] === '<img src=x onerror=window.pirate=5>' && l[0][1] === '+$352.99' && l[0][4] === '−$41.20' && await page.evaluate(() => window.pirate === undefined),
        'chaque gardee : son gain AVANT (qui l a fait garder) a part de son P&L APRES ; nom en texte');
+    await ctx.close();
+  }
+
+  console.log('\n-- 8. l instantane du 11/10 : une candidate, jamais « edge » ni « proven » --');
+  {
+    const { page, ctx } = await ouvre('instantane');
+    await page.waitForFunction(() => !document.getElementById('preuve').hidden && !document.getElementById('survie').hidden && document.querySelectorAll('#kpis .ds-kpi').length === 6);
+    const v = await page.textContent('#prVerdict'), regle = await page.textContent('#prRegle');
+    ok(/^1 strategy is above the 3\.98 bar and in profit after fees: a candidate, unconfirmed\./.test(v) && !/edge|proven/i.test(v),
+       'le verdict : « a candidate, unconfirmed », jamais « edge » ni « proven » [' + v.slice(0, 80) + ']');
+    ok(/not valid at extreme prices: on favourites at 90¢ and up/.test(v) && /kept strategies lose after selection: −\$0\.60 per bet over 89,050 settled bets \(Coin: −\$0\.92\)/.test(v)
+       && /does not check the order book re-read after the order delay/.test(v) && /nothing here is a result/.test(v),
+       'et pourquoi : la barre aux prix extremes, les gardees qui perdent apres selection (−0,60 $ contre −0,92 $), le carnet relu non verifie');
+    ok(/only a candidate, unconfirmed/.test(regle) && /1,458 so far: 3\.98/.test(regle) && !/edge|proven/i.test(regle) && /called an edge/.test(INSTANTANE.evidence.rule)
+       && /BTC, ETH, SOL and XRP finish the same way about 72% of the time/.test(regle),
+       'la regle du serveur d avant (« only called an edge ») n est pas reprise : la page ecrit la sienne, avec la mesure (72 %) [' + regle.slice(0, 60) + ']');
+    const k = await page.evaluate(() => document.querySelectorAll('#kpis .ds-kpi')[3].textContent);
+    ok(/^Candidates, unconfirmed1/.test(k) && /out of 1,458 tested/.test(k) && /not valid at extreme prices/.test(k) && !/edge|proven/i.test(k), 'la carte d etat : « Candidates, unconfirmed », plus « Proven edges » [' + k + ']');
+    const l = await page.evaluate(() => [...document.querySelectorAll('#prLignes tr')].map((tr) => tr.children[0].textContent));
+    ok(l[0] === 'P·Crowd>90¢ · 7:00–5:00 left (candidate, unconfirmed)' && !/candidate/.test(l[1]), 'au-dessus de la barre, la ligne dit « candidate, unconfirmed » ; sous la barre (3,4), rien [' + l.slice(0, 2).join(' | ') + ']');
+    const sv = await page.textContent('#svVerdict');
+    ok(/lost money after being kept: −\$53,261 over 89,050 settled bets \(−\$0\.60 per bet, against −\$0\.92 for Coin over the same period\)\. Losing less than Coin is still losing/.test(sv) && !/edge/i.test(sv),
+       'les gardees : la perte apres selection dite, sans promesse d « edge » [' + sv.slice(0, 70) + ']');
+    const pr = await page.textContent('#prReel');
+    ok(/721,653 settled bets were re-priced/.test(pr) && /At those prices: −\$1,052,542, against −\$1,024,464 on paper/.test(pr) && /2,252 bets would have found nothing/.test(pr) && /356,489 of 723,189 saw our side/.test(pr)
+       && !/\d{4,}/.test(pr.replace(/\b(19|20)\d\d\b/g, '')),
+       'le carnet relu apres le delai d un ordre : dit tel quel, plus mauvais que le papier, chaque compte avec son separateur de milliers [' + pr.slice(60, 120) + ']');
+    const tout = await page.evaluate(() => ['#preuve', '#survie', '#kpis', '.ds-etapes'].map((s) => document.querySelector(s).textContent).join(' '));
+    ok(!/\bproven\b|has an edge|have an edge|edges?\b(?! check)/i.test(tout.replace(/no edge/gi, '')), 'nulle part dans la preuve, les gardees, les cartes d etat ni « How it works » : « proven » ou « an edge »');
+    await ctx.close();
+  }
+  {
+    const { page, ctx } = await ouvre('instantane_neuf');
+    await page.waitForFunction(() => !document.getElementById('preuve').hidden);
+    ok(await page.textContent('#prRegle') === REGLE_NEUVE, 'le serveur corrige ne dit plus « edge » : sa regle est montree telle quelle, mesure comprise');
     await ctx.close();
   }
 

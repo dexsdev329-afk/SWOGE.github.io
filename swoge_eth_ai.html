@@ -5,12 +5,12 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Ethereum AI — new tokens, observed and measured in paper</title>
 <link rel="canonical" href="https://swoleeswoge.dog/swoge_eth_ai.html">
-<meta name="description" content="Every new token on Ethereum, read at its first price and again 30 minutes later, with its traits and its dev. A paper colony then buys some at KyberSwap’s real quotes, fees included — a blind control and one arm per standout case. Real mirror off, owner-gated.">
+<meta name="description" content="A sample of new Ethereum tokens — the 20 newest pools every 3 minutes — read at the first price and again 30 minutes later, with their traits and their dev. A paper colony then buys some at KyberSwap’s real quotes, fees included — a blind control and one arm per standout case. Real mirror off, owner-gated.">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="SWOGE WORLD">
 <meta property="og:locale" content="en_US">
 <meta property="og:title" content="Ethereum AI — which new tokens actually rise?">
-<meta property="og:description" content="Tens of thousands of new Ethereum tokens measured 30 minutes after launch, then a paper colony that buys at real quotes. Which traits beat a blind control, and which devs push their tokens.">
+<meta property="og:description" content="Thousands of new Ethereum tokens, sampled from the newest pools and measured 30 minutes after their first price, then a paper colony that buys at real quotes. Whether any trait beats a blind control, and how each dev’s past launches did — a lower bound, not a buying rule.">
 <meta property="og:url" content="https://swoleeswoge.dog/swoge_eth_ai.html">
 <meta property="og:image" content="https://swoleeswoge.dog/img/site/partage.jpg">
 <meta property="og:image:width" content="1200">
@@ -18,7 +18,7 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:site" content="@SwoleDogeSwoge">
 <meta name="twitter:title" content="Ethereum AI — which new tokens actually rise?">
-<meta name="twitter:description" content="Tens of thousands of new Ethereum tokens measured 30 minutes after launch, then a paper colony that buys at real quotes. Which traits beat a blind control, and which devs push their tokens.">
+<meta name="twitter:description" content="Thousands of new Ethereum tokens, sampled from the newest pools and measured 30 minutes after their first price, then a paper colony that buys at real quotes. Whether any trait beats a blind control, and how each dev’s past launches did — a lower bound, not a buying rule.">
 <meta name="twitter:image" content="https://swoleeswoge.dog/img/site/partage.jpg">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="/img/site/icone-32.png">
@@ -275,6 +275,11 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 .sw-haut a, .sw-cote a, .sw-lat a{ color:inherit; text-decoration:none; }
 /* Le contenu de la page dans la colonne du milieu : la grille de la barre fixe sa largeur. */
 .sw-corps main{ max-width:none; }
+/* Une case par ligne (relecture du 12/10) : a 360 px, six cases refutees en un seul paragraphe gras
+   faisaient un bloc d'environ 110 mots. */
+.ds-verdict ul.cases{ margin:6px 0 2px; padding-left:18px; }
+.ds-verdict ul.cases li{ margin:5px 0; font-weight:500; }
+.ds-verdict ul.cases li b{ font-weight:700; }
 </style>
 <!-- IA-DESIGN:debut (copie de outils/ia_design.css par outils/onglets_ia.js, ne pas editer ici) -->
 <style>
@@ -501,7 +506,7 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
         <span class="ds-badge" id="pastille"><span class="pt"></span><span id="pastilleTxt">Connecting</span></span>
       </div>
       <h1 id="t-titre">Ethereum <em>AI</em></h1>
-      <p>Every new token on <b>Ethereum</b> is read at its first price and again <b>30 minutes later</b>, with its traits and the <b>dev</b> who minted it. A <b>paper colony</b> then buys some of them at KyberSwap’s real quotes, fees included — a blind control and one arm per case that stands out. No real money until an arm beats the control, with the number of buys it rests on.</p>
+      <p>A sample of new tokens on <b>Ethereum</b> &mdash; the 20 newest pools, every 3 minutes &mdash; is read at the first price and again <b>30 minutes later</b>, with each token&rsquo;s traits and the <b>dev</b> who minted it. A <b>paper colony</b> then buys some of them at KyberSwap’s real quotes, fees included — a blind control and one arm per case that stands out. No real money until an arm beats the control, with the number of buys it rests on.</p>
       <p class="ds-sous" id="depuis"></p>
     </div>
     <div class="ds-faits">
@@ -519,9 +524,11 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
   <section class="ds-carte" aria-labelledby="t-edge">
     <div class="ds-tete"><div>
       <h2 id="t-edge">Does anything stand out?</h2>
-      <p>A case stands out only if its average 30-minute move is above zero <b>beyond chance</b>: its t must clear a bar that rises with the number of cases tested (many tries make lucky ones). Each move is capped at +300% first &mdash; a token first read at a near-zero price would otherwise count for billions of %. This is <b>before fees</b>: a case that stands out is a lead for step 2, not a trade.</p>
+      <p>A case stands out only if its average 30-minute move is above zero <b>beyond chance</b>: its t must clear a bar that rises with the number of cases tested (many tries make lucky ones). Each move is capped at +300% first &mdash; a token first read at a near-zero price would otherwise count for billions of %. This is <b>before fees</b>: a case that stands out is a lead for step 2, not a trade. A case whose arm in the paper bank lost beyond chance at real quotes &mdash; retired by the bank (60 buys, t &le; &minus;2), or already at 30 buys with t at or below minus the bank&rsquo;s bar &mdash; is shown as <b>refuted</b>, never in green.</p>
     </div></div>
     <div class="ds-verdict" id="verdict"></div>
+    <div class="ds-verdict non" id="refutes" hidden></div>
+    <div class="ds-verdict peu" id="ecart" hidden></div>
   </section>
 
   <section class="ds-carte" aria-labelledby="t-banque" id="carteBanque" hidden>
@@ -643,6 +650,40 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
   }
   function kpi(titre, val, sous){ var k=el("div","ds-kpi"); k.appendChild(el("small",null,titre)); k.appendChild(el("b",null,val)); k.appendChild(el("span",null,sous)); return k; }
 
+  /* Sur quoi repose un gain papier sous la barre (audit du 11/10, banque Ethereum, borne
+     recalculee par le verificateur de l'audit). De n, net et t seuls : l'ecart-type le plus petit compatible donne la
+     somme des carres des ecarts ; les achats entre −P % et +100 % en portent au plus n·max(P+m, 100−m)² ; le
+     reste vient forcement de ceux qui ont plus que double, et sans eux la moyenne des autres vaut au plus la
+     valeur rendue. Ethereum, P = 110 : −4,9 % ou pire. null : la dispersion n'oblige a rien, la page ne dit
+     alors rien de plus que la moyenne et son t.
+     Le plancher P (relecture du 12/10) : r30 = (vente − gaz de revente)/depense − 1 (banque_papier.js, tour)
+     descend sous −100 % du gaz de revente. −110 % suppose ce gaz sous 10 % de la mise (5 $ sur Ethereum,
+     contre 0,25-0,40 $ par echange mesures le 03/10), ce qui n'est pas verifie sur chaque achat : le serveur
+     ne montre que les derniers (bank.recent). Le plancher se prend donc aussi dans les donnees : un achat
+     visible plus bas devient le plancher, et la borne s'affaiblit ou disparait (ETH a P = 200 : −1,3 % ;
+     a P = 215 : plus rien). La condition exacte est plus faible que « tous au-dessus de −P » : que la somme
+     des carres des ecarts des achats sous +100 % reste sous n·max(P+m, 100−m)². */
+  function plancher(b){
+    var p=110;
+    ((b&&b.recent)||[]).forEach(function(x){ var r=x?Number(x.r30):NaN; if(x && x.r30!=null && isFinite(r) && -r>p) p=-r; });
+    return p;
+  }
+  function sansLesDoubles(s, P){
+    if(!s || !(s.n>=30) || s.net==null || !s.t) return null;
+    var sd=(Math.abs(s.net)-0.05)/(Math.abs(s.t)+0.005)*Math.sqrt(s.n), m=s.net+0.05;
+    var reste=sd*sd*(s.n-1) - s.n*Math.pow(Math.max((P||110)+m,100-m),2);
+    if(!(reste>0)) return null;
+    var q=(m*s.n-Math.sqrt(reste))/s.n;
+    return q<0 ? Math.round(q*10)/10 : null;
+  }
+  function pasUnRendement(b){
+    var s=b.all||{}, q=sansLesDoubles(s, plancher(b)), usd=Math.abs(b.pnlUsd).toLocaleString("en-US",{maximumFractionDigits:2});
+    /* « minorite » seulement si moins de la moitie des achats gagnent : ceux a plus de +100 % en font partie. */
+    var minorite=s.gagnants!=null && s.gagnants<50;
+    return "The bank’s +$"+usd+" is not a return: the average buy is "+pct(s.net,true)+" net over "+nb(s.n)+" tokens (t "+s.t+", within chance)"+
+      (q!=null ? ", and the gain rests on the "+(minorite?"minority of ":"")+"tokens that more than doubled — without them, the rest average "+pct(q,true)+" or worse" : "")+
+      (s.gagnants!=null ? "; "+s.gagnants+"% of buys made money" : "")+".";
+  }
   /* La banque papier (etape 2, 03/10) : lue telle quelle sur /ai/observatoire (chaine.bank). La page ne
      juge rien de plus que ce que le serveur a juge ; sous 30 achats regles, elle refuse de conclure. */
   function peintBanque(S){
@@ -655,20 +696,31 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
     var apporte=b.investedUsd||b.startUsd, rech=b.refills||0;
     var pnlPct=apporte ? b.pnlUsd/apporte*100 : null;
     var cc=b.control||{}, aa=b.arms||[], holds=aa.filter(function(a){ return a.state==="holds in paper"; }).length;
+    var retires=aa.filter(function(a){ return a.state==="retired"; }).length, tous=b.all||{};
+    /* Un P&L positif n'est pas un rendement (audit du 11/10, 22:24 UTC, banque Ethereum : +1 130,11 $ pour
+       3 000 $ apportes, lu « +37.7% of all money put in », alors que l'achat moyen fait +2,9 % net sur 649
+       jetons, t 0,31 — dans le hasard —, 28 % de gagnants, et qu'aucun bras ne tient). Tant que la moyenne
+       de tous les achats reste sous la barre de la banque, la carte le dit au lieu d'un pourcentage. */
+    var gainDuHasard=b.pnlUsd>0 && tous.n>=30 && !(tous.t!=null && b.bar!=null && tous.t>=b.bar);
     k.appendChild(kpi("Bank value", usd(b.valueUsd), rech ? "ran dry "+nb(rech)+" time"+(rech===1?"":"s")+": refilled with "+usd(b.startUsd)+" each · "+usd(apporte)+" put in" : "started at "+usd(b.startUsd)+" · "+usd(b.stakeUsd)+" per buy"));
-    k.appendChild(kpi("Profit / loss", usd(b.pnlUsd,true), (pnlPct==null?"--":pct(pnlPct,true))+" of all money put in · "+nb(b.open)+" open"));
+    k.appendChild(kpi("Profit / loss", usd(b.pnlUsd,true), gainDuHasard ? "not a return: avg buy "+pct(tous.net,true)+" net over "+nb(tous.n)+" tokens, t "+tous.t+", within chance · "+nb(b.open)+" open" : (pnlPct==null?"--":pct(pnlPct,true))+" of all money put in · "+nb(b.open)+" open"));
     /* La barre à battre, montrée seule : le contrôle (achat aveugle), jamais noyé dans les arms. */
     k.appendChild(kpi("Control (benchmark)", cc.n?pct(cc.net,true):"--", "buys blind · "+nb(cc.n)+" settled"+(cc.t!=null?" · t "+cc.t:"")+" — the bar to beat"));
     /* Les stratégies : le nombre d'arms et combien tiennent, pas une moyenne lumpée. */
-    k.appendChild(kpi("Strategy arms", nb(aa.length), aa.length?(holds?holds+" hold in paper · ":"none proven yet · ")+"each tests one standout case":"waiting for a case to stand out"));
+    k.appendChild(kpi("Strategy arms", nb(aa.length), aa.length?(holds?holds+" hold in paper · ":"none holds in paper · ")+(retires?retires+" retired at real quotes · ":"")+"each tests one standout case":"waiting for a case to stand out"));
     var v=$("bkVerdict"), c=b.control||{}, ar=b.arms||[], n=b.all?b.all.n:0;
     var hold=ar.filter(function(a){ return a.state==="holds in paper"; });
     if(n<30){ v.className="ds-verdict peu"; v.textContent="Too early: "+nb(n)+" settled paper buy"+(n===1?"":"s")+". The control needs 30 to mean anything, an arm 100 before it can \u201chold in paper\u201d."; }
     else if(hold.length){ v.className="ds-verdict ok"; v.textContent=hold.length+" arm"+(hold.length>1?"s":"")+" beat the control after fees and hold in paper: "+hold.map(function(a){ return a.case+" ("+pct(a.net,true)+" net, t "+a.t+", "+nb(a.n)+" tokens)"; }).join(" · ")+". Still paper: a real mirror is the owner’s decision, after more data."; }
     else {
-      var best=ar.filter(function(a){ return a.n>=30 && a.t!=null; }).sort(function(x,y){ return y.t-x.t; })[0];
+      /* « Best arm so far » citait un bras RETIRE (Solana, 11/10 : « Pool size = pool $100k+ », −41,5 % net sur
+         62 jetons, t −5,3, retire pour perte au-dela du hasard) : le meilleur se cherche parmi les bras encore
+         a l'essai, jamais un retire ni un temoin. */
+      var vivants=ar.filter(function(a){ return a.state!=="retired" && !a.control; });
+      var best=vivants.filter(function(a){ return a.n>=30 && a.t!=null; }).sort(function(x,y){ return y.t-x.t; })[0];
       v.className="ds-verdict "+(best && (best.net||0)>0 && (c.net==null||best.net>c.net) ? "peu":"non");
-      v.textContent="No arm holds in paper yet. "+(best ? "Best arm so far: "+best.case+" ("+pct(best.net,true)+" net, t "+best.t+", "+nb(best.n)+" tokens). " : (ar.length ? "Arms are still under 30 settled tokens. " : "No case has stood out to open an arm yet. "))+"The control, buying blind, sits at "+pct(c.net,true)+" over "+nb(c.n)+" — that is the bar to beat.";
+      v.textContent="No arm holds in paper yet. "+(best ? "Best arm still testing: "+best.case+" ("+pct(best.net,true)+" net, t "+best.t+", "+nb(best.n)+" tokens). " : (vivants.length ? "Arms still testing are all under 30 settled tokens. " : (ar.length ? "No arm is left testing. " : "No case has stood out to open an arm yet. ")))+
+        (retires ? retires+" arm"+(retires>1?"s":"")+" retired for losing beyond chance at real quotes. " : "")+"The control, buying blind, sits at "+pct(c.net,true)+" over "+nb(c.n)+" — that is the bar to beat."+(gainDuHasard ? " "+pasUnRendement(b) : "");
     }
     var tb=$("bkBras"); tb.textContent="";
     var lignes=[{ case:"Control (any token)", state:"control", n:c.n, net:c.net, t:c.t, moitie1:c.moitie1, moitie2:c.moitie2, gagnants:c.gagnants }].concat(b.arms||[]);
@@ -727,33 +779,93 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
        colonie papier, qui paie les vrais devis, y perd 4,2 % par trade) : le premier prix lu n'est pas celui
        qu'un acheteur paie. La page le dit au lieu de laisser croire que tout monte. */
     var refMonte=barre!=null && tout.avgCapped>0 && tout.t!=null && tout.t>=barre;
+    /* Le bras de la banque papier de chaque case (audit du 11/10, 22:24 UTC). Une case qui « sort » au premier
+       prix lu mais dont le bras, aux VRAIS devis, a ete retire pour perte au-dela du hasard est REFUTEE :
+       Solana, 6 des 10 cases en vert l'etaient (Venue = meteora : +49,1 % au premier prix sur 1 659 jetons,
+       son bras −91,1 % net sur 78, t −21,64) ; Ethereum, 3 sur 5. Jamais en vert : dite a part, avec le net,
+       le n et le t de son bras. Une case encore a l'essai garde l'etat de son bras a cote. */
+    var banque=S.bank||null, bras={};
+    ((banque&&banque.arms)||[]).forEach(function(a){ if(a && a.case!=null) bras[a.case]=a; });
+    var brasDe=function(x){ return bras[x.trait+" = "+x.case]||null; };
+    /* Relecture du 12/10 : le serveur ne retire un bras qu'a 60 achats et t ≤ −2 (banque_papier.js,
+       BRAS_RETRAIT_N, BRAS_RETRAIT_T) ; un bras qui perdait deja au-dela du hasard entre 30 et 59 achats
+       laissait sa case en vert. Solana, 11/10 : les 6 bras retires l'ont ete pile a 60 achats, t de −5,15 a
+       −52,44 (retiredBecause) — toute leur plage de 30 a 59 en perte. Robinhood, meme instantane : « Dev
+       history = 1-2 past tokens, avg peak $50-250k », −97 % net sur 54 jetons, t −48,82, encore « testing ».
+       La page refute des 30 achats (son seuil, celui de la carte de la banque) quand t est au plus moins la
+       barre de la banque — la barre de « holds in paper », symetrique —, jamais moins strict que le t de
+       retrait du serveur (−2). Aucun seuil du serveur ne change. */
+    var barrePerte=Math.max(2, Number(banque&&banque.bar)||0);
+    var perdDeja=function(a){ return !!(a && !a.control && a.state!=="retired" && a.n>=30 && a.t!=null && a.t<=-barrePerte); };
+    var refutee=function(x){ var a=brasDe(x); return !!(a && (a.state==="retired" || perdDeja(a))); };
+    var tiennent=sortent.filter(function(x){ return !refutee(x); }), refutees=sortent.filter(refutee);
+    var etatBras=function(x){ var a=brasDe(x);
+      if(!a || a.control) return "no arm yet";
+      if(!a.n) return "its arm: no settled buy yet";
+      if(!(a.n>=30)) return "its arm: "+nb(a.n)+" token"+(a.n===1?"":"s")+" at real quotes, under 30";
+      return "its arm: "+pct(a.net,true)+" net at real quotes over "+nb(a.n)+" tokens, t "+a.t+", "+(a.state==="testing"?"still testing":a.state); };
+    /* Ce que dit le bras d'une case refutee. Retire : la mesure DU RETRAIT (retiredBecause, ecrite par le
+       serveur au moment du retrait), puis la serie d'aujourd'hui, dite comme telle — elle continue de grossir
+       apres le retrait (statsBras compte tout achat de la case, temoin compris) et peut revenir dans le
+       hasard (Robinhood, 11/10 : « Dev history = first token we see from this dev », retire a −69,6 % sur 65,
+       t −6,82, aujourd'hui −24,4 % sur 910, t −1,07). Pas encore retire : sa serie, et quand le serveur juge. */
+    var ditBras=function(a){
+      var ici=pct(a.net,true)+" net over "+nb(a.n)+" token"+(a.n===1?"":"s")+", t "+(a.t==null?"--":a.t);
+      if(a.state==="retired"){
+        var dansHasard=a.n>=30 && a.t!=null && a.t>-barrePerte;
+        return "its arm was retired, "+String(a.retiredBecause||"losing beyond chance")+(a.n ? ". Today, over every bank buy in this case: "+ici+(dansHasard?", back within chance":"") : "");
+      }
+      return "its arm: "+ici+" — losing beyond chance already; the bank checks retirement at 60 buys";
+    };
+    var liste=function(xs, f){ var ul=el("ul","cases"); xs.forEach(function(x){ var li=el("li"); li.appendChild(el("b",null,x.trait+" = "+x.case)); li.appendChild(el("span",null,f(x))); ul.appendChild(li); }); return ul; };
     var v=$("verdict"); v.textContent=""; v.className="ds-verdict";
     if(!jugees.length){ v.className="ds-verdict peu"; v.textContent="Not enough tokens yet: no case has 30 capped reads."; }
     else if(!sortent.length){ v.className="ds-verdict non"; v.textContent="Nothing stands out on "+S.nom+": none of the "+jugees.length+" cases tested has an average move above zero with t ≥ "+barre+" (the bar for "+jugees.length+" cases). The reference, all tokens, moves "+pct(tout.avgCapped,true)+" on average in 30 minutes."; }
+    else if(!tiennent.length){ v.className="ds-verdict non"; v.textContent="Nothing stands out on "+S.nom+" that holds at real quotes: the "+(refutees.length>1?refutees.length+" cases":"case")+" above the bar at the first price (t ≥ "+barre+", "+jugees.length+" cases tested) "+(refutees.length>1?"were all":"was")+" refuted by the paper bank."; }
     else {
       v.className="ds-verdict ok";
-      v.appendChild(el("span",null,sortent.length+" case"+(sortent.length>1?"s":"")+" stand"+(sortent.length>1?"":"s")+" out before fees (t ≥ "+barre+", "+jugees.length+" cases tested): "));
-      v.appendChild(el("b",null,sortent.slice(0,4).map(function(x){ return x.trait+" = "+x.case+" ("+pct(x.avgCapped,true)+", t "+x.t+", "+nb(x.nCapped)+" tokens)"; }).join(" · ")));
-      v.appendChild(el("span",null,". A lead for step 2 — paper trades paying real fees — not a trade."));
+      v.appendChild(el("span",null,tiennent.length+" case"+(tiennent.length>1?"s":"")+" stand"+(tiennent.length>1?"":"s")+" out before fees (t ≥ "+barre+", "+jugees.length+" cases tested):"));
+      v.appendChild(liste(tiennent.slice(0,4), function(x){ return " ("+pct(x.avgCapped,true)+", t "+x.t+", "+nb(x.nCapped)+" tokens)"+(banque?" — "+etatBras(x):""); }));
+      v.appendChild(el("span",null,(tiennent.length>4?"And "+(tiennent.length-4)+" more in the table below. ":"")+"A lead for step 2 — paper trades paying real fees — not a trade."));
     }
-    if(jugees.length && refMonte) v.appendChild(el("p","ds-note","Careful: on "+S.nom+" even the reference, all tokens, moves "+pct(tout.avgCapped,true)+" on average (t "+tout.t+"). The first price read here is often below what a buyer can actually pay, so this measures the reading as much as the tokens — only paper trades at real quotes can tell."));
+    var rf=$("refutes"); rf.textContent=""; rf.hidden=!refutees.length;
+    if(refutees.length){
+      rf.appendChild(el("span",null,"Refuted at real quotes: "+(refutees.length>1?refutees.length+" cases stand":"1 case stands")+" out at the first price, but the paper bank bought "+(refutees.length>1?"them":"it")+" at real quotes and lost beyond chance:"));
+      rf.appendChild(liste(refutees, function(x){ return " — "+pct(x.avgCapped,true)+" at the first price over "+nb(x.nCapped)+" tokens; "+ditBras(brasDe(x))+"."; }));
+    }
+    /* L'ecart premier prix / prix d'acheteur (meme audit) : la reference se lit au PREMIER PRIX, le temoin de
+       la banque achete a l'aveugle aux VRAIS devis, frais compris. Solana : −4,0 % sur 70 593 jetons contre
+       −30,1 % net sur 391 achats, 26 points ; Robinhood : +12,8 % contre −67,5 %, 80 points ; Ethereum : −0,7 %
+       contre +4,3 %. L'avertissement ne s'affichait que si la reference montait au-dela du hasard, donc jamais
+       sur Solana. Il s'affiche des que le temoin a 30 achats regles (le seuil de la banque, plus bas) ; sans
+       banque, l'ancien avertissement reste. */
+    var ctl=banque&&banque.control, ec=$("ecart"); ec.textContent=""; ec.hidden=true;
+    if(jugees.length && ctl && ctl.n>=30 && ctl.net!=null && tout.nCapped>=30 && tout.avgCapped!=null){
+      var ecart=Math.round((tout.avgCapped-ctl.net)*10)/10;
+      ec.textContent=(ecart>0?"The first price is not what a buyer pays. ":"First price against real quotes. ")+"Read at the first price, all tokens move "+pct(tout.avgCapped,true)+" on average in 30 minutes ("+nb(tout.nCapped)+" tokens); the paper bank’s blind control, buying at "+(banque.quoter||"real")+" quotes, fees included, settles at "+pct(ctl.net,true)+" net ("+nb(ctl.n)+" buys)"+(ecart>0?" — "+ecart+" points lower.":".")+" Every case above is read at the first price: a lead, until its arm holds at real quotes.";
+      ec.hidden=false;
+    } else if(jugees.length && refMonte){
+      ec.textContent="Careful: on "+S.nom+" even the reference, all tokens, moves "+pct(tout.avgCapped,true)+" on average (t "+tout.t+"). The first price read here is often below what a buyer can actually pay, so this measures the reading as much as the tokens — only paper trades at real quotes can tell.";
+      ec.hidden=false;
+    }
     if(douteuses.length) v.appendChild(el("p","ds-note","Left out until checked: "+douteuses.map(function(x){ return x.trait+" = "+x.case+" ("+pct(x.avgCapped,true)+", "+nb(x.nCapped)+" tokens)"; }).join(" · ")+". An average this close to the +300% cap means almost every token “rose” to the maximum — the sign of a bad first price, not a pump."));
 
     var tb=$("cases"); tb.textContent="";
     var tri=cases.slice().sort(function(a,b){ if(a.trait==="all tokens") return -1; if(b.trait==="all tokens") return 1; return (b.t==null?-99:b.t)-(a.t==null?-99:a.t); });
     tri.forEach(function(x){
       var tr=el("tr"); if(x.trait==="all tokens") tr.style.fontWeight="700";
-      tr.appendChild(el("td",null,x.trait)); tr.appendChild(el("td",null,x.case));
+      var aRetire=x.trait!=="all tokens" && refutee(x);
+      tr.appendChild(el("td",null,x.trait)); tr.appendChild(el("td",null,x.case+(aRetire?" — refuted at real quotes":"")));
       tr.appendChild(el("td","num",nb(x.n)));
       if(!x.assez){ var td=el("td","num","not enough (under 30)"); td.colSpan=5; td.style.color="#6B7C99"; tr.appendChild(td); }
       else {
         tr.appendChild(el("td","num",x.partMontes+"%")); tr.appendChild(el("td","num",x.partEffondres+"%"));
         tr.appendChild(el("td","num",pct(x.avgCapped,true))); tr.appendChild(el("td",null,x.median||"--"));
-        var tt=el("td","num",x.t==null?"--":String(x.t)); if(barre && x.trait!=="all tokens" && x.t>=barre && x.avgCapped>0 && !suspecte(x)){ tt.style.color="#0E8A4F"; tt.style.fontWeight="800"; } tr.appendChild(tt);
+        var tt=el("td","num",x.t==null?"--":String(x.t)); if(barre && x.trait!=="all tokens" && x.t>=barre && x.avgCapped>0 && !suspecte(x)){ tt.style.color=aRetire?"#D2433E":"#0E8A4F"; tt.style.fontWeight="800"; } tr.appendChild(tt);
       }
       tb.appendChild(tr);
     });
-    $("casesNote").textContent="Sorted by t. “All tokens” is the reference. "+(barre?"Bar for "+jugees.length+" cases: t ≥ "+barre+" (green). ":"")+(S.recompute&&S.recompute.relus!=null?"Averages recomputed on "+nb(S.recompute.relus)+" saved tokens on "+String(S.recompute.depuis?new Date(S.recompute.depuis).toISOString():"").slice(0,10)+"; tokens still followed for 24 h join later.":"");
+    $("casesNote").textContent="Sorted by t. “All tokens” is the reference. "+(barre?"Bar for "+jugees.length+" cases: t ≥ "+barre+" (green; red when the case’s arm lost beyond chance at real quotes). ":"")+(S.recompute&&S.recompute.relus!=null?"Averages recomputed on "+nb(S.recompute.relus)+" saved tokens on "+String(S.recompute.depuis?new Date(S.recompute.depuis).toISOString():"").slice(0,10)+"; tokens still followed for 24 h join later.":"");
 
     /* Les devs (chaines EVM). */
     var dv=S.devs, carte=$("carteDevs"), td2=$("devs"); td2.textContent="";

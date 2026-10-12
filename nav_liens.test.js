@@ -35,7 +35,10 @@ const ok = (c, m) => { n++; if (c) console.log('  ok   ' + m); else { rates++; c
        (outils/onglets_ia.js) ; on passe de l une a l autre par les onglets en tete des quatre pages. */
     /* 01/10 : « met le dans Agents » — l Agent Store est un onglet d Agents (?mode=store), plus une entree a part. */
     /* 02/10 : « rajoute le launchpad dans menu » — entre Agents et Docs. */
-    const MENU = 'index.html,games.html,swogebet.html,swoge_wallet.html,swoge_ai.html,swoge_agents.html,launchpad.html,whitepaper.html';
+    /* 12/10 : « tres propre fait ca » — la maquette blanche du Studio devient studio.html, et son entree
+       entre au menu juste apres Agents, comme sur la maquette (une nouvelle adresse : swoge_studio.html
+       reste le renvoi vers SwoleMind). */
+    const MENU = 'index.html,games.html,swogebet.html,swoge_wallet.html,swoge_ai.html,swoge_agents.html,studio.html,launchpad.html,whitepaper.html';
     ok(menu.map((x) => x.h).join(',') === MENU && !morts.length, f + ' a ' + w + ' px : les ' + menu.length + ' entrees du menu commun, dans l ordre, recoivent le clic' + (morts.length ? ' [mortes : ' + morts.join(', ') + ']' : '') + (menu.map((x) => x.h).join(',') === MENU ? '' : ' [menu : ' + menu.map((x) => x.h).join(', ') + ']'));
     await ctx.close();
   }

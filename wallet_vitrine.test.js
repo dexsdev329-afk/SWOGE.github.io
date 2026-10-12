@@ -145,8 +145,9 @@ const srv = http.createServer((q, r) => {
     console.log('   ' + JSON.stringify({ noms: m.noms, bord: m.bord, valeurs: m.valeurs, table: m.table }));
     ok(m.titre === 'YOUR WALLET. YOUR WORLD.',
        'le titre dit « YOUR WALLET. YOUR WORLD. » (' + m.titre + ')');
-    /* 03/10 : « le menu, tu nous l as change de place [...] des blocs avec des trous ». */
-    ok(m.menuG && m.menu.join(',') === 'Home,Casino,Sports,Wallet,AI Trading,Agents,Launchpad,Docs',
+    /* 03/10 : « le menu, tu nous l as change de place [...] des blocs avec des trous ».
+       12/10 : le Studio (studio.html) entre au menu commun juste apres Agents ; l intention reste : le menu du site, dans sa colonne. */
+    ok(m.menuG && m.menu.join(',') === 'Home,Casino,Sports,Wallet,AI Trading,Agents,Studio,Launchpad,Docs',
        'le menu du site est revenu dans sa colonne, a gauche du telephone (' + m.menu.join(', ') + ')');
     ok(m.noms.join(',') === '$SWOGE MARKET,ROBINHOOD CHAIN,TOKENS,CASINO GAME VAULT',
        'les cartes autour du telephone disent quelque chose a tout visiteur (' + m.noms.join(', ') + ')');

@@ -1,0 +1,2251 @@
+<!DOCTYPE html>
+<html lang="en">
+<!-- ==================================================================
+     SWOGE STUDIO — images, videos, series et pubs, payes a l'usage.
+     Page construite le 12/10/2026 sur la maquette « blanc » validee par le
+     proprietaire (« tres propre fait ca »), branchee sur les routes deja en
+     service du serveur (/studio/media/*, /studio/reprise/*, /studio/production,
+     /credit). La page MONTRE et ENVOIE ; le serveur decide de tout ce qui
+     touche a l'argent : il lit l'adresse dans le jeton de session (jamais dans
+     le corps), reserve, facture le cout reel, rend tout en cas d'echec.
+     Aucun prix n'est ecrit ici : chaque chiffre vient de
+     /studio/media/catalogue (studio_media.js:136-163). Aucune cle ici.
+     swoge_studio.html reste le renvoi vers SwoleMind (liens partages avant
+     le 26/09) : cette page-ci vit a une NOUVELLE adresse.
+     ================================================================== -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SWOGE Studio · AI images and videos, pay per use</title>
+<link rel="canonical" href="https://swoleeswoge.dog/studio.html">
+<meta name="description" content="SWOGE Studio: create AI images with Grok Imagine and ChatGPT Image, videos with Grok Imagine Video, and series or ads with the same characters scene after scene. The price is on the button before you click; nothing is charged if a generation fails.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="SWOGE WORLD">
+<meta property="og:locale" content="en_US">
+<meta property="og:title" content="SWOGE Studio · AI images and videos, pay per use">
+<meta property="og:description" content="SWOGE Studio: create AI images with Grok Imagine and ChatGPT Image, videos with Grok Imagine Video, and series or ads with the same characters scene after scene. The price is on the button before you click; nothing is charged if a generation fails.">
+<meta property="og:url" content="https://swoleeswoge.dog/studio.html">
+<meta property="og:image" content="https://swoleeswoge.dog/img/site/partage.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@SwoleDogeSwoge">
+<meta name="twitter:title" content="SWOGE Studio · AI images and videos, pay per use">
+<meta name="twitter:description" content="SWOGE Studio: create AI images with Grok Imagine and ChatGPT Image, videos with Grok Imagine Video, and series or ads with the same characters scene after scene. The price is on the button before you click; nothing is charged if a generation fails.">
+<meta name="twitter:image" content="https://swoleeswoge.dog/img/site/partage.jpg">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/img/site/icone-32.png">
+<link rel="apple-touch-icon" href="/img/site/icone-180.png">
+<link rel="manifest" href="/site.webmanifest">
+<meta name="theme-color" content="#1B5FE0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- Une seule famille, celle du site : Archivo (deja chargee par les pages de jeu en 600/700/800).
+     On demande ici l'axe de graisse complet et l'axe de largeur, pour les titres. -->
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,400..900&display=swap" rel="stylesheet">
+<style>
+/* ======================================================================
+   CHARTE « BLANC SWOGE » (maquette du 12/10, nous/charte.json) : fond #EEF3FB,
+   cartes blanches, bordures #E1E9F6, encre #0B1B36, UN seul accent bleu
+   #1B5FE0 reserve aux etats actifs, aux prix et au mot surligne. L'or ne sert
+   qu'a la recharge (et au « Sign in » que pose stakebubble.js, deja or).
+   Une seule famille (Archivo), aucun emoji : des icones SVG en ligne.
+   Du bloc commun des pages de jeu on garde ce qui vaut ici — le double-tap qui
+   ne zoome plus, la video bornee a sa place. Le calque `screen` qui releve les
+   noirs est laisse de cote : il sert les tables sombres, la page est blanche.
+   ====================================================================== */
+:root{
+  --bg:#EEF3FB; --card:#FFFFFF; --line:#E1E9F6; --line2:#CFDBEE; --field:#F6F9FD;
+  --ink:#0B1B36; --navy:#0A1F44; --text2:#3A4C6B; --dim:#5A6B85; --dim2:#7E8DA8;
+  --blue:#1B5FE0; --blue-h:#1750c4; --blue-soft:#EAF1FF; --blue-tint:#F5F8FF;
+  --green:#12805A; --green-soft:#E3F3EB;
+  --red:#B3261E; --red-soft:#FCECEA; --red-line:#F1CFCB;
+  --gold1:#F2C868; --gold2:#E6A537; --gold-ink:#231a06;
+  --amber:#8A5A00; --amber-soft:#FFF4DC;
+  --violet:#7C3AED;
+  --sh-card:0 1px 2px rgba(11,27,54,.06), 0 8px 24px rgba(11,27,54,.05);
+  --sh-box:0 2px 14px rgba(11,27,54,.06), 0 30px 60px -30px rgba(27,95,224,.30);
+  --sh-on:0 1px 2px rgba(11,27,54,.08), 0 4px 12px rgba(11,27,54,.06);
+  --f:'Archivo', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --gut:24px;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%}
+html,body{margin:0;padding:0;max-width:100%;overflow-x:hidden}
+body{
+  font-family:var(--f); font-size:14px; line-height:1.5; color:var(--ink);
+  background:
+    radial-gradient(900px 420px at 50% -140px, #D9E6FF 0%, rgba(217,230,255,0) 72%),
+    var(--bg);
+  -webkit-font-smoothing:antialiased;
+}
+img{display:block;max-width:100%}
+video{max-width:100%}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+button, a, input, select, textarea, label{touch-action:manipulation}
+a{color:inherit;text-decoration:none}
+:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.ic{width:18px;height:18px;flex:0 0 auto;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.num{font-variant-numeric:tabular-nums}
+
+/* ---------------- EN-TETE ----------------
+ * La premiere <nav> du document est `nav.sb-ancre` : stakebubble.js y pose
+ * « Sign in », la photo de profil et sa pastille de solde (l.466, 727, 3121).
+ * Les liens du site sont donc dans une <div role="navigation"> : une <nav>
+ * placee avant recevrait ces boutons et deborderait a 320 px. */
+.top{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.94);
+  backdrop-filter:saturate(1.4) blur(10px);-webkit-backdrop-filter:saturate(1.4) blur(10px);
+  border-bottom:1px solid var(--line)}
+.top-in{max-width:1480px;margin:0 auto;min-height:64px;padding:0 var(--gut);display:flex;align-items:center;gap:18px}
+.brand{display:flex;align-items:center;gap:10px;flex:0 0 auto}
+.brand img{width:36px;height:36px;border-radius:11px;box-shadow:0 0 0 1px var(--line)}
+.brand b{display:block;font:800 17px/1 var(--f);letter-spacing:.4px;color:var(--blue)}
+.brand i{display:block;font:700 9.5px/1.5 var(--f);font-style:normal;letter-spacing:2.6px;color:var(--dim2)}
+.nav{display:flex;align-items:center;gap:2px;min-width:0}
+.nav a{padding:8px 11px;border-radius:10px;font:600 14px/1 var(--f);color:var(--text2);white-space:nowrap}
+.nav a:hover{background:var(--blue-soft);color:var(--blue)}
+.nav a.on{background:var(--blue-soft);color:var(--blue)}
+.acct{margin-left:auto;display:flex;align-items:center;justify-content:flex-end;gap:8px;min-width:0;flex:0 1 auto}
+nav.sb-ancre{display:flex;align-items:center;justify-content:flex-end;gap:8px;min-width:0;
+  background:none;backdrop-filter:none;padding:0;border:0;position:static;z-index:auto}
+/* La pastille $SWOGE de stakebubble ferait doublon avec la notre, qui porte
+   aussi le credit en dollars : on ne garde que la notre dans cette barre. */
+.top .swbal{display:none!important}
+.bal{display:flex;align-items:center;gap:0;height:40px;border:1px solid var(--line);border-radius:999px;background:#fff;padding:0 6px 0 4px;box-shadow:var(--sh-card);order:1}
+.bal .bk{display:flex;flex-direction:column;justify-content:center;padding:0 12px;line-height:1.1}
+.bal small{font:700 9.5px/1 var(--f);letter-spacing:1.1px;text-transform:uppercase;color:var(--dim2)}
+.bal b{font:800 14px/1.25 var(--f);color:var(--navy);white-space:nowrap}
+.bal .vr{width:1px;height:22px;background:var(--line)}
+.gold{height:40px;padding:0 16px;border:0;border-radius:999px;background:linear-gradient(180deg,var(--gold1),var(--gold2));
+  color:var(--gold-ink);font:800 13px/1 var(--f);display:inline-flex;align-items:center;gap:6px;box-shadow:0 6px 16px -6px rgba(230,165,55,.8);white-space:nowrap;order:1}
+.gold .ic{width:16px;height:16px;stroke-width:2.2}
+.menub{display:none;width:40px;height:40px;border-radius:12px;border:1px solid var(--line);background:#fff;align-items:center;justify-content:center;color:var(--navy);flex:0 0 auto;order:3}
+.drawer{display:none}
+.drawer:not([hidden]){display:block;position:fixed;inset:57px 0 auto 0;z-index:49;background:#fff;border-bottom:1px solid var(--line);
+  box-shadow:0 20px 40px rgba(11,27,54,.12);padding:10px 16px 18px;max-height:calc(100dvh - 57px);overflow:auto}
+.drawer .g{font:800 10px/1 var(--f);letter-spacing:1.4px;text-transform:uppercase;color:var(--dim2);padding:12px 6px 8px}
+.drawer a{display:flex;align-items:center;justify-content:space-between;padding:12px 8px;border-radius:10px;font:600 15px/1 var(--f);color:var(--ink)}
+.drawer a.on{background:var(--blue-soft);color:var(--blue)}
+.drawer .dbal{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px}
+.drawer .dbal div{border:1px solid var(--line);border-radius:14px;padding:10px 12px}
+.drawer .dbal small{display:block;font:700 10px/1 var(--f);letter-spacing:1.1px;text-transform:uppercase;color:var(--dim2)}
+.drawer .dbal b{font:800 17px/1.5 var(--f);color:var(--navy)}
+.drawer .gold{width:100%;justify-content:center;margin-top:10px;height:44px}
+.drawer .dsign{width:100%;height:44px;margin-top:6px;border:1px solid var(--line);border-radius:999px;background:#fff;font:750 14px/1 var(--f);color:var(--navy)}
+
+/* ---------------- PAGE ---------------- */
+main{max-width:1440px;margin:0 auto;padding:0 var(--gut) 40px}
+.hero{position:relative;text-align:center;padding:34px 0 0}
+.eyebrow{display:inline-flex;align-items:center;gap:8px;padding:5px 12px 5px 6px;border-radius:999px;background:#fff;border:1px solid var(--line);
+  font:800 11.5px/1 var(--f);letter-spacing:1.6px;text-transform:uppercase;color:var(--navy);box-shadow:var(--sh-card)}
+.eyebrow span{width:22px;height:22px;border-radius:999px;background:var(--blue);display:grid;place-items:center;color:#fff}
+.eyebrow .ic{width:13px;height:13px;stroke-width:2.2}
+h1{font:850 50px/1.04 var(--f);font-stretch:106%;letter-spacing:-1.8px;color:var(--navy);margin:16px auto 12px;max-width:860px}
+.hl{display:inline-block;background:var(--blue);color:#fff;padding:0 .2em .04em;border-radius:12px;
+  box-shadow:0 12px 30px -8px rgba(27,95,224,.55);transform:rotate(-1.2deg)}
+.sub{font:500 16.5px/1.5 var(--f);color:var(--dim);max-width:640px;margin:0 auto}
+.checks{list-style:none;display:flex;justify-content:center;flex-wrap:wrap;gap:8px 18px;margin:14px 0 0;padding:0}
+.checks li{display:inline-flex;align-items:center;gap:6px;font:700 13.5px/1 var(--f);color:var(--navy)}
+.checks .ic{width:16px;height:16px;color:#fff;background:var(--green);border-radius:999px;padding:3px;stroke-width:3}
+/* Affiches decoratives (oeuvres SWOGE du site) de part et d'autre du titre, grand ecran seulement. */
+.art{position:absolute;margin:0;border-radius:18px;overflow:hidden;background:#fff;padding:5px;box-shadow:0 1px 2px rgba(11,27,54,.08),0 24px 50px -18px rgba(11,27,54,.35);pointer-events:none}
+.art img{border-radius:13px;width:100%;height:100%;object-fit:cover}
+.art em{position:absolute;left:12px;bottom:12px;font:700 10px/1 var(--f);font-style:normal;letter-spacing:.3px;color:var(--navy);background:rgba(255,255,255,.9);padding:5px 7px;border-radius:999px}
+.art.a1{left:1%;top:26px;width:150px;height:240px;transform:rotate(-7deg)}
+.art.a2{left:12%;top:170px;width:138px;height:138px;transform:rotate(5deg)}
+.art.a3{right:0;top:22px;width:228px;height:152px;transform:rotate(6deg)}
+.art.a4{right:11.5%;top:150px;width:124px;height:200px;transform:rotate(-5deg)}
+
+/* ---- Onglets ---- */
+.tabs-wrap{text-align:center}
+.tabs{display:inline-flex;gap:4px;margin:24px auto 14px;padding:5px;background:#fff;border:1px solid var(--line);border-radius:999px;box-shadow:var(--sh-card)}
+.tab{display:inline-flex;align-items:center;gap:8px;height:42px;padding:0 18px;border:0;border-radius:999px;background:transparent;font:650 15px/1 var(--f);color:var(--dim)}
+.tab:hover{color:var(--navy)}
+.tab[aria-selected="true"]{background:var(--navy);color:#fff;box-shadow:0 6px 16px -6px rgba(10,31,68,.55)}
+.tab .soon{font:800 9.5px/1 var(--f);letter-spacing:.8px;text-transform:uppercase;padding:4px 6px;border-radius:999px;background:var(--bg);color:var(--dim)}
+.tab[aria-selected="true"] .soon{background:rgba(255,255,255,.16);color:#fff}
+
+/* ---- La barre de prompt ---- */
+.composer{position:relative;z-index:5;max-width:980px;margin:0 auto;background:#fff;border:1px solid var(--line);border-radius:26px;box-shadow:var(--sh-box);padding:14px 14px 12px;text-align:left}
+.c-top{display:flex;gap:12px;align-items:flex-start}
+.ref{position:relative;flex:0 0 auto;width:68px;height:68px;border-radius:16px;border:1.5px dashed var(--line2);background:var(--field);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:var(--dim);font:700 10.5px/1.1 var(--f);text-align:center;padding:4px}
+.ref:hover{border-color:var(--blue);color:var(--blue)}
+.ref:disabled{opacity:.5;cursor:not-allowed}
+.ref .ic{width:20px;height:20px}
+.ref.has{border:0;padding:0;overflow:visible}
+.ref.has img{width:100%;height:100%;object-fit:cover;border-radius:16px}
+.ref .rm{position:absolute;top:-7px;right:-7px;width:22px;height:22px;border-radius:999px;background:var(--navy);color:#fff;display:grid;place-items:center;border:2px solid #fff}
+.ref .rm .ic{width:11px;height:11px;stroke-width:2.6}
+/* Le prompt nomme SWOGE et rien n'est joint : le serveur joint son image officielle
+   (studio_comprend.js:53-55, studio_media.js:254-255). La case le montre. */
+.ref.auto{border:1.5px solid var(--gold2);padding:0;overflow:hidden}
+.ref.auto img{width:100%;height:100%;object-fit:cover;border-radius:14px}
+.ref.auto em{position:absolute;left:0;right:0;bottom:0;padding:3px 0;background:rgba(10,31,68,.82);color:#fff;font:800 9.5px/1 var(--f);font-style:normal;letter-spacing:.8px;text-align:center}
+textarea.prompt{flex:1;min-width:0;border:0;outline:0;resize:none;background:transparent;font:500 17px/1.45 var(--f);color:var(--ink);min-height:68px;padding:8px 4px}
+textarea.prompt::placeholder{color:#8B99B2}
+textarea.prompt:disabled{cursor:not-allowed}
+.c-row{display:flex;align-items:center;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+.ctls{display:flex;align-items:center;gap:8px;flex:1;min-width:0;flex-wrap:wrap}
+.ctl{position:relative;display:inline-flex;align-items:center;gap:6px;height:38px;padding:0 12px;border:1px solid var(--line);border-radius:999px;background:var(--field);font:650 13px/1 var(--f);color:var(--ink);white-space:nowrap}
+.ctl small{font:700 11px/1 var(--f);color:var(--dim2)}
+.ctl:hover{border-color:var(--line2)}
+.ctl select{field-sizing:content;appearance:none;-webkit-appearance:none;border:0;background:transparent;font:650 13px/1 var(--f);color:var(--ink);padding:0 16px 0 0;cursor:pointer;outline:0;max-width:150px}
+.ctl .chev{position:absolute;right:10px;width:12px;height:12px;pointer-events:none;color:var(--dim)}
+.mchip{padding-left:4px;background:#fff}
+.mchip img{width:30px;height:30px;border-radius:999px;object-fit:cover}
+.mchip b{font-weight:750}
+.mchip .chev{position:static}
+.seg{display:inline-flex;align-items:center;gap:2px;height:38px;padding:3px;border:1px solid var(--line);border-radius:999px;background:var(--field)}
+.seg button{height:30px;padding:0 11px;border:0;border-radius:999px;background:transparent;font:650 13px/1 var(--f);color:var(--dim);white-space:nowrap}
+.seg button[aria-pressed="true"]{background:#fff;color:var(--navy);box-shadow:var(--sh-on)}
+.seg button:disabled{opacity:.45;cursor:not-allowed}
+.magic{width:40px;height:40px;flex:0 0 auto;border-radius:999px;border:1px solid var(--line);background:#fff;display:grid;place-items:center}
+.magic svg{width:20px;height:20px}
+.gen{flex:0 0 auto;height:46px;padding:0 22px;border:0;border-radius:999px;color:#fff;
+  background:linear-gradient(180deg,#2D6EF2 0%,var(--blue) 100%);font:750 15.5px/1 var(--f);display:inline-flex;align-items:center;gap:8px;white-space:nowrap;
+  box-shadow:0 10px 24px -8px rgba(27,95,224,.75), inset 0 1px 0 rgba(255,255,255,.25)}
+.gen:hover{background:linear-gradient(180deg,#2766E8 0%,var(--blue-h) 100%)}
+.gen .gd{opacity:.65}
+.gen .gp{font-weight:850;font-variant-numeric:tabular-nums}
+.gen:disabled{background:#E4EBF6;color:#5A6B85;box-shadow:inset 0 0 0 1px #D3DEEF;cursor:not-allowed}
+.gen.go{background:var(--navy);box-shadow:0 10px 24px -10px rgba(10,31,68,.7)}
+
+/* ---- La ligne de prix ---- */
+.pricebar{max-width:980px;margin:12px auto 0;display:flex;align-items:center;justify-content:space-between;gap:10px 18px;flex-wrap:wrap;text-align:left}
+.pricebar p{margin:0;font:500 14px/1.5 var(--f);color:var(--dim);flex:1 1 420px;min-width:0}
+.pricebar p b{color:var(--navy);font-weight:800}
+.pricebar p .warn{color:var(--amber);font-weight:700}
+.pay{display:flex;align-items:center;gap:8px;flex:0 0 auto}
+.pay > small{font:700 11px/1 var(--f);letter-spacing:1.2px;text-transform:uppercase;color:var(--dim2)}
+.pay .seg{background:#fff}
+.pay .seg button b{font-weight:800;color:inherit}
+.refnote{flex-basis:100%;display:flex;align-items:center;gap:8px;margin:0;font:500 13px/1.45 var(--f);color:var(--text2)}
+.refnote img{width:24px;height:24px;border-radius:7px;object-fit:cover;box-shadow:0 0 0 1.5px var(--gold2);flex:0 0 auto}
+.refnote b{color:var(--navy)}
+.refnote .lnk{border:0;background:none;padding:0;font:700 13px/1.45 var(--f);color:var(--blue);text-decoration:underline;text-underline-offset:2px}
+
+/* ---- Le poste de travail : la barre de prompt ET le resultat, cote a cote ---- */
+.work{max-width:1240px;margin:0 auto;display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:20px;align-items:stretch}
+.work-main{min-width:0}
+.work .composer{max-width:none;margin:0}
+.work .pricebar{max-width:none}
+.result{display:flex;flex-direction:column;background:#fff;border:1px solid var(--line);border-radius:26px;box-shadow:var(--sh-box);padding:10px;min-width:0}
+.result .stage{position:relative;flex:1;min-height:200px;border-radius:18px;overflow:hidden;background:var(--field);border:1.5px dashed var(--line2);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;text-align:center;padding:16px;color:var(--dim)}
+.result .stage > .ic{width:30px;height:30px;color:var(--dim2)}
+.result .stage > span{display:flex;flex-direction:column;align-items:center;gap:4px}
+.result .stage b{font:800 15px/1.25 var(--f);color:var(--navy)}
+.result .stage small{font:500 12.5px/1.45 var(--f);color:var(--dim);max-width:260px}
+.result.run .stage{border-style:solid;border-color:var(--line);background:linear-gradient(100deg,#EEF3FB 30%,#F8FAFE 50%,#EEF3FB 70%);background-size:200% 100%;animation:shim 1.8s linear infinite}
+@keyframes shim{to{background-position:-200% 0}}
+.result.run .stage b{color:var(--blue)}
+.rprog{width:min(220px,80%);height:6px;border-radius:6px;background:#DCE5F4;overflow:hidden;margin:4px 0 2px}
+.rprog i{display:block;height:100%;width:0;border-radius:6px;background:var(--blue);transition:width .4s ease}
+/* Une image n'a pas de progression : le serveur repond d'un bloc. Barre sans pourcentage. */
+.rprog.ind i{width:38%;animation:ind 1.3s ease-in-out infinite}
+@keyframes ind{from{transform:translateX(-110%)}to{transform:translateX(280%)}}
+.result.done .stage{border:0;padding:0;background:#DCE5F4}
+.result.done .stage > img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.result .rgrid{position:absolute;inset:0;display:grid;gap:3px;grid-template-columns:1fr 1fr;background:#fff}
+.result .rgrid button{position:relative;padding:0;border:0;background:#DCE5F4;overflow:hidden;min-height:0}
+.result .rgrid img{width:100%;height:100%;object-fit:cover}
+.result .rgrid button.sel{box-shadow:inset 0 0 0 3px var(--blue)}
+.result.done .stage video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#0A1F44}
+.result .rtag{position:absolute;left:10px;top:10px;font:800 10.5px/1 var(--f);letter-spacing:.6px;color:var(--navy);background:rgba(255,255,255,.93);padding:6px 8px;border-radius:999px;z-index:2;max-width:calc(100% - 20px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.result .rbar{position:absolute;left:0;right:0;bottom:0;padding:34px 12px 12px;text-align:left;background:linear-gradient(to top,rgba(10,31,68,.9),rgba(10,31,68,0));color:#fff;z-index:2}
+.result .rbar b{display:block;font:700 13px/1.3 var(--f);color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.result .rbar small{display:block;font:600 11.5px/1.35 var(--f);color:rgba(255,255,255,.85);max-width:none;margin-top:2px}
+.racts{display:flex;gap:6px;margin-top:8px}
+.racts a,.racts button{flex:1;height:34px;border:0;border-radius:999px;background:rgba(255,255,255,.95);color:var(--navy);font:750 12.5px/1 var(--f);display:inline-flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap}
+.racts .ic{width:14px;height:14px}
+.racts button:disabled{opacity:.6;cursor:wait}
+/* La video : ses commandes restent libres, le texte passe dessous. */
+.rfoot{padding:10px 4px 2px;text-align:left}
+.rfoot b{display:block;font:700 13px/1.3 var(--f);color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rfoot small{display:block;font:600 11.5px/1.35 var(--f);color:var(--dim);margin-top:2px}
+.rfoot .racts a,.rfoot .racts button{background:var(--field);border:1px solid var(--line)}
+.result.off .stage{opacity:.7}
+.result.err .stage{border:1.5px solid var(--red-line);background:var(--red-soft);color:#7A1F18}
+.result.err .stage > .ic{color:var(--red)}
+.result.err .stage b{color:#7A1F18}
+.result.err .stage small{color:#7A1F18;max-width:280px}
+.result .rbtns{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin-top:6px}
+.rbtn{height:34px;padding:0 14px;border-radius:999px;border:0;background:var(--blue);color:#fff;font:750 12.5px/1 var(--f);display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.rbtn.alt{background:#fff;color:var(--navy);border:1px solid var(--line)}
+.rbtn:disabled{opacity:.6;cursor:wait}
+.rstat{font:600 12px/1.4 var(--f);color:#7A1F18;margin:4px 0 0;max-width:280px}
+/* ---- la barre « Film this scene », sur telephone, quand Series & Ads est a l'ecran ---- */
+.filmbar{display:none}
+
+/* ---------------- BLOCS ---------------- */
+.block{margin-top:44px}
+.bh{display:flex;align-items:flex-end;justify-content:space-between;gap:12px 24px;margin-bottom:16px;flex-wrap:wrap}
+.label{font:800 11px/1 var(--f);letter-spacing:1.9px;text-transform:uppercase;color:var(--dim2);margin:0}
+h2{font:800 27px/1.12 var(--f);letter-spacing:-.7px;color:var(--navy);margin:6px 0 0}
+.bh .aside{font:500 13px/1.45 var(--f);color:var(--dim);max-width:460px;text-align:right}
+.legend{display:inline-flex;gap:14px;margin-bottom:4px;flex-wrap:wrap;justify-content:flex-end}
+.legend span{display:inline-flex;align-items:center;gap:6px;font:700 12px/1 var(--f);color:var(--text2)}
+.dot{width:8px;height:8px;border-radius:999px;background:var(--green);box-shadow:0 0 0 3px rgba(18,128,90,.15);display:inline-block}
+.dot.s{background:#fff;border:1.5px solid var(--dim2);box-shadow:none}
+
+/* ---- Grille des modeles ---- */
+.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
+.mcard{position:relative;display:flex;flex-direction:column;background:#fff;border:1px solid var(--line);border-radius:20px;overflow:hidden;text-align:left;
+  transition:border-color .2s, box-shadow .2s;box-shadow:0 1px 2px rgba(11,27,54,.04)}
+.mcard.live,.mcard.serie{cursor:pointer}
+.mcard.live:hover{border-color:rgba(27,95,224,.45)}
+.mcard.on{border-color:var(--blue);box-shadow:0 0 0 3px rgba(27,95,224,.16)}
+.thumb{position:relative;aspect-ratio:2/1;background:#DCE5F4;overflow:hidden}
+.thumb img{width:100%;height:100%;object-fit:cover}
+.mcard.soon .thumb img,.mcard.paused .thumb img{filter:grayscale(1) contrast(.85) brightness(1.08);opacity:.55}
+.badge{position:absolute;left:10px;top:10px;display:inline-flex;align-items:center;gap:6px;padding:6px 9px;border-radius:999px;font:800 11px/1 var(--f);letter-spacing:.2px}
+.badge.lv{background:#fff;color:var(--green);box-shadow:0 2px 8px rgba(11,27,54,.12)}
+.badge.sn{background:rgba(10,31,68,.82);color:#fff}
+.badge.ps{background:var(--amber-soft);color:var(--amber);box-shadow:0 2px 8px rgba(11,27,54,.12)}
+.badge.no{background:var(--red);color:#fff}
+.tick{position:absolute;right:10px;top:10px;width:28px;height:28px;border-radius:999px;background:var(--blue);color:#fff;display:none;place-items:center;box-shadow:0 4px 10px rgba(27,95,224,.45)}
+.tick .ic{width:15px;height:15px;stroke-width:2.8}
+.mcard.on .tick{display:grid}
+.mbody{display:flex;flex-direction:column;gap:5px;padding:14px 16px 15px;flex:1}
+.mname{display:flex;align-items:baseline;flex-wrap:wrap;gap:2px 8px}
+.mname b{font:800 16px/1.25 var(--f);color:var(--navy)}
+.mname .v{font:700 12.5px/1 var(--f);color:var(--blue);background:var(--blue-soft);padding:4px 7px;border-radius:999px}
+.mcard.soon .mname .v{color:var(--dim);background:var(--bg)}
+.by{font:600 12px/1 var(--f);color:var(--dim2)}
+.desc{margin:2px 0 0;font:500 13.5px/1.45 var(--f);color:var(--text2)}
+.pr{margin-top:auto;padding-top:11px;border-top:1px dashed var(--line);display:flex;align-items:baseline;flex-wrap:wrap;gap:2px 6px}
+.mbody .desc + .pr{margin-top:10px}
+.pr .amt{font:850 19px/1.1 var(--f);color:var(--blue);font-variant-numeric:tabular-nums;letter-spacing:-.2px}
+.pr .unit{font:600 13px/1.2 var(--f);color:var(--dim)}
+.pr .alt{flex-basis:100%;font:600 12px/1.35 var(--f);color:var(--dim2)}
+.pr.pl .amt{color:var(--dim);font-size:16px}
+.pr .pt{font:800 10.5px/1 var(--f);letter-spacing:1.1px;text-transform:uppercase;color:var(--dim2);margin-right:2px}
+.pr .pz{font:600 12.5px/1.4 var(--f);color:var(--amber)}
+.mcard.no{background:repeating-linear-gradient(135deg,#fff 0 12px,#FEF8F7 12px 24px);border:1.5px dashed var(--red-line)}
+.mcard.no .thumb{display:grid;place-items:center;background:var(--red-soft);color:var(--red)}
+.mcard.no .thumb .ic{width:40px;height:40px;stroke-width:1.6}
+.mcard.no .mname b{color:#7A1F18}
+.mcard .lnk{margin-top:8px;align-self:flex-start;border:0;background:none;padding:0;font:750 13px/1.3 var(--f);color:var(--blue);display:inline-flex;align-items:center;gap:5px}
+.mcard .lnk .ic{width:14px;height:14px}
+
+/* ---- Series & Ads ---- */
+.prod{background:#fff;border:1px solid var(--line);border-radius:26px;box-shadow:var(--sh-card);padding:24px}
+.prod .bh{margin-bottom:20px}
+.prod-g{display:grid;grid-template-columns:360px minmax(0,1fr);gap:24px}
+.panel{background:var(--field);border:1px solid var(--line);border-radius:20px;padding:18px;min-width:0}
+.f-l{display:block;font:800 11px/1 var(--f);letter-spacing:1.5px;text-transform:uppercase;color:var(--dim2);margin:16px 0 8px}
+.f-l:first-child{margin-top:0}
+.serie-only > .f-l:first-child,.pub-only > .f-l:first-child{margin-top:16px}
+.inp{width:100%;height:42px;border:1px solid var(--line);border-radius:12px;background:#fff;padding:0 12px;font:600 14.5px/1 var(--f);color:var(--ink);outline:0;min-width:0}
+select.inp{appearance:auto}
+.inp.sm{height:34px;font-size:13.5px;border-radius:10px;padding:0 10px}
+.inp:focus,textarea.sc:focus{border-color:var(--blue)}
+.inp:disabled,textarea.sc:disabled{background:var(--field);color:var(--dim)}
+.chars{display:flex;flex-direction:column;gap:8px}
+.char{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:8px 10px 8px 8px;min-width:0}
+.char > img,.char .ph{width:46px;height:46px;border-radius:12px;object-fit:cover;flex:0 0 auto}
+.char .ph{border:1.5px dashed var(--line2);display:grid;place-items:center;color:var(--dim)}
+.char .cmid{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px}
+.char .crow{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px}
+.char .crow button{border:0;background:none;padding:0;font:700 12px/1.3 var(--f);color:var(--blue)}
+.char .crow span{font:600 12px/1.3 var(--f);color:var(--dim)}
+/* La voix : la pastille bleue de la maquette, mais un vrai choix (les voix du serveur, server.js:6381). */
+.char select.cvoix{width:auto;max-width:170px;flex:0 1 auto;height:30px;border:0;border-radius:999px;background:var(--blue-soft);color:var(--blue);font:700 12px/1 var(--f);padding:0 8px;cursor:pointer}
+.char .crm{width:28px;height:28px;flex:0 0 auto;border:0;border-radius:999px;background:var(--bg);color:var(--dim);display:grid;place-items:center}
+.char .crm .ic{width:12px;height:12px;stroke-width:2.4}
+.addc{display:flex;align-items:center;justify-content:center;gap:6px;height:42px;border-radius:14px;border:1.5px dashed var(--line2);background:transparent;font:700 13.5px/1 var(--f);color:var(--dim);width:100%}
+.addc:hover{border-color:var(--blue);color:var(--blue)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{height:32px;padding:0 13px;border-radius:999px;border:1px solid var(--line);background:#fff;font:650 13px/1 var(--f);color:var(--text2);white-space:nowrap}
+.chip:hover{border-color:var(--line2)}
+.chip[aria-pressed="true"]{background:var(--blue-soft);border-color:rgba(27,95,224,.55);color:var(--blue)}
+.hint{margin:8px 0 0;font:500 12.5px/1.45 var(--f);color:var(--dim)}
+.perr{margin:10px 0 0;font:600 13px/1.45 var(--f);color:var(--red)}
+.pbtns{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+.pbtn{height:40px;padding:0 16px;border-radius:999px;border:0;background:var(--navy);color:#fff;font:750 13.5px/1 var(--f)}
+.pbtn.alt{background:#fff;color:var(--red);border:1px solid var(--red-line)}
+.pbtn:disabled{opacity:.55;cursor:not-allowed}
+.ptop{display:flex;align-items:center;gap:8px;margin-bottom:14px}
+.ptop select{flex:1}
+.board-h{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}
+.board-h b{font:800 15px/1.2 var(--f);color:var(--navy);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.board-h span{font:600 12.5px/1 var(--f);color:var(--dim);flex:0 0 auto}
+.scenes{display:flex;gap:12px;overflow-x:auto;padding:2px 2px 6px;scrollbar-width:thin}
+.scene{position:relative;flex:0 0 auto;width:132px;border-radius:16px;overflow:hidden;background:#DCE5F4;aspect-ratio:9/16;border:0;padding:0;display:block}
+.prod[data-format="16:9"] .scene{aspect-ratio:16/9;width:220px}
+.prod[data-format="1:1"] .scene{aspect-ratio:1/1;width:160px}
+.scene video{width:100%;height:100%;object-fit:cover;display:block;background:#0A1F44}
+.scene .n{position:absolute;left:8px;top:8px;font:800 11px/1 var(--f);color:#fff;background:rgba(10,31,68,.78);padding:5px 7px;border-radius:999px;z-index:1}
+.scene .d{position:absolute;right:8px;top:8px;display:inline-flex;align-items:center;gap:3px;font:800 11px/1 var(--f);color:var(--navy);background:rgba(255,255,255,.92);padding:5px 7px;border-radius:999px;z-index:1}
+.scene .d .ic{width:10px;height:10px}
+.scene .w{position:absolute;inset:auto 8px 8px 8px;font:700 11.5px/1.3 var(--f);color:var(--navy);text-align:left}
+.scene.wait{background:linear-gradient(100deg,#EEF3FB 30%,#F8FAFE 50%,#EEF3FB 70%);background-size:200% 100%;animation:shim 1.8s linear infinite}
+.scene.fail{background:var(--red-soft)}
+.scene.fail .w{color:#7A1F18}
+.scene.next{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;background:var(--blue-tint);border:1.5px dashed rgba(27,95,224,.45);color:var(--blue);font:800 13px/1.2 var(--f);text-align:center}
+.scene.next .ic{width:22px;height:22px}
+.shoot{margin-top:14px;background:var(--field);border:1px solid var(--line);border-radius:20px;padding:16px}
+textarea.sc{width:100%;min-height:84px;border:1px solid var(--line);border-radius:14px;background:#fff;padding:12px 14px;font:500 15px/1.45 var(--f);color:var(--ink);resize:vertical;outline:0}
+.row{display:flex;align-items:center;flex-wrap:wrap;gap:10px}
+.mbtn{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 15px;border:0;border-radius:999px;color:#fff;background:linear-gradient(135deg,var(--violet),var(--blue));font:750 13.5px/1 var(--f);box-shadow:0 8px 20px -10px rgba(124,58,237,.8)}
+.mbtn .ic{width:16px;height:16px}
+.mbtn small{font:700 11px/1 var(--f);padding:3px 6px;border-radius:999px;background:rgba(255,255,255,.2)}
+.mbtn:disabled{opacity:.5;cursor:not-allowed}
+.cont{display:inline-flex;align-items:center;gap:8px;font:600 13px/1.35 var(--f);color:var(--text2);cursor:pointer}
+.cont input{width:18px;height:18px;accent-color:var(--blue);flex:0 0 auto}
+.film-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
+.film-row p{margin:0;font:500 13px/1.45 var(--f);color:var(--dim);flex:1 1 260px}
+.film-row p b{color:var(--navy)}
+.film-row p .warn{color:var(--amber);font-weight:700}
+.pub-only{display:none}
+.prod[data-mode="pub"] .pub-only{display:block}
+.prod[data-mode="pub"] .serie-only{display:none}
+
+/* ---- Ce que le joueur a fait ---- */
+.cre{display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:20px;align-items:start}
+.cre > aside{position:sticky;top:84px}
+.box{background:#fff;border:1px solid var(--line);border-radius:24px;box-shadow:var(--sh-card);padding:18px;min-width:0}
+.box-h{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.box-h > b{font:800 16px/1 var(--f);color:var(--navy)}
+.ainote{display:inline-flex;align-items:center;gap:6px;font:600 12.5px/1.3 var(--f);color:var(--dim)}
+.ainote .ic{width:15px;height:15px;color:var(--blue)}
+.vide{margin:0;padding:22px 12px;border:1.5px dashed var(--line2);border-radius:16px;text-align:center;font:500 13.5px/1.5 var(--f);color:var(--dim);background:var(--field)}
+.mine{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.tile{position:relative;margin:0;border-radius:16px;overflow:hidden;background:#DCE5F4;aspect-ratio:1/1;display:block}
+.tile img,.tile video{width:100%;height:100%;object-fit:cover;display:block}
+.tile .d{position:absolute;right:8px;top:8px;display:inline-flex;align-items:center;gap:3px;font:800 11px/1 var(--f);color:var(--navy);background:rgba(255,255,255,.92);padding:5px 7px;border-radius:999px}
+.tile .d .ic{width:10px;height:10px}
+.tile .cap{position:absolute;inset:auto 0 0 0;padding:40px 12px 12px;font:700 12.5px/1.3 var(--f);color:#fff;
+  background:linear-gradient(to top,rgba(10,31,68,.82),rgba(10,31,68,0));opacity:0;transition:opacity .2s}
+.tile:hover .cap,.tile:focus-visible .cap{opacity:1}
+.tile .cap span{font:600 11.5px/1.3 var(--f);opacity:.85;display:block;margin-top:2px}
+.hist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.hist li{display:grid;grid-template-columns:48px minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px 4px;border-top:1px solid var(--line)}
+.hist li:first-child{border-top:0}
+.hist .hth{position:relative;width:48px;height:48px;border-radius:12px;overflow:hidden;background:#DCE5F4;display:grid;place-items:center;color:var(--navy)}
+.hist .hth img{width:100%;height:100%;object-fit:cover}
+.hist .hth .ic{width:18px;height:18px}
+.hist .hth.fail{background:var(--red-soft);color:var(--red)}
+.hist b{display:block;font:700 13.5px/1.3 var(--f);color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hist span{display:block;font:600 12px/1.35 var(--f);color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hist .hp{text-align:right}
+.hist .hp b{font-weight:800;color:var(--navy);font-variant-numeric:tabular-nums}
+.hist .hp span{color:var(--dim2)}
+.hist .hp.z b{color:var(--green)}
+.hsum{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:8px;padding:12px;border-radius:14px;background:var(--field);font:600 13px/1.3 var(--f);color:var(--dim)}
+.hsum b{color:var(--navy);font-weight:800}
+.hsum small{font:500 11.5px/1.3 var(--f);color:var(--dim2)}
+.hsum .hs{text-align:right;line-height:1.45}
+.crl{margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
+.crl h3{margin:0 0 6px;font:800 11px/1 var(--f);letter-spacing:1.4px;text-transform:uppercase;color:var(--dim2)}
+.crl ul{list-style:none;margin:0;padding:0}
+.crl li{display:flex;justify-content:space-between;gap:10px;padding:6px 2px;font:600 12.5px/1.35 var(--f);color:var(--text2)}
+.crl li b{font-weight:800;color:var(--navy);white-space:nowrap}
+.crl li span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* ---- Confiance ---- */
+.trust{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.tcard{background:#fff;border:1px solid var(--line);border-radius:22px;padding:22px;box-shadow:var(--sh-card)}
+.tcard .ti{width:42px;height:42px;border-radius:13px;display:grid;place-items:center;background:var(--blue-soft);color:var(--blue);margin-bottom:14px}
+.tcard .ti .ic{width:22px;height:22px}
+.tcard h3{font:800 18px/1.2 var(--f);letter-spacing:-.3px;color:var(--navy);margin:0 0 8px}
+.tcard p{font:500 14px/1.55 var(--f);color:var(--dim);margin:0}
+.tcard p b{color:var(--navy)}
+.tcard.nope .ti{background:var(--red-soft);color:var(--red)}
+.nolist{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.nolist span{display:inline-flex;align-items:center;gap:5px;height:30px;padding:0 11px;border-radius:999px;background:var(--red-soft);border:1px solid var(--red-line);font:700 12.5px/1 var(--f);color:#7A1F18}
+.nolist .ic{width:13px;height:13px;stroke-width:2.2}
+.payrow{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.payrow span{display:inline-flex;align-items:center;height:30px;padding:0 11px;border-radius:999px;background:var(--field);border:1px solid var(--line);font:700 12.5px/1 var(--f);color:var(--navy)}
+footer{max-width:1440px;margin:36px auto 0;padding:22px var(--gut) 40px;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:10px 24px;flex-wrap:wrap;font:500 12.5px/1.5 var(--f);color:var(--dim)}
+footer b{color:var(--navy)}
+.toast{position:fixed;left:50%;bottom:28px;transform:translate(-50%,20px);opacity:0;z-index:80;max-width:min(92vw,460px);background:var(--navy);color:#fff;
+  padding:12px 16px;border-radius:14px;font:600 13.5px/1.4 var(--f);box-shadow:0 14px 34px rgba(10,31,68,.35);transition:opacity .2s, transform .2s;pointer-events:none}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+
+/* ---- La recharge du credit en dollars (USDC, une signature : x402_paie.js) ---- */
+.sheet{position:fixed;inset:0;z-index:100000;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(11,27,54,.34)}
+.sheet-b{position:relative;width:min(420px,100%);max-height:calc(100dvh - 32px);overflow:auto;background:#fff;border:1px solid var(--line);border-radius:22px;box-shadow:0 30px 70px rgba(11,27,54,.3);padding:20px}
+.sheet-b h3{margin:0 0 4px;font:800 19px/1.2 var(--f);color:var(--navy)}
+.sheet-b p{margin:0 0 12px;font:500 13.5px/1.5 var(--f);color:var(--dim)}
+.sheet-b .f-l{margin-top:14px}
+.sheet-b .seg{width:100%}
+.sheet-b .seg button{flex:1}
+.sheet-b .x{position:absolute;top:12px;right:12px;width:34px;height:34px;border-radius:999px;border:1px solid var(--line);background:#fff;display:grid;place-items:center;color:var(--navy)}
+.sheet-b .x .ic{width:14px;height:14px}
+.sheet-b .gold{width:100%;justify-content:center;margin-top:16px;height:46px}
+.sheet-b .gold:disabled{opacity:.6;cursor:wait}
+.rcst{margin:10px 0 0;font:600 13px/1.45 var(--f);color:var(--text2)}
+.rcst.err{color:var(--red)}
+
+/* ---------------- POINTS DE RUPTURE ---------------- */
+@media (max-width:1280px){ .art{display:none} }
+@media (max-width:1180px){
+  .nav{display:none}
+  .menub{display:inline-flex}
+  .grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .cre{grid-template-columns:minmax(0,1fr) 320px}
+}
+@media (max-width:960px){
+  .work{grid-template-columns:minmax(0,1fr);max-width:980px}
+  .result{margin-top:4px}
+  .result.done .stage,.result.run .stage{aspect-ratio:16/9;min-height:0;flex:none}
+  .result.vide .stage,.result.off .stage{min-height:0;flex-direction:row;justify-content:flex-start;text-align:left;gap:12px;padding:12px 14px}
+  .result.vide .stage > span,.result.off .stage > span{align-items:flex-start;gap:2px}
+  .result.vide .stage small,.result.off .stage small{max-width:none}
+  .prod-g{grid-template-columns:minmax(0,1fr)}
+  .cre{grid-template-columns:minmax(0,1fr)}
+  .cre > aside{position:static}
+  .trust{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:860px){ .grid{grid-template-columns:repeat(2,minmax(0,1fr))} }
+
+/* ---- TELEPHONE : la barre de prompt se colle en bas ---- */
+@media (max-width:720px){
+  :root{--gut:16px}
+  .top-in{min-height:56px;gap:10px}
+  .brand img{width:32px;height:32px;border-radius:10px}
+  .brand b{font-size:16px}
+  .gold.tu{display:none}
+  .bal{height:38px;padding:0 4px;box-shadow:none}
+  .bal .bk{padding:0 9px}
+  .bal small{font-size:8.5px}
+  .bal b{font-size:13px}
+  .menub{width:38px;height:38px}
+  main{padding-bottom:calc(150px + env(safe-area-inset-bottom))}
+  .hero{padding-top:22px}
+  .eyebrow{font-size:10.5px}
+  h1{font-size:34px;letter-spacing:-1.1px;margin:14px auto 10px}
+  .hl{border-radius:9px}
+  .sub{font-size:15px}
+  .sub .s2{display:none}
+  .checks{gap:8px 12px}
+  .checks li{font-size:12.5px}
+  .tabs-wrap{margin:0 calc(-1 * var(--gut));padding:0 var(--gut)}
+  .tabs{display:flex;width:100%;margin:20px 0 12px}
+  .tab{flex:1 1 0;min-width:0;justify-content:center;gap:6px;padding:0 6px;font-size:14px;height:40px}
+  .tab .soon{display:none}
+  .composer{position:fixed;left:0;right:0;bottom:0;margin:0;max-width:none;border-radius:22px 22px 0 0;border-bottom:0;
+    padding:10px 12px calc(10px + env(safe-area-inset-bottom));box-shadow:0 -12px 32px rgba(11,27,54,.14);z-index:45}
+  .work .composer{margin:0}
+  .c-top{gap:8px;align-items:center}
+  .ref{width:46px;height:46px;border-radius:13px}
+  .ref span{display:none}
+  .ref.has img{border-radius:13px}
+  textarea.prompt{height:46px;min-height:46px;max-height:92px;font-size:16px;padding:12px 4px;line-height:1.4}
+  .mchip .mn,.mchip .ms{display:none}
+  .c-row{margin-top:8px;padding-top:8px;gap:8px}
+  .ctls{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;gap:6px;
+    -webkit-mask-image:linear-gradient(90deg,#000 85%,transparent);mask-image:linear-gradient(90deg,#000 85%,transparent);padding-right:22px}
+  .ctls::-webkit-scrollbar{display:none}
+  .ctl,.seg{height:36px;flex:0 0 auto}
+  .seg button{height:28px;padding:0 10px}
+  .mchip b{max-width:150px;overflow:hidden;text-overflow:ellipsis}
+  .magic{width:36px;height:36px}
+  .composer .gen{height:50px;padding:0 14px;flex-direction:column;justify-content:center;gap:3px;font-size:14px;border-radius:16px;min-width:108px}
+  .composer .gen .gd{display:none}
+  .composer .gen .gp{font-size:14px}
+  .film-row .gen{width:100%;justify-content:center}
+  .pricebar{margin-top:4px}
+  .pricebar p{font-size:13.5px;flex-basis:100%}
+  .pay{width:100%;justify-content:space-between}
+  .pay .seg{flex:1;justify-content:stretch}
+  .pay .seg button{flex:1}
+  .block{margin-top:34px}
+  h2{font-size:23px}
+  .bh .aside{text-align:left}
+  .legend{justify-content:flex-start}
+  .grid{gap:10px}
+  .mcard{border-radius:16px}
+  .thumb{aspect-ratio:4/3}
+  .badge{left:8px;top:8px;padding:5px 7px;font-size:10px}
+  .tick{width:24px;height:24px;right:8px;top:8px}
+  .mbody{padding:10px 11px 12px;gap:4px}
+  .mname b{font-size:14.5px}
+  .mname .v{font-size:11px;padding:3px 6px}
+  .by{font-size:11px}
+  .desc{font-size:12.5px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+  .pr .amt{font-size:17px}
+  .pr .unit{font-size:12px}
+  .pr .alt{font-size:11.5px}
+  .prod{padding:16px;border-radius:22px}
+  .panel{padding:14px}
+  .scene{width:112px}
+  .prod[data-format="16:9"] .scene{width:180px}
+  .prod[data-format="1:1"] .scene{width:130px}
+  .mine{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .toast{bottom:calc(140px + env(safe-area-inset-bottom))}
+  footer{padding-bottom:calc(150px + env(safe-area-inset-bottom))}
+  .result{padding:8px;border-radius:20px}
+  .result.done .stage,.result.run .stage{aspect-ratio:4/3}
+  .refnote .long{display:none}
+  .composer{transition:transform .25s ease}
+  .filmbar{position:fixed;left:0;right:0;bottom:0;z-index:46;display:flex;align-items:center;gap:10px;background:#fff;
+    padding:12px 12px calc(12px + env(safe-area-inset-bottom));border-radius:22px 22px 0 0;border-top:1px solid var(--line);
+    box-shadow:0 -12px 32px rgba(11,27,54,.14);transform:translateY(115%);transition:transform .25s ease}
+  .filmbar .fbt{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.3}
+  .filmbar .fbt b{font:800 14px/1.3 var(--f);color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .filmbar .fbt small{font:600 12px/1.3 var(--f);color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .filmbar .gen{height:48px;padding:0 16px;font-size:14.5px}
+  /* Series & Ads a l'ecran : UNE action, UN prix. La barre du bas devient « Film
+     this scene » (Quality 1.5 imposee par les references, studio_media.js:308-310). */
+  html.serie-vue .composer{transform:translateY(115%)}
+  html.serie-vue .filmbar{transform:none;visibility:visible}
+  html:not(.serie-vue) .filmbar{visibility:hidden;transition:transform .25s ease, visibility 0s .25s}
+  /* Les bulles de stakebubble.js se posent a calc(var(--swbb-h) + 12px) du bas ;
+     stakebubble remet --swbb-h a 0 en style en ligne a son chargement (l.4022).
+     Comme swoge_agents.html (l.1223), la page l'impose en !important — ici a la
+     hauteur REELLE de la barre du bas, mesuree par la page (--bar-h). */
+  :root{--swbb-h:var(--bar-h,150px)!important}
+}
+/* Connecte, la barre porte le solde et la photo : le mot « SWOGE WORLD » rend sa place (le logo reste). */
+@media (max-width:440px){
+  html.avec-solde .brand > span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+}
+@media (max-width:400px){ .gen .lg{display:none} }
+@media (max-width:380px){
+  .tab .ic{display:none}
+  .tab{font-size:13.5px}
+  .bal .bk small{display:none}
+  .bal .bk{padding:0 7px}
+  h1{font-size:30px}
+  .composer .gen{min-width:96px;padding:0 10px}
+}
+@media (prefers-reduced-motion:reduce){ *{transition:none!important;animation:none!important} }
+</style>
+</head>
+<body>
+
+<!-- Jeu d'icones (aucun emoji : leur dessin change d'un telephone a l'autre). -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3.5"/><circle cx="9" cy="9.6" r="1.7"/><path d="M3.5 17.5l5-4.8 3.8 3.6 3-2.8 5.2 4.6"/></symbol>
+  <symbol id="i-video" viewBox="0 0 24 24"><rect x="2.8" y="5.5" width="13.4" height="13" rx="3"/><path d="M16.2 10.3l5-3v9.4l-5-3z"/></symbol>
+  <symbol id="i-voice" viewBox="0 0 24 24"><path d="M4 10.5v3M8 7.5v9M12 4.5v15M16 8v8M20 10.5v3"/></symbol>
+  <symbol id="i-avatar" viewBox="0 0 24 24"><circle cx="12" cy="8.8" r="3.8"/><path d="M4.8 19.5c1.4-3.4 4.1-5.2 7.2-5.2s5.8 1.8 7.2 5.2"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="M6.5 9.5l5.5 5.5 5.5-5.5"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.4 4.4L19 7.4"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.8v14.4l12-7.2z" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-ban" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.6"/><path d="M5.9 5.9l12.2 12.2"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24"><path d="M11 2.8l2.1 6 6.1 2.1-6.1 2.1-2.1 6-2.1-6-6.1-2.1 6.1-2.1z" fill="currentColor" stroke="none"/><path d="M18.6 14.6l.9 2.4 2.4.9-2.4.9-.9 2.4-.9-2.4-2.4-.9 2.4-.9z" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-layers" viewBox="0 0 24 24"><path d="M12 3.5l8.8 4.8-8.8 4.8-8.8-4.8z"/><path d="M3.2 12.4l8.8 4.8 8.8-4.8"/><path d="M3.2 16.4l8.8 4.8 8.8-4.8"/></symbol>
+  <symbol id="i-mega" viewBox="0 0 24 24"><path d="M3.5 10v4a1.5 1.5 0 0 0 1.5 1.5h2l7.5 4V4.5L7 8.5H5A1.5 1.5 0 0 0 3.5 10z"/><path d="M18 9a4 4 0 0 1 0 6"/><path d="M7.5 15.5l1.3 4"/></symbol>
+  <symbol id="i-tag" viewBox="0 0 24 24"><path d="M3.5 12.3V4.8a1.3 1.3 0 0 1 1.3-1.3h7.5l8.2 8.2a1.3 1.3 0 0 1 0 1.8l-7.5 7.5a1.3 1.3 0 0 1-1.8 0z"/><circle cx="8" cy="8" r="1.3"/></symbol>
+  <symbol id="i-coin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.6"/><path d="M14.8 9.2c-.5-1-1.6-1.6-2.8-1.6-1.6 0-2.8.9-2.8 2.1 0 2.9 5.8 1.5 5.8 4.5 0 1.2-1.3 2.2-3 2.2-1.3 0-2.5-.6-3-1.7M12 6v1.6M12 16.4V18"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 15.5V4.5M7.5 9L12 4.5 16.5 9"/><path d="M4.5 15v3a1.5 1.5 0 0 0 1.5 1.5h12a1.5 1.5 0 0 0 1.5-1.5v-3"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4.5v11M7.5 11L12 15.5 16.5 11"/><path d="M4.5 15v3a1.5 1.5 0 0 0 1.5 1.5h12a1.5 1.5 0 0 0 1.5-1.5v-3"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.6"/><path d="M12 7.5V12l3 2"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.6"/><path d="M12 7.5v5.5M12 16.2v.3"/></symbol>
+</svg>
+
+<!-- ============ EN-TETE (meme liens que le menu commun du site, Studio compris) ============ -->
+<header class="top">
+  <div class="top-in">
+    <a class="brand" href="nexus.html" aria-label="SWOGE World">
+      <img src="img/site/icone-180.png" alt="" width="36" height="36">
+      <span><b>SWOGE</b><i>WORLD</i></span>
+    </a>
+    <div class="nav" role="navigation" aria-label="SWOGE">
+      <a href="index.html">Home</a>
+      <a href="games.html">Casino</a>
+      <a href="swogebet.html">Sports</a>
+      <a href="swoge_wallet.html">Wallet</a>
+      <a href="swoge_ai.html">AI Trading</a>
+      <a href="swoge_agents.html">Agents</a>
+      <a class="on" aria-current="page" href="studio.html">Studio</a>
+      <a href="launchpad.html">Launchpad</a>
+      <a href="whitepaper.html">Docs</a>
+    </div>
+    <div class="acct">
+      <!-- stakebubble.js pose ici « Sign in », la photo de profil et le reste du compte. -->
+      <nav class="sb-ancre" aria-label="Your account"></nav>
+      <div class="bal" id="balBox" title="Your balances" hidden>
+        <span class="bk"><small>Credit</small><b class="num" id="balCr">&mdash;</b></span>
+        <i class="vr"></i>
+        <span class="bk"><small>$SWOGE</small><b class="num" id="balSw">&mdash;</b></span>
+      </div>
+      <button class="gold tu" type="button" id="topUp" hidden><svg class="ic"><use href="#i-plus"/></svg>Top up</button>
+      <button class="menub" type="button" id="menuBtn" aria-expanded="false" aria-controls="drawer" aria-label="Menu"><svg class="ic"><use href="#i-menu"/></svg></button>
+    </div>
+  </div>
+</header>
+<div class="drawer" id="drawer" hidden>
+  <div class="g">SWOGE</div>
+  <a href="index.html">Home</a>
+  <a href="games.html">Casino</a>
+  <a href="swogebet.html">Sports</a>
+  <a href="swoge_wallet.html">Wallet</a>
+  <a href="swoge_ai.html">AI Trading</a>
+  <a href="swoge_agents.html">Agents</a>
+  <a class="on" aria-current="page" href="studio.html">Studio</a>
+  <a href="launchpad.html">Launchpad</a>
+  <a href="whitepaper.html">Docs</a>
+  <div class="g">Your balances</div>
+  <div id="drBal" hidden>
+    <div class="dbal"><div><small>Dollar credit</small><b class="num" id="drCr">&mdash;</b></div><div><small>$SWOGE</small><b class="num" id="drSw">&mdash;</b></div></div>
+    <button class="gold" type="button" id="drTop"><svg class="ic"><use href="#i-plus"/></svg>Top up credit</button>
+  </div>
+  <button class="dsign" type="button" id="drSign">Sign in with your wallet</button>
+</div>
+
+<main>
+  <!-- ============ EN-TETE DU STUDIO ============ -->
+  <section class="hero">
+    <figure class="art a1" aria-hidden="true"><img src="img/site/cinema/saga_ep6.webp" alt="" width="540" height="960"><em>AI-generated</em></figure>
+    <figure class="art a2" aria-hidden="true"><img src="img/site/doge_roi.webp" alt="" width="560" height="560"></figure>
+    <figure class="art a3" aria-hidden="true"><img src="img/site/accueil/hero.webp" alt="" width="1600" height="1066"><em>AI-generated</em></figure>
+    <figure class="art a4" aria-hidden="true"><img src="img/site/cinema/s2_ep2.webp" alt="" width="540" height="960"></figure>
+    <span class="eyebrow"><span><svg class="ic"><use href="#i-spark"/></svg></span>SWOGE Studio</span>
+    <h1>Images, videos and series. <span class="hl">Pay per use.</span></h1>
+    <p class="sub">Pick a model, describe it, and see the price on the button before you click.<span class="s2"> You pay the real cost of each generation, and nothing if it fails.</span></p>
+    <ul class="checks" aria-label="How you pay">
+      <li><svg class="ic"><use href="#i-check"/></svg>Pay per use</li>
+      <li><svg class="ic"><use href="#i-check"/></svg>No subscription</li>
+      <li><svg class="ic"><use href="#i-check"/></svg>No expiring credits</li>
+    </ul>
+
+    <div class="tabs-wrap">
+      <div class="tabs" role="tablist" aria-label="What to make">
+        <button class="tab" role="tab" id="t-image" data-tab="image" aria-selected="true"><svg class="ic"><use href="#i-image"/></svg>Image</button>
+        <button class="tab" role="tab" id="t-video" data-tab="video" aria-selected="false"><svg class="ic"><use href="#i-video"/></svg>Video</button>
+        <button class="tab" role="tab" id="t-voice" data-tab="voice" aria-selected="false"><svg class="ic"><use href="#i-voice"/></svg>Voice<span class="soon">Soon</span></button>
+        <button class="tab" role="tab" id="t-avatar" data-tab="avatar" aria-selected="false"><svg class="ic"><use href="#i-avatar"/></svg>Avatar<span class="soon">Soon</span></button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ LE POSTE : LA BARRE DE PROMPT ET LE RESULTAT ============ -->
+  <div class="work">
+  <div class="work-main">
+  <section class="composer" id="composer" aria-label="Prompt">
+    <div class="c-top">
+      <button class="ref" type="button" id="refBtn" aria-label="Add a reference image"><svg class="ic"><use href="#i-upload"/></svg><span>Reference</span></button>
+      <input type="file" id="fichier" accept="image/png,image/jpeg,image/webp" hidden>
+      <label class="sr" for="prompt">Prompt</label>
+      <!-- 3 940 et non 4 000 (PROMPT_MAX, studio_media.js:98) : le style choisi s'ajoute a la fin du texte envoye. -->
+      <textarea class="prompt" id="prompt" rows="2" maxlength="3940" spellcheck="false" placeholder="Describe the image you want…"></textarea>
+    </div>
+    <div class="c-row">
+      <div class="ctls" id="ctls">
+        <button class="ctl mchip" type="button" id="mchip" title="Change model">
+          <img id="mchipImg" src="img/site/accueil/ia.webp" alt="" width="30" height="30">
+          <b id="mchipName">Loading…</b><svg class="ic chev"><use href="#i-chev"/></svg>
+        </button>
+        <label class="ctl" data-only="image video"><small>Style</small>
+          <select id="style" aria-label="Style"></select><svg class="ic chev"><use href="#i-chev"/></svg>
+        </label>
+        <label class="ctl" data-only="image video"><small>Format</small>
+          <select id="format" aria-label="Format"></select><svg class="ic chev"><use href="#i-chev"/></svg>
+        </label>
+        <div class="seg" data-only="image" role="group" aria-label="Number of images" id="segN"></div>
+        <div class="seg" data-only="video" role="group" aria-label="Length" id="segL"></div>
+        <div class="seg" data-only="video" role="group" aria-label="Resolution" id="segR"></div>
+        <button class="magic" type="button" id="magic" data-only="image video" title="Surprise me — a prompt idea from a short list, free" aria-label="Surprise me — a prompt idea from a short list, free">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-spark" style="color:#7C3AED"/></svg>
+        </button>
+      </div>
+      <button class="gen" type="button" id="gen" disabled><span class="gl" id="genL">Loading prices…</span><span class="gd">·</span><span class="gp" id="genP"></span></button>
+    </div>
+  </section>
+
+  <div class="pricebar">
+    <p id="priceNote" aria-live="polite">Loading the price list…</p>
+    <div class="pay" id="payBox">
+      <small>Pay with</small>
+      <div class="seg" role="group" aria-label="Pay with">
+        <button type="button" id="payCr" data-pay="credit" aria-pressed="true">Credit</button>
+        <button type="button" id="paySw" data-pay="swoge" aria-pressed="false">$SWOGE</button>
+      </div>
+    </div>
+    <p class="refnote" id="refNote" hidden></p>
+  </div>
+  </div>
+  <!-- LE RESULTAT : vide, en cours (progression reelle pour une video), fini, ou refuse avec la raison du serveur. -->
+  <aside class="result vide" id="result" aria-live="polite" aria-label="Result"><div class="stage" id="resStage"></div><div class="rfoot" id="resFoot" hidden></div></aside>
+  </div>
+
+  <!-- ============ LES MODELES (du catalogue du serveur) ============ -->
+  <section class="block" aria-labelledby="mTitle">
+    <div class="bh">
+      <div><p class="label" id="mLabel">Image models</p><h2 id="mTitle">Choose a model</h2></div>
+      <div class="aside">
+        <div class="legend"><span><i class="dot"></i>Live</span><span><i class="dot s"></i>Coming soon — not available yet</span></div>
+        <div>Prices come from the server's price list, before you click. Thumbnails are SWOGE artwork, not samples of each model.</div>
+      </div>
+    </div>
+    <div class="grid" id="grid" role="list"></div>
+  </section>
+
+  <!-- ============ SERIES & ADS (onglet Video) — /studio/production ============ -->
+  <section class="block prod" id="prod" data-mode="serie" data-format="16:9" aria-labelledby="pTitle" hidden>
+    <div class="bh">
+      <div>
+        <p class="label">Series &amp; Ads</p>
+        <h2 id="pTitle">Same characters. Same voices. Scene after scene.</h2>
+      </div>
+      <div class="seg" role="group" aria-label="Production type" id="segP">
+        <button type="button" data-p="serie" aria-pressed="true"><svg class="ic" style="width:15px;height:15px;vertical-align:-3px;margin-right:4px"><use href="#i-layers"/></svg>Series</button>
+        <button type="button" data-p="pub" aria-pressed="false"><svg class="ic" style="width:15px;height:15px;vertical-align:-3px;margin-right:4px"><use href="#i-mega"/></svg>Ad</button>
+      </div>
+    </div>
+    <div class="prod-g">
+      <div class="panel">
+        <div class="ptop"><label class="sr" for="pSel">Production</label><select class="inp sm" id="pSel"></select></div>
+        <label class="f-l" for="pTitre">Title</label>
+        <input class="inp" id="pTitre" maxlength="80" placeholder="Gym Wars">
+        <span class="f-l">Format</span>
+        <div class="seg" role="group" aria-label="Format" id="pFormat">
+          <button type="button" data-fmt="16:9" aria-pressed="true">16:9</button><button type="button" data-fmt="9:16" aria-pressed="false">9:16</button><button type="button" data-fmt="1:1" aria-pressed="false">1:1</button>
+        </div>
+        <!-- Serie -->
+        <div class="serie-only">
+          <span class="f-l" id="pPersosL">Characters · up to 3</span>
+          <div class="chars" id="pPersos"></div>
+          <button class="addc" type="button" id="pAjout" style="margin-top:8px"><svg class="ic"><use href="#i-plus"/></svg>Add a character</button>
+          <p class="hint">Each character keeps their face, fur and build from their picture, and their voice, in every scene.</p>
+        </div>
+        <!-- Pub -->
+        <div class="pub-only">
+          <label class="f-l" for="aNom">Product name</label>
+          <input class="inp" id="aNom" maxlength="60" placeholder="Swole Shaker">
+          <span class="f-l">Product photo</span>
+          <div class="chars" id="aPhoto"></div>
+          <span class="f-l">Presenter</span>
+          <div class="chars" id="aPres"></div>
+          <label class="f-l" for="aVoix">Voice</label>
+          <select class="inp" id="aVoix"></select>
+          <label class="f-l" for="aSlogan">Slogan</label>
+          <input class="inp" id="aSlogan" maxlength="160" placeholder="Get swole. Stay swole.">
+          <label class="f-l" for="aAppel">Call to action</label>
+          <input class="inp" id="aAppel" maxlength="120" placeholder="Order at swoleeswoge.dog">
+        </div>
+        <span class="f-l">Visual style</span>
+        <div class="chips" id="pStyles"></div>
+        <p class="hint" id="pStyleAide"></p>
+        <div class="pbtns">
+          <button class="pbtn" type="button" id="pSave">Create series · free</button>
+          <button class="pbtn alt" type="button" id="pDel" hidden>Delete</button>
+        </div>
+        <p class="perr" id="pErr" role="status"></p>
+      </div>
+
+      <div>
+        <div class="board-h"><b id="boardT">Your new series</b><span>Each scene is one video</span></div>
+        <div class="scenes" id="scenes"></div>
+        <div class="shoot">
+          <label class="f-l" for="sceneTxt" id="sceneLbl">Scene 1</label>
+          <textarea class="sc" id="sceneTxt" maxlength="1200" placeholder="What happens? Spoken lines in quotes — SWOGE says &quot;Let's go!&quot;"></textarea>
+          <div class="row" style="margin-top:10px">
+            <button class="mbtn" type="button" id="imagine"><svg class="ic"><use href="#i-spark"/></svg><span id="imagineL">Imagine a scene</span><small id="imagineN">Free</small></button>
+            <label class="cont" id="contBox" hidden><input type="checkbox" id="cont" checked> <span id="contL">Continue from the last scene — starts on its last frame</span></label>
+          </div>
+          <span class="f-l" style="margin-top:16px">Camera</span>
+          <div class="chips" id="cams">
+            <button class="chip" type="button" data-cam="auto" aria-pressed="true">Auto cinematic</button>
+            <button class="chip" type="button" data-cam="pushin" aria-pressed="false">Push-in</button>
+            <button class="chip" type="button" data-cam="tracking" aria-pressed="false">Tracking</button>
+            <button class="chip" type="button" data-cam="orbit" aria-pressed="false">Orbit</button>
+            <button class="chip" type="button" data-cam="crane" aria-pressed="false">Crane up</button>
+            <button class="chip" type="button" data-cam="handheld" aria-pressed="false">Handheld</button>
+            <button class="chip" type="button" data-cam="static" aria-pressed="false">Static</button>
+          </div>
+          <div class="film-row">
+            <div class="seg" role="group" aria-label="Scene length" id="segS"></div>
+            <p id="filmNote"></p>
+            <button class="gen" type="button" id="film" disabled><svg class="ic"><use href="#i-video"/></svg><span class="gl" id="filmL">Film this scene</span><span class="gd" id="filmD">·</span><span class="gp" id="filmP"></span></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ CE QUE LE JOUEUR A FAIT ============ -->
+  <section class="block" aria-labelledby="cTitle">
+    <div class="bh"><div><p class="label">Your work</p><h2 id="cTitle">Results &amp; history</h2></div></div>
+    <div class="cre">
+      <div class="box">
+        <div class="box-h">
+          <b>My work</b>
+          <span class="ainote"><svg class="ic"><use href="#i-clock"/></svg>On this device · links can expire, download what you keep</span>
+        </div>
+        <div id="gal"></div>
+      </div>
+      <aside class="box" aria-labelledby="hTitle">
+        <div class="box-h"><b id="hTitle">History</b><span class="ainote"><svg class="ic"><use href="#i-clock"/></svg>What each generation cost</span></div>
+        <ul class="hist" id="hist"></ul>
+        <p class="vide" id="histVide">Sign in to see what you made here.</p>
+        <div class="hsum" id="hsum" hidden><span>Last 7 days on this device<br><small>No subscription, nothing else charged</small></span><span class="hs"><b class="num" id="weekSum">$0.00</b> credit<br><b class="num" id="weekSw">0</b> $SWOGE</span></div>
+        <div class="crl" id="crBox" hidden><h3>Dollar credit · from the server</h3><ul id="crHist"></ul></div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ============ CONFIANCE ============ -->
+  <section class="block trust" aria-label="How SWOGE Studio works">
+    <div class="tcard">
+      <div class="ti"><svg class="ic"><use href="#i-coin"/></svg></div>
+      <h3>Pay per use. Nothing expires.</h3>
+      <p>No subscription and no monthly credits to lose. Top up a <b>dollar credit</b> with USDC on Base or Solana, or pay in <b>$SWOGE</b>. Your dollar credit is spent here and can't be withdrawn.</p>
+      <div class="payrow"><span>Dollar credit</span><span>$SWOGE</span><span>x402 for agents</span></div>
+    </div>
+    <div class="tcard">
+      <div class="ti"><svg class="ic"><use href="#i-tag"/></svg></div>
+      <h3>The price, before you click</h3>
+      <p>The button shows what a generation costs before you press it. You pay the <b>real cost</b>, never more than the amount held while it runs, and <b>nothing</b> if a generation fails.</p>
+    </div>
+    <div class="tcard nope">
+      <div class="ti"><svg class="ic"><use href="#i-ban"/></svg></div>
+      <h3>Not allowed here</h3>
+      <p>SWOGE and the characters you invent — never someone real. These are the rules of use; the model providers' moderation refuses such requests, and a refused request costs nothing. There is no face swap and no voice cloning here.</p>
+      <div class="nolist">
+        <span><svg class="ic"><use href="#i-x"/></svg>Face swap</span>
+        <span><svg class="ic"><use href="#i-x"/></svg>Voice cloning</span>
+        <span><svg class="ic"><use href="#i-x"/></svg>Real people</span>
+        <span><svg class="ic"><use href="#i-x"/></svg>Public figures</span>
+        <span><svg class="ic"><use href="#i-x"/></svg>Minors</span>
+        <span><svg class="ic"><use href="#i-x"/></svg>Sexual content</span>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <span><b>SWOGE Studio</b> · images and videos made with AI models · paid per use</span>
+  <span>Prices come from the server and can change: the button always shows the current one.</span>
+</footer>
+
+<!-- Telephone : quand Series & Ads est a l'ecran, la barre du bas devient celle de la scene. -->
+<div class="filmbar" id="filmbar" aria-hidden="true">
+  <div class="fbt"><b id="fbT">Scene 1</b><small id="fbS"></small></div>
+  <button class="gen" type="button" id="filmBar" tabindex="-1" disabled><span class="gl" id="fbBtn">Film this scene</span></button>
+</div>
+
+<!-- La recharge : une signature USDC (x402_paie.js), creditee a l'adresse de la SESSION par le serveur. -->
+<div class="sheet" id="rc" role="dialog" aria-modal="true" aria-labelledby="rcTitre" hidden>
+  <div class="sheet-b">
+    <button class="x" type="button" id="rcClose" aria-label="Close"><svg class="ic"><use href="#i-x"/></svg></button>
+    <h3 id="rcTitre">Top up your dollar credit</h3>
+    <p>One signature in your wallet, in USDC. The credit pays images here at their real cost. It is not withdrawable.</p>
+    <p id="rcSolde"></p>
+    <span class="f-l">Amount</span>
+    <div class="seg" role="group" aria-label="Amount" id="rcMontants"></div>
+    <span class="f-l">Network</span>
+    <div class="seg" role="group" aria-label="Network" id="rcReseau">
+      <button type="button" data-net="base" aria-pressed="true">Base</button>
+      <button type="button" data-net="solana" aria-pressed="false">Solana</button>
+    </div>
+    <button class="gold" type="button" id="rcSign">Sign a top-up</button>
+    <p class="rcst" id="rcStatut" role="status"></p>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+/* ==========================================================================
+ * LA PAGE MONTRE ET ENVOIE ; LE SERVEUR DECIDE.
+ *
+ * - Le jeton de session (localStorage.swogeSession, pose par stakebubble.js:628
+ *   ou par la bulle portefeuille) part en `Authorization: Bearer`. Le serveur
+ *   en tire l'adresse (session.js:56-67) ; aucune adresse n'est jamais envoyee
+ *   dans un corps.
+ * - Chaque prix vient du catalogue public /studio/media/catalogue
+ *   (studio_media.js:136-163). Ce que le catalogue ne donne pas (montant tenu,
+ *   prix video en dollars, cout d'une reference chez ChatGPT Image) n'est PAS
+ *   affiche en chiffres : la page le dit en mots.
+ * - Tout texte venu du serveur passe par textContent.
+ * - La photo jointe n'est jamais gardee dans le navigateur ; l'historique local
+ *   ne garde que des adresses https et le texte des demandes.
+ * ======================================================================== */
+(function(){
+  "use strict";
+  function serveur(){
+    try { var q = new URLSearchParams(location.search).get("server"); if (q) return String(q).replace(/^ws/, "http").replace(/\/$/, ""); } catch (e) {}
+    return "https://web-production-220a3.up.railway.app";
+  }
+  var $ = function(id){ return document.getElementById(id); };
+  var NS = "http://www.w3.org/2000/svg";
+  function jeton(){ try { return localStorage.getItem("swogeSession"); } catch (e) { return null; } }
+  function lisLocal(k, d){ try { var v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } }
+  function ecrisLocal(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  function oteLocal(k){ try { localStorage.removeItem(k); } catch (e) {} }
+  /* Un element, ses attributs, ses enfants. `text` passe par textContent : jamais d'HTML venu d'ailleurs. */
+  function h(tag, a, kids){
+    var e = document.createElement(tag);
+    if (a) Object.keys(a).forEach(function(k){
+      var v = a[k];
+      if (v == null || v === false) return;
+      if (k === "class") e.className = v; else if (k === "text") e.textContent = v; else e.setAttribute(k, v === true ? "" : String(v));
+    });
+    (kids || []).forEach(function(c){ if (c == null || c === false) return; e.appendChild(typeof c === "string" ? document.createTextNode(c) : c); });
+    return e;
+  }
+  function ico(id){ var s = document.createElementNS(NS, "svg"); s.setAttribute("class", "ic"); s.setAttribute("aria-hidden", "true"); var u = document.createElementNS(NS, "use"); u.setAttribute("href", "#i-" + id); s.appendChild(u); return s; }
+  function nombre(x){ if (x == null || x === "") return "—"; var n = Number(x); if (!isFinite(n)) return "—"; return Math.round(n).toLocaleString("en-US"); }
+  function compact(x){
+    var n = Number(x); if (!isFinite(n)) return "—";
+    var t = function(v, s){ return (Math.floor(v * 10) / 10).toFixed(1).replace(/\.0$/, "") + s; };
+    if (n >= 1e9) return t(n / 1e9, "B"); if (n >= 1e6) return t(n / 1e6, "M"); if (n >= 1e4) return t(n / 1e3, "k");
+    return Math.floor(n).toLocaleString("en-US");
+  }
+  /* Les dollars : au centime ; sous le centime, jusqu'a 4 decimales (une facture peut valoir 0,004 $). */
+  function dollars(x){
+    var n = Number(x); if (!isFinite(n)) return "—";
+    if (n === 0) return "$0.00";
+    if (n >= 0.01) return "$" + (Math.round(n * 100 + 1e-9) / 100).toFixed(2);
+    return "$" + n.toFixed(4).replace(/0+$/, "");
+  }
+  function r4(x){ return Math.round(x * 1e4) / 1e4; }
+  /* Meme forme que reprises.js:24 (/^[A-Za-z0-9_-]{6,40}$/) et que swolemind.html. */
+  function nouveauRid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2, 10); }
+  /* L'adresse de la SESSION, lue dans le jeton signe par le serveur (v1.<adresse>.<expiration>.<hmac>,
+     session.js:42-49) : elle ne sert qu'a ranger l'historique de CE navigateur, jamais envoyee. */
+  function adresseSession(){
+    var j = jeton(); if (!j) return null;
+    var p = String(j).split(".");
+    return p.length === 4 && /^0x[0-9a-fA-F]{40}$/.test(p[1]) ? p[1].toLowerCase() : (etat.adresse || null);
+  }
+  function toast(t){
+    var e = $("toast"); e.textContent = t; e.classList.add("show");
+    clearTimeout(toast.h); toast.h = setTimeout(function(){ e.classList.remove("show"); }, 2800);
+  }
+  /* « Sign in » appartient a stakebubble.js : on clique SON bouton (meme porte que partout). */
+  function ouvreConnexion(){
+    var b = document.querySelector(".swcon");
+    if (b) { b.click(); return; }
+    window.scrollTo(0, 0);
+    toast(TXT.signinHaut);
+  }
+
+  var TXT = {
+    signin: "Sign in with your wallet to generate. Nothing is charged before you click.",
+    signinHaut: "Use Sign in at the top of the page — your wallet signs once, nothing is charged.",
+    catCharge: "Loading the price list…",
+    catErreur: "The price list could not be loaded, so nothing can be generated right now. Retrying…",
+    reseau: "Connection lost.",
+    tenu: "more than this is held while it runs — you pay the real cost and the rest comes straight back",
+    rien: "nothing if it fails",
+    voix: "Voice-over is coming soon — nothing to generate or pay yet. Character voices already speak inside Series & Ads scenes (Video tab), included in the scene price.",
+    avatar: "Talking avatars and lipsync are coming soon — nothing to generate or pay yet. Only SWOGE and characters you invent, never a real person.",
+    videoSwoge: "Video is paid in $SWOGE for now."
+  };
+  /* Les styles : la MEME table que Series & Ads (swolemind.html l.2920). Le serveur n'a pas de
+     champ « style » pour une image ou une video (studio_media.js:234-302) : le choix est ajoute
+     a la fin du texte envoye, et le resultat montre le texte tel qu'il est parti. */
+  var STYLES = [["", "Auto", "the model picks what fits the scene"],
+    ["anime", "Anime", "bold outlines, vivid colours, expressive faces"],
+    ["cinematic, realistic film look", "Cinematic", "real lighting, film grain, shallow depth of field"],
+    ["3D animated feature film", "3D animation", "soft, round, colourful — like an animated movie"],
+    ["comic book, inked lines, halftone", "Comic", "inked lines and flat colours"],
+    ["90s VHS, grainy retro colours", "90s VHS", "grain, scanlines, retro colours"]];
+  /* « Surprise me » : une courte liste locale, gratuite. Ce n'est pas une IA et la page ne le pretend pas. */
+  var IDEES = {
+    image: ["SWOGE lifting a golden barbell on a rooftop at sunrise, city below",
+      "SWOGE in a white tuxedo dealing cards at a glass table, soft blue light",
+      "A chrome motorbike parked in a neon city at night, rain on the street",
+      "A tiny astronaut planting a paw flag on a candy-coloured moon",
+      "SWOGE as a 90s action-figure box, retro packaging, studio light"],
+    video: ["A chrome motorbike rides through a neon city at night, the camera tracking it",
+      "Slow motion: a golden barbell slams onto a gym floor, chalk dust rising",
+      "A paw-shaped coin spins on a glass table, then falls flat",
+      "Sunrise over a crystal city, the camera rising above the towers"]
+  };
+  /* Ce que la page sait dire d'un modele du catalogue : texte et vignette. Un modele que le serveur
+     ajoute sans etre ici s'affiche quand meme, avec son nom et son prix du catalogue. */
+  var FICHES = {
+    "grok:rapide": { img: "accueil/ia.webp", desc: "Quick drafts in any ratio — a cheap way to try an idea." },
+    "grok:qualite": { img: "accueil/hero.webp", desc: "Finer detail for the version you keep." },
+    "openai:rapide": { img: "accueil/economie.webp", desc: "OpenAI's image model at medium quality. Billed on the tokens it really uses." },
+    "openai:qualite": { img: "accueil/cta.webp", desc: "OpenAI's image model at high quality. Billed on the tokens it really uses." },
+    "video:rapide": { img: "cinema/s2_ep2.webp", desc: "Short clips from a prompt, or bring a picture to animate." },
+    "video:qualite": { img: "cinema/saga_ep6.webp", desc: "Powers Series & Ads: the same characters and voices in every scene." }
+  };
+  var PAR = { grok: "xAI", openai: "OpenAI" };
+  /* Ce qui n'existe pas encore : AUCUN prix (aucun ne vient du serveur ; Kling 3.0 attend le choix
+     fal.ai / cle directe). Ces cartes ne se choisissent pas et le bouton ne les envoie jamais. */
+  var BIENTOT = {
+    image: [{ id: "kling-i", nom: "Kling Image 3.0", by: "Kuaishou", img: "doge_casino.webp", desc: "A third image model, in 1K or 2K." },
+            { id: "upscale", nom: "Upscale", by: "SWOGE Studio", img: "trophee.webp", desc: "Make a finished image larger and sharper." }],
+    video: [{ id: "kling3", nom: "Kling 3.0", by: "Kuaishou", img: "doge_sport.webp", desc: "Video with native audio." },
+            { id: "kling26", nom: "Kling 2.6", by: "Kuaishou", img: "doge_roulette.webp", desc: "Video without sound." },
+            { id: "veo", nom: "Veo 3.1", by: "Google", img: "monde.webp", desc: "Video with sound." },
+            { id: "motion", nom: "Motion control", by: "SWOGE Studio", img: "doge_arcade.webp", desc: "Your character moves the way a reference clip moves." }],
+    voice: [{ id: "vo", nom: "Voice-over", by: "SWOGE Studio", img: "accueil/agents.webp", desc: "Turn a script into narration." }],
+    avatar: [{ id: "talk", nom: "Talking avatar", by: "SWOGE Studio", img: "accueil/wallet.webp", desc: "SWOGE or a character you invented reads your script." },
+             { id: "lips", nom: "Lipsync", by: "SWOGE Studio", img: "accueil/jeux.webp", desc: "Sync your character's mouth to a voice track." }]
+  };
+  /* Ce qui n'est pas propose : une regle d'usage, appuyee sur la moderation des fournisseurs
+     (aucun filtre propre a SWOGE, studio_xai.js:24) — dit comme tel. */
+  var REFUS = {
+    image: { nom: "Real people", desc: "Not allowed: real people or public figures, minors, sexual content. The provider's moderation refuses them; a refused request costs nothing." },
+    video: { nom: "Face swap", desc: "Not offered: no tool here puts a real person's face into a video." },
+    voice: { nom: "Voice cloning", desc: "Not offered: only the built-in voices, never a copy of someone's voice." },
+    avatar: { nom: "Real faces & voices", desc: "Not offered: no avatar, lipsync or voice of a real person." }
+  };
+  var ONGLETS = {
+    image: { label: "Image models", ph: "Describe the image you want — e.g. SWOGE lifting a golden barbell on a rooftop at sunrise", phc: "Describe the image…", ref: "Reference" },
+    video: { label: "Video models", ph: "Describe the shot — e.g. a chrome motorbike rides through a neon city, the camera tracking it", phc: "Describe the shot…", ref: "Image to animate" },
+    voice: { label: "Voice", ph: "Voice-over is coming soon", phc: "Coming soon", ref: null },
+    avatar: { label: "Avatar", ph: "Talking avatars are coming soon", phc: "Coming soon", ref: null }
+  };
+
+  var TEL = window.matchMedia("(max-width:720px)");
+  var choix = lisLocal("swogeStudioChoix", {});
+  var etat = {
+    cat: null, catErreur: false, onglet: "image",
+    sel: { image: typeof choix.image === "string" ? choix.image : null, video: typeof choix.video === "string" ? choix.video : null },
+    n: null, duree: null, res: null, formatI: "auto", formatV: "auto", style: "",
+    jointe: null, payeurChoisi: lisLocal("swogeStudioPayeur", null),
+    credit: null, swoge: null, adresse: null, limites: null, reseaux: null,
+    occupe: false, idee: 0, auto: false
+  };
+  /* Le resultat a cote du composeur : { st: vide|run|done|err, ... } */
+  var R = { st: "vide" };
+
+  /* ====================== LE CATALOGUE ====================== */
+  function fournisseurs(){ var im = etat.cat && etat.cat.image; return (im && Array.isArray(im.fournisseurs)) ? im.fournisseurs : []; }
+  /* Les modeles de l'onglet, tels que le serveur les annonce. */
+  function modeles(t){
+    var c = etat.cat; if (!c) return [];
+    if (t === "image") {
+      var l = [];
+      fournisseurs().forEach(function(f){
+        (f.modeles || []).forEach(function(m){
+          l.push({ cle: f.id + ":" + m.id, genre: "image", f: f.id, fnom: f.nom, id: m.id, nom: m.nom, m: m, actif: f.actif !== false });
+        });
+      });
+      return l;
+    }
+    if (t === "video") {
+      return ((c.video && c.video.modeles) || []).map(function(m){
+        return { cle: "video:" + m.id, genre: "video", f: "video", fnom: "Grok Imagine Video", chip: "Grok Video", id: m.id, nom: m.nom, m: m, actif: true };
+      });
+    }
+    return [];
+  }
+  function modeleChoisi(){
+    var t = etat.onglet; if (t !== "image" && t !== "video") return null;
+    var l = modeles(t); if (!l.length) return null;
+    return l.filter(function(x){ return x.cle === etat.sel[t]; })[0] || l.filter(function(x){ return x.actif; })[0] || l[0];
+  }
+  /* Ce qui empeche de generer avec ce modele, ou null : les seuls etats que le serveur publie
+     (ouvert, videoOuverte, fournisseurs[].actif — studio_media.js:146-156), avec SA phrase. */
+  function fermeture(mo){
+    var c = etat.cat; if (!c || !mo) return null;
+    if (mo.genre === "video") return c.videoOuverte === false ? (c.videoNote || c.note || "Video is paused right now.") : null;
+    if (c.ouvert === false) return c.note || "Image generation is paused right now.";
+    if (!mo.actif) return mo.fnom + " is not switched on yet — pick another model.";
+    return null;
+  }
+  /* Le prix d'une video en $SWOGE, au catalogue : `typiqueSwoge` est le prix exact de la premiere
+     duree (studio_media.js:159) ; pour une autre, parSecondeSwoge x duree (arrondi a la seconde
+     par le serveur : quelques unites de plus que le total arrondi une seule fois). */
+  function prixVideoSwoge(m, d){
+    var durees = (etat.cat && etat.cat.video && etat.cat.video.durees) || [];
+    if (m.typiqueSwoge != null && Number(d) === Number(durees[0])) return Number(m.typiqueSwoge);
+    return m.parSecondeSwoge != null ? Number(m.parSecondeSwoge) * Number(d) : null;
+  }
+  function modeleScene(){
+    /* Une scene de serie ou de pub part TOUJOURS en Quality (1.5) : les references l'imposent
+       (studio_media.js:308-310). C'est le modele `qualite` du catalogue video. */
+    var l = (etat.cat && etat.cat.video && etat.cat.video.modeles) || [];
+    return l.filter(function(m){ return m.id === "qualite"; })[0] || null;
+  }
+
+  /* ====================== LE PRIX, AVANT LE CLIC ====================== */
+  function payeur(){
+    if (etat.onglet === "video") return "swoge";           /* server.js:6581 : la video ne se paie qu'en $SWOGE */
+    var p = etat.payeurChoisi;
+    if (p === "credit" || p === "swoge") return p;
+    return etat.credit > 0 ? "credit" : etat.swoge > 0 ? "swoge" : "credit";
+  }
+  /* Le prompt nomme SWOGE (le meme test que le serveur, studio_comprend.js:53). Images seulement :
+     le serveur ne joint jamais la reference a une video. On n'envoie pas de `contexte` : la
+     reference ne part donc que si CE texte la nomme, et aucune reecriture n'est facturee
+     (studio_comprend.js:35, studio_media.js:256-257). */
+  function nommeSwoge(){ return /\bswoge\b/i.test($("prompt").value); }
+  function devis(){
+    var t = etat.onglet;
+    if (t === "voice" || t === "avatar") return { off: true, bouton: "Coming soon", note: [t === "voice" ? TXT.voix : TXT.avatar] };
+    if (!etat.cat) return { off: true, bouton: etat.catErreur ? "Prices unavailable" : "Loading prices…", note: [etat.catErreur ? TXT.catErreur : TXT.catCharge] };
+    var mo = modeleChoisi();
+    if (!mo) return { off: true, bouton: "Unavailable", note: ["No " + t + " model is listed by the server right now."] };
+    var f = fermeture(mo);
+    if (f) return { off: true, pause: true, bouton: "Paused", note: [f], mo: mo };
+    var m = mo.m, pay = payeur(), d = { mo: mo, pay: pay };
+    if (t === "image") {
+      var ref = etat.jointe ? "jointe" : (nommeSwoge() ? "swoge" : null), n = etat.n;
+      var quoi = ref === "swoge" ? "the SWOGE reference" : "your reference picture";
+      d.ref = ref;
+      if (m.estime) {
+        /* ChatGPT Image : une ESTIMATION par image (6 893 jetons de sortie mesures, studio_media.js:59,144).
+           Une image envoyee ajoute des jetons d'ENTREE que le catalogue ne chiffre pas
+           (studio_media.js:198) : on le dit, sans inventer de nombre. */
+        d.usd = m.parImageUsd != null ? r4(Number(m.parImageUsd) * n) : null;
+        d.sw = m.parImageSwoge != null ? Number(m.parImageSwoge) * n : null;
+        d.estime = true;
+        d.bouton = "~" + (pay === "credit" && d.usd != null ? dollars(d.usd) : nombre(d.sw) + " $SWOGE") + (ref ? " + ref" : "");
+        d.note = [{ b: d.bouton.replace(/ \+ ref$/, "") , suite: (n > 1 ? " for " + n + " images" : "") + (ref ? " plus the input tokens of " + quoi + " (not priced in advance)" : "") },
+          mo.fnom + " " + mo.nom, "an estimate: billed on the tokens it really uses", TXT.tenu, TXT.rien,
+          pay === "credit" ? "paid from your dollar credit" : "≈ " + nombre(d.sw) + " $SWOGE from your balance"];
+      } else {
+        /* Grok Imagine : une image envoyee (la votre, ou la reference SWOGE posee par le serveur)
+           compte comme UNE image de liste en plus (studio_media.js:200-201). */
+        var k = n + (ref ? 1 : 0);
+        d.usd = m.parImageUsd != null ? r4(Number(m.parImageUsd) * k) : null;
+        /* En $SWOGE, k x le prix d'une image : le serveur arrondit le total une seule fois
+           (studio_media.js:131), d'ou un ecart de quelques unites au plus pour k > 1. */
+        d.sw = m.parImageSwoge != null ? Number(m.parImageSwoge) * k : null;
+        d.bouton = pay === "credit" && d.usd != null ? dollars(d.usd) : nombre(d.sw) + " $SWOGE";
+        d.note = [{ b: d.bouton, suite: (n > 1 ? " for " + n + " images" : "") + (ref ? " (" + quoi + " counts as one more image)" : "") },
+          mo.fnom + " " + mo.nom, TXT.tenu, TXT.rien,
+          pay === "credit" ? "paid from your dollar credit" + (d.sw != null ? " (≈ " + nombre(d.sw) + " $SWOGE)" : "") : "from your $SWOGE balance" + (d.usd != null ? " (≈ " + dollars(d.usd) + ")" : "")];
+      }
+      return d;
+    }
+    /* Video : en $SWOGE seulement ; le catalogue ne donne aucun prix en dollars. En 720p le
+       fournisseur facture plus, sans publier l'ecart (studio_media.js:336-337) : « from ». */
+    var sw = prixVideoSwoge(m, etat.duree), base = ((etat.cat.video || {}).resolutions || [])[0];
+    var plus = etat.res && base && etat.res !== base;
+    d.sw = sw;
+    d.bouton = (plus ? "from " : "") + nombre(sw) + " $SWOGE";
+    d.note = [{ b: nombre(sw) + " $SWOGE", suite: " for " + etat.duree + " s at " + (base || "480p") + (plus ? " — " + etat.res + " costs more and the provider doesn't publish the difference" : "") },
+      mo.fnom + " " + mo.nom, TXT.tenu, TXT.rien, { warn: TXT.videoSwoge }];
+    return d;
+  }
+  function ecritNote(el, parts){
+    el.textContent = "";
+    parts.forEach(function(x, i){
+      if (i) el.appendChild(document.createTextNode(" · "));
+      if (typeof x === "string") el.appendChild(document.createTextNode(x));
+      else if (x.b != null) { el.appendChild(h("b", { text: x.b })); if (x.suite) el.appendChild(document.createTextNode(x.suite)); }
+      else if (x.warn) el.appendChild(h("span", { class: "warn", text: x.warn }));
+    });
+  }
+  function promptVide(){
+    var q = $("prompt").value.trim();
+    return etat.onglet === "video" ? (!q && !etat.jointe) : !q;
+  }
+  function peintPrix(){
+    var d = devis(), g = $("gen"), j = jeton();
+    g.classList.remove("go");
+    var lib, prix = "", dis = false, aria;
+    if (etat.occupe) { lib = R.genre === "video" ? "Rendering video…" : "Generating…"; dis = true; aria = lib; }
+    else if (d.off) { lib = d.bouton; dis = true; aria = d.bouton + " — " + (d.note[0] || ""); }
+    else if (!j) { lib = "Sign in to generate"; g.classList.add("go"); aria = "Sign in with your wallet to generate"; }
+    else { lib = "Generate"; prix = d.bouton; dis = promptVide(); aria = "Generate · " + d.bouton + (dis ? " — describe it first" : ""); }
+    $("genL").textContent = lib; $("genP").textContent = prix;
+    /* Sur un petit telephone, « Sign in » seul : le reste de la rangee garde sa place. */
+    if (lib === "Sign in to generate") { $("genL").textContent = "Sign in"; $("genL").appendChild(h("span", { class: "lg", text: " to generate" })); }
+    g.querySelector(".gd").style.display = prix ? "" : "none";
+    g.disabled = dis; g.setAttribute("aria-label", aria);
+    ecritNote($("priceNote"), d.note || []);
+    /* La reference SWOGE posee d'office : dite en clair, montree dans la case. */
+    var auto = etat.onglet === "image" && d.ref === "swoge";
+    var rn = $("refNote"); rn.textContent = "";
+    if (auto) {
+      rn.appendChild(h("img", { src: "img/site/swoge_reference.jpg", alt: "" }));
+      rn.appendChild(h("span", null, [h("b", { text: "SWOGE reference added" }),
+        " — your prompt names SWOGE, so the server sends his official picture along. " + (d.estime ? "It adds input tokens, billed on what they really cost." : "It is already in the price.") + " ",
+        h("span", { class: "long", text: "Attach your own picture to use it instead." })]));
+    } else if (etat.onglet === "video" && !etat.jointe && nommeSwoge() && etat.cat) {
+      /* Une video ne recoit jamais l'image officielle : on le dit, et on propose de la joindre. */
+      var b = h("button", { type: "button", class: "lnk", "data-swoge-ref": "1", text: "Attach SWOGE's picture" });
+      rn.appendChild(h("span", null, ["Video doesn't add SWOGE's picture by itself. ", b, " to animate him, or use Series & Ads below to keep his face scene after scene."]));
+    }
+    rn.hidden = !rn.firstChild;
+    if (auto !== etat.auto) { etat.auto = auto; peintRef(); }
+    /* Le payeur. */
+    var vid = etat.onglet === "video", p = payeur();
+    [$("payCr"), $("paySw")].forEach(function(b){
+      var x = b.getAttribute("data-pay");
+      b.disabled = vid && x === "credit";
+      b.title = b.disabled ? TXT.videoSwoge : "";
+      b.setAttribute("aria-pressed", String(p === x));
+    });
+    $("payCr").textContent = ""; $("payCr").appendChild(document.createTextNode("Credit")); if (j && etat.credit != null) { $("payCr").appendChild(document.createTextNode(" ")); $("payCr").appendChild(h("b", { class: "num", text: dollars(etat.credit) })); }
+    $("paySw").textContent = ""; $("paySw").appendChild(document.createTextNode("$SWOGE")); if (j && etat.swoge != null) { $("paySw").appendChild(document.createTextNode(" ")); $("paySw").appendChild(h("b", { class: "num", text: compact(etat.swoge) })); }
+    $("payBox").hidden = !(etat.onglet === "image" || etat.onglet === "video");
+    var mo = modeleChoisi();
+    if (mo) {
+      var fi = FICHES[mo.cle] || {};
+      $("mchipImg").src = "img/site/" + (fi.img || "doge_muscle.webp");
+      var nm = $("mchipName"); nm.textContent = "";
+      nm.appendChild(h("span", { class: "mn", text: mo.chip || mo.fnom })); nm.appendChild(h("span", { class: "ms", text: " · " })); nm.appendChild(h("span", { class: "mv", text: mo.nom }));
+      $("mchip").hidden = false;
+    } else if (etat.onglet === "voice" || etat.onglet === "avatar") $("mchip").hidden = true;
+    peintFilm();
+  }
+
+  /* ====================== LES MODELES (la grille) ====================== */
+  function carte(o){
+    if (o.refus) {
+      return h("div", { class: "mcard no", role: "listitem" }, [
+        h("div", { class: "thumb" }, [ico("ban"), h("span", { class: "badge no", text: o.voix ? "Not offered" : "Not allowed" })]),
+        h("div", { class: "mbody" }, [h("div", { class: "mname" }, [h("b", { text: o.nom })]), h("p", { class: "desc", text: o.desc })])]);
+    }
+    /* soon (a venir) et paused (le serveur l'a coupe) ne se choisissent pas ; serie = un lien vers Series & Ads. */
+    var live = !!o.live, on = live && o.on, genre = o.soon ? "soon" : o.pause ? "paused" : o.serie ? "serie" : "live";
+    var c = h("div", { class: "mcard " + genre + (on ? " on" : ""), role: "listitem", "data-id": o.id,
+      tabindex: live || o.serie ? "0" : null, "aria-pressed": live ? String(!!on) : null, "aria-disabled": o.soon || o.pause ? "true" : null });
+    var badge = o.soon ? h("span", { class: "badge sn", text: "Coming soon" })
+      : o.pause ? h("span", { class: "badge ps", text: "Paused" })
+      : h("span", { class: "badge lv" }, [h("i", { class: "dot" }), o.serie ? "Live in Series & Ads" : "Live"]);
+    c.appendChild(h("div", { class: "thumb" }, [h("img", { src: "img/site/" + o.img, alt: "", loading: "lazy" }), badge, h("span", { class: "tick" }, [ico("check")])]));
+    var corps = h("div", { class: "mbody" }, [
+      h("div", { class: "mname" }, [h("b", { text: o.nom }), o.v ? h("span", { class: "v", text: o.v }) : null]),
+      o.by ? h("span", { class: "by", text: "by " + o.by }) : null,
+      h("p", { class: "desc", text: o.desc })]);
+    if (o.soon) corps.appendChild(h("div", { class: "pr pl" }, [h("span", { class: "pt", text: "Price at launch" }), h("span", { class: "alt", text: "Not available yet" })]));
+    else if (o.prix) corps.appendChild(h("div", { class: "pr" }, [h("span", { class: "amt", text: o.prix.amt }), h("span", { class: "unit", text: o.prix.unit }), o.prix.alt ? h("span", { class: "alt", text: o.prix.alt }) : null, o.pause ? h("span", { class: "alt pz", text: o.pause }) : null]));
+    if (o.lien) corps.appendChild(o.lien);
+    c.appendChild(corps);
+    return c;
+  }
+  function cartesOnglet(t){
+    var l = [], sel = modeleChoisi(), durees = (etat.cat && etat.cat.video && etat.cat.video.durees) || [], res = (etat.cat && etat.cat.video && etat.cat.video.resolutions) || [];
+    modeles(t).forEach(function(mo){
+      var m = mo.m, fi = FICHES[mo.cle] || {}, prix;
+      if (t === "image") {
+        var usd = m.parImageUsd != null;
+        prix = { amt: (m.estime ? "~" : "") + (usd ? dollars(m.parImageUsd) : nombre(m.parImageSwoge)), unit: (usd ? "" : "$SWOGE ") + "/ image" + (m.estime ? " · estimate" : ""),
+          alt: (usd && m.parImageSwoge != null ? "≈ " + nombre(m.parImageSwoge) + " $SWOGE" : "") + (m.estime ? (usd ? " · " : "") + "billed on the tokens it really uses" : "") };
+      } else {
+        var d0 = durees[0], d1 = durees[durees.length - 1];
+        prix = { amt: nombre(prixVideoSwoge(m, d0)), unit: "$SWOGE / " + d0 + " s",
+          alt: (d1 !== d0 ? "≈ " + nombre(prixVideoSwoge(m, d1)) + " $SWOGE / " + d1 + " s · " : "") + (res[0] || "480p") + " · paid in $SWOGE" };
+      }
+      var f = fermeture(mo);
+      l.push({ id: mo.cle, live: !f, pause: f, on: sel && sel.cle === mo.cle, nom: mo.fnom, v: mo.nom, by: PAR[mo.f] || (t === "video" ? "xAI" : null),
+        img: fi.img || "doge_muscle.webp", desc: fi.desc || "Priced by the server, like every model here.", prix: prix });
+    });
+    if (t === "voice") {
+      var noms = (PROD.cat && PROD.cat.voix || []).map(function(v){ return v.nom; });
+      var lien = h("button", { type: "button", class: "lnk", "data-vers-serie": "1" }, ["Open Series & Ads", ico("arrow")]);
+      l.push({ id: "cvoices", live: false, serie: true, nom: "Character voices", v: "In Series & Ads", by: "xAI", img: "cinema/island_ep2.webp",
+        desc: (noms.length ? noms.join(", ") + " speak" : "The built-in voices speak") + " inside your Series & Ads scenes.",
+        prix: { amt: "Included", unit: "in the scene price", alt: "Live in Series & Ads videos" }, lien: lien });
+    }
+    (BIENTOT[t] || []).forEach(function(b){ l.push({ id: b.id, soon: true, nom: b.nom, by: b.by, img: b.img, desc: b.desc }); });
+    if (REFUS[t]) l.push({ refus: true, voix: t !== "image", nom: REFUS[t].nom, desc: REFUS[t].desc });
+    return l;
+  }
+  function peintGrille(){
+    var g = $("grid"); g.textContent = "";
+    cartesOnglet(etat.onglet).forEach(function(o){ g.appendChild(carte(o)); });
+    $("mLabel").textContent = ONGLETS[etat.onglet].label;
+  }
+
+  /* ====================== LES COMMANDES ====================== */
+  function segment(box, valeurs, courant, attr, libelle){
+    box.textContent = "";
+    valeurs.forEach(function(v){
+      var a = {}; a.type = "button"; a["data-" + attr] = String(v); a["aria-pressed"] = String(String(v) === String(courant)); a.text = libelle(v);
+      box.appendChild(h("button", a));
+    });
+  }
+  function options(sel, valeurs, courant, libelle){
+    sel.textContent = "";
+    valeurs.forEach(function(v){ var o = h("option", { value: v, text: libelle(v) }); sel.appendChild(o); });
+    sel.value = courant;
+  }
+  function peintCommandes(){
+    var t = etat.onglet, o = ONGLETS[t], c = etat.cat, actif = t === "image" || t === "video";
+    $("prompt").placeholder = TEL.matches ? o.phc : o.ph;
+    $("prompt").disabled = !actif;
+    $("refBtn").hidden = !o.ref;
+    [].forEach.call(document.querySelectorAll("[data-only]"), function(el){
+      el.style.display = el.getAttribute("data-only").split(" ").indexOf(t) >= 0 ? "" : "none";
+    });
+    if (c && c.image) {
+      var nb = c.image.nombres || [1];
+      if (nb.indexOf(etat.n) < 0) etat.n = nb[0];
+      segment($("segN"), nb, etat.n, "n", function(v){ return "×" + v; });
+      var fi = c.image.formats || ["auto"]; if (fi.indexOf(etat.formatI) < 0) etat.formatI = fi[0];
+    }
+    if (c && c.video) {
+      var du = c.video.durees || [6]; if (du.indexOf(etat.duree) < 0) etat.duree = du[0];
+      segment($("segL"), du, etat.duree, "l", function(v){ return v + " s"; });
+      var rs = c.video.resolutions || ["480p"]; if (rs.indexOf(etat.res) < 0) etat.res = rs[0];
+      segment($("segR"), rs, etat.res, "r", function(v){ return v; });
+      var fv = c.video.formats || ["auto"]; if (fv.indexOf(etat.formatV) < 0) etat.formatV = fv[0];
+    }
+    var formats = t === "video" ? (c && c.video && c.video.formats) : (c && c.image && c.image.formats);
+    options($("format"), formats || ["auto"], t === "video" ? etat.formatV : etat.formatI, function(v){ return v === "auto" ? "Auto" : v; });
+    $("prod").hidden = t !== "video";
+  }
+  function choisisOnglet(t){
+    if (!ONGLETS[t]) t = "image";
+    etat.onglet = t;
+    [].forEach.call(document.querySelectorAll(".tab"), function(b){ b.setAttribute("aria-selected", String(b.getAttribute("data-tab") === t)); });
+    /* L'image jointe ne change pas de role en douce : une reference d'image n'est pas une image a animer. */
+    if (etat.jointe) { etat.jointe = null; peintRef(); }
+    peintCommandes(); peintGrille(); peintPrix(); peintResultat();
+    if (t === "video") chargeProd();
+    try { history.replaceState(null, "", "#" + t); } catch (e) {}
+    majBarre();
+  }
+
+  /* ====================== LA REFERENCE (photo jointe) ====================== */
+  function peintRef(){
+    var rb = $("refBtn"), o = ONGLETS[etat.onglet];
+    rb.textContent = ""; rb.classList.remove("has"); rb.classList.toggle("auto", !etat.jointe && !!etat.auto);
+    if (etat.jointe) {
+      rb.classList.add("has");
+      rb.appendChild(h("img", { src: etat.jointe, alt: etat.onglet === "video" ? "Image to animate" : "Reference image" }));
+      rb.appendChild(h("span", { class: "rm", "aria-hidden": "true" }, [ico("x")]));
+      rb.setAttribute("aria-label", "Remove the attached image");
+    } else if (etat.auto) {
+      rb.appendChild(h("img", { src: "img/site/swoge_reference.jpg", alt: "" }));
+      rb.appendChild(h("em", { text: "SWOGE" }));
+      rb.setAttribute("aria-label", "SWOGE reference added automatically — attach your own picture instead");
+    } else {
+      rb.appendChild(ico("upload")); rb.appendChild(h("span", { text: (o && o.ref) || "Reference" }));
+      rb.setAttribute("aria-label", etat.onglet === "video" ? "Attach an image to animate" : "Add a reference image");
+    }
+  }
+  /* Une photo reduite ICI (1 568 px, JPEG, comme swolemind.html:1726) : le serveur accepte
+     un data-URL PNG/JPEG/WebP de 6 Mo au plus (studio_media.js:123-129). */
+  function vignette(src, cote, qualite){
+    return new Promise(function(ok, ko){
+      var im = new Image();
+      im.onload = function(){
+        var k = Math.min(1, cote / Math.max(im.naturalWidth, im.naturalHeight));
+        var c = document.createElement("canvas"); c.width = Math.max(1, Math.round(im.naturalWidth * k)); c.height = Math.max(1, Math.round(im.naturalHeight * k));
+        var g = c.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, c.width, c.height); g.drawImage(im, 0, 0, c.width, c.height);
+        try { ok(c.toDataURL("image/jpeg", qualite)); } catch (e) { ko(e); }
+      };
+      im.onerror = ko; im.src = src;
+    });
+  }
+  function joint(d){
+    if (!/^data:image\/(png|jpeg|webp);base64,/.test(d) || d.length * 0.75 > 6 * 1024 * 1024) { toast("This picture is too large — keep it under 6 MB."); return; }
+    etat.jointe = d; peintRef(); peintPrix();
+  }
+  function depuisFichier(f, fn){
+    if (!f) return;
+    if (!/^image\/(png|jpeg|webp)$/.test(f.type)) { toast("Use a PNG, JPEG or WebP picture."); return; }
+    var u = URL.createObjectURL(f);
+    vignette(u, 1568, 0.85).then(function(d){ URL.revokeObjectURL(u); fn(d); })["catch"](function(){ URL.revokeObjectURL(u); toast("This picture could not be read."); });
+  }
+  /* Une image deja faite, reprise comme reference : il faut ses octets. Rangee chez nous
+     (/studio/media/fichier, CORS ouvert, server.js:6340-6346) : ca marche. Chez xAI
+     (imgen.x.ai) le CORS n'est pas garanti : si le navigateur refuse, on le dit. */
+  function depuisAdresse(url){
+    return fetch(url, { mode: "cors", cache: "force-cache" }).then(function(r){ if (!r.ok) throw new Error("http " + r.status); return r.blob(); })
+      .then(function(b){ var u = URL.createObjectURL(b); return vignette(u, 1568, 0.85).then(function(d){ URL.revokeObjectURL(u); return d; }, function(e){ URL.revokeObjectURL(u); throw e; }); });
+  }
+
+  /* ====================== LE RESULTAT ====================== */
+  function enAdresse(u){
+    /* Une image rangee chez nous arrive en adresse relative (studio_media.js:299) : servie depuis le serveur. */
+    if (/^\/studio\/media\/fichier\/[0-9a-f]{48}\.(png|jpg|webp)$/.test(String(u))) return serveur() + u;
+    /* Si le serveur n'a pas pu la ranger, il rend l'image elle-meme (studio_media.js:299) : on la montre
+       (elle est payee), sans jamais la garder (noteHisto ne retient que https). */
+    if (/^data:image\/(png|jpeg|webp);base64,/.test(String(u))) return String(u);
+    return /^https:\/\//.test(String(u)) ? String(u) : null;
+  }
+  function peintResultat(){
+    var el = $("result"), g = $("resStage"), pied = $("resFoot"), t = etat.onglet, soon = t === "voice" || t === "avatar";
+    var st = (R.st === "vide" && soon) ? "off" : R.st;
+    el.className = "result " + st + (R.genre === "video" && st === "done" ? " vid" : "");
+    g.textContent = ""; pied.textContent = ""; pied.hidden = true;
+    var quoi = { image: "image", video: "video", voice: "voice-over", avatar: "talking avatar" }[t];
+    if (st === "off") {
+      g.appendChild(ico(t === "voice" ? "voice" : "avatar"));
+      g.appendChild(h("span", null, [h("b", { text: "Your " + quoi + " will appear here" }), h("small", { text: "Coming soon — nothing to generate or pay yet." })]));
+      return;
+    }
+    if (st === "vide") {
+      g.appendChild(ico(t === "video" ? "video" : "image"));
+      g.appendChild(h("span", null, [h("b", { text: "Your " + quoi + " appears here" }),
+        h("small", { text: jeton() ? "The price is on the button before you click. Nothing is charged if it fails." : "Sign in with your wallet to generate. The price is on the button before you click." })]));
+      return;
+    }
+    if (st === "run") {
+      var vid = R.genre === "video";
+      g.appendChild(h("b", { text: vid ? (R.pct > 0 ? "Rendering · " + Math.round(R.pct) + "%" : "Rendering…") : (R.reprise ? "Recovering your result…" : "Creating your " + (R.n > 1 ? R.n + " images" : "image") + "…") }));
+      var bar = h("div", { class: "rprog" + (vid ? "" : " ind") }, [h("i")]);
+      if (vid) bar.firstChild.style.width = Math.max(4, Math.min(99, R.pct || 0)) + "%";
+      g.appendChild(bar);
+      g.appendChild(h("small", { text: vid ? "A video takes a minute or two. You can leave this page: it picks up where it was." : "You pay the real cost. Nothing is charged if it fails." }));
+      return;
+    }
+    if (st === "err") {
+      g.appendChild(ico("alert"));
+      g.appendChild(h("span", null, [h("b", { text: R.titre || "Not generated" }), h("small", { text: R.raison || TXT.reseau })]));
+      if (R.boutons && R.boutons.length) g.appendChild(h("div", { class: "rbtns" }, R.boutons));
+      if (R.statut) g.appendChild(h("p", { class: "rstat", role: "status", text: R.statut }));
+      return;
+    }
+    /* Fini. */
+    var info = R.info || {}, cout = R.cout || "";
+    var ligne = (info.nom || "") + (cout ? " · " + cout : "") + (R.reference === "swoge" ? " · drawn from the official SWOGE reference" : "");
+    if (R.genre === "video") {
+      /* « #t=0.1 » : le navigateur montre la premiere image au lieu d'un cadre noir. */
+      var v = h("video", { src: R.url + "#t=0.1", controls: true, playsinline: true, loop: true, preload: "metadata" });
+      g.appendChild(v);
+      pied.hidden = false;
+      pied.appendChild(h("b", { text: info.prompt || "Your video" }));
+      pied.appendChild(h("small", { text: ligne }));
+      pied.appendChild(h("div", { class: "racts" }, [h("a", { href: R.url, target: "_blank", rel: "noopener", download: "" }, [ico("download"), "Download"])]));
+      return;
+    }
+    var urls = R.urls || [], i0 = Math.min(R.choisie || 0, urls.length - 1);
+    if (urls.length > 1) {
+      var gr = h("div", { class: "rgrid" });
+      urls.forEach(function(u, i){
+        var b = h("button", { type: "button", class: i === i0 ? "sel" : "", "data-choisie": String(i), "aria-label": "Image " + (i + 1) + " of " + urls.length }, [h("img", { src: u, alt: "Generated image " + (i + 1) })]);
+        gr.appendChild(b);
+      });
+      if (urls.length === 3) gr.style.gridTemplateRows = "1fr 1fr";
+      g.appendChild(gr);
+    } else if (urls[0]) g.appendChild(h("img", { src: urls[0], alt: "Generated image" }));
+    g.appendChild(h("span", { class: "rtag", text: urls.length > 1 ? urls.length + " images · tap one to pick it" : (info.nom || "Image") }));
+    var u0 = urls[i0];
+    g.appendChild(h("div", { class: "rbar" }, [h("b", { text: info.prompt || "Your image" }), h("small", { text: ligne }),
+      h("div", { class: "racts" }, [
+        u0 ? h("a", { href: u0, target: "_blank", rel: "noopener", download: "" }, [ico("download"), "Download"]) : null,
+        h("button", { type: "button", "data-comme-ref": "1" }, [ico("upload"), "Use as reference"])])]));
+  }
+  /* Une colonne (<= 960 px) : le resultat entier au-dessus de la barre du bas ET des bulles du site. */
+  function montreResultat(){
+    if (window.innerWidth > 960) return;
+    var r = $("result").getBoundingClientRect(), bas = window.innerHeight - (TEL.matches ? $("composer").offsetHeight + 72 : 0) - 10;
+    var haut = (document.querySelector(".top").offsetHeight || 56) + 10;
+    if (r.bottom > bas) window.scrollBy(0, Math.min(r.bottom - bas, r.top - haut));
+    else if (r.top < haut) window.scrollBy(0, r.top - haut);
+  }
+
+  /* ====================== GENERER ====================== */
+  /* Une reponse ILLISIBLE (corps coupe par un rechargement, page d'erreur HTML du proxy pendant un
+     deploiement) ne dit rien de la generation : elle n'est jamais lue comme un echec. Mesure du
+     12/10 : 1 essai sur 75 sous charge perdait une video en cours — le rechargement coupait la
+     lecture d'un suivi, la page concluait « echec » et oubliait une video que le serveur rendait
+     encore, reserve tenue. On redemande ; seul le serveur dit « failed ». */
+  function lisReponse(r){
+    var illisible = { ok: false, illisible: true, code: r.status, http: r.status };
+    return r.json().then(function(x){ if (!x || typeof x !== "object") return illisible; x.http = r.status; if (!r.ok && x.code == null) x.code = r.status; return x; },
+                         function(){ return illisible; });
+  }
+  /* La session a expire pendant le travail : il continue au serveur ; on le reprendra a la reconnexion. */
+  function sessionPerdue(info){
+    etat.occupe = false; peintPrix();
+    R = { st: "err", genre: info.genre, info: info, titre: "Sign in again", raison: "Your session ended. The generation goes on on the server: sign in again to see it here.",
+          boutons: [h("button", { type: "button", class: "rbtn", "data-r-signin": "1", text: "Sign in" })] };
+    peintResultat();
+  }
+  function avecStyle(q){
+    if (!etat.style) return q;
+    return q ? q.replace(/[\s.]+$/, "") + ". Style: " + etat.style : "Style: " + etat.style;
+  }
+  function genere(){
+    if (etat.occupe) return;
+    var d = devis();
+    if (d.off) return;
+    if (!jeton()) return ouvreConnexion();
+    if (promptVide()) { $("prompt").focus(); return; }
+    var t = etat.onglet, mo = d.mo, q = $("prompt").value.trim();
+    var corps = { modele: mo.id, prompt: avecStyle(q), format: t === "video" ? etat.formatV : etat.formatI };
+    if (etat.jointe) corps.image = etat.jointe;
+    if (t === "image") { corps.fournisseur = mo.f; corps.n = etat.n; corps.payeur = d.pay; }
+    else { corps.duree = etat.duree; corps.resolution = etat.res; }
+    var info = { genre: t, prompt: avecStyle(q).slice(0, 300), nom: (mo.chip || mo.fnom) + " · " + mo.nom + (t === "image" ? " · ×" + etat.n : " · " + etat.duree + " s · " + etat.res),
+                 payeur: t === "image" ? d.pay : "swoge", n: etat.n, prix: d.bouton };
+    envoie(corps, info);
+  }
+  function envoie(corps, info){
+    etat.occupe = true;
+    corps.rid = nouveauRid(); info.rid = corps.rid; info.t = Date.now();
+    /* Ecrit AVANT l'envoi : une page rechargee pendant la generation la retrouve (/studio/reprise, 1 h). */
+    ecrisLocal("swogeStudioEnCours", info);
+    R = { st: "run", genre: info.genre, info: info, n: info.n, pct: 0 };
+    peintResultat(); peintPrix(); montreResultat();
+    fetch(serveur() + "/studio/media/" + info.genre, { method: "POST", cache: "no-store",
+      headers: { "content-type": "application/json", authorization: "Bearer " + jeton() }, body: JSON.stringify(corps) })
+      .then(lisReponse)
+      .then(function(res){
+        /* Illisible : la demande est peut-etre partie. On demande au serveur ce qu'il a garde sous ce rid. */
+        if (res && res.illisible) { R.reprise = true; peintResultat(); return reprendInfo(info, 6); }
+        if (!res || !res.ok) return echec(res || {}, corps, info);
+        if (info.genre === "image") return finImage(res, info);
+        info.id = res.id; ecrisLocal("swogeStudioEnCours", info);
+        suisVideo(info);
+      })["catch"](function(){
+        /* La demande est peut-etre arrivee : on demande au serveur ce qu'il a garde sous ce rid. */
+        R.reprise = true; peintResultat(); reprendInfo(info, 6);
+      });
+  }
+  function libere(){ etat.occupe = false; oteLocal("swogeStudioEnCours"); peintPrix(); }
+  function echec(e, corps, info){
+    libere();
+    var code = e.code || e.http, b = [];
+    R = { st: "err", genre: info.genre, info: info, raison: e.raison || TXT.reseau, titre: "Not generated" };
+    if (code === 401) { R.titre = "Sign in first"; b.push(h("button", { type: "button", class: "rbtn", "data-r-signin": "1", text: "Sign in" })); }
+    else if (code === 402 && e.requisUsd != null && corps) {
+      /* Le credit ne suffit pas (server.js:2801-2809) : UNE signature de ce qui manque (0,10 $ au
+         moins, credits.js:33), puis la MEME demande repart (un nouveau rid). */
+      var min = (etat.limites && etat.limites.minUsd) || 0.1;
+      var manque = Math.max(min, Math.ceil((Number(e.requisUsd) - (Number(e.creditUsd) || 0)) * 100) / 100);
+      R.titre = "Your dollar credit is too low";
+      R.relance = { corps: corps, info: info, manque: manque };
+      b.push(h("button", { type: "button", class: "rbtn", "data-r-signe": "1", text: "Sign " + dollars(manque) + " and generate" }));
+      b.push(h("button", { type: "button", class: "rbtn alt", "data-r-payeur": "swoge", text: "Pay with $SWOGE instead" }));
+    } else if (code === 402) {
+      R.titre = "Your $SWOGE balance is too low";
+      if (e.requisSwoge) R.raison = e.raison + " — about " + nombre(e.requisSwoge) + " $SWOGE is held while it runs.";
+      b.push(h("a", { class: "rbtn", href: "swoge_wallet.html", text: "Get $SWOGE" }));
+      if (info.genre === "image") b.push(h("button", { type: "button", class: "rbtn alt", "data-r-payeur": "credit", text: "Pay with dollar credit" }));
+    } else if (code === 429) R.titre = "Wait a moment";
+    else if (code === 503) R.titre = "Paused";
+    else if (code >= 500 || code == null) {
+      R.titre = "It failed — you were not charged";
+      noteHisto({ genre: info.genre, prompt: info.prompt, nom: info.nom, statut: "failed", raison: R.raison });
+    }
+    R.boutons = b;
+    peintResultat(); montreResultat();
+  }
+  function cout(res){
+    if (res.payeur === "credit") return res.factureUsd != null ? dollars(res.factureUsd) : "";
+    return res.factureSwoge != null ? nombre(res.factureSwoge) + " $SWOGE" : "";
+  }
+  function poseSoldes(res){
+    if (res.payeur === "credit") { if (res.creditUsd != null) etat.credit = Number(res.creditUsd); }
+    else if (res.solde != null && res.solde !== "") etat.swoge = Number(res.solde);
+    peintSoldes(); chargeCredit();
+  }
+  function finImage(res, info){
+    libere();
+    var urls = (res.urls || []).map(enAdresse).filter(Boolean);
+    if (!urls.length) { R = { st: "err", genre: "image", info: info, titre: "Nothing came back", raison: "The server answered without a usable image." }; peintResultat(); return; }
+    R = { st: "done", genre: "image", info: info, urls: urls, cout: cout(res), reference: res.reference, compris: res.compris, choisie: 0 };
+    poseSoldes(res);
+    noteHisto({ genre: "image", prompt: info.prompt, nom: info.nom, urls: urls.slice(0, 4), statut: "done", payeur: res.payeur === "credit" ? "credit" : "swoge",
+                usd: res.payeur === "credit" ? Number(res.factureUsd) || 0 : null, sw: res.payeur === "credit" ? null : Number(res.factureSwoge) || 0 });
+    peintResultat(); montreResultat();
+  }
+  /* Suit une video sur le SERVEUR (jamais chez le fournisseur) : GET /studio/media/video/<id>,
+     toutes les 3 s, 5 s apres une erreur reseau (comme swolemind.html:2597). */
+  function suisVideo(info){
+    etat.occupe = true;
+    R = { st: "run", genre: "video", info: info, pct: R.pct || 0 }; peintResultat(); peintPrix();
+    (function tour(){
+      /* Deconnecte en cours de route : on cesse de demander, la video reste notee (reprise a la reconnexion). */
+      var j = jeton(); if (!j) { etat.occupe = false; R = { st: "vide" }; peintResultat(); peintPrix(); return; }
+      fetch(serveur() + "/studio/media/video/" + encodeURIComponent(info.id), { headers: { authorization: "Bearer " + j }, cache: "no-store" })
+        .then(lisReponse)
+        .then(function(v){
+          if (v && v.status === "done") {
+            libere();
+            var u = enAdresse(v.url);
+            if (!u) { R = { st: "err", genre: "video", info: info, titre: "Nothing came back", raison: "The server answered without a usable video." }; peintResultat(); return; }
+            R = { st: "done", genre: "video", info: info, url: u, cout: v.factureSwoge != null ? nombre(v.factureSwoge) + " $SWOGE" : "" };
+            poseSoldes(v);
+            noteHisto({ genre: "video", prompt: info.prompt, nom: info.nom, url: u, statut: "done", payeur: "swoge", sw: Number(v.factureSwoge) || 0 });
+            peintResultat(); montreResultat(); return;
+          }
+          if (!v || v.illisible) return setTimeout(tour, 5000);
+          if (v.http === 401) return sessionPerdue(info);
+          if (v.ok === false || v.status === "failed") {
+            libere();
+            var oublie = v && (v.http === 404);
+            R = { st: "err", genre: "video", info: info, titre: oublie ? "This video is no longer on the server" : "It failed — you were not charged",
+                  raison: oublie ? "The server forgets a video an hour after it ends, or when it restarts." : ((v && v.raison) || "the video could not be generated — you were not charged") };
+            if (!oublie) noteHisto({ genre: "video", prompt: info.prompt, nom: info.nom, statut: "failed", raison: R.raison });
+            if (v && v.solde != null) { etat.swoge = Number(v.solde); peintSoldes(); }
+            peintResultat(); return;
+          }
+          R.pct = Number(v.progress) || R.pct || 0; peintResultat();
+          setTimeout(tour, 3000);
+        })["catch"](function(){ setTimeout(tour, 5000); });
+    })();
+  }
+  /* ---- LA REPRISE APRES UN RECHARGEMENT (GET /studio/reprise/<rid>, server.js:6321-6332) ----
+     Image en cours : on repasse. Finie : on l'affiche (elle a ete facturee). Video lancee : on la
+     suit. Oubliee (1 h, ou serveur redemarre) : on le DIT. */
+  function reprendInfo(info, essais){
+    var j = jeton(); if (!j) { libere(); return; }
+    etat.occupe = true; peintPrix();
+    if (R.st !== "run") { R = { st: "run", genre: info.genre, info: info, n: info.n, pct: 0, reprise: true }; peintResultat(); }
+    fetch(serveur() + "/studio/reprise/" + encodeURIComponent(info.rid), { headers: { authorization: "Bearer " + j }, cache: "no-store" })
+      .then(lisReponse)
+      .then(function(v){
+        if (v.status === "pending") return setTimeout(function(){ reprendInfo(info, essais); }, 1500);
+        if (v.illisible) { if (essais > 0) return setTimeout(function(){ reprendInfo(info, essais - 1); }, 4000); etat.occupe = false; peintPrix();
+          R = { st: "err", genre: info.genre, info: info, titre: "Can't reach the server", raison: "Reload in a moment: an unfinished request is never charged, and a finished one shows up here." }; peintResultat(); return; }
+        if (v.http === 401) return sessionPerdue(info);
+        if (v.status === "done" && info.genre === "image") return finImage(v, info);
+        if (v.status === "started" && v.id) { info.id = v.id; ecrisLocal("swogeStudioEnCours", info); return suisVideo(info); }
+        if (v.status === "failed") return echec(v, null, info);
+        libere();
+        R = { st: "err", genre: info.genre, info: info, titre: "Not recovered", raison: "The server has no trace of this request (it keeps one for an hour). If it was charged, your balance shows it." };
+        peintResultat();
+      })["catch"](function(){
+        if (essais > 0) return setTimeout(function(){ reprendInfo(info, essais - 1); }, 4000);
+        libere(); R = { st: "err", genre: info.genre, info: info, titre: "Connection lost", raison: "Check your connection and reload: an unfinished request is never charged." }; peintResultat();
+      });
+  }
+  function reprend(){
+    var info = lisLocal("swogeStudioEnCours", null);
+    if (etat.occupe || !info || !info.rid || !jeton()) return;
+    if (!(Date.now() - Number(info.t) < 65 * 60 * 1000)) { oteLocal("swogeStudioEnCours"); return; }
+    if (info.genre === "video" && info.id) return suisVideo(info);
+    reprendInfo(info, 6);
+  }
+
+  /* ====================== LES SOLDES ET LA RECHARGE ====================== */
+  function peintSoldes(){
+    var j = !!jeton();
+    document.documentElement.classList.toggle("avec-solde", j);
+    $("balBox").hidden = !j; $("topUp").hidden = !j; $("drBal").hidden = !j; $("drSign").hidden = j;
+    var cr = etat.credit == null ? "—" : dollars(etat.credit), sw = etat.swoge == null ? "—" : compact(etat.swoge);
+    $("balCr").textContent = cr; $("balSw").textContent = sw; $("drCr").textContent = cr; $("drSw").textContent = etat.swoge == null ? "—" : nombre(etat.swoge);
+    $("rcSolde").textContent = etat.credit == null ? "" : "Your dollar credit: " + cr + ".";
+    peintPrix();
+  }
+  function chargeSoldes(){
+    var j = jeton();
+    if (!j) { etat.credit = null; etat.swoge = null; etat.adresse = null; peintSoldes(); peintHisto(); return; }
+    fetch(serveur() + "/studio/chat/solde", { headers: { authorization: "Bearer " + j }, cache: "no-store" })
+      .then(lisReponse).then(function(d){ if (d && d.ok) { etat.swoge = Number(d.solde) || 0; etat.adresse = d.adresse || null; } peintSoldes(); peintHisto(); })["catch"](function(){});
+    chargeCredit();
+  }
+  var creditMaj = 0;
+  function chargeCredit(){
+    var j = jeton(); if (!j) return;
+    var maj = ++creditMaj;
+    fetch(serveur() + "/credit", { headers: { authorization: "Bearer " + j }, cache: "no-store" })
+      .then(lisReponse).then(function(d){
+        if (!d || !d.ok || maj !== creditMaj) return;
+        etat.credit = Number(d.balanceUsd) || 0; etat.limites = d.limits || null; etat.reseaux = d.networks || null;
+        peintSoldes(); peintCredit(d.history || []); peintMontants();
+      })["catch"](function(){});
+  }
+  function peintCredit(l){
+    var ul = $("crHist"); ul.textContent = "";
+    l.slice(0, 6).forEach(function(x){
+      var signe = x.kind === "spent" ? "−" : "+";
+      ul.appendChild(h("li", null, [h("span", { text: String(x.at || "").slice(5, 16).replace("T", " ") + " · " + (x.kind === "top-up" ? "Top-up" : x.kind === "refund" ? "Refund" : "Spent") + (x.what ? " · " + x.what : "") }),
+        h("b", { text: signe + dollars(Math.abs(Number(x.usd) || 0)) })]));
+    });
+    $("crBox").hidden = !l.length;
+  }
+  var RC = { usd: 5, reseau: "base" };
+  function peintMontants(){
+    /* $1, $5, $20, bornes par le serveur (credits.js:33-34 : 0,10 $ a 50 $). */
+    var L = etat.limites || {}, min = L.minUsd || 0, max = L.maxUsd || Infinity;
+    var l = [1, 5, 20].filter(function(x){ return x >= min && x <= max; });
+    if (l.indexOf(RC.usd) < 0) RC.usd = l[0] || RC.usd;
+    segment($("rcMontants"), l, RC.usd, "usd", function(v){ return dollars(v).replace(/\.00$/, ""); });
+    $("rcSign").textContent = "Sign a " + dollars(RC.usd).replace(/\.00$/, "") + " top-up";
+    var ouverts = ["base", "solana"].filter(function(n){ return !(etat.reseaux && etat.reseaux[n] === false); });
+    if (ouverts.length && ouverts.indexOf(RC.reseau) < 0) RC.reseau = ouverts[0];
+    [].forEach.call($("rcReseau").querySelectorAll("[data-net]"), function(b){
+      var n = b.getAttribute("data-net");
+      b.disabled = !!(etat.reseaux && etat.reseaux[n] === false);
+      b.setAttribute("aria-pressed", String(n === RC.reseau));
+    });
+  }
+  function recharge(montant, statut){
+    var j = jeton();
+    if (!j) return Promise.reject(new Error("Sign in first."));
+    if (!window.SwogePaie) return Promise.reject(new Error("wallet payments are still loading — try again in a second"));
+    return window.SwogePaie.paie({ reseau: RC.reseau, serveur: serveur(), statut: statut, appel: function(hh){
+      return fetch(serveur() + "/credit/topup", { method: "POST", cache: "no-store", headers: Object.assign({ "content-type": "application/json", authorization: "Bearer " + j }, hh || {}),
+        body: JSON.stringify({ usd: montant }) });
+    } }).then(window.SwogePaie.lit).then(function(r){
+      if (!r.ok) throw new Error(r.raison);
+      etat.credit = Number(r.corps.balanceUsd) || etat.credit; peintSoldes(); chargeCredit();
+      return r;
+    });
+  }
+  function ouvreRecharge(){
+    if (!jeton()) return ouvreConnexion();
+    $("drawer").hidden = true; $("menuBtn").setAttribute("aria-expanded", "false");
+    peintMontants(); $("rcStatut").textContent = ""; $("rcStatut").className = "rcst";
+    $("rc").hidden = false; chargeCredit();
+  }
+
+  /* ====================== L'HISTORIQUE (ce navigateur) ====================== */
+  /* Aucune route du serveur ne liste les generations d'une adresse (seul /credit rend les 20
+     dernieres lignes du credit en dollars, credits.js:195-202). On garde donc ici, par adresse
+     de session : le texte, le modele, ce qui a ete facture, et des adresses https — jamais une
+     image en data-URL, jamais la photo jointe. */
+  function cleHisto(){ var a = adresseSession(); return a ? "swogeStudioHisto:" + a : null; }
+  function lisHisto(){ var k = cleHisto(); var l = k ? lisLocal(k, []) : []; return Array.isArray(l) ? l : []; }
+  function noteHisto(e){
+    var k = cleHisto(); if (!k) return;
+    e.t = Date.now();
+    if (e.urls) e.urls = e.urls.filter(function(u){ return /^https:\/\//.test(u); });
+    if (e.url && !/^https:\/\//.test(e.url)) delete e.url;
+    var l = lisHisto(); l.unshift(e); ecrisLocal(k, l.slice(0, 40));
+    peintHisto();
+  }
+  function quand(t){
+    var s = (Date.now() - t) / 1000;
+    if (s < 90) return "just now"; if (s < 3600) return Math.round(s / 60) + " min ago"; if (s < 86400) return Math.round(s / 3600) + " h ago";
+    return new Date(t).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  }
+  function peintHisto(){
+    var j = !!jeton(), l = j ? lisHisto() : [], ul = $("hist"), gal = $("gal");
+    ul.textContent = ""; gal.textContent = "";
+    $("histVide").hidden = !!l.length;
+    $("histVide").textContent = j ? "Nothing yet. Each generation you make is listed here, with what it cost." : "Sign in to see what you made here.";
+    l.slice(0, 12).forEach(function(e){
+      var th = e.statut === "failed" ? h("span", { class: "hth fail" }, [ico("ban")])
+        : e.genre === "image" && e.urls && e.urls[0] ? h("span", { class: "hth" }, [h("img", { src: e.urls[0], alt: "", loading: "lazy" })])
+        : h("span", { class: "hth" }, [ico("play")]);
+      var montant = e.statut === "failed" ? "$0.00" : e.payeur === "credit" ? dollars(e.usd || 0) : nombre(e.sw || 0) + " $SWOGE";
+      ul.appendChild(h("li", null, [th, h("div", null, [h("b", { text: e.prompt || (e.genre === "video" ? "Video" : "Image") }), h("span", { text: e.nom || "" })]),
+        h("div", { class: "hp" + (e.statut === "failed" ? " z" : "") }, [h("b", { text: montant }), h("span", { text: e.statut === "failed" ? "Failed · not charged" : quand(e.t) })])]));
+    });
+    /* Les 7 derniers jours de CE navigateur : ce que chaque reponse du serveur a dit avoir facture. */
+    var semaine = l.filter(function(e){ return e.statut === "done" && Date.now() - e.t < 7 * 86400000; });
+    $("hsum").hidden = !semaine.length;
+    $("weekSum").textContent = dollars(semaine.reduce(function(s, e){ return s + (e.payeur === "credit" ? Number(e.usd) || 0 : 0); }, 0));
+    $("weekSw").textContent = nombre(semaine.reduce(function(s, e){ return s + (e.payeur === "credit" ? 0 : Number(e.sw) || 0); }, 0));
+    var faits = l.filter(function(e){ return e.statut === "done" && ((e.urls && e.urls.length) || e.url); });
+    if (!faits.length) { gal.appendChild(h("p", { class: "vide", text: j ? "Nothing here yet. What you make appears here, on this device." : "Sign in to see what you made on this device." })); return; }
+    var g = h("div", { class: "mine" });
+    faits.slice(0, 16).forEach(function(e){
+      var u = e.genre === "video" ? e.url : e.urls[0];
+      var media = e.genre === "video" ? h("video", { src: u + "#t=0.1", muted: true, playsinline: true, preload: "metadata" }) : h("img", { src: u, alt: e.prompt || "", loading: "lazy" });
+      g.appendChild(h("a", { class: "tile", href: u, target: "_blank", rel: "noopener" }, [media,
+        e.genre === "video" ? h("span", { class: "d" }, [ico("play"), "Video"]) : null,
+        h("span", { class: "cap" }, [e.prompt || "", h("span", { text: e.nom || "" })])]));
+    });
+    gal.appendChild(g);
+  }
+
+  /* ====================== SERIES & ADS (/studio/production) ====================== */
+  /* Le serveur garde la production sous l'adresse de la SESSION (server.js:6360-6453) ; la page
+     ne fait que montrer et envoyer. Creer est gratuit ; chaque scene est une video Quality (1.5). */
+  var PROD = { cat: null, courante: null, brouillon: null, occupe: false, suivi: null, cam: "auto", duree: null, restant: null, choix: false, vierge: true };
+  function prodErreur(t){ $("pErr").textContent = t || ""; }
+  function srcImage(x){
+    if (x === "swoge") return "img/site/swoge_reference.jpg";
+    if (/^\/studio\/production\/image\/[0-9a-f]{48}\.(png|jpg|webp)$/.test(String(x))) return serveur() + x;
+    if (/^data:image\/jpeg;base64,/.test(String(x))) return x;
+    return "";
+  }
+  function prodApi(chemin, methode, corps){
+    var j = jeton();
+    if (!j) return Promise.reject(new Error("Sign in with your wallet first."));
+    return fetch(serveur() + chemin, { method: methode || "GET", headers: { "content-type": "application/json", authorization: "Bearer " + j },
+      body: corps ? JSON.stringify(corps) : undefined, cache: "no-store" })
+      .then(function(r){ return r.json()["catch"](function(){ return {}; }).then(function(o){ if (!r.ok || o.ok === false) throw new Error(o.raison || ("error " + r.status)); return o; }); });
+  }
+  function voixDefaut(){ var v = ((PROD.cat && PROD.cat.voix) || []).map(function(x){ return x.id; }); return v.indexOf("rex") >= 0 ? "rex" : (v[0] || null); }
+  function nouveau(mode){
+    PROD.vierge = true;
+    /* Comme swolemind.html l.2872 : SWOGE d'office, avec une voix. La pub envoie
+       `presentateur:'swoge'` elle-meme : le serveur n'a pas de presentateur par defaut. */
+    return mode === "pub"
+      ? { mode: "pub", titre: "", style: "", format: "9:16", produit: { nom: "", image: null, presentateur: "swoge", presentateurNom: "SWOGE", decor: null, voix: voixDefaut(), slogan: "", appel: "" } }
+      : { mode: "serie", titre: "", style: "", format: "16:9", personnages: [{ nom: "SWOGE", image: "swoge", voix: voixDefaut(), description: "" }] };
+  }
+  function copie(p){ var c = JSON.parse(JSON.stringify(p)); delete c.scenes; return c; }
+  function chargeProd(suivi){
+    if (!jeton()) { PROD.cat = null; PROD.courante = null; if (!PROD.brouillon) PROD.brouillon = nouveau("serie"); peintProd(); return Promise.resolve(); }
+    return prodApi("/studio/production").then(function(c){
+      PROD.cat = c;
+      var ps = c.productions || [];
+      if (PROD.courante) PROD.courante = ps.filter(function(p){ return p.id === PROD.courante.id; })[0] || null;
+      /* Tant que le joueur n'a rien choisi : sa production la plus recente (champ `maj`, studio_production.js:207). */
+      if (!PROD.choix && !PROD.courante && ps.length && (!PROD.brouillon || !PROD.brouillon.id) && PROD.vierge) {
+        PROD.courante = ps.slice().sort(function(a, b){ return (Number(b.maj) || 0) - (Number(a.maj) || 0); })[0];
+        PROD.brouillon = copie(PROD.courante);
+      }
+      if (!PROD.brouillon || (PROD.brouillon.id && !PROD.courante)) PROD.brouillon = PROD.courante ? copie(PROD.courante) : nouveau(PROD.brouillon ? PROD.brouillon.mode : "serie");
+      /* Un brouillon jamais touche, fait avant que les voix soient connues : refait avec la voix par defaut. */
+      else if (!PROD.brouillon.id && PROD.vierge) PROD.brouillon = nouveau(PROD.brouillon.mode);
+      peintProd(suivi === true); if (suivi !== true) peintGrille();
+    })["catch"](function(e){ prodErreur(e.message); if (!PROD.brouillon) PROD.brouillon = nouveau("serie"); peintProd(suivi === true); });
+  }
+  function voixListe(){ return [["", "No voice"]].concat(((PROD.cat && PROD.cat.voix) || []).map(function(v){ return [v.id, v.nom + " · " + v.ton]; })); }
+  function selectVoix(val, fn, cls){
+    var s = h("select", { class: "inp sm" + (cls ? " " + cls : ""), "aria-label": "Voice" });
+    voixListe().forEach(function(o){ s.appendChild(h("option", { value: o[0], text: o[1] })); });
+    s.value = val || ""; s.addEventListener("change", function(){ fn(s.value || null); }); return s;
+  }
+  function choisitPhoto(fn){
+    var i = document.createElement("input"); i.type = "file"; i.accept = "image/png,image/jpeg,image/webp";
+    i.addEventListener("change", function(){ depuisFichier(i.files && i.files[0], function(d){ fn(d); peintProd(); }); });
+    i.click();
+  }
+  function lienBtn(texte, fn){ var b = h("button", { type: "button", text: texte }); b.addEventListener("click", fn); return b; }
+  function vign(x){ var s = srcImage(x); return s ? h("img", { src: s, alt: "" }) : h("span", { class: "ph" }, [ico("upload")]); }
+  function peintPersos(b){
+    var box = $("pPersos"); box.textContent = "";
+    var max = (PROD.cat && PROD.cat.personnagesMax) || 3;
+    $("pPersosL").textContent = "Characters · up to " + max;
+    b.personnages.forEach(function(c, i){
+      var nom = h("input", { class: "inp sm", maxlength: "40", placeholder: "Name", "aria-label": "Character " + (i + 1) + " name" });
+      nom.value = c.nom || ""; nom.addEventListener("input", function(){ c.nom = nom.value; });
+      var lignes = h("div", { class: "crow" }, [
+        selectVoix(c.voix, function(v){ c.voix = v; }, "cvoix"),
+        c.image ? null : h("span", { text: "Needs a picture" }),
+        lienBtn(c.image ? "Change picture" : "Upload", function(){ PROD.vierge = false; choisitPhoto(function(d){ c.image = d; }); }),
+        c.image !== "swoge" ? lienBtn("Use SWOGE", function(){ PROD.vierge = false; c.image = "swoge"; peintProd(); }) : null]);
+      var row = h("div", { class: "char" }, [vign(c.image), h("div", { class: "cmid" }, [nom, lignes])]);
+      if (b.personnages.length > 1) { var rm = h("button", { type: "button", class: "crm", "aria-label": "Remove this character" }, [ico("x")]); rm.addEventListener("click", function(){ b.personnages.splice(i, 1); peintProd(); }); row.appendChild(rm); }
+      box.appendChild(row);
+    });
+    $("pAjout").hidden = b.personnages.length >= max;
+  }
+  function peintPub(b){
+    var p = b.produit;
+    $("aNom").value = p.nom || "";
+    var ph = $("aPhoto"); ph.textContent = "";
+    ph.appendChild(h("div", { class: "char" }, [vign(p.image), h("div", { class: "cmid" }, [h("b", { text: p.image ? "Product photo" : "Upload a photo" }),
+      h("div", { class: "crow" }, [h("span", { text: "PNG, JPEG or WebP" }), lienBtn(p.image ? "Change" : "Upload", function(){ choisitPhoto(function(d){ p.image = d; }); })])])]));
+    var pr = $("aPres"); pr.textContent = "";
+    pr.appendChild(h("div", { class: "char" }, [vign(p.presentateur), h("div", { class: "cmid" }, [h("b", { text: p.presentateur === "swoge" ? "SWOGE" : p.presentateur ? (p.presentateurNom || "Your presenter") : "No presenter" }),
+      h("div", { class: "crow" }, [h("span", { text: p.presentateur === "swoge" ? "Presents your product" : "" }),
+        lienBtn("Upload", function(){ choisitPhoto(function(d){ p.presentateur = d; p.presentateurNom = null; }); }),
+        p.presentateur !== "swoge" ? lienBtn("Use SWOGE", function(){ p.presentateur = "swoge"; p.presentateurNom = "SWOGE"; peintProd(); }) : null,
+        p.presentateur ? lienBtn("None", function(){ p.presentateur = null; p.presentateurNom = null; peintProd(); }) : null])])]));
+    var sv = $("aVoix"); sv.textContent = ""; voixListe().forEach(function(o){ sv.appendChild(h("option", { value: o[0], text: o[1] })); }); sv.value = p.voix || "";
+    $("aSlogan").value = p.slogan || ""; $("aAppel").value = p.appel || "";
+  }
+  function peintStyles(b){
+    var box = $("pStyles"); box.textContent = "";
+    var connu = STYLES.some(function(s){ return s[0] === (b.style || ""); });
+    STYLES.forEach(function(s){ box.appendChild(h("button", { type: "button", class: "chip", "data-style": s[0], title: s[2], "aria-pressed": String((b.style || "") === s[0]), text: s[1] })); });
+    if (!connu) box.appendChild(h("button", { type: "button", class: "chip", "data-style": b.style, "aria-pressed": "true", text: "Custom" }));
+    var d = STYLES.filter(function(s){ return s[0] === (b.style || ""); })[0];
+    $("pStyleAide").textContent = d ? d[1] + " — " + d[2] + "." : "Your own style: " + b.style;
+  }
+  function scenesDe(p){ return (p && p.scenes) || []; }
+  /* `tableau` : seulement les scenes et le bouton (le suivi d'une scene en cours) ; le formulaire,
+     ou le joueur tape peut-etre, n'est pas refait. */
+  function peintProd(tableau){
+    var b = PROD.brouillon || (PROD.brouillon = nouveau("serie")), p = PROD.courante, j = !!jeton();
+    if (tableau !== true) peintFormulaire(b, j);
+    peintTableau(b, p, j);
+  }
+  function peintFormulaire(b, j){
+    var pr = $("prod");
+    pr.setAttribute("data-mode", b.mode); pr.setAttribute("data-format", b.format || "16:9");
+    [].forEach.call($("segP").querySelectorAll("[data-p]"), function(x){ x.setAttribute("aria-pressed", String(x.getAttribute("data-p") === b.mode)); x.disabled = !!b.id; x.title = b.id ? "A saved production keeps its type" : ""; });
+    /* La liste : nouvelle serie, nouvelle pub, puis les productions de la session. */
+    var s = $("pSel"); s.textContent = "";
+    s.appendChild(h("option", { value: "new:serie", text: "+ New series" })); s.appendChild(h("option", { value: "new:pub", text: "+ New ad" }));
+    ((PROD.cat && PROD.cat.productions) || []).forEach(function(x){ s.appendChild(h("option", { value: x.id, text: x.titre + " · " + (x.mode === "pub" ? "ad" : "series") + " · " + scenesDe(x).length + " scene" + (scenesDe(x).length === 1 ? "" : "s") })); });
+    s.value = b.id || ("new:" + b.mode);
+    s.disabled = !j;
+    $("pTitre").value = b.titre || "";
+    $("pTitre").placeholder = b.mode === "pub" ? "Swole Shaker launch" : "Gym Wars";
+    [].forEach.call($("pFormat").querySelectorAll("[data-fmt]"), function(x){ x.setAttribute("aria-pressed", String(x.getAttribute("data-fmt") === b.format)); });
+    if (b.mode === "serie") peintPersos(b); else peintPub(b);
+    peintStyles(b);
+    var sv = $("pSave");
+    sv.textContent = !j ? "Sign in to create" : b.id ? "Save changes" : (b.mode === "pub" ? "Create ad · free" : "Create series · free");
+    sv.disabled = PROD.occupe;
+    $("pDel").hidden = !b.id;
+  }
+  function peintTableau(b, p, j){
+    /* Le tableau des scenes : celles de la production ENREGISTREE (le serveur les garde). */
+    var sc = scenesDe(p), box = $("scenes"); box.textContent = "";
+    $("boardT").textContent = p ? p.titre + " · " + sc.length + " scene" + (sc.length === 1 ? "" : "s") : (j ? (b.mode === "pub" ? "Create the ad first — then film it" : "Create the series first — then film it") : "Sign in to make a series or an ad");
+    var enCours = false;
+    sc.forEach(function(x, i){
+      var num = h("span", { class: "n", text: "Scene " + (i + 1) });
+      if (x.statut === "done" && /^https:\/\//.test(String(x.url))) {
+        box.appendChild(h("a", { class: "scene", href: x.url, target: "_blank", rel: "noopener", title: x.texte || "" }, [
+          h("video", { src: x.url + "#t=0.1", muted: true, playsinline: true, preload: "metadata" }), num,
+          h("span", { class: "d" }, [ico("play"), (x.duree ? "0:" + String(x.duree).padStart(2, "0") : "Play")])]));
+      } else if (x.statut === "pending") {
+        enCours = true;
+        box.appendChild(h("div", { class: "scene wait" }, [num, h("span", { class: "w", text: "Filming… a minute or two" })]));
+      } else {
+        box.appendChild(h("div", { class: "scene fail", title: x.raison || "" }, [num, h("span", { class: "w", text: (x.raison || "This scene did not finish") + " — not charged" })]));
+      }
+    });
+    box.appendChild(h("button", { type: "button", class: "scene next", "data-scene-suivante": "1" }, [ico("plus"), "Scene " + (sc.length + 1)]));
+    $("sceneLbl").textContent = (b.mode === "pub" ? "Ad scene " : "Scene ") + (sc.length + 1) + (b.mode === "pub" ? " (optional text)" : "");
+    $("sceneTxt").placeholder = b.mode === "pub" ? "Optional: what the ad shows (the product, slogan and call to action are added)" : "What happens? Spoken lines in quotes — SWOGE says \"Let's go!\"";
+    var faite = sc.filter(function(x){ return x.statut === "done" && x.url; }).length;
+    $("contBox").hidden = !faite;
+    $("contL").textContent = "Continue from scene " + (sc.length) + " — starts on the last frame of the last finished scene";
+    $("imagineL").textContent = sc.length ? "Imagine the next scene" : "Imagine a scene";
+    $("imagineN").textContent = PROD.restant != null ? "Free · " + PROD.restant + " left today" : "Free";
+    $("imagine").disabled = !p || !j || PROD.occupe;
+    var durees = (PROD.cat && PROD.cat.durees) || (etat.cat && etat.cat.video && etat.cat.video.durees) || [6, 10];
+    if (durees.indexOf(PROD.duree) < 0) PROD.duree = durees[durees.length - 1];
+    segment($("segS"), durees, PROD.duree, "s", function(v){ return v + " s"; });
+    [].forEach.call($("cams").querySelectorAll("[data-cam]"), function(x){ x.setAttribute("aria-pressed", String(x.getAttribute("data-cam") === PROD.cam)); });
+    peintFilm();
+    clearTimeout(PROD.suivi); PROD.suivi = null;
+    /* Une scene en cours : on repasse tant que l'onglet Video est ouvert. */
+    if (enCours && etat.onglet === "video") PROD.suivi = setTimeout(function(){ chargeProd(true).then(function(){ chargeSoldes(); }); }, 4000);
+    majBarre();
+  }
+  function prixScene(){ var q = modeleScene(); return q ? prixVideoSwoge(q, PROD.duree) : null; }
+  function peintFilm(){
+    var p = PROD.courante, j = !!jeton(), sw = prixScene(), f = etat.cat && etat.cat.videoOuverte === false ? (etat.cat.videoNote || "Video is paused right now.") : null;
+    var lib = "Film this scene", prix = sw != null ? nombre(sw) + " $SWOGE" : "", dis = false;
+    if (!j) { lib = "Sign in to film"; prix = ""; }
+    else if (!p) { lib = "Create it first"; prix = ""; dis = true; }
+    else if (f) { lib = "Paused"; prix = ""; dis = true; }
+    else if (sw == null) { lib = "Prices unavailable"; prix = ""; dis = true; }
+    else if (PROD.occupe) { lib = "Starting…"; dis = true; }
+    $("filmL").textContent = lib; $("filmP").textContent = prix; $("filmD").style.display = prix ? "" : "none";
+    $("film").disabled = dis;
+    var n = $("filmNote"); n.textContent = "";
+    if (f) n.appendChild(h("span", { class: "warn", text: f }));
+    else if (sw != null) ecritNote(n, [{ b: "≈ " + nombre(sw) + " $SWOGE", suite: " for " + PROD.duree + " s" }, "Grok Imagine Video Quality (1.5), required for the same faces and voices", "the real cost, and nothing if it fails"]);
+    else n.textContent = TXT.catCharge;
+    var sc = scenesDe(p).length, b = PROD.brouillon || {};
+    $("fbT").textContent = (b.mode === "pub" ? "Ad scene " : "Scene ") + (sc + 1) + " · " + PROD.duree + " s";
+    $("fbS").textContent = sw != null ? "≈ " + nombre(sw) + " $SWOGE · nothing if it fails" : "";
+    $("fbBtn").textContent = lib; if (prix) $("fbBtn").appendChild(h("span", { class: "lg", text: " · " + prix }));
+    $("filmBar").disabled = dis;
+  }
+  function sauveProd(){
+    if (!jeton()) return ouvreConnexion();
+    if (PROD.occupe) return;
+    var b = PROD.brouillon; prodErreur("");
+    b.titre = $("pTitre").value;
+    if (b.mode === "pub") { b.produit.nom = $("aNom").value; b.produit.slogan = $("aSlogan").value; b.produit.appel = $("aAppel").value; }
+    if (!String(b.titre || "").trim()) b.titre = b.mode === "pub" ? "My ad" : "My series";
+    PROD.occupe = true; peintProd();
+    prodApi("/studio/production" + (b.id ? "/" + b.id : ""), "POST", { production: b })
+      .then(function(o){ PROD.courante = o.production; PROD.brouillon = copie(o.production); toast(b.id ? "Saved." : "Created — now film its first scene."); return chargeProd(); })
+      ["catch"](function(e){ prodErreur(e.message); })
+      .then(function(){ PROD.occupe = false; peintProd(); });
+  }
+  function supprimeProd(){
+    var p = PROD.courante; if (!p || PROD.occupe) return;
+    if (!window.confirm("Delete “" + p.titre + "” and its pictures? Videos already made stay downloadable from their links until they expire.")) return;
+    PROD.occupe = true; prodErreur("");
+    prodApi("/studio/production/" + p.id, "DELETE").then(function(){ PROD.courante = null; PROD.brouillon = nouveau(p.mode); return chargeProd(); })
+      ["catch"](function(e){ prodErreur(e.message); }).then(function(){ PROD.occupe = false; peintProd(); });
+  }
+  function imagine(){
+    var p = PROD.courante; if (!p || PROD.occupe) return;
+    PROD.occupe = true; prodErreur(""); $("imagineL").textContent = "Imagining…"; $("imagine").disabled = true;
+    prodApi("/studio/production/" + p.id + "/imagine", "POST", { texte: $("sceneTxt").value })
+      .then(function(o){ if (o.texte) $("sceneTxt").value = o.texte; if (o.restant != null) PROD.restant = o.restant; $("sceneTxt").focus(); })
+      ["catch"](function(e){ prodErreur(e.message); })
+      .then(function(){ PROD.occupe = false; peintProd(); });
+  }
+  function filme(){
+    if (!jeton()) return ouvreConnexion();
+    var p = PROD.courante; if (!p || PROD.occupe || $("film").disabled) return;
+    PROD.occupe = true; prodErreur(""); peintFilm();
+    var corps = { texte: $("sceneTxt").value, duree: PROD.duree, camera: PROD.cam };
+    /* La suite part d'office quand une scene est finie (server.js:6434-6435) ; decochee : suite:false. */
+    if (!$("contBox").hidden) corps.suite = $("cont").checked;
+    prodApi("/studio/production/" + p.id + "/scene", "POST", corps)
+      .then(function(){ $("sceneTxt").value = ""; toast("Filming — the scene appears on the board when it's ready."); return chargeProd(); })
+      ["catch"](function(e){ prodErreur(e.message); })
+      .then(function(){ PROD.occupe = false; peintProd(); chargeSoldes(); });
+  }
+
+  /* ====================== TELEPHONE : la barre du bas suit ce qu'on regarde ====================== */
+  var serieVue = false;
+  function mesureBarre(){
+    var on = document.documentElement.classList.contains("serie-vue");
+    document.documentElement.style.setProperty("--bar-h", (TEL.matches ? (on ? $("filmbar") : $("composer")).offsetHeight : 0) + "px");
+  }
+  function majBarre(){
+    /* Seulement quand une production enregistree est ouverte : sans elle, pas de barre de scene. */
+    var on = serieVue && TEL.matches && etat.onglet === "video" && !!PROD.courante && !!jeton();
+    document.documentElement.classList.toggle("serie-vue", on);
+    $("filmbar").setAttribute("aria-hidden", on ? "false" : "true");
+    $("filmBar").tabIndex = on ? 0 : -1;
+    $("composer").inert = on;
+    mesureBarre();
+  }
+
+  /* ====================== LE CATALOGUE, LU AU SERVEUR ====================== */
+  function chargeCatalogue(){
+    return fetch(serveur() + "/studio/media/catalogue", { cache: "no-store" })
+      .then(function(r){ if (!r.ok) throw new Error("http " + r.status); return r.json(); })
+      .then(function(c){
+        if (!c || typeof c !== "object") throw new Error("catalogue");
+        etat.cat = c; etat.catErreur = false;
+        peintCommandes(); peintGrille(); peintPrix();
+      })["catch"](function(){
+        etat.catErreur = !etat.cat;
+        if (!etat.cat) { peintGrille(); peintPrix(); setTimeout(chargeCatalogue, 15000); }
+      });
+  }
+
+  /* ====================== BRANCHEMENTS ====================== */
+  [].forEach.call(document.querySelectorAll(".tab"), function(b){
+    b.addEventListener("click", function(){ choisisOnglet(b.getAttribute("data-tab")); });
+  });
+  $("grid").addEventListener("click", function(ev){
+    if (ev.target.closest("[data-vers-serie]") || ev.target.closest(".mcard.serie")) { choisisOnglet("video"); setTimeout(function(){ $("prod").scrollIntoView({ behavior: "smooth", block: "start" }); }, 30); return; }
+    var c = ev.target.closest(".mcard"); if (!c || c.classList.contains("no")) return;
+    var id = c.getAttribute("data-id");
+    if (!c.classList.contains("live")) {
+      var nom = (c.querySelector(".mname b") || {}).textContent || "This model";
+      if (c.classList.contains("soon")) toast(nom + " is coming soon — not available yet.");
+      else if (c.classList.contains("paused")) toast((c.querySelector(".pz") || {}).textContent || (nom + " is paused."));
+      return;
+    }
+    if (etat.onglet !== "image" && etat.onglet !== "video") return;
+    etat.sel[etat.onglet] = id; ecrisLocal("swogeStudioChoix", etat.sel);
+    peintGrille(); peintPrix();
+  });
+  $("grid").addEventListener("keydown", function(ev){
+    if ((ev.key === "Enter" || ev.key === " ") && (ev.target.classList.contains("live") || ev.target.classList.contains("serie"))) { ev.preventDefault(); ev.target.click(); }
+  });
+  function surSegment(box, attr, fn){
+    box.addEventListener("click", function(ev){
+      var b = ev.target.closest("button"); if (!b || b.disabled || !box.contains(b)) return;
+      [].forEach.call(box.querySelectorAll("button"), function(x){ x.setAttribute("aria-pressed", String(x === b)); });
+      fn(b.getAttribute(attr));
+    });
+  }
+  surSegment($("segN"), "data-n", function(v){ etat.n = Number(v); peintPrix(); });
+  surSegment($("segL"), "data-l", function(v){ etat.duree = Number(v); peintPrix(); });
+  surSegment($("segR"), "data-r", function(v){ etat.res = v; peintPrix(); });
+  surSegment($("segS"), "data-s", function(v){ PROD.duree = Number(v); peintFilm(); });
+  surSegment($("rcMontants"), "data-usd", function(v){ RC.usd = Number(v); peintMontants(); });
+  surSegment($("rcReseau"), "data-net", function(v){ RC.reseau = v; peintMontants(); });
+  surSegment($("pFormat"), "data-fmt", function(v){ if (PROD.brouillon) { PROD.brouillon.format = v; $("prod").setAttribute("data-format", v); } });
+  surSegment($("cams"), "data-cam", function(v){ PROD.cam = v; });
+  $("segP").addEventListener("click", function(ev){
+    var b = ev.target.closest("[data-p]"); if (!b || b.disabled) return;
+    var m = b.getAttribute("data-p"); if (PROD.brouillon && PROD.brouillon.mode === m) return;
+    PROD.choix = true; PROD.courante = null; PROD.brouillon = nouveau(m); prodErreur(""); peintProd();
+  });
+  $("pSel").addEventListener("change", function(){
+    var v = this.value; prodErreur(""); PROD.choix = true;
+    if (/^new:/.test(v)) { PROD.courante = null; PROD.brouillon = nouveau(v.slice(4)); }
+    else { PROD.courante = ((PROD.cat && PROD.cat.productions) || []).filter(function(p){ return p.id === v; })[0] || null; PROD.brouillon = PROD.courante ? copie(PROD.courante) : nouveau("serie"); }
+    peintProd();
+  });
+  /* Un brouillon modifie n'est plus « vierge » : on ne le remplace plus en douce. */
+  $("prod").addEventListener("input", function(){ PROD.vierge = false; });
+  $("prod").addEventListener("change", function(){ PROD.vierge = false; });
+  $("pTitre").addEventListener("input", function(){ if (PROD.brouillon) PROD.brouillon.titre = this.value; });
+  $("aNom").addEventListener("input", function(){ if (PROD.brouillon && PROD.brouillon.produit) PROD.brouillon.produit.nom = this.value; });
+  $("aSlogan").addEventListener("input", function(){ if (PROD.brouillon && PROD.brouillon.produit) PROD.brouillon.produit.slogan = this.value; });
+  $("aAppel").addEventListener("input", function(){ if (PROD.brouillon && PROD.brouillon.produit) PROD.brouillon.produit.appel = this.value; });
+  $("aVoix").addEventListener("change", function(){ if (PROD.brouillon && PROD.brouillon.produit) PROD.brouillon.produit.voix = this.value || null; });
+  $("pAjout").addEventListener("click", function(){ var b = PROD.brouillon; if (!b || !b.personnages) return; b.personnages.push({ nom: "", image: null, voix: null, description: "" }); peintProd(); });
+  $("pStyles").addEventListener("click", function(ev){ var c = ev.target.closest("[data-style]"); if (!c || !PROD.brouillon) return; PROD.brouillon.style = c.getAttribute("data-style"); peintStyles(PROD.brouillon); });
+  $("pSave").addEventListener("click", sauveProd);
+  $("pDel").addEventListener("click", supprimeProd);
+  $("imagine").addEventListener("click", imagine);
+  $("film").addEventListener("click", filme);
+  $("filmBar").addEventListener("click", filme);
+  $("scenes").addEventListener("click", function(ev){ if (ev.target.closest("[data-scene-suivante]")) $("sceneTxt").focus(); });
+  [$("payCr"), $("paySw")].forEach(function(b){
+    b.addEventListener("click", function(){ if (b.disabled) return; etat.payeurChoisi = b.getAttribute("data-pay"); ecrisLocal("swogeStudioPayeur", etat.payeurChoisi); peintPrix(); });
+  });
+  (function(){
+    var s = $("style");
+    STYLES.forEach(function(x){ s.appendChild(h("option", { value: x[0], text: x[1] })); });
+    s.addEventListener("change", function(){ etat.style = s.value; });
+  })();
+  $("format").addEventListener("change", function(){ if (etat.onglet === "video") etat.formatV = this.value; else etat.formatI = this.value; });
+  $("refBtn").addEventListener("click", function(){
+    if (etat.jointe) { etat.jointe = null; peintRef(); peintPrix(); return; }
+    $("fichier").value = ""; $("fichier").click();
+  });
+  $("fichier").addEventListener("change", function(){ depuisFichier(this.files && this.files[0], joint); });
+  $("refNote").addEventListener("click", function(ev){
+    if (!ev.target.closest("[data-swoge-ref]")) return;
+    vignette("img/site/swoge_reference.jpg", 1568, 0.85).then(joint)["catch"](function(){ toast("SWOGE's picture could not be loaded."); });
+  });
+  $("magic").addEventListener("click", function(){
+    var l = IDEES[etat.onglet] || IDEES.image;
+    $("prompt").value = l[etat.idee++ % l.length]; $("prompt").focus(); peintPrix();
+  });
+  $("mchip").addEventListener("click", function(){ $("grid").scrollIntoView({ behavior: "smooth", block: "start" }); });
+  $("gen").addEventListener("click", genere);
+  $("prompt").addEventListener("input", function(){ if (!TEL.matches) { this.style.height = "auto"; this.style.height = Math.min(this.scrollHeight, 260) + "px"; } peintPrix(); });
+  $("prompt").addEventListener("keydown", function(ev){ if (ev.key === "Enter" && (ev.metaKey || ev.ctrlKey)) { ev.preventDefault(); genere(); } });
+  $("result").addEventListener("click", function(ev){
+    var c = ev.target.closest("[data-choisie]");
+    if (c) { R.choisie = Number(c.getAttribute("data-choisie")) || 0; peintResultat(); return; }
+    var b = ev.target.closest("button"); if (!b) return;
+    if (b.hasAttribute("data-comme-ref")) {
+      var u = (R.urls || [])[R.choisie || 0]; if (!u) return;
+      b.disabled = true;
+      depuisAdresse(u).then(function(d){ if (etat.onglet !== "image") choisisOnglet("image"); joint(d); toast("Added as your reference."); window.scrollTo({ top: 0, behavior: "smooth" }); })
+        ["catch"](function(){ toast("This picture can't be reused directly — download it, then attach it with Reference."); })
+        .then(function(){ b.disabled = false; });
+    } else if (b.hasAttribute("data-r-signin")) ouvreConnexion();
+    else if (b.hasAttribute("data-r-payeur")) { etat.payeurChoisi = b.getAttribute("data-r-payeur"); ecrisLocal("swogeStudioPayeur", etat.payeurChoisi); R = { st: "vide" }; peintResultat(); peintPrix(); }
+    else if (b.hasAttribute("data-r-signe") && R.relance) {
+      var x = R.relance; b.disabled = true;
+      recharge(x.manque, function(t){ R.statut = t; peintResultat(); }).then(function(){
+        envoie(x.corps, x.info);
+      })["catch"](function(e){ R.statut = "Not topped up, not charged: " + String(e && (e.message || e.code) || e).slice(0, 200); peintResultat(); });
+    }
+  });
+  $("topUp").addEventListener("click", ouvreRecharge);
+  $("drTop").addEventListener("click", ouvreRecharge);
+  $("drSign").addEventListener("click", function(){ $("drawer").hidden = true; $("menuBtn").setAttribute("aria-expanded", "false"); ouvreConnexion(); });
+  $("rcClose").addEventListener("click", function(){ $("rc").hidden = true; });
+  $("rc").addEventListener("click", function(ev){ if (ev.target === $("rc")) $("rc").hidden = true; });
+  $("rcSign").addEventListener("click", function(){
+    var b = this, st = $("rcStatut"); b.disabled = true; st.className = "rcst";
+    recharge(RC.usd, function(t){ st.textContent = t; }).then(function(r){
+      b.disabled = false;
+      st.textContent = r.corps.alreadyCredited ? "This payment was already credited." : "Done: " + dollars(r.corps.creditedUsd) + " added. Your credit: " + dollars(r.corps.balanceUsd) + ".";
+    })["catch"](function(e){ b.disabled = false; st.className = "rcst err"; st.textContent = "Not topped up, not charged: " + String(e && (e.message || e.code) || e).slice(0, 200); });
+  });
+  $("menuBtn").addEventListener("click", function(){
+    var d = $("drawer"), o = d.hidden; d.hidden = !o; this.setAttribute("aria-expanded", String(o));
+  });
+  document.addEventListener("keydown", function(ev){ if (ev.key === "Escape") { $("rc").hidden = true; $("drawer").hidden = true; $("menuBtn").setAttribute("aria-expanded", "false"); } });
+  if (TEL.addEventListener) TEL.addEventListener("change", function(){ peintCommandes(); majBarre(); });
+  if ("IntersectionObserver" in window) {
+    new IntersectionObserver(function(es){ es.forEach(function(e){ serieVue = e.isIntersecting; }); majBarre(); },
+      { rootMargin: "-40% 0px -40% 0px" }).observe($("prod"));
+  }
+  if ("ResizeObserver" in window) { var ro = new ResizeObserver(mesureBarre); ro.observe($("composer")); ro.observe($("filmbar")); }
+  /* La connexion se fait sur cette page (stakebubble recharge) OU dans la bulle portefeuille, qui
+     ecrit le meme jeton sans recharger : on relit le jeton a chaque geste, et on le guette. */
+  var dernierJeton = jeton();
+  function surJeton(){
+    var j = jeton(); if (j === dernierJeton) return;
+    dernierJeton = j;
+    chargeSoldes(); peintHisto(); peintResultat(); peintPrix();
+    if (etat.onglet === "video") chargeProd(); else if (!j) { PROD.cat = null; PROD.courante = null; }
+    reprend();
+  }
+  window.addEventListener("storage", function(e){ if (!e.key || e.key === "swogeSession") surJeton(); });
+  setInterval(surJeton, 2000);
+
+  /* ====================== DEPART ====================== */
+  /* Le solde $SWOGE pousse par la socket de stakebubble apres chaque reglement (server.js:2445).
+     stakebubble.js se charge APRES ce script : on s'abonne une fois la page chargee. */
+  window.addEventListener("load", function(){
+    if (window.swogeFil && typeof window.swogeFil.ecoute === "function")
+      window.swogeFil.ecoute(function(m){ if (m && m.type === "balance" && m.balance != null && jeton()) { etat.swoge = Number(m.balance); peintSoldes(); } });
+  });
+  var dep = (location.hash || "").replace("#", "");
+  PROD.brouillon = nouveau("serie");
+  choisisOnglet(dep === "series" ? "video" : (ONGLETS[dep] ? dep : "image"));
+  peintRef(); peintSoldes(); peintHisto(); peintProd();
+  chargeCatalogue().then(function(){ peintFilm(); });
+  chargeSoldes();
+  reprend();
+  if (dep === "series") setTimeout(function(){ $("prod").scrollIntoView({ block: "start" }); }, 60);
+})();
+</script>
+
+<!-- ---- LES SCRIPTS PARTAGES, EN BAS (meme ordre que swolemind.html) ----
+     `stakebubble.js` porte la connexion par portefeuille et les bulles ; `SWOGE_SOCKET='aucune'`
+     lui dit que cette page n'a pas de socket a elle (c'est par la sienne qu'arrive le jeton). -->
+<script>window.SWOGE_SOCKET = 'aucune';</script>
+<script src="stakebubble.min.js?v=c324151c"></script>
+<script src="x402_solana.js?v=1d86ed41"></script>
+<script src="x402_paie.js?v=6f6b9006"></script>
+</body>
+</html>

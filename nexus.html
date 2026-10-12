@@ -514,6 +514,12 @@ body{ font-family:'Archivo',system-ui,sans-serif; }
 #nxFiche i.nxfi-passif{ color:#C89BFF; font-weight:800; margin-top:6px; }
 #nxFiche em{ display:block; font-style:italic; color:#7b8496; margin-top:4px;
   font-size:10.5px; }
+/* Le MOT de la rarete, sous le nom et dans sa couleur : la couleur seule ne
+   se lit pas pour tout le monde, et « est-ce du legendaire ou de l'or ? » ne
+   doit pas se deviner. Le mot vient du serveur (`rareteNom`, `rn` au sol). */
+#nxFiche .nxfi-rar{ display:block; margin:-3px 0 5px; color:var(--fc,#EAF2FF);
+  font:800 9.5px/1.2 'Archivo',system-ui,sans-serif; letter-spacing:.9px;
+  text-transform:uppercase; opacity:.9; }
 /* ---- LE MENU DE L'OBJET ----
    La fiche laisse passer les clics au repos — c'est une info-bulle. Le temps
    du menu elle les PREND, sinon ses boutons seraient morts. */
@@ -550,6 +556,26 @@ body{ font-family:'Archivo',system-ui,sans-serif; }
 /* Un liseré violet quand il est PRET : le retour a la couleur seul se
    remarque mal du coin de l'oeil pendant un combat. */
 .nxp-c.chaud{ box-shadow:inset 0 0 0 1px rgba(190,140,255,.75); }
+
+/* ---- LE LISERE DE RARETE ----
+ * Une case de vingt pixels ne disait pas ce qu'elle valait : une epee commune
+ * et une epee mythique avaient le meme fond, et il fallait survoler chaque
+ * case pour savoir laquelle jeter. Le butin se lit maintenant d'un coup d'oeil.
+ *
+ * La couleur est celle que le SERVEUR joint a la piece (`couleur`, `co` au
+ * sol) et que la page pose dans `--t` : aucune table recopiee ici, sinon deux
+ * violets finiraient par ne plus etre le meme.
+ *
+ * Une barre BASSE, et pas une bordure : `.chaud` (le fruit pret) est deja un
+ * liseré violet tout autour, a deux crans de l'epique (#C07BFF) — un fruit
+ * epique pret et un fruit epique en recharge se seraient lus pareil. Le bas
+ * de la case ne porte rien d'autre que le compte d'une pile, qu'on remonte
+ * d'autant. */
+.nxp-c.rar::after, #nxButinFlot .fl.rar::after{ content:''; position:absolute;
+  left:2px; right:2px; bottom:1px; height:3px; border-radius:2px;
+  background:var(--t); pointer-events:none; }
+#nxButinFlot .fl.rar::after{ left:7px; right:7px; bottom:3px; }
+.nxp-c.rar b:not(.nxp-og){ bottom:4px; z-index:1; }
 
 /* les joueurs a portee, deux colonnes, avec leur vignette */
 .nxp-gens{ display:grid; grid-template-columns:1fr 1fr; gap:3px 6px;
@@ -3487,7 +3513,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
      racine ; c'est le seul endroit d'ou elle peut couvrir tout le reste. -->
 <div id="nxFiche"></div>
 
-<script src="nexus.js?v=4675b020" defer></script>
+<script src="nexus.js?v=02e3df8c" defer></script>
 <script>window.addEventListener('load',function(){setTimeout(function(){var p=document.getElementById('preloader');if(p){p.classList.add('done');setTimeout(function(){p.style.display='none';},700);}},450);});setTimeout(function(){var p=document.getElementById('preloader');if(p&&!p.classList.contains('done')){p.classList.add('done');}},9000);</script>
 
 <script>

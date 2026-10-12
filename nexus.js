@@ -959,7 +959,8 @@
          * case se remplit — mais annonce, et avec le son du niveau : c'est la
          * seule chose du jeu qu'on ne peut ni viser ni acheter. */
         if (m.sacJoueur) SAC = m.sacJoueur;
-        flotte('\uD83E\uDD5A ' + (NOM_OEUF[m.oeuf] || 'EGG').toUpperCase());
+        flotte('\uD83E\uDD5A ' + (NOM_OEUF[m.oeuf] || 'EGG').toUpperCase(),
+               couleurRamassee(m, function (o) { return o.oeuf === m.oeuf; }));
         joueSample('niveau', { vol: 0.85 });
         peintPanneau();
       } else if (m.item) {
@@ -968,8 +969,18 @@
            fiche, et on aurait ramasse quelque chose qu'on ne voit nulle
            part. */
         if (m.sacJoueur) SAC = m.sacJoueur;
-        flotte(m.nom || 'ITEM');
-        joueSample('clic2', { vol: 0.6 });
+        /* ---- LE DROP SE LIT ----
+         * Le meme jaune et le meme petit clic pour une epee commune et pour
+         * une relique : on ne savait ce qu'on avait ramasse qu'en ouvrant le
+         * sac. Le texte prend la couleur de la piece, et a partir de l'epique
+         * c'est le son du niveau qui joue — celui qu'on n'entend que pour ce
+         * qui compte. Le commun et le rare gardent le clic : ce sont eux qu'on
+         * ramasse en marchant, et une fanfare a chaque pas n'annoncerait plus
+         * rien. */
+        var fort = !!FANFARE_RARETE[m.rarete];
+        flotte(m.nom || 'ITEM', couleurRamassee(m, function (o) { return o.id === m.item; }));
+        if (fort) joueSample('niveau', { vol: 0.8 });
+        else joueSample('clic2', { vol: 0.6 });
         peintPanneau();
       } else if (m.potion) {
         POTIONS_C = m.potions || POTIONS_C;
@@ -1231,6 +1242,30 @@
     return (o && o.og) ? '<b class="nxp-og">OG</b>' : '';
   }
 
+  /* ---- LE LISERE DE RARETE ----
+   *
+   * Le drop ne se lisait pas : une epee commune et une epee mythique avaient
+   * la meme case, le meme texte jaune en montant (#FFD97A) et le meme petit
+   * clic. On ne savait ce qu'on venait de ramasser qu'en ouvrant sa fiche.
+   *
+   * La couleur est CELLE DU SERVEUR — `couleur` sur l'equipement et le sac,
+   * `co` sur une place du sol. On ne la deduit pas de la cle de rarete : une
+   * table ici et une table la-bas, et deux rouges finissent par ne plus etre
+   * le meme rouge. Une piece sans couleur (fiole de stat, potion, oeuf au sol)
+   * n'a pas de rarete a dire : elle n'a pas de liseré, plutot qu'un liseré
+   * invente.
+   *
+   * Et seulement une couleur : la valeur part dans un attribut `style`, et un
+   * texte arbitraire y serait du CSS — on n'accepte que « #rgb » a « #rrggbbaa ».
+   */
+  function teinteServeur(c) {
+    return (typeof c === 'string' && /^#[0-9a-f]{3,8}$/i.test(c)) ? c : null;
+  }
+  function lisere(c) {
+    var t = teinteServeur(c);
+    return t ? { cl: ' rar', st: ' style="--t:' + t + '"' } : { cl: '', st: '' };
+  }
+
   function ech(s) {
     return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
@@ -1329,7 +1364,7 @@
       if (c.po) return { nom: d.titre, couleur: '#EAF2FF',
                          note: c.po === 'vie' ? 'Restores health' : 'Restores mana' };
       return { nom: c.nm || d.titre, bonus: c.bo || null, degats: c.dg || null,
-               couleur: c.co || '#8DA0C4', og: !!c.og };
+               couleur: c.co || '#8DA0C4', rareteNom: c.rn || null, og: !!c.og };
     }
     if (el.dataset.sac) {
       /* Par la PLACE et non par l'identifiant : deux exemplaires du meme
@@ -1402,7 +1437,14 @@
     /* Les numerotees le disent ici aussi : c'est la fiche qu'on lit avant de
        decider si l'on ramasse. */
     if (o.og) lignes += '<em style="color:#C89BFF">OG \u2014 limited series</em>';
-    elFiche.innerHTML = '<b>' + ech(o.nom || '') + '</b>' + lignes;
+    /* ---- LE MOT DE LA RARETE ----
+     * La couleur du nom la disait seule, et une couleur ne se lit pas pour
+     * tout le monde — ni sur tous les ecrans : l'or et le jaune des bonus se
+     * confondent au soleil. Le mot vient du serveur (`rareteNom`, `rn` au
+     * sol), comme la couleur : une traduction ici aurait ete une seconde table
+     * des raretes. Une fiole ou une potion n'en a pas, et n'en montre pas. */
+    var motRar = o.rareteNom ? '<span class="nxfi-rar">' + ech(o.rareteNom) + '</span>' : '';
+    elFiche.innerHTML = '<b>' + ech(o.nom || '') + '</b>' + motRar + lignes;
     elFiche.style.setProperty('--fc', o.couleur || '#EAF2FF');
     /* ---- ELLE REDEVIENT TRANSPARENTE AUX CLICS ----
      * Le menu la rend cliquable (`.actes`). Si la classe survivait au
@@ -2005,7 +2047,8 @@
          sur trois sans dire laquelle, le second est l'infobulle du
          navigateur — lente, laide, et impossible a mettre aux couleurs du
          jeu. Le survol ouvre la vraie fiche (voir `montreFiche`). */
-      return '<div class="nxp-c" data-slot="' + k + '" data-item="' + e.item + '">' +
+      var Le = lisere(e.couleur);
+      return '<div class="nxp-c' + Le.cl + '"' + Le.st + ' data-slot="' + k + '" data-item="' + e.item + '">' +
         '<img alt="" src="img/shop/' + encodeURIComponent(e.cle) + '.webp" ' +
         'onerror="this.style.visibility=\'hidden\'">' + cd + marqueOG(e) + '</div>';
     }).join('');
@@ -2042,8 +2085,11 @@
         : (o ? '<img alt="" src="img/shop/' + encodeURIComponent(o.cle) + '.webp" ' +
                'onerror="this.style.visibility=\'hidden\'">' : '');
       var cleCase = o ? (o.oeuf ? 'oe:' + o.oeuf : o.fiole ? 'st:' + o.fiole : o.id) : '';
+      /* L'oeuf aussi : le serveur lui donne la couleur de sa rarete (rouge,
+         blanc pour le prisme), la meme que celle de la piece qu'il vaut. */
+      var Ls = lisere(o && o.couleur);
       cases.push(o
-        ? '<div class="nxp-c' + (o.oeuf ? ' oeuf' : '') + '" data-sac="' + cleCase +
+        ? '<div class="nxp-c' + (o.oeuf ? ' oeuf' : '') + Ls.cl + '"' + Ls.st + ' data-sac="' + cleCase +
           '" data-place="' + i + '"' +
           (o.fiole ? ' data-fiole="' + o.fiole + '"' : '') +
           (o.oeuf ? ' data-oeuf="' + o.oeuf + '"' : '') + '>' +
@@ -9986,6 +10032,9 @@
                       * mais le blanc est celui des reliques, et c'est
                       * justement la confusion qu'on vient de retirer. */
                      oeuf: '#3FE0D0' }[s.s] || '#FFFFFF';
+      /* Le halo d'un sac de rarete prend la couleur de sa piece, comme son
+         en-tete (`sc`, sacs.js) : un seul rouge pour le mythique. */
+      teinte = teinteServeur(s.sc) || teinte;
       /* Un peu plus fort pour l'oeuf : c'est la chose la plus rare qui tombe,
          et il faut la voir depuis l'autre bout de l'anneau. */
       halo(s.x, s.y + 4, T * 0.62, teinte,
@@ -10578,7 +10627,42 @@
   }
 
   var FLOTTANTS = [];
-  function flotte(t) { FLOTTANTS.push({ t: t, vie: 1.5, max: 1.5 }); }
+  /* `couleur` est facultative : sans elle, le jaune de toujours. Seul ce
+     qui a une rarete en apporte une — et c'est celle du serveur. */
+  function flotte(t, couleur) {
+    FLOTTANTS.push({ t: t, c: teinteServeur(couleur), vie: 1.5, max: 1.5 });
+  }
+  /* ---- DANS TOUTES LES SCENES ----
+   * Le texte ne vieillissait, et ne se peignait, que dans la branche du monde
+   * de combat. Or le hall a son sol, ses sacs et le meme double-clic, et bien
+   * des messages y parlent (« OUT IN THE WILD ONLY », « DROPPED », le nom de
+   * ce qu'on reprend). Relecture du 12/10/2026 a 1440 px : une piece epique,
+   * une commune et une mythique reprises dans le hall n'y peignaient AUCUNE
+   * image ; au `realmJoin` suivant, les trois montaient d'un coup dans le
+   * monde (51 images chacune) — on croyait avoir ramasse un mythique en
+   * arrivant. Le texte vieillit et se peint donc a chaque image, quelle que
+   * soit la scene (`boucle`) : il dit ce qui vient d'arriver, la ou l'on est. */
+  function vieillitFlottants(dt) {
+    for (var fi = FLOTTANTS.length - 1; fi >= 0; fi--) {
+      FLOTTANTS[fi].vie -= dt;
+      if (FLOTTANTS[fi].vie <= 0) FLOTTANTS.splice(fi, 1);
+    }
+  }
+  /* ---- LA COULEUR DE CE QU'ON VIENT DE RAMASSER ----
+   * Dans le hall, la reponse porte la piece entiere (`couleur` comprise).
+   * Dans le monde, elle ne porte que `item`, `nom` et `rarete` — mais le sac
+   * complet revient avec elle, et la piece y est, avec SA couleur. On la
+   * cherche la plutot que de traduire la cle : la couleur reste celle que le
+   * serveur a ecrite. */
+  function couleurRamassee(m, cEst) {
+    if (teinteServeur(m.couleur)) return m.couleur;
+    var l = (m.sacJoueur || []).filter(cEst)[0];
+    return l ? l.couleur : null;
+  }
+  /* Les raretes qui meritent le son du niveau : a partir de l'epique. C'est
+     un choix de SON, pas une regle de jeu — la page ne decide de rien
+     d'autre avec, et une cle inconnue retombe sur le clic. */
+  var FANFARE_RARETE = { epique: 1, legendaire: 1, mythique: 1, relique: 1 };
   var secousse = 0;             // l'ecran tremble quand on encaisse
 
   function entreMonde(m) {
@@ -14850,7 +14934,11 @@
   var COUL_SAC = { brun: '#B08050', bleu: '#5AA9FF', violet: '#C07BFF',
                    or: '#FFC53D', rouge: '#F2685E', blanc: '#FFFFFF',
                    oeuf: '#3FE0D0' };
-  var NOM_SAC = { brun: 'Loot bag', bleu: 'Stat potion', violet: 'Rare drop',
+  /* Le sac VIOLET est celui de l'epique (monde.js, SAC_DE_RARETE : le commun
+     et le rare partagent le brun). Il s'annoncait « Rare drop » : un joueur
+     qui ouvrait un sac violet sur une piece epique lisait un cran de moins
+     que ce qu'il tenait. */
+  var NOM_SAC = { brun: 'Loot bag', bleu: 'Stat potion', violet: 'Epic drop',
                   or: 'Legendary drop', rouge: 'Mythic drop', blanc: 'RELIC',
                   /* Il DIT ce que c'est. « RELIC » sur un sac d'oeuf envoyait
                      traverser la carte pour autre chose que ce qu'on
@@ -14919,8 +15007,12 @@
     if (!tactile || !s || !s.c.length) { elFlot.classList.remove('on'); elFlot.innerHTML = ''; return; }
     elFlot.innerHTML = s.c.map(function (o, i) {
       var d = contenuDeLaPlace(o, ordre);
-      return '<button type="button" class="fl" data-flot="' + i + '" title="' + d.titre + '">' +
-             d.html + '<b>' + d.titre + '</b></button>';
+      /* Le meme liseré que dans le panneau : c'est surtout ICI, panneau
+         replie et en plein combat, qu'on decide en un regard si la place
+         vaut un appui. */
+      var L = lisere(o.co);
+      return '<button type="button" class="fl' + L.cl + '"' + L.st + ' data-flot="' + i + '" title="' + ech(d.titre) + '">' +
+             d.html + '<b>' + ech(d.titre) + '</b></button>';
     }).join('');
     elFlot.classList.add('on');
   }
@@ -14931,7 +15023,9 @@
     peintFlot(SAC_PIEDS, ordreG);
     if (!SAC_PIEDS) { elButin.hidden = true; return; }
     var s = SAC_PIEDS;
-    var couleur = COUL_SAC[s.s] || '#C9D3F2';
+    /* `sc` : la couleur de la piece qui fait la couleur du sac (sacs.js,
+       `teinteDe`). Sans elle — brun, bleu, oeuf — la teinte de la page. */
+    var couleur = teinteServeur(s.sc) || COUL_SAC[s.s] || '#C9D3F2';
     var cases = (MONDE_C && MONDE_C.sac && MONDE_C.sac.cases) || 8;
     var ordre = (MONDE_C && MONDE_C.stats) || [];
     var html = [];
@@ -14943,7 +15037,8 @@
          ne dit qu'un nom, et se superposerait a la vraie fiche. Le survol
          ouvre celle du jeu, qui porte les bonus — c'est devant un sac ouvert
          qu'on veut savoir si la piece vaut mieux que celle qu'on porte. */
-      html.push('<div class="nxp-c" data-butin="' + i + '">' +
+      var L = lisere(o.co);
+      html.push('<div class="nxp-c' + L.cl + '"' + L.st + ' data-butin="' + i + '">' +
                 d.html + marqueOG(o.og ? { og: true } : null) + '</div>');
     }
     elButinCases.innerHTML = html.join('');
@@ -15128,7 +15223,17 @@
        une potion dans un sac a deux places ne repeindrait pas la grille — la
        fiole prise resterait dessinee, et un deuxieme clic irait chercher une
        place qui n'existe plus. */
-    var signe = s ? (s.i + ':' + s.c.map(function (o) { return o.oe || o.st || o.po; }).join(',')) : '';
+    /* ---- ET SA COULEUR, ET CHAQUE PIECE ----
+     * La signature ne portait que les oeufs, fioles et potions : une PIECE y
+     * valait une chaine vide. Le serveur recolore desormais le sac selon ce
+     * qu'il contient (sacs.js, `recolore`) — un mythique pose dans un sac brun
+     * le fait rouge, la piece prise le rend brun. Sans la couleur et la piece
+     * dans la signature, la grille gardait l'ancien en-tete (« Loot bag » sur
+     * un sac rouge) et l'ancienne piece quand on en echangeait une contre une
+     * autre a nombre egal. */
+    var signe = s ? (s.i + ':' + s.s + ':' + s.c.map(function (o) {
+      return o.oe || o.st || o.po || (o.it + '/' + (o.co || ''));
+    }).join(',')) : '';
     if (signe === SAC_SIGNE) return;
     SAC_SIGNE = signe;
     SAC_PIEDS = s;
@@ -15251,11 +15356,6 @@
         var t = Math.min(1, dt * 10);
         d.rx += (d.x - d.rx) * t; d.ry += (d.y - d.ry) * t;
       });
-
-      for (var fi = FLOTTANTS.length - 1; fi >= 0; fi--) {
-        FLOTTANTS[fi].vie -= dt;
-        if (FLOTTANTS[fi].vie <= 0) FLOTTANTS.splice(fi, 1);
-      }
 
       /* Le couvercle des coffres. Il avance ICI et pas au dessin : une salle
          qu'on quitte des yeux une seconde ne doit pas retrouver son couvercle
@@ -16041,7 +16141,6 @@
          savoir jusqu'ou l'on voit. */
       peintBoussole(dt);
       peintBanniereBoss();
-      peintFlottants();
       return;
     }
 
@@ -16760,7 +16859,7 @@
       ctx.lineWidth = 5; ctx.strokeStyle = 'rgba(0,0,0,.7)';
       var y = vh * 0.34 - k * 52 - i * 26;
       ctx.strokeText(f.t, libreF / 2, y);
-      ctx.fillStyle = '#FFD97A';
+      ctx.fillStyle = f.c || '#FFD97A';
       ctx.fillText(f.t, libreF / 2, y);
     }
     ctx.restore();
@@ -17011,7 +17110,10 @@
     majTirs(dt, DERNIERE_CAM.x, DERNIERE_CAM.y);
     vieillitTirs(dt);
     suitLeRecalage(dt);
+    vieillitFlottants(dt);
     dessine(dt);
+    /* APRES la scene, quelle qu'elle soit, et a l'ecran : voir `flotte`. */
+    peintFlottants();
     peintMini();
     requestAnimationFrame(boucle);
   }

@@ -100,6 +100,29 @@ ok(pagesMortes.length === 0,
    'et cette page existe sur le site'
    + (pagesMortes.length ? ' — MORTE : ' + pagesMortes.join(', ') : ''));
 
+/* ---- ET CHAQUE PORTE DE DONJON A LA SIENNE ----
+ * L'ouverture d'un portail s'annonce aussi en photo : `annoncePortail` envoie
+ * `img/shop/tg/portail_<donjon>.jpg`. Seules la Forge et l'Arene avaient leur
+ * fichier : la Cave et le Sanctuaire repondaient 404 (constate le
+ * 12/10/2026), et leur annonce partait en texte nu. On lit les donjons dans
+ * monde.js plutot que de les recopier : le cinquieme exigera sa vignette le
+ * jour ou il existera. */
+let donjons = null;
+try { donjons = Object.keys(require(path.join(SERVEUR, 'monde')).DONJONS || {}); } catch (e) {}
+ok(!!donjons && donjons.length >= 4, 'DONJONS se lit dans monde.js (' + (donjons ? donjons.length : 0) + ' portes)');
+const portesSans = [], portesFausses = [];
+for (const cle of donjons || []) {
+  const f = path.join(SITE, 'img', 'shop', 'tg', 'portail_' + cle + '.jpg');
+  if (!fs.existsSync(f)) { portesSans.push(cle); continue; }
+  const tete = fs.readFileSync(f).subarray(0, 2);
+  if (!(tete[0] === 0xFF && tete[1] === 0xD8)) portesFausses.push(cle);
+}
+ok(portesSans.length === 0,
+   'chaque donjon a son img/shop/tg/portail_<cle>.jpg'
+   + (portesSans.length ? ' — MANQUE : ' + portesSans.join(', ') : ' (' + (donjons || []).length + ' verifiees)'));
+ok(portesFausses.length === 0,
+   'et chacune est un VRAI JPEG' + (portesFausses.length ? ' — FAUX : ' + portesFausses.join(', ') : ''));
+
 /* ---- ET ELLE DOIT ETRE EN LIGNE, PAS SEULEMENT DANS LE DEPOT ----
  * Telegram ne recoit pas le fichier : il recoit une ADRESSE, et va la
  * chercher lui-meme. Une vignette presente dans le depot mais pas encore

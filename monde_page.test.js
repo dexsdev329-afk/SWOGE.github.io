@@ -101,7 +101,12 @@ process.on('unhandledRejection', (e) => {
   let moteur = null; const _p0 = Game.prototype._p;
   Game.prototype._p = function (a) { moteur = this; return _p0.call(this, a); };
   require(path.join(SERVEUR, 'server'));
-  const ethers = require(path.join(SERVEUR, 'node_modules', 'ethers'));
+  /* Une copie git du serveur (`git worktree`, SWOGE_SERVEUR) n'a pas de
+     node_modules : ethers vient alors de NODE_PATH — exactement d'ou le
+     serveur, charge juste au-dessus, a pris le sien. */
+  let ethers;
+  try { ethers = require(path.join(SERVEUR, 'node_modules', 'ethers')); }
+  catch (e) { ethers = require('ethers'); }
   const monde = require(path.join(SERVEUR, 'monde'));
   /* La piece qu'on met dans le sac du joueur vient du CATALOGUE, pas de notre
      imagination. On avait invente une « lame_ebrechee » : la page demandait
@@ -131,6 +136,10 @@ process.on('unhandledRejection', (e) => {
     }
     await p.addInitScript(function () {
       window.__s = [];
+      /* Le registre des fichiers recus garde 250 lignes par defaut, et la
+         page en demande bien plus (tuiles, dessins, sons) : au-dela, un son
+         charge n'y figure plus, et « est-il venu ? » repondrait non a tort. */
+      try { performance.setResourceTimingBufferSize(20000); } catch (x) {}
       const N = window.WebSocket;
       function C(u, pr) { const s = (pr === undefined) ? new N(u) : new N(u, pr); s.__m = [];
         s.addEventListener('message', (e) => { try { s.__m.push(JSON.parse(e.data)); } catch (x) {} });
@@ -316,7 +325,18 @@ process.on('unhandledRejection', (e) => {
       const R = CanvasRenderingContext2D.prototype.fillRect;
       CanvasRenderingContext2D.prototype.fillRect = function (x, y, w, h) {
         if (COULEURS.indexOf(String(this.fillStyle).toLowerCase()) >= 0) {
-          window.__barres.push({ x, y, w, h, c: this.fillStyle });
+          /* ---- ET DE QUI ELLE EST LA JAUGE ----
+           * Le meme vert peint la vie du joueur (`barreVieMana`) ET celle de
+           * toute creature blessee a plus de moitie (`barreVie`). La marche
+           * lisait « le vert » : une lime entamee a l'ecran ajoutait une
+           * seconde barre a chaque image, et l'on comparait d'une image a
+           * l'autre deux positions qui n'avaient rien a voir — « 27 pas en
+           * arriere sur 41 », la moitie exactement, d'un personnage qui
+           * marchait droit. On garde donc l'appelant : seul `barreVieMana`
+           * peint la jauge du joueur (nexus.js, un seul appel). */
+          const pile = String(new Error().stack || '');
+          window.__barres.push({ x, y, w, h, c: this.fillStyle,
+                                 moi: /\bbarreVieMana\b/.test(pile) });
           if (window.__barres.length > 2000) window.__barres.splice(0, 1000);
         }
         return R.apply(this, arguments);
@@ -1820,6 +1840,19 @@ process.on('unhandledRejection', (e) => {
   /* ---- ET LES DEUX FIOLES AU DOIGT ----
    * Meme raison que la rangee de butin : le panneau est replie pendant qu'on
    * se bat, et c'est justement la qu'on a besoin de boire. */
+  /* ---- DANS LE MONDE D'ABORD ----
+   * La rangee n'existe que dans le monde (`peintPotionsTactiles` l'eteint
+   * des que SCENE n'y est plus). Ce bloc ne s'y remettait pas, et la page
+   * tactile en etait parfois sortie depuis le bloc precedent — morte, ou
+   * sortie par la page souris, un joueur n'existant qu'une fois par adresse.
+   * Il lisait alors une rangee eteinte et des boutons d'avant (« on »:false,
+   * « 0 »), cinq lignes RATE d'une rangee qui marche. Releve du 12/10 :
+   * c'est arrive une fois, et c'est cette fois-la que la fiole automatique,
+   * plus bas, est passee — parce qu'aucune gorgee n'etait partie ici. Meme
+   * remede que la fiole : on y retourne, et on le dit. */
+  const vifPot = await rejoins(t);
+  ok(vifPot && vifPot.ok, 'la page tactile est dans le monde avant de regarder ses potions'
+     + (vifPot && vifPot.mort ? ' (relance apres une mort)' : ''));
   await t.evaluate(() => {
     window.__s[0].dispatchEvent(new MessageEvent('message', { data: JSON.stringify({
       type: 'potionBue', cle: 'vie', quoi: 'hp', soigne: 100, reste: 2,
@@ -2224,14 +2257,21 @@ process.on('unhandledRejection', (e) => {
   });
   console.log('   avant la mesure : ' + JSON.stringify(av));
 
-  const boucle = t.evaluate(async () => {
+  /* ---- LA PREMIERE GORGEE DE CE BLOC, PAS LA PREMIERE DE LA PAGE ----
+   * La boucle s'arretait des qu'une `potionBoit` figurait dans ce que la
+   * page a envoye — DEPUIS SON OUVERTURE. Or le bloc « les fioles au doigt »,
+   * plus haut, en envoie une (« un appui boit ») : la boucle sortait donc au
+   * premier tour, avant toute gorgee, et l'on lisait « 0 demande » d'une
+   * fiole qui a bu huit secondes plus tard (« ecarts [8139, …] »). Elle ne
+   * passait que les fois ou ce bloc-la avait rate. On compte a partir d'ici. */
+  const boucle = t.evaluate(async (n0) => {
     const t0 = performance.now();
     while (performance.now() - t0 < 12000) {
       window.__pousse();
       await new Promise((f) => requestAnimationFrame(f));
-      if (window.__s[0].__out.filter((m) => m.type === 'potionBoit').length) break;
+      if (window.__s[0].__out.filter((m) => m.type === 'potionBoit').length > n0) break;
     }
-  });
+  }, avantBas);
   await boucle;
   const apresBas = await bues();
   console.log(`   premiere gorgee : ${apresBas - avantBas} demande(s)`);
@@ -2889,7 +2929,7 @@ process.on('unhandledRejection', (e) => {
       for (const t of touches) await p.keyboard.down(t);
       const eu = await p.evaluate(async ([a, n]) => {
         const pas = () => {
-          const b = window.__barres.filter((x) => x.c === '#7cff9b').map((x) => x[a]);
+          const b = window.__barres.filter((x) => x.c === '#7cff9b' && x.moi).map((x) => x[a]);
           let k = 0;
           for (let i = 1; i < b.length; i++) if (Math.abs(b[i] - b[i - 1]) >= 0.001) k++;
           return k;
@@ -2907,7 +2947,8 @@ process.on('unhandledRejection', (e) => {
       return eu;
     };
     await tientLaTouche(route.touches, 40);
-    const brut = await p.evaluate(() => window.__barres.filter((b) => b.c === '#7cff9b').map((b) => ({ x: b.x, y: b.y })));
+    const brut = await p.evaluate(() => window.__barres.filter((b) => b.c === '#7cff9b' && b.moi).map((b) => ({ x: b.x, y: b.y })));
+    const autres = await p.evaluate(() => window.__barres.filter((b) => b.c === '#7cff9b' && !b.moi).length);
     const marche = brut.map((b) => b[axe]);
     /* Le SENS depend de la route choisie : marcher vers la gauche fait
        decroitre x, et compter ca comme un recul dirait n'importe quoi. On
@@ -2925,7 +2966,7 @@ process.on('unhandledRejection', (e) => {
     const moy = pas.length ? pas.reduce((t, x) => t + x, 0) / pas.length : 0;
     for (const d of pas) if (d > moy * 3 + 2) saut++;
     console.log('   marche : ' + JSON.stringify({ images: marche.length, pas: pas.length,
-                 moyen: +moy.toFixed(2), recule, saut }));
+                 moyen: +moy.toFixed(2), recule, saut, barresDesCreatures: autres }));
     /* Le NOMBRE de pas depend du nombre d'images rendues pendant la mesure,
        donc de la charge de la machine hote : on en a compte cent-trente au
        repos et quarante sous charge, sur le meme code. Ce qu'on veut savoir,
@@ -2974,7 +3015,7 @@ process.on('unhandledRejection', (e) => {
     const assez = await p.evaluate(async ([axe, sens]) => {
       const s = window.__s[0];
       const pas = () => {
-        const b = window.__barres.filter((x) => x.c === '#7cff9b').map((x) => x[axe]);
+        const b = window.__barres.filter((x) => x.c === '#7cff9b' && x.moi).map((x) => x[axe]);
         let n = 0;
         for (let i = 1; i < b.length; i++) if (Math.abs(b[i] - b[i - 1]) >= 0.001) n++;
         return n;
@@ -2995,7 +3036,7 @@ process.on('unhandledRejection', (e) => {
       return { tours: k, pas: pas(), sens };
     }, [axe2, sens2]);
     for (const t of route2.touches) await p.keyboard.up(t);
-    const brut2 = await p.evaluate(() => window.__barres.filter((b) => b.c === '#7cff9b').map((b) => ({ x: b.x, y: b.y })));
+    const brut2 = await p.evaluate(() => window.__barres.filter((b) => b.c === '#7cff9b' && b.moi).map((b) => ({ x: b.x, y: b.y })));
     const loin = brut2.map((b) => b[axe2]);
     let reculeL = 0; const pasL = [];
     for (let i = 1; i < loin.length; i++) {
@@ -3753,6 +3794,530 @@ process.on('unhandledRejection', (e) => {
     /* Et la fiche doit occuper l'ecran, pas la moitie. */
     ok(croix && croix.carte.l > croix.ecran * 0.75,
        `la fiche occupe l ecran du telephone (${croix && croix.carte.l} sur ${croix && croix.ecran})`);
+  }
+
+  /* ==================== LE DROP SE LIT ====================
+   *
+   * Une epee commune et une relique avaient la meme case, le meme texte jaune
+   * en montant (#FFD97A) et le meme petit clic : on ne savait ce qu'on venait
+   * de ramasser qu'en ouvrant sa fiche. Ce qu'on verifie, toujours contre ce
+   * que le SERVEUR envoie et jamais contre une couleur recopiee ici :
+   *   1. le liseré de chaque case (`--t`, et la barre basse qu'il peint) est
+   *      la couleur que le serveur a jointe a la piece — six raretes et
+   *      l'oeuf, a 1440 et a 390 px. Une fiole AU SOL n'en recoit pas (la
+   *      vue du sol ne lui donne pas de `co`) : elle n'en invente pas. L'oeuf
+   *      AU SOL porte la couleur et le mot que `sacPour` lui donne dans le sac
+   *      (relecture du 12/10 : rouge dans le sac, rien au sol — la ou l'on
+   *      decide de le prendre) ;
+   *   2. le liseré ne mange pas `.chaud`, le contour violet du fruit pret, a
+   *      deux crans de l'epique : sur un fruit EPIQUE, les deux restent
+   *      distincts — un contour d'un cote, une barre basse de l'autre ;
+   *   3. aucune des 180 fiches ne dit « undefined » — par le sac (le pouvoir
+   *      d'un fruit) et par l'equipement (le passif) — et chacune dit le MOT
+   *      de sa rarete ;
+   *   4. ce qu'on ramasse monte dans sa couleur, avec le son du niveau a
+   *      partir de l'epique, par le vrai chemin : on pose, on reprend ;
+   *   5. le sac au sol change de couleur avec son contenu (sacs.js,
+   *      `recolore`) : son en-tete doit suivre, meme quand une piece en
+   *      remplace une autre a nombre egal. */
+  console.log('\n-- le drop se lit --');
+  {
+    const RANGS = ['commun', 'rare', 'epique', 'legendaire', 'mythique', 'relique'];
+    /* Ce que `sacPour` dit de l'oeuf DANS le sac : le sol doit dire la meme chose. */
+    const OEUF_DU_SAC = {};
+    const TOUS = boutique.ITEMS.concat(boutique.ITEMS_DROP);
+    const dessinee = (o) => fs.existsSync(path.join(SITE, 'img', 'shop', o.cle + '.webp'));
+    const UNE = RANGS.map((r) => TOUS.find((o) => o.rarete === r && dessinee(o)));
+    const COUL = {}, MOT = {};
+    RANGS.forEach((r) => { const x = boutique.rarete(r); COUL[r] = x && x.couleur; MOT[r] = x && x.nom; });
+    ok(UNE.every(Boolean), 'une piece dessinee par rarete, prise au catalogue (' +
+       UNE.map((o) => (o ? o.id : '—')).join(', ') + ')');
+    const addr = portefeuille.address;
+    const sacsSol = require(path.join(SERVEUR, 'sacs'));
+    const rgb = (h) => {
+      const s = String(h || '').replace('#', '');
+      const v = s.length === 3 ? s.split('').map((c) => c + c).join('') : s.slice(0, 6);
+      return 'rgb(' + [0, 2, 4].map((i) => parseInt(v.slice(i, i + 2), 16)).join(', ') + ')';
+    };
+    const bas = (c) => String(c || '').trim().toLowerCase();
+
+    /* Ce que la page a PEINT sur une case. Le style CALCULE, pas l'attribut :
+       c'est le calcul qui dit si la regle s'applique vraiment, et une barre
+       dont la variable est posee mais que rien ne dessine passerait sinon. */
+    const LIS = (sel) => [].map.call(document.querySelectorAll(sel), (c) => {
+      const s = getComputedStyle(c), a = getComputedStyle(c, '::after');
+      return { cle: c.dataset.sac || c.dataset.item || c.dataset.butin || c.dataset.flot || '',
+               rar: c.classList.contains('rar'), t: s.getPropertyValue('--t').trim(),
+               h: a.height, bas: a.bottom, fond: a.backgroundColor, contenu: a.content };
+    });
+    /* La barre est-elle la bonne ? Variable, hauteur et couleur peinte. */
+    const barreJuste = (v, coul) => !!v && v.rar && bas(v.t) === bas(coul) &&
+      v.h === '3px' && v.fond === rgb(coul) && v.contenu !== 'none';
+
+    /* HORS DU MONDE pour tout ce qui ne lit que le panneau : un personnage
+       qui meurt pendant la mesure voit son sac VIDE par le serveur, et les
+       cases qu'on lit disparaissent sous l'essai. */
+    const horsDuMonde = async (pg) => {
+      await pg.evaluate(async () => {
+        const v = document.getElementById('nxMortVoile');
+        if (v && v.classList.contains('on')) {
+          const b = v.querySelector('.nxmt-go'); if (b) b.click();
+          await new Promise((r) => setTimeout(r, 900));
+        }
+        window.__sacs = []; window.__zones = []; window.__pv = 0; window.__retient = null;
+        window.__s[0].send(JSON.stringify({ type: 'realmLeave' }));
+      });
+      await pg.waitForTimeout(500);
+    };
+
+    const FRUIT = TOUS.find((o) => o.rarete === 'epique' && dessinee(o) &&
+                                  (boutique.saison(o.saison) || {}).sujet === 'fruit');
+    const regardeLePanneau = async (pg, l, h, nom) => {
+      await pg.setViewportSize({ width: l, height: h });
+      await horsDuMonde(pg);
+      sacDuJoueur.sac = {}; UNE.forEach((o) => { sacDuJoueur.sac[o.id] = 1; });
+      sacDuJoueur.sacOeufs = { feu: 1 }; sacDuJoueur.sacCases = null;
+      const envoye = moteur.sacPour(addr);          // ce que le serveur va dire
+      await pg.evaluate(() => window.__s[0].send(JSON.stringify({ type: 'equipable' })));
+      await attend(pg, (n) => document.querySelectorAll('#nxSac .nxp-c[data-sac]').length >= n,
+                   envoye.length, 'les ' + envoye.length + ' places du sac a ' + nom);
+      const vus = await pg.evaluate(LIS, '#nxSac .nxp-c[data-sac]');
+      console.log('   ' + nom + ', sac : ' + vus.map((v) => v.cle + '=' + (v.t || '∅')).join(' '));
+      const ecarts = envoye.filter((o) => {
+        const v = vus.find((x) => x.cle === (o.oeuf ? 'oe:' + o.oeuf : String(o.id)));
+        return !barreJuste(v, o.couleur);
+      });
+      ok(envoye.length === 7 && ecarts.length === 0,
+         `${nom} : chaque case du sac porte dans --t la couleur que le serveur a jointe, ` +
+         `peinte en barre basse de 3 px (${envoye.length - ecarts.length}/${envoye.length})` +
+         (ecarts.length ? ' — ECART : ' + ecarts.map((o) => o.nom + ' ' + o.couleur).join(', ') : ''));
+      ok(RANGS.every((r) => envoye.some((o) => !o.oeuf && o.rarete === r && bas(o.couleur) === bas(COUL[r]))),
+         `${nom} : les six raretes y sont, chacune a la couleur de son catalogue`);
+      const oeuf = envoye.find((o) => o.oeuf);
+      if (oeuf) OEUF_DU_SAC[oeuf.oeuf] = { co: oeuf.couleur, rn: oeuf.rareteNom };
+      ok(!!oeuf && barreJuste(vus.find((v) => v.cle === 'oe:' + oeuf.oeuf), oeuf.couleur),
+         `${nom} : l oeuf aussi, de la couleur que le serveur lui donne (${oeuf && oeuf.couleur})`);
+      /* Et le MOT : `sacPour` n'en donnait pas a l'oeuf, sa fiche disait
+         « Ember Egg / Hatch it at Petworld » et rien de sa rarete. Au survol,
+         donc a la souris seulement. */
+      if (l >= 1000) {
+        const motOeuf = await pg.evaluate((sel) => {
+          const c = document.querySelector(sel); if (!c) return null;
+          c.dispatchEvent(new PointerEvent('pointerover', { bubbles: true, pointerType: 'mouse' }));
+          const r = document.querySelector('#nxFiche .nxfi-rar'); const m = r ? r.textContent : null;
+          c.dispatchEvent(new PointerEvent('pointerout', { bubbles: true, pointerType: 'mouse' }));
+          return m;
+        }, '#nxSac .nxp-c[data-sac="oe:' + (oeuf && oeuf.oeuf) + '"]');
+        ok(!!oeuf && !!oeuf.rareteNom && motOeuf === oeuf.rareteNom,
+           `${nom} : sa fiche dit « ${motOeuf} », le mot que le serveur lui donne (${oeuf && oeuf.rareteNom})`);
+      }
+
+      /* ---- LE FRUIT EPIQUE, PRET ----
+       * `.chaud` se pose dix fois par seconde selon la recharge et la mana :
+       * l'attendre mesurerait la mana du personnage. On le pose donc a la
+       * main, et on lit dans le MEME tour de boucle — `majFruit` ne peut pas
+       * passer entre les deux. C'est la regle CSS qu'on mesure. */
+      sacDuJoueur.objets = sacDuJoueur.objets || {};
+      sacDuJoueur.objets[FRUIT.id] = (sacDuJoueur.objets[FRUIT.id] || 0) + 1;
+      moteur.equipeFruit(addr, 'andy', FRUIT.id);
+      await pg.evaluate(() => window.__s[0].send(JSON.stringify({ type: 'personnage', skin: 'andy' })));
+      await attend(pg, (id) => !!document.querySelector('#nxEquip [data-slot="equipFruit"][data-item="' + id + '"]'),
+                   FRUIT.id, 'le fruit epique porte a ' + nom);
+      const fr = await pg.evaluate(() => {
+        const c = document.querySelector('#nxEquip [data-slot="equipFruit"]');
+        if (!c) return null;
+        const avant = c.className;
+        c.classList.remove('froid'); c.classList.add('chaud');
+        const s = getComputedStyle(c), a = getComputedStyle(c, '::after');
+        const r = { rar: c.classList.contains('rar'), t: s.getPropertyValue('--t').trim(),
+                    ombre: s.boxShadow, h: a.height, bas: a.bottom, fond: a.backgroundColor,
+                    contenu: a.content };
+        c.className = avant;
+        return r;
+      });
+      console.log('   ' + nom + ', fruit epique pret : ' + JSON.stringify(fr));
+      ok(barreJuste(fr, COUL.epique), `${nom} : le fruit epique porte sa barre (${fr && fr.t})`);
+      ok(!!fr && /inset/.test(fr.ombre) && /190, 140, 255/.test(fr.ombre) && fr.bas === '1px',
+         `${nom} : et .chaud reste un CONTOUR violet a cote d elle — la barre est en bas, elle ne le remplace pas`);
+    };
+
+    await regardeLePanneau(p, 1440, 900, '1440 px');
+
+    /* ---- LES 180 FICHES ----
+     * Par le sac, huit a la fois : la fiche qu'on lit devant ce qu'on vient
+     * de ramasser — nom, mot de rarete, et la phrase du pouvoir d'un fruit.
+     * Puis par l'equipement, quatre a la fois : c'est la seule surface qui
+     * porte le PASSIF. Le survol est un vrai evenement de pointeur envoye a
+     * la case, et la fiche se lit dans le meme tour. */
+    const survoleTout = (sel) => [].map.call(document.querySelectorAll(sel), (c) => {
+      c.dispatchEvent(new PointerEvent('pointerover', { bubbles: true, pointerType: 'mouse' }));
+      const f = document.getElementById('nxFiche');
+      const r = f.querySelector('.nxfi-rar');
+      const out = { cle: c.dataset.sac || c.dataset.item || '', on: f.classList.contains('on'),
+                    texte: f.textContent, mot: r ? r.textContent : null,
+                    fc: f.style.getPropertyValue('--fc').trim() };
+      c.dispatchEvent(new PointerEvent('pointerout', { bubbles: true, pointerType: 'mouse' }));
+      return out;
+    });
+    /* ---- AU PAS DU SERVEUR ----
+     * Le serveur accepte vingt messages par seconde et par connexion
+     * (DEBIT_PAR_SEC, reserve de quarante) et jette le reste sans repondre.
+     * La page en envoie deja huit a elle seule — sa position, toutes les 0,12 s.
+     * Enchainer les demandes au rythme des reponses (quelques millisecondes en
+     * local) videait la reserve en trois secondes : une demande sur cinquante
+     * restait sans reponse, et c'etait « la fiche manque » sur une piece qui
+     * n'y etait pour rien. On marche donc a huit demandes par seconde au plus,
+     * et l'on verifie que le serveur n'a jamais dit « slow down ». */
+    const PAS_SERVEUR = 130;
+    const freins0 = await p.evaluate(() => window.__s[0].__m.filter((m) => m.type === 'error' && /slow down/.test(m.error || '')).length);
+    const fiches = [];
+    for (let i = 0; i < TOUS.length; i += 8) {
+      const lot = TOUS.slice(i, i + 8);
+      sacDuJoueur.sac = {}; lot.forEach((o) => { sacDuJoueur.sac[o.id] = (sacDuJoueur.sac[o.id] || 0) + 1; });
+      sacDuJoueur.sacOeufs = {}; sacDuJoueur.sacCases = null;
+      await p.evaluate(() => window.__s[0].send(JSON.stringify({ type: 'equipable' })));
+      const ids = lot.map((o) => String(o.id)).sort().join(',');
+      await attend(p, (ids) => [].map.call(document.querySelectorAll('#nxSac .nxp-c[data-sac]'),
+                                           (c) => c.dataset.sac).sort().join(',') === ids,
+                   ids, 'le lot ' + (i / 8 + 1) + ' dans le sac');
+      const lus = await p.evaluate(survoleTout, '#nxSac .nxp-c[data-sac]');
+      for (const o of lot) fiches.push({ o, ou: 'sac', f: lus.find((x) => x.cle === String(o.id)) });
+      await p.waitForTimeout(PAS_SERVEUR);
+    }
+    const EQUIPE = { fruit: 'equipeFruit', weapon: 'equipeArme', armor: 'equipeArmure', ring: 'equipeBague' };
+    const files = {};
+    for (const o of TOUS) {
+      const s = (boutique.saison(o.saison) || {}).sujet;
+      (files[s] = files[s] || []).push(o);
+    }
+    const tours = Math.max(...Object.keys(EQUIPE).map((s) => (files[s] || []).length));
+    for (let k = 0; k < tours; k++) {
+      const portes = [];
+      for (const s of Object.keys(EQUIPE)) {
+        const o = (files[s] || [])[k];
+        if (!o) continue;
+        sacDuJoueur.objets[o.id] = (sacDuJoueur.objets[o.id] || 0) + 1;
+        moteur[EQUIPE[s]](addr, 'andy', o.id);
+        portes.push(o);
+      }
+      await p.evaluate(() => window.__s[0].send(JSON.stringify({ type: 'personnage', skin: 'andy' })));
+      const ids = portes.map((o) => String(o.id));
+      await attend(p, (ids) => {
+        const v = [].map.call(document.querySelectorAll('#nxEquip .nxp-c[data-item]'), (c) => c.dataset.item);
+        return ids.every((x) => v.indexOf(x) >= 0);
+      }, ids, 'le tour ' + (k + 1) + ' porte');
+      const lus = await p.evaluate(survoleTout, '#nxEquip .nxp-c[data-item]');
+      for (const o of portes) fiches.push({ o, ou: 'porte', f: lus.find((x) => x.cle === String(o.id)) });
+      await p.waitForTimeout(PAS_SERVEUR);
+    }
+    const freins = await p.evaluate(() => window.__s[0].__m.filter((m) => m.type === 'error' && /slow down/.test(m.error || '')).length);
+    ok(freins === freins0, `le balayage reste sous le debit du serveur (${freins - freins0} « slow down »)`);
+    const manque = fiches.filter(({ f }) => !f || !f.on);
+    const souillees = fiches.filter(({ f }) => f && /undefined|NaN|\bnull\b/.test(f.texte));
+    const sansMot = fiches.filter(({ o, f }) => !f || f.mot !== MOT[o.rarete] || bas(f.fc) !== bas(COUL[o.rarete]));
+    const sansNom = fiches.filter(({ o, f }) => !f || f.texte.indexOf(o.nom) < 0);
+    const sorts = fiches.filter(({ o }) => Game.sortDuFruit(o));
+    const sortsTus = sorts.filter(({ o, f }) => !f || f.texte.indexOf(Game.sortDuFruit(o).quoi) < 0);
+    const passifs = fiches.filter(({ o, ou }) => ou === 'porte' && Game.passifDe(o));
+    const passifsTus = passifs.filter(({ o, f }) => !f || f.texte.indexOf(Game.passifDe(o).quoi) < 0);
+    const nomme = (l) => l.slice(0, 4).map(({ o, ou, f }) =>
+      o.id + ' ' + o.nom + ' (' + ou + ') : ' + (f ? JSON.stringify(f.texte).slice(0, 140) : 'pas de fiche')).join(' | ');
+    console.log('   fiches lues : ' + fiches.length + ' (sac ' + fiches.filter((x) => x.ou === 'sac').length +
+                ', porte ' + fiches.filter((x) => x.ou === 'porte').length + '), ' + sorts.length +
+                ' avec un pouvoir, ' + passifs.length + ' avec un passif');
+    ok(fiches.length === 2 * TOUS.length && manque.length === 0,
+       `les ${TOUS.length} objets ouvrent leur fiche, au sac ET portes (${fiches.length - manque.length}/${2 * TOUS.length})` +
+       (manque.length ? ' — ' + nomme(manque) : ''));
+    ok(souillees.length === 0,
+       `aucune fiche ne dit « undefined », NaN ni null (${souillees.length} sur ${fiches.length})` +
+       (souillees.length ? ' — ' + nomme(souillees) : ''));
+    ok(sansMot.length === 0,
+       `chaque fiche dit le MOT de sa rarete, dans sa couleur (${fiches.length - sansMot.length}/${fiches.length})` +
+       (sansMot.length ? ' — ' + nomme(sansMot) : ''));
+    ok(sansNom.length === 0, `et le nom de la piece (${fiches.length - sansNom.length}/${fiches.length})`);
+    ok(sorts.length > 0 && sortsTus.length === 0,
+       `la phrase du pouvoir est sur la fiche de chaque fruit qui en a un (${sorts.length - sortsTus.length}/${sorts.length})` +
+       (sortsTus.length ? ' — ' + nomme(sortsTus) : ''));
+    ok(passifs.length > 0 && passifsTus.length === 0,
+       `et celle du passif sur chaque piece portee qui en a un (${passifs.length - passifsTus.length}/${passifs.length})` +
+       (passifsTus.length ? ' — ' + nomme(passifsTus) : ''));
+
+    /* ---- LE SAC AU SOL ----
+     * Sa vue est celle que le SERVEUR enverrait : on le construit avec ses
+     * propres fonctions (`ficheAuSol`, `contenuDe`, `recolore`, `vue`) plutot
+     * que d'ecrire ses champs a la main — un `co` invente ici ne prouverait
+     * rien sur la couleur qui part vraiment. */
+    const vueDu = (id, x, y, objets) => {
+      const s = { id, x, y, sac: 'brun', reste: 55, contenu: objets.map((o) => sacsSol.contenuDe(o)) };
+      if (sacsSol.recolore) sacsSol.recolore(s);
+      return JSON.parse(JSON.stringify(sacsSol.vue(s)));
+    };
+    const pose = (pg, v) => pg.evaluate(async (v) => {
+      window.__sacs = v ? [v] : [];
+      for (let k = 0; k < 30; k++) { window.__pousse(); await new Promise((f) => requestAnimationFrame(f)); }
+    }, v);
+    const ouEstOn = (pg) => pg.evaluate(() => {
+      const e = window.__s[0].__m.filter((m) => m.type === 'realmEntre').pop();
+      return e ? { x: e.moi.x, y: e.moi.y } : null;
+    });
+    const MELANGE = UNE.map((o) => moteur.ficheAuSol(o)).concat([{ stat: 'def' }, { oeuf: 'feu' }]);
+    const compareSol = (vue, vus) => {
+      const ecarts = [];
+      vue.c.forEach((c, i) => {
+        const v = vus.find((x) => x.cle === String(i));
+        if (c.co) { if (!barreJuste(v, c.co)) ecarts.push(i + ' ' + c.nm + ' attendu ' + c.co + ' : ' + JSON.stringify(v)); }
+        else if (!v || v.rar || v.t) ecarts.push(i + ' (' + (c.st ? 'fiole' : c.oe ? 'oeuf' : 'potion') +
+                                                 ') porte un liseré que le serveur ne donne pas : ' + JSON.stringify(v));
+      });
+      return ecarts;
+    };
+
+    await p.setViewportSize({ width: 1440, height: 900 });
+    const dedans = await rejoins(p);
+    ok(dedans.ok, '1440 px : de retour dans le monde pour le sac au sol' + (dedans.refus ? ' (refus: ' + dedans.refus + ')' : ''));
+    const ici = await ouEstOn(p);
+    const vueSol = vueDu(80400, ici.x, ici.y, MELANGE);
+    await pose(p, vueSol);
+    await attend(p, (n) => document.querySelectorAll('#nxButinCases .nxp-c[data-butin]').length >= n,
+                 vueSol.c.length, 'les huit places du sac au sol a 1440 px');
+    const solVu = await p.evaluate(LIS, '#nxButinCases .nxp-c[data-butin]');
+    console.log('   1440 px, sol : ' + solVu.map((v) => v.cle + '=' + (v.t || '∅')).join(' '));
+    const ecartsSol = compareSol(vueSol, solVu);
+    ok(vueSol.c.filter((c) => c.co).length === 7 && ecartsSol.length === 0,
+       `1440 px, sac au sol : chaque piece et l oeuf portent le « co » du serveur, la fiole n invente rien` +
+       (ecartsSol.length ? ' — ' + ecartsSol.join(' | ') : ''));
+    const oeufSol = vueSol.c.find((c) => c.oe);
+    const oeufSac = oeufSol && OEUF_DU_SAC[oeufSol.oe];
+    ok(!!oeufSol && !!oeufSac && bas(oeufSol.co) === bas(oeufSac.co) && oeufSol.rn === oeufSac.rn && !!oeufSac.rn,
+       `l oeuf au sol porte la couleur et le mot que le sac lui donne (sol ${oeufSol && oeufSol.rn} ${oeufSol && oeufSol.co}, ` +
+       `sac ${oeufSac && oeufSac.rn} ${oeufSac && oeufSac.co})`);
+    const iOeuf = vueSol.c.indexOf(oeufSol);
+    const ficheOeuf = await p.evaluate(survoleTout, '#nxButinCases .nxp-c[data-butin="' + iOeuf + '"]');
+    ok(ficheOeuf[0] && oeufSac && ficheOeuf[0].mot === oeufSac.rn,
+       `et sa fiche au sol dit « ${ficheOeuf[0] && ficheOeuf[0].mot} »`);
+    const ficheSol = await p.evaluate(survoleTout, '#nxButinCases .nxp-c[data-butin="2"]');
+    ok(ficheSol[0] && ficheSol[0].mot === vueSol.c[2].rn && vueSol.c[2].rn === MOT.epique,
+       `la fiche d une piece AU SOL dit aussi sa rarete, avec le mot du serveur (${ficheSol[0] && ficheSol[0].mot})`);
+
+    /* ---- LA COULEUR DU SAC SUIT CE QU'IL CONTIENT ----
+     * Le MEME sac, une piece remplacee par une autre a nombre egal : une
+     * commune, puis une mythique. Le serveur le recolore ; la page doit
+     * repeindre son en-tete, et pas seulement quand le nombre de places
+     * change. */
+    const entete = (pg) => pg.evaluate(() => {
+      const e = document.getElementById('nxButinNom');
+      const i = document.querySelector('#nxButinCases .nxp-c[data-butin="0"] img');
+      return { nom: e ? e.textContent : null, img: i ? i.getAttribute('src') : null,
+               couleur: e ? getComputedStyle(e).color : null };
+    });
+    const vueA = vueDu(80401, ici.x, ici.y, [moteur.ficheAuSol(UNE[0])]);
+    await pose(p, vueA);
+    await attend(p, (c) => { const i = document.querySelector('#nxButinCases .nxp-c[data-butin="0"] img');
+                             return !!i && i.getAttribute('src').indexOf(c) >= 0; },
+                 UNE[0].cle, 'le sac a la piece commune');
+    const avantR = await entete(p);
+    const vueB = vueDu(80401, ici.x, ici.y, [moteur.ficheAuSol(UNE[4])]);
+    await pose(p, vueB);
+    await attend(p, (c) => { const i = document.querySelector('#nxButinCases .nxp-c[data-butin="0"] img');
+                             return !!i && i.getAttribute('src').indexOf(c) >= 0; },
+                 UNE[4].cle, 'la piece mythique a la place de la commune', 3000);
+    const apresR = await entete(p);
+    console.log('   meme sac, ' + vueA.s + ' puis ' + vueB.s + ' : ' + JSON.stringify(avantR) + ' -> ' + JSON.stringify(apresR));
+    ok(vueA.s === 'brun' && vueB.s === 'rouge',
+       `le serveur recolore le sac selon ce qu il contient (${vueA.s} puis ${vueB.s})`);
+    ok(avantR.nom === 'Loot bag' && apresR.nom === 'Mythic drop',
+       `et la grille le suit : « ${avantR.nom} » puis « ${apresR.nom} », la piece remplacee comprise`);
+    /* Un seul rouge pour le mythique : l'en-tete prend la teinte que le
+       serveur joint au sac (`sc`), celle de la barre de la piece juste dessous
+       — et plus le rouge de la page (#F2685E). */
+    ok(vueB.sc && bas(vueB.sc) === bas(COUL.mythique) && apresR.couleur === rgb(COUL.mythique),
+       `l en-tete « Mythic drop » est du rouge de la piece (${apresR.couleur}, sc ${vueB.sc}), pas d un rouge de la page`);
+    await pose(p, null);
+
+    /* ---- ON POSE, ON REPREND : LE TEXTE ET LE SON ----
+     * Le vrai chemin, de bout en bout : la piece part du sac du serveur par
+     * `realmDepose`, le serveur fait naitre un VRAI sac sous les pieds (que
+     * le ramassage automatique laisse, puisqu'on vient de le poser), et le
+     * double-clic le reprend. On guette le texte qui monte — sa couleur telle
+     * que le canevas l'a recue — et le tampon de chaque son joue, reconnu a
+     * sa duree. */
+    /* ---- LE SON DOIT ETRE PRET AVANT LA MESURE ----
+     * La page ne cree son contexte audio — et ne charge ses sons — qu'au
+     * premier geste. Si ce premier geste est le double-clic qu'on mesure, le
+     * son du niveau n'est pas encore decode quand la reponse arrive, et
+     * l'essai lirait « pas de fanfare » d'une page qui la joue tres bien au
+     * geste suivant. Un clic sur la scene (un tir, sans consequence), puis on
+     * attend que le fichier soit VENU, pas une duree. */
+    await p.mouse.click(Math.round(1440 * 0.3), 450);
+    await attend(p, () => performance.getEntriesByType('resource').some((e) => /niveau\.mp3/.test(e.name)),
+                 null, 'le son du niveau charge par la page');
+    await p.waitForTimeout(600);
+    await p.evaluate(async () => {
+      if (window.__ecrits) return;
+      window.__ecrits = []; window.__tampons = []; window.__guette = null;
+      const F = CanvasRenderingContext2D.prototype.fillText;
+      CanvasRenderingContext2D.prototype.fillText = function (t) {
+        if (window.__guette && t === window.__guette) window.__ecrits.push(String(this.fillStyle).toLowerCase());
+        return F.apply(this, arguments);
+      };
+      const d = Object.getOwnPropertyDescriptor(AudioBufferSourceNode.prototype, 'buffer');
+      Object.defineProperty(AudioBufferSourceNode.prototype, 'buffer', {
+        configurable: true, enumerable: d.enumerable, get: d.get,
+        set: function (b) { window.__tampons.push(b ? b.duration : 0); return d.set.call(this, b); } });
+      const duree = async (u) => {
+        const ac = new OfflineAudioContext(1, 1, 44100);
+        return (await ac.decodeAudioData(await (await fetch(u)).arrayBuffer())).duration;
+      };
+      window.__durees = { niveau: await duree('img/nexus/niveau.mp3'),
+                          clic2: await duree('img/nexus/clic_effet.mp3') };
+    });
+    const poseEtReprend = async (o) => {
+      await assureVivant(p);
+      sacDuJoueur.sac = {}; sacDuJoueur.sac[o.id] = 1;
+      sacDuJoueur.sacOeufs = {}; sacDuJoueur.sacCases = null;
+      await p.evaluate(() => window.__s[0].send(JSON.stringify({ type: 'equipable' })));
+      await attend(p, (id) => !!document.querySelector('#nxSac .nxp-c[data-sac="' + id + '"]'),
+                   o.id, 'la piece ' + o.rarete + ' dans le sac');
+      const d0 = await p.evaluate(() => window.__s[0].__m.filter((m) => m.type === 'realmDepose').length);
+      await p.evaluate((id) => window.__s[0].send(JSON.stringify({ type: 'realmDepose', item: id })), o.id);
+      await attend(p, (n) => window.__s[0].__m.filter((m) => m.type === 'realmDepose').length > n,
+                   d0, 'la reponse au depot');
+      const depot = await p.evaluate(() => window.__s[0].__m.filter((m) => m.type === 'realmDepose').pop());
+      await attend(p, (c) => { const i = document.querySelector('#nxButinCases .nxp-c[data-butin] img');
+                               return !!i && i.getAttribute('src').indexOf(c) >= 0; },
+                   o.cle, 'le sac pose sous les pieds');
+      const tete = await p.evaluate(() => document.getElementById('nxButinNom').textContent);
+      const lis = (await p.evaluate(LIS, '#nxButinCases .nxp-c[data-butin]'))[0];
+      await p.evaluate((nom) => { window.__guette = nom; window.__ecrits = []; window.__tampons = []; }, o.nom);
+      const r0 = await p.evaluate(() => window.__s[0].__m.filter((m) => m.type === 'realmRamasse').length);
+      await p.evaluate(() => {
+        const c = document.querySelector('#nxButinCases .nxp-c[data-butin]');
+        if (c) c.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+      });
+      await attend(p, ([n, id]) => window.__s[0].__m.slice(n).some((m) => m.type === 'realmRamasse' && m.item === id),
+                   [r0, o.id], 'la reponse au ramassage');
+      await attend(p, () => window.__ecrits.length >= 3, null, 'le texte qui monte', 3000);
+      await p.waitForTimeout(150);
+      const rep = await p.evaluate(([n, id]) => window.__s[0].__m.slice(n)
+        .filter((m) => m.type === 'realmRamasse' && m.item === id).pop() || null, [r0, o.id]);
+      const vu = await p.evaluate(() => ({ ecrits: window.__ecrits.slice(), tampons: window.__tampons.slice(),
+                                           durees: window.__durees }));
+      await p.evaluate(() => { window.__guette = null; });
+      return { depot, tete, lis, rep, vu };
+    };
+    const proche = (a, b) => Math.abs(a - b) < 0.05;
+    for (const [o, sacAttendu, tete, son] of [[UNE[2], 'violet', 'Epic drop', 'niveau'],
+                                               [UNE[0], 'brun', 'Loot bag', 'clic2']]) {
+      const r = await poseEtReprend(o);
+      const couleurs = Array.from(new Set(r.vu.ecrits));
+      const sons = r.vu.tampons.map((x) => (proche(x, r.vu.durees.niveau) ? 'niveau'
+                                           : proche(x, r.vu.durees.clic2) ? 'clic2' : x.toFixed(2)));
+      console.log('   ' + o.rarete + ' : depot ' + JSON.stringify({ sac: r.depot.sac, refus: r.depot.refus }) +
+                  ', en-tete « ' + r.tete + ' », texte ' + JSON.stringify(couleurs) + ' sur ' + r.vu.ecrits.length +
+                  ' images, sons ' + JSON.stringify(sons));
+      ok(!r.depot.refus && r.depot.sac === sacAttendu,
+         `${o.rarete} pose : le serveur fait naitre un sac ${r.depot.sac} (attendu ${sacAttendu}, sa couleur suit la piece)`);
+      ok(r.tete === tete, `${o.rarete} pose : la grille l annonce « ${r.tete} »`);
+      ok(barreJuste(r.lis, COUL[o.rarete]), `${o.rarete} pose : sa case porte la barre ${COUL[o.rarete]}`);
+      ok(!!r.rep && r.rep.nom === o.nom, `${o.rarete} repris par le vrai chemin (${r.rep && r.rep.nom})`);
+      ok(r.vu.ecrits.length >= 3 && couleurs.length === 1 && couleurs[0] === bas(COUL[o.rarete]),
+         `${o.rarete} : le texte « ${o.nom} » monte dans la couleur de sa rarete (${couleurs.join(', ')})`);
+      if (son === 'niveau') {
+        ok(sons.indexOf('niveau') >= 0 && sons.indexOf('clic2') < 0,
+           `${o.rarete} : c est le son du NIVEAU qui joue, pas le clic (${sons.join(', ') || 'aucun'})`);
+      } else {
+        ok(sons.indexOf('clic2') >= 0 && sons.indexOf('niveau') < 0,
+           `${o.rarete} : le petit clic, pas la fanfare (${sons.join(', ') || 'aucun'})`);
+      }
+    }
+
+    /* ---- ET DANS LE HALL ----
+     * Le hall a son sol, ses sacs et le meme double-clic (`nexusRamasse`, que
+     * la page renomme en `realmRamasse`) : le texte part donc par le meme
+     * `flotte`. Mais il n'etait peint (`peintFlottants`) et vieilli que dans
+     * la branche du monde de combat. Relecture du 12/10/2026, a 1440 px : une
+     * piece epique, une commune et une mythique reprises dans le hall n'y
+     * peignaient AUCUNE image de leur nom ; au `realmJoin` suivant, les trois
+     * montaient d'un coup dans le monde (51 images chacune) — on croyait
+     * avoir ramasse un mythique en arrivant. Deux choses a tenir, mesurees
+     * sur ce qui est PEINT : le nom monte dans le hall, dans sa couleur, des
+     * le geste ; et rien de ce qui a ete ramasse dans le hall ne ressort une
+     * fois entre dans le monde. */
+    {
+      const o = UNE[2];
+      /* VRAIMENT rentre : par le bouton maison, comme un joueur. `realmLeave`
+         envoye a la main sortirait du monde cote serveur en laissant la page
+         dans la scene du monde — et c'est la scene qu'on mesure ici. */
+      const vifH = await rejoins(p);
+      const mv0 = await p.evaluate(() => window.__s[0].__out.filter((m) => m.type === 'nexusMove').length);
+      await p.evaluate(() => document.getElementById('nxMaison').click());
+      const auHall = await attend(p, (k) => window.__s[0].__out.filter((m) => m.type === 'nexusMove').length > k + 2,
+                                  mv0, 'la page de retour dans le hall (nexusMove)');
+      ok(vifH.ok && auHall, 'hall : la page est rentree au Nexus par le bouton maison, et y annonce sa position');
+      sacDuJoueur.sac = {}; sacDuJoueur.sac[o.id] = 1;
+      sacDuJoueur.sacOeufs = {}; sacDuJoueur.sacCases = null;
+      await p.evaluate(() => window.__s[0].send(JSON.stringify({ type: 'equipable' })));
+      await attend(p, (id) => !!document.querySelector('#nxSac .nxp-c[data-sac="' + id + '"]'),
+                   o.id, 'la piece epique dans le sac, au hall');
+      const d0 = await p.evaluate(() => window.__s[0].__m.filter((m) => m.type === 'nexusDepose').length);
+      await p.evaluate((id) => window.__s[0].send(JSON.stringify({ type: 'nexusDepose', item: id })), o.id);
+      await attend(p, (k) => window.__s[0].__m.filter((m) => m.type === 'nexusDepose').length > k,
+                   d0, 'la reponse au depot dans le hall');
+      const depotH = await p.evaluate(() => window.__s[0].__m.filter((m) => m.type === 'nexusDepose').pop());
+      await attend(p, (c) => { const i = document.querySelector('#nxButinCases .nxp-c[data-butin] img');
+                               return !!i && i.getAttribute('src').indexOf(c) >= 0; },
+                   o.cle, 'le sac pose sous les pieds, dans le hall');
+      await p.evaluate((nom) => { window.__guette = nom; window.__ecrits = []; window.__tampons = []; }, o.nom);
+      const r0 = await p.evaluate(() => window.__s[0].__m.filter((m) => m.type === 'nexusRamasse').length);
+      await p.evaluate(() => {
+        const c = document.querySelector('#nxButinCases .nxp-c[data-butin]');
+        if (c) c.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+      });
+      await attend(p, ([k, id]) => window.__s[0].__m.slice(k).some((m) => m.type === 'nexusRamasse' && m.item === id),
+                   [r0, o.id], 'la reponse au ramassage dans le hall');
+      /* La duree de vie d'un texte est d'une seconde et demie : s'il n'est
+         pas peint dans ce delai, il ne l'est jamais au bon moment. */
+      const vuH = await attend(p, () => window.__ecrits.length >= 3, null, 'le texte qui monte dans le hall', 1500);
+      const ecritsH = await p.evaluate(() => window.__ecrits.slice());
+      const couleursH = Array.from(new Set(ecritsH));
+      console.log('   hall : depot ' + JSON.stringify({ sac: depotH && depotH.sac, refus: depotH && depotH.refus }) +
+                  ', texte ' + JSON.stringify(couleursH) + ' sur ' + ecritsH.length + ' images');
+      ok(!!depotH && !depotH.refus && depotH.sac === 'violet',
+         `hall : la piece epique posee fait un sac ${depotH && depotH.sac} (attendu violet)`);
+      ok(vuH && couleursH.length === 1 && couleursH[0] === bas(COUL[o.rarete]),
+         `hall : le nom « ${o.nom} » monte DANS LE HALL, en moins d une seconde et demie, dans sa couleur ` +
+         `(${ecritsH.length} images, ${couleursH.join(', ') || 'aucune'})`);
+      /* Le texte a fini sa course : plus rien ne doit le peindre, ni dans le
+         hall, ni apres l'entree dans le monde. */
+      await p.waitForTimeout(1800);
+      await p.evaluate(() => { window.__ecrits = []; });
+      const dansLeMonde = await rejoins(p);
+      await p.waitForTimeout(1200);
+      const apres = await p.evaluate(() => window.__ecrits.length);
+      await p.evaluate(() => { window.__guette = null; });
+      ok(dansLeMonde.ok && apres === 0,
+         `et il ne ressort pas a l entree dans le monde (${apres} images apres realmJoin` +
+         (dansLeMonde.ok ? '' : ', entree refusee : ' + dansLeMonde.refus) + ')');
+    }
+
+    /* ---- A 390 PX, ET AU DOIGT ----
+     * Le panneau, puis la rangee flottante : c'est la, panneau replie et en
+     * plein combat, qu'on decide en un regard si une place vaut un appui. */
+    await regardeLePanneau(t, 390, 844, '390 px');
+    const dedansT = await rejoins(t);
+    ok(dedansT.ok, '390 px : la page tactile revient dans le monde' + (dedansT.refus ? ' (refus: ' + dedansT.refus + ')' : ''));
+    const iciT = await ouEstOn(t);
+    const vueT = vueDu(80402, iciT.x, iciT.y, MELANGE);
+    await pose(t, vueT);
+    await attend(t, (n) => document.querySelectorAll('#nxButinFlot.on .fl').length >= n,
+                 vueT.c.length, 'la rangee flottante a 390 px');
+    const flot = await t.evaluate(LIS, '#nxButinFlot .fl');
+    console.log('   390 px, rangee : ' + flot.map((v) => v.cle + '=' + (v.t || '∅')).join(' '));
+    const ecartsFlot = compareSol(vueT, flot);
+    ok(flot.length === vueT.c.length && ecartsFlot.length === 0,
+       `390 px, rangee flottante : la meme barre, du « co » du serveur (l oeuf compris), et rien sur la fiole (${flot.length} places)` +
+       (ecartsFlot.length ? ' — ' + ecartsFlot.join(' | ') : ''));
+    await pose(t, null);
   }
 
   const uniq = Array.from(new Set(manquants));

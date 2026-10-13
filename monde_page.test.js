@@ -4099,6 +4099,28 @@ process.on('unhandledRejection', (e) => {
     ok(ficheSol[0] && ficheSol[0].mot === vueSol.c[2].rn && vueSol.c[2].rn === MOT.epique,
        `la fiche d une piece AU SOL dit aussi sa rarete, avec le mot du serveur (${ficheSol[0] && ficheSol[0].mot})`);
 
+    /* ---- LE SAC D'OEUF DIT LA RARETE DE SON OEUF (decision du 13/10/2026) ----
+     * Le prisme est une relique : son sac dit « RELIC EGG », pas « MYTHIC EGG ».
+     * Une relique posee a cote d'un oeuf mythique se voit : le sac est celui de
+     * la relique. Les vues viennent des fonctions du serveur (`vueDu`). */
+    {
+      const nomSac = () => p.evaluate(() => document.getElementById('nxButinNom').textContent);
+      const relique = UNE.find((o) => o.rarete === 'relique');
+      const cas = [
+        { objets: [{ oeuf: 'legendaire' }], nom: 'RELIC EGG', quoi: 'un prisme seul' },
+        { objets: [{ oeuf: 'glace' }], nom: 'MYTHIC EGG', quoi: 'un oeuf de givre seul' },
+        { objets: [{ oeuf: 'glace' }, { oeuf: 'legendaire' }], nom: 'RELIC EGG', quoi: 'givre et prisme' },
+      ].concat(relique ? [{ objets: [{ oeuf: 'feu' }, moteur.ficheAuSol(relique)], nom: 'RELIC', quoi: 'une relique et un oeuf mythique' }] : []);
+      for (const k of cas) {
+        const v = vueDu(80450, ici.x, ici.y, k.objets);
+        await pose(p, v);
+        await attend(p, (n) => document.querySelectorAll('#nxButinCases .nxp-c[data-butin]').length === n, v.c.length, 'le sac ' + k.quoi);
+        const nom = await nomSac();
+        eqOk(nom, k.nom, 'en-tete du sac pour ' + k.quoi + ' (sac ' + v.s + ')');
+      }
+      ok(!!relique, 'le jeu de pieces porte une relique pour le cas relique + oeuf');
+    }
+
     /* ---- LA COULEUR DU SAC SUIT CE QU'IL CONTIENT ----
      * Le MEME sac, une piece remplacee par une autre a nombre egal : une
      * commune, puis une mythique. Le serveur le recolore ; la page doit

@@ -14945,6 +14945,21 @@
                      croyait — et c'est la seule facon de decevoir avec une
                      trouvaille rare. */
                   oeuf: 'MYTHIC EGG' };
+  /* ---- LE SAC D'OEUF DIT LA RARETE DE SON OEUF ----
+   * Decision du proprietaire du 13/10/2026 : le prisme est une RELIQUE
+   * (monde.rareteOeuf), et son sac s'annoncait « MYTHIC EGG ». Le serveur
+   * envoie deja le mot de chaque oeuf au sol (`rn`, sacs.vueOeuf) : on le
+   * lit. Plusieurs oeufs : la relique l'emporte. Sans mot (vieux serveur) :
+   * « MYTHIC EGG », comme avant. */
+  function nomDuSac(s) {
+    if (s.s !== 'oeuf') return NOM_SAC[s.s] || 'Loot';
+    var mot = null, c = s.c || [];
+    for (var i = 0; i < c.length; i++) {
+      if (!c[i] || !c[i].oe || !c[i].rn) continue;
+      if (!mot || c[i].rn === 'Relic') mot = c[i].rn;
+    }
+    return mot ? String(mot).toUpperCase() + ' EGG' : NOM_SAC.oeuf;
+  }
   var IMG_POTION = { vie: 'img/nexus/objets/potion_rouge.webp',
                      mana: 'img/nexus/objets/potion_bleue.webp' };
 
@@ -15042,7 +15057,7 @@
                 d.html + marqueOG(o.og ? { og: true } : null) + '</div>');
     }
     elButinCases.innerHTML = html.join('');
-    elButinNom.textContent = NOM_SAC[s.s] || 'Loot';
+    elButinNom.textContent = nomDuSac(s);
     elButinNom.style.color = couleur;
     elButin.style.borderTop = '1px dashed ' + couleur;
     elButin.hidden = false;

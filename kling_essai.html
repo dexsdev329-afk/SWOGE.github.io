@@ -73,8 +73,9 @@ img.vign{ width:64px; height:64px; object-fit:cover; border-radius:10px; vertica
 (function(){
   "use strict";
   var $ = function(id){ return document.getElementById(id); };
+  /* `?server=` : un serveur LOCAL seulement (les essais) — ce bloc envoie le jeton de session (13/10). */
   function serveur(){
-    try { var q = new URLSearchParams(location.search).get("server"); if (q) return String(q).replace(/\/$/, ""); } catch (e) {}
+    try { var q = new URLSearchParams(location.search).get("server"); if (q) { var u = new URL(String(q).replace(/^ws/, "http")); if (/^(127\.0\.0\.1|localhost|\[::1\])$/.test(u.hostname)) return u.origin; } } catch (e) {}
     return "https://web-production-220a3.up.railway.app";
   }
   function jeton(){ try { return localStorage.getItem("swogeSession"); } catch (e) { return null; } }

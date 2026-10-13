@@ -168,7 +168,9 @@
 (function(){
   "use strict";
   var $ = function(id){ return document.getElementById("bw-" + id); };
-  function serveur(){ try { var q = new URLSearchParams(location.search).get("server"); if (q) return String(q).replace(/^ws/, "http"); } catch (e) {} return "https://web-production-220a3.up.railway.app"; }
+  /* `?server=` : un serveur LOCAL seulement (les essais) — ce bloc envoie le jeton de session ; sans borne,
+     un lien piege sur le vrai domaine le livrait a l hote de son choix (releve du 13/10 sur studio.html). */
+  function serveur(){ try { var q = new URLSearchParams(location.search).get("server"); if (q) { var u = new URL(String(q).replace(/^ws/, "http")); if (/^(127\.0\.0\.1|localhost|\[::1\])$/.test(u.hostname)) return u.origin; } } catch (e) {} return "https://web-production-220a3.up.railway.app"; }
   function jeton(){ try { return localStorage.getItem("swogeSession"); } catch (e) { return null; } }
   function lis(k, d){ try { var v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } }
   function ecris(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }

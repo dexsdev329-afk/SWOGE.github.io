@@ -138,7 +138,7 @@ video{ max-width:100%; }
 <!-- La bulle de staking. Chargee tot et SANS defer : elle enveloppe WebSocket
      pour ecouter ce qui passe deja, et doit donc etre en place avant que la page
      n ouvre sa connexion. -->
-<script src="stakebubble.min.js?v=c324151c"></script>
+<script src="stakebubble.min.js?v=f4d2b2d2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
 <script src="swogebuy.js?v=9d7c39e5"></script>
@@ -1094,7 +1094,9 @@ new MutationObserver(ajusteJeu).observe(document.querySelector(".sw-haut"), { ch
 // The Railway server URL (WebSocket). Set it here after deploying, or pass
 // ?server=wss://your-url in the address bar to override.
 var SERVER_URL = "wss://web-production-220a3.up.railway.app";
-(function(){ var q=new URLSearchParams(location.search).get("server"); if(q) SERVER_URL=q; })();
+/* `?server=` : un serveur LOCAL seulement (les essais) — cette socket presente le jeton de session ; sans borne,
+     un lien piege sur le vrai domaine le livrait a l hote de son choix (releve du 13/10, studio.html). */
+(function(){ try{ var q=new URLSearchParams(location.search).get("server"); if(q && /^(127\.0\.0\.1|localhost|\[::1\])$/.test(new URL(String(q).replace(/^ws/,"http")).hostname)) SERVER_URL=q; }catch(e){} })();
 
 // Official canonical bridge (Arbitrum portal). Swap = your SWOGE buy/sell page.
 /* Relay plutot que le portail Arbitrum : meme trajet, 2 secondes au lieu

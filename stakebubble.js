@@ -60,10 +60,14 @@
    * Sans jeton, on n'affiche rien du tout plutot qu'un solde a zero qui
    * ferait croire a un compte vide.
    */
+  /* `?server=` ne vaut que pour un serveur LOCAL (les essais : ws://127.0.0.1:<port>). Cette
+   * socket presente le JETON DE SESSION : sans borne, un lien piege sur le vrai domaine
+   * (…?server=wss://ailleurs) le livrait a l'hote de son choix — releve du 13/10 sur
+   * studio.html, qui charge ce fichier. Un autre hote est ignore : c'est la production. */
   function adresseServeur() {
     try {
       var q = new URLSearchParams(location.search).get('server');
-      if (q) return q;
+      if (q && /^(127\.0\.0\.1|localhost|\[::1\])$/.test(new URL(String(q).replace(/^ws/, 'http')).hostname)) return q;
     } catch (e) {}
     return 'wss://web-production-220a3.up.railway.app';
   }

@@ -275,6 +275,12 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 .sw-haut a, .sw-cote a, .sw-lat a{ color:inherit; text-decoration:none; }
 /* Le contenu de la page dans la colonne du milieu : la grille de la barre fixe sa largeur. */
 .sw-corps main{ max-width:none; }
+/* ---- UN ECRAN BAS NE COUPE PLUS LA COLONNE ----
+   La neuvieme entree du menu commun (Studio, 12/10) allonge la colonne collante de 37 px. Mesure du
+   13/10 a 1366x768 (bas de la colonne, film decoratif exclu) : cette page passait au-dela des 768 px
+   visibles. Sous 840 px de haut, 8 px au lieu de 11 en haut et en bas de chaque lien du menu : 54 px
+   rendus au moins (colonne_nav.test.js le tient a 1366x768 et 1280x720). */
+@media (min-width:981px) and (max-height:840px){ .sw-nav a{ padding-top:8px; padding-bottom:8px } }
 </style>
 <!-- IA-DESIGN:debut (copie de outils/ia_design.css par outils/onglets_ia.js, ne pas editer ici) -->
 <style>
@@ -583,7 +589,7 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
   </aside>
 
 </div>
-<script src="stakebubble.min.js?v=c324151c"></script>
+<script src="stakebubble.min.js?v=f4d2b2d2"></script>
 
 <script>
 /* ==================== SWOGE AI CINEMA (07/10/2026) ====================

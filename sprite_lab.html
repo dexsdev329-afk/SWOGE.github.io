@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="description" content="Move a generated isometric monster: idle when it stops, walk or run when it moves, attack on a key. Keyboard and touch.">
+<title>Sprite Lab</title>
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/img/site/icone-32.png">
+<link rel="apple-touch-icon" href="/img/site/icone-180.png">
+<!-- ==================================================================
+ * SPRITE LAB — BOUGER LE MONSTRE GENERE (12 octobre 2026)
+ *
+ * Demande du proprietaire : « une page ou tu peux bouger le personnage
+ * directement une fois genere » — repos a l'arret, marche quand il bouge,
+ * course, attaque sur une touche, saut, la bonne direction iso. Clavier sur
+ * ordinateur (lu par e.code : WASD et ZQSD sont les MEMES touches physiques),
+ * manette tactile sur telephone (zone morte 0,22 comme MANCHE, nexus.js:14510 ;
+ * course au-dela de 0,75).
+ *
+ * Elle lit le format de sortie de la chaine (outils/planches/chaine.js, depot
+ * du serveur) : une fiche JSON « swoge-planche-iso/1 » et un fichier par action,
+ * n colonnes x D lignes dans l'ordre de fiche.dirs. Trois sources :
+ *   1. les planches publiees : img/nexus/monstres/iso/index.json ;
+ *   2. le studio du proprietaire (/studio/planches) quand une session
+ *      swogeSession existe : le serveur reverifie AI_OWNER a chaque requete et
+ *      ne rend que SES lots ; la page ne fait que montrer ;
+ *   3. des fichiers locaux (la fiche + ses planches), rien n'est envoye.
+ * Rien a payer, rien a signer.
+ *
+ * Animation, comme dans le jeu (plan du 12/10) : idle, attack et jump au
+ * TEMPS (images/s de la fiche x vitesse) ; walk et run a la DISTANCE
+ * (cadre += distance / (pas x case / n)) : le pied ne glisse pas, quelle que
+ * soit la vitesse. Attack se joue une fois, deplacement gele. Direction :
+ * l'angle a l'ecran le plus proche parmi celles de la fiche (se 26,6 deg en
+ * losange 2:1) ; a egalite (gauche ou droite pure) on garde la precedente.
+ * Hors moteurs (noindex) tant que les planches ne sont pas validees.
+ * ================================================================== -->
+<style>
+:root{
+  --fond:#0f1420; --carte:#171e2e; --carte2:#1d2638; --encre:#e8edf7; --pale:#93a1bb; --ligne:#2a3550;
+  --accent:#5b8cff; --accent2:#ffb547; --ok:#3ecf8e; --err:#ff6b6b;
+  --sol1:#2b3a2f; --sol2:#33463a; --sol-trait:rgba(255,255,255,.05);
+}
+*{ box-sizing:border-box; }
+html,body{ margin:0; background:var(--fond); color:var(--encre); }
+body{ font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; overflow-x:hidden; }
+main{ max-width:1000px; margin:0 auto; padding:16px 16px 40px; }
+h1{ font-size:22px; margin:0 0 4px; letter-spacing:.2px; }
+.sous{ color:var(--pale); font-size:13.5px; margin:0 0 12px; }
+.barre{ display:flex; flex-wrap:wrap; gap:8px 12px; align-items:center; background:var(--carte); border:1px solid var(--ligne); border-radius:14px; padding:10px 12px; }
+.barre label{ display:flex; align-items:center; gap:6px; font-size:13px; color:var(--pale); min-width:0; }
+.barre select{ font:inherit; color:var(--encre); background:var(--carte2); border:1px solid var(--ligne); border-radius:10px; padding:8px 10px; max-width:100%; min-height:40px; }
+.barre .choix{ flex:1 1 220px; min-width:0; }
+.barre .choix select{ flex:1; min-width:0; }
+.barre input[type=range]{ width:110px; accent-color:var(--accent); }
+.barre output{ font-variant-numeric:tabular-nums; color:var(--encre); min-width:3.2em; }
+.bouton{ font:inherit; font-weight:600; font-size:13px; color:var(--encre); background:var(--carte2); border:1px solid var(--ligne); border-radius:999px; padding:8px 14px; min-height:40px; cursor:pointer; }
+.bouton:hover{ border-color:var(--accent); }
+.bouton[aria-pressed=true]{ background:var(--accent); border-color:var(--accent); color:#fff; }
+.cases{ display:flex; flex-wrap:wrap; gap:6px 12px; }
+.cases label{ cursor:pointer; }
+#statut{ min-height:20px; font-size:13px; margin:8px 2px 0; color:var(--pale); }
+#statut.err{ color:var(--err); }
+.scene{ position:relative; margin-top:12px; border-radius:16px; overflow:hidden; border:1px solid var(--ligne); background:var(--sol1); touch-action:none; outline:none; }
+.scene:focus-visible{ box-shadow:0 0 0 2px var(--accent); }
+.scene canvas{ display:block; width:100%; height:clamp(260px,62vh,560px); }
+#hud{ position:absolute; left:10px; top:8px; font:600 12.5px/1.3 ui-monospace,SFMono-Regular,Menlo,monospace; color:#fff; background:rgba(0,0,0,.45); padding:5px 8px; border-radius:8px; pointer-events:none; }
+#aide-scene{ position:absolute; right:10px; top:8px; font-size:12px; color:#fff; background:rgba(0,0,0,.35); padding:5px 8px; border-radius:8px; pointer-events:none; }
+.pad{ position:absolute; inset:auto 0 0 0; display:none; justify-content:space-between; align-items:flex-end; padding:12px; pointer-events:none; }
+.pad.montre{ display:flex; }
+@media (pointer:coarse), (max-width:600px){ .pad{ display:flex; } #aide-scene{ display:none; } }
+.manche{ position:relative; width:118px; height:118px; border-radius:50%; background:rgba(255,255,255,.10); border:2px solid rgba(255,255,255,.25); pointer-events:auto; touch-action:none; }
+.manche i{ position:absolute; left:50%; top:50%; width:52px; height:52px; margin:-26px 0 0 -26px; border-radius:50%; background:rgba(255,255,255,.55); box-shadow:0 2px 8px rgba(0,0,0,.35); }
+.gestes{ display:flex; gap:10px; pointer-events:auto; }
+.geste{ width:64px; height:64px; border-radius:50%; border:2px solid rgba(255,255,255,.35); background:rgba(0,0,0,.35); color:#fff; font:700 12px/1 system-ui,sans-serif; touch-action:none; cursor:pointer; }
+.geste.atq{ background:rgba(255,107,107,.55); }
+.geste.saut{ background:rgba(91,140,255,.55); }
+.geste[aria-pressed=true]{ background:rgba(255,181,71,.8); }
+.grille{ display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr)); gap:12px; margin-top:12px; }
+.carte{ background:var(--carte); border:1px solid var(--ligne); border-radius:14px; padding:12px 14px; min-width:0; }
+.carte h2{ font-size:14px; margin:0 0 8px; }
+.touches{ display:grid; grid-template-columns:auto 1fr; gap:4px 10px; font-size:13px; }
+kbd{ font:600 12px ui-monospace,Menlo,monospace; background:var(--carte2); border:1px solid var(--ligne); border-bottom-width:2px; border-radius:6px; padding:1px 6px; white-space:nowrap; }
+table{ width:100%; border-collapse:collapse; font-size:13px; }
+th,td{ text-align:left; padding:4px 6px; border-bottom:1px solid var(--ligne); }
+th{ color:var(--pale); font-weight:600; }
+td.n{ font-variant-numeric:tabular-nums; }
+.verdict{ display:inline-block; font-weight:700; font-size:12px; border-radius:999px; padding:2px 10px; }
+.verdict.ok{ background:rgba(62,207,142,.15); color:var(--ok); }
+.verdict.ko{ background:rgba(255,107,107,.15); color:var(--err); }
+.pale{ color:var(--pale); font-size:12.5px; }
+#ancienne img{ max-width:100%; image-rendering:pixelated; background:var(--carte2); border-radius:10px; display:block; }
+ul.echecs{ margin:6px 0 0; padding-left:18px; font-size:12.5px; color:var(--pale); max-height:180px; overflow:auto; }
+input[type=file]{ display:none; }
+@media (max-width:360px){ .manche{ width:96px; height:96px; } .manche i{ width:44px; height:44px; margin:-22px 0 0 -22px; } .geste{ width:52px; height:52px; font-size:10.5px; } .gestes{ gap:6px; } .pad{ padding:8px; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Sprite Lab</h1>
+  <p class="sous">Move a generated monster. It idles when it stops, walks or runs when it moves, and attacks on a key, facing the right isometric direction.</p>
+
+  <div class="barre">
+    <label class="choix">Monster <select id="monstre" aria-label="Monster"></select></label>
+    <label class="bouton" for="fichiers">Open files…</label><input type="file" id="fichiers" multiple accept=".json,.webp,.png">
+    <label>Move <input type="range" id="vitesse" min="0.5" max="2" step="0.05" value="1"><output id="vitesse-v">1.00×</output></label>
+    <label>Anim <input type="range" id="anim" min="0.25" max="2" step="0.05" value="1"><output id="anim-v">1.00×</output></label>
+    <label>Size <input type="range" id="taille" min="96" max="512" step="8" value="256"><output id="taille-v">256</output></label>
+    <label>Stride <input type="range" id="pas" min="0.05" max="1" step="0.005" value="0.3"><output id="pas-v">0.300</output></label>
+    <div class="cases">
+      <label><input type="checkbox" id="lisse" checked> Smooth</label>
+      <label><input type="checkbox" id="cadre"> Show cell</label>
+      <label><input type="checkbox" id="ralenti"> Slow-mo ¼</label>
+      <label><input type="checkbox" id="padbox"> Touch pad</label>
+    </div>
+    <button class="bouton" id="pause" type="button" aria-pressed="false">Pause</button>
+    <button class="bouton" id="suivante" type="button">Next frame</button>
+  </div>
+  <div id="statut" role="status"></div>
+
+  <div class="scene" id="scene" tabindex="0" aria-label="Stage: use the keyboard or the touch pad to move the monster">
+    <canvas id="toile"></canvas>
+    <div id="hud">loading…</div>
+    <div id="aide-scene">WASD / arrows · Shift run · Space attack · K jump</div>
+    <div class="pad" id="pad">
+      <div class="manche" id="manche" aria-label="Move stick"><i id="bouton-manche"></i></div>
+      <div class="gestes">
+        <button class="geste" id="b-course" type="button" aria-pressed="false">RUN</button>
+        <button class="geste saut" id="b-saut" type="button">JUMP</button>
+        <button class="geste atq" id="b-attaque" type="button">ATTACK</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="grille">
+    <div class="carte">
+      <h2>Controls</h2>
+      <div class="touches">
+        <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span><span>walk (ZQSD on AZERTY: same keys) — or the arrows</span>
+        <span><kbd>Shift</kbd></span><span>run while held</span>
+        <span><kbd>Space</kbd> <kbd>J</kbd></span><span>attack (plays once, you stop)</span>
+        <span><kbd>K</kbd></span><span>jump</span>
+        <span><kbd>P</kbd> <kbd>.</kbd></span><span>pause · next frame</span>
+      </div>
+      <p class="pale">On a phone: the stick on the left (past ¾ of its reach you run), the buttons on the right.</p>
+    </div>
+    <div class="carte">
+      <h2>This sheet <span id="verdict"></span></h2>
+      <div id="fiche"><p class="pale">No sheet loaded.</p></div>
+    </div>
+    <div class="carte" id="ancienne" hidden>
+      <h2>Current in-game sheet</h2>
+      <img id="ancienne-img" alt="Current 4×4 sheet of this monster">
+    </div>
+  </div>
+</main>
+<script>
+(function(){
+  "use strict";
+  var $ = function(id){ return document.getElementById(id); };
+  var ISO = "img/nexus/monstres/iso/";
+  /* angle a l'ecran de chaque direction (losange 2:1 : la diagonale monde fait 26,57 deg) */
+  var ANGLES = { e:0, se:26.565, s:90, sw:153.435, w:180, nw:206.565, n:270, ne:333.435 };
+  var EN = { idle:"idle", walk:"walk", run:"run", attack:"attack", jump:"jump" };
+
+  function serveur(){
+    try { var q = new URLSearchParams(location.search).get("server"); if (q) return String(q).replace(/\/$/, ""); } catch (e) {}
+    return "https://web-production-220a3.up.railway.app";
+  }
+  function jeton(){ try { return localStorage.getItem("swogeSession"); } catch (e) { return null; } }
+  function statut(t, err){ var s = $("statut"); s.textContent = t || ""; s.className = err ? "err" : ""; }
+  function texte(el, t){ el.textContent = t; return el; }
+  function elem(tag, cls, t){ var e = document.createElement(tag); if (cls) e.className = cls; if (t != null) e.textContent = t; return e; }
+
+  /* ---------------- l'etat ---------------- */
+  var P = null;            /* la planche chargee : { fiche, images: {action: Image}, nom, ancienne } */
+  var E = { x:0, y:0, dir:"se", action:"idle", cadre:0, geste:null, dernierMvt:"se", pret:false, pause:false, distance:0 };
+  var entree = { haut:false, bas:false, gauche:false, droite:false, course:false, manche:null, coursePad:false };
+  var toile = $("toile"), ctx = toile.getContext("2d"), dpr = 1, W = 0, H = 0;
+
+  function taille(){
+    var r = toile.getBoundingClientRect();
+    dpr = Math.min(2, window.devicePixelRatio || 1);
+    W = Math.max(1, Math.round(r.width)); H = Math.max(1, Math.round(r.height));
+    toile.width = Math.round(W * dpr); toile.height = Math.round(H * dpr);
+    if (!E.x) { E.x = W / 2; E.y = H * 0.68; }
+    E.x = Math.min(Math.max(E.x, 0), W); E.y = Math.min(Math.max(E.y, 0), H);
+  }
+  window.addEventListener("resize", taille);
+
+  /* ---------------- chargement ---------------- */
+  function chargeImage(src){
+    return new Promise(function(res, rej){ var i = new Image(); i.onload = function(){ res(i); }; i.onerror = function(){ rej(new Error("cannot load " + src)); }; i.src = src; });
+  }
+  /* une fiche et ses planches ; `url(rel)` rend l'adresse (ou l'objet) d'un fichier relatif a la fiche */
+  function installe(fiche, url, nom, ancienne){
+    if (!fiche || fiche.format !== "swoge-planche-iso/1" || !fiche.actions || !Array.isArray(fiche.dirs)) return Promise.reject(new Error("not a sprite sheet card (swoge-planche-iso/1)"));
+    var actions = Object.keys(fiche.actions);
+    return Promise.all(actions.map(function(a){ return Promise.resolve(url(fiche.actions[a].f)).then(chargeImage); })).then(function(imgs){
+      var images = {};
+      actions.forEach(function(a, i){ images[a] = imgs[i]; });
+      P = { fiche: fiche, images: images, nom: nom || fiche.nom, ancienne: ancienne || null };
+      var pas = (fiche.actions.walk && fiche.actions.walk.pas) || (fiche.actions.run && fiche.actions.run.pas) || 0.3;
+      $("pas").value = pas; majSorties();
+      E.dir = fiche.dirs.indexOf(E.dir) >= 0 ? E.dir : (fiche.dirs.indexOf("se") >= 0 ? "se" : fiche.dirs[0]);
+      E.action = "idle"; E.cadre = 0; E.geste = null; E.pret = true;
+      montreFiche(); statut("");
+    });
+  }
+
+  function chargePubliee(entreeIdx){
+    var base = ISO;
+    E.pret = false;
+    return fetch(base + entreeIdx.fiche, { cache: "no-cache" }).then(function(r){ if (!r.ok) throw new Error("sheet card " + r.status); return r.json(); })
+      .then(function(f){ return installe(f, function(rel){ return base + rel + (f.v ? "?v=" + encodeURIComponent(f.v) : ""); }, entreeIdx.titre || entreeIdx.nom, entreeIdx.ancienne || null); });
+  }
+
+  /* le studio du proprietaire : fichiers lus avec la session (Bearer), jamais publics */
+  function chargeStudio(lot, monstre){
+    var h = { authorization: "Bearer " + jeton() }, base = serveur() + "/studio/planches/fichier/" + lot + "/";
+    E.pret = false;
+    return fetch(base + monstre + ".json", { headers: h, cache: "no-store" }).then(function(r){ if (!r.ok) throw new Error("studio " + r.status); return r.json(); })
+      .then(function(f){ return installe(f, function(rel){ return fetch(base + rel, { headers: h, cache: "no-store" }).then(function(r){ if (!r.ok) throw new Error("studio " + r.status); return r.blob(); }).then(function(b){ return URL.createObjectURL(b); }); }, "Studio · " + monstre, null); });
+  }
+
+  var SOURCES = {};
+  function ajouteOption(cle, libelle, fn){ SOURCES[cle] = fn; var o = elem("option", null, libelle); o.value = cle; $("monstre").appendChild(o); }
+
+  function demarre(){
+    fetch(ISO + "index.json", { cache: "no-cache" }).then(function(r){ if (!r.ok) throw new Error("index " + r.status); return r.json(); }).then(function(ix){
+      (ix.planches || []).forEach(function(p){ ajouteOption("pub:" + p.nom, (p.titre || p.nom) + (p.verdict === "ok" ? "" : " (to review)"), function(){ return chargePubliee(p); }); });
+      if (!$("monstre").options.length) throw new Error("no published sheet yet");
+      return choisis($("monstre").value);
+    }).catch(function(e){ statut("Could not load the published sheets: " + e.message + ". Open your own files instead.", true); $("hud").textContent = "no sheet"; });
+    /* le proprietaire : ses lots finis, s'il a une session (le serveur decide) */
+    if (jeton()) {
+      fetch(serveur() + "/studio/planches", { headers: { authorization: "Bearer " + jeton() }, cache: "no-store" })
+        .then(function(r){ return r.ok ? r.json() : null; }).then(function(o){
+          if (!o || !o.proprietaire) return;
+          (o.lots || []).forEach(function(l){ (l.planches || []).forEach(function(p){
+            if (p.erreur) return;
+            ajouteOption("st:" + l.id + ":" + p.monstre, "Studio · " + l.lot + " · " + p.monstre + (p.verdict === "ok" ? "" : " (to review)"), function(){ return chargeStudio(l.id, p.monstre); });
+          }); });
+        }).catch(function(){ /* serveur injoignable : les planches publiees suffisent */ });
+    }
+  }
+  function choisis(cle){
+    var fn = SOURCES[cle]; if (!fn) return Promise.resolve();
+    statut("Loading…");
+    return fn().catch(function(e){ statut("Could not load this sheet: " + e.message, true); });
+  }
+  $("monstre").addEventListener("change", function(){ choisis(this.value); });
+
+  /* des fichiers locaux : la fiche JSON + ses planches (rien ne sort de l'appareil) */
+  $("fichiers").addEventListener("change", function(){
+    var fs = Array.prototype.slice.call(this.files || []), json = fs.filter(function(f){ return /\.json$/i.test(f.name); })[0];
+    if (!json) { statut("Pick the sheet card (.json) together with its .webp or .png sheets.", true); return; }
+    var parNom = {}; fs.forEach(function(f){ parNom[f.name] = f; });
+    json.text().then(function(t){ var f = JSON.parse(t);
+      return installe(f, function(rel){ var b = rel.split("/").pop(), x = parNom[b]; if (!x) throw new Error("missing file " + b); return URL.createObjectURL(x); }, "Local · " + (f.nom || json.name), null)
+        .then(function(){ ajouteOption("loc:" + Date.now(), "Local · " + (f.nom || json.name), function(){ return Promise.resolve(); }); $("monstre").value = $("monstre").options[$("monstre").options.length - 1].value; });
+    }).catch(function(e){ statut("Could not open these files: " + e.message, true); });
+    this.value = "";
+  });
+
+  /* ---------------- le panneau de la fiche ---------------- */
+  function montreFiche(){
+    var f = P.fiche, box = $("fiche"); box.textContent = "";
+    var ok = f.qc && f.qc.verdict === "ok";
+    var v = $("verdict"); v.textContent = ""; v.appendChild(elem("span", "verdict " + (ok ? "ok" : "ko"), ok ? "checks pass" : "to review"));
+    var t = elem("table"), tr = elem("tr");
+    ["action", "frames", "fps", "stride", "plays"].forEach(function(h){ tr.appendChild(elem("th", null, h)); }); t.appendChild(tr);
+    Object.keys(f.actions).forEach(function(a){
+      var x = f.actions[a], r = elem("tr");
+      r.appendChild(elem("td", null, EN[a] || a)); r.appendChild(elem("td", "n", String(f.n))); r.appendChild(elem("td", "n", String(x.ips)));
+      r.appendChild(elem("td", "n", x.pas != null ? x.pas.toFixed(3) : "—")); r.appendChild(elem("td", null, x.boucle ? "loop" : "once"));
+      t.appendChild(r);
+    });
+    box.appendChild(t);
+    var nCtl = f.qc && f.qc.controles ? f.qc.controles.length : 0;
+    box.appendChild(elem("p", "pale", f.dirs.length + " directions (" + f.dirs.join(", ").toUpperCase() + "), " + f.case + " px cells, feet at " + Math.round(f.sol * 100) + " % of the cell. " + nCtl + " checks" + (f.cout_usd != null ? ", real cost " + f.cout_usd.toFixed(2) + " $" : "") + ". Stride = share of the cell walked per cycle."));
+    if (f.qc && f.qc.controles) {
+      var bad = f.qc.controles.filter(function(c){ return !c.ok; });
+      if (bad.length) {
+        var ul = elem("ul", "echecs");
+        bad.slice(0, 40).forEach(function(c){ ul.appendChild(elem("li", null, c.id + (c.action ? " · " + c.action : "") + (c.dir ? " · " + c.dir : "") + ": " + c.valeur + " (limit " + c.sens + " " + c.seuil + ", n = " + c.n + ")")); });
+        box.appendChild(ul);
+      }
+    }
+    var an = $("ancienne");
+    if (P.ancienne) { $("ancienne-img").src = "img/nexus/monstres/" + P.ancienne; an.hidden = false; } else an.hidden = true;
+  }
+
+  /* ---------------- les reglages ---------------- */
+  function majSorties(){
+    $("vitesse-v").textContent = Number($("vitesse").value).toFixed(2) + "×";
+    $("anim-v").textContent = Number($("anim").value).toFixed(2) + "×";
+    $("taille-v").textContent = $("taille").value;
+    $("pas-v").textContent = Number($("pas").value).toFixed(3);
+  }
+  ["vitesse", "anim", "taille", "pas"].forEach(function(id){ $(id).addEventListener("input", majSorties); });
+  $("padbox").addEventListener("change", function(){ $("pad").classList.toggle("montre", this.checked); });
+  function basculePause(){ E.pause = !E.pause; $("pause").setAttribute("aria-pressed", String(E.pause)); $("pause").textContent = E.pause ? "Play" : "Pause"; }
+  $("pause").addEventListener("click", basculePause);
+  function imageSuivante(){ if (!E.pause) basculePause(); E.cadre = (Math.floor(E.cadre) + 1) % ((P && P.fiche.n) || 8); }
+  $("suivante").addEventListener("click", imageSuivante);
+  if (window.matchMedia && window.matchMedia("(max-width: 520px)").matches) $("taille").value = 200;
+  majSorties();
+
+  /* ---------------- les entrees ---------------- */
+  var CODES = { KeyW:"haut", ArrowUp:"haut", KeyS:"bas", ArrowDown:"bas", KeyA:"gauche", ArrowLeft:"gauche", KeyD:"droite", ArrowRight:"droite" };
+  function champ(t){ return t && (t.tagName === "INPUT" || t.tagName === "SELECT" || t.tagName === "TEXTAREA"); }
+  window.addEventListener("keydown", function(e){
+    if (champ(e.target) && e.target.type !== "checkbox") return;
+    if (CODES[e.code]) { entree[CODES[e.code]] = true; e.preventDefault(); }
+    else if (e.code === "ShiftLeft" || e.code === "ShiftRight") entree.course = true;
+    else if ((e.code === "Space" || e.code === "KeyJ") && !e.repeat) { lanceGeste("attack"); e.preventDefault(); }
+    else if (e.code === "KeyK" && !e.repeat) lanceGeste("jump");
+    else if (e.code === "KeyP" && !e.repeat) basculePause();
+    else if (e.code === "Period") imageSuivante();
+  });
+  window.addEventListener("keyup", function(e){
+    if (CODES[e.code]) entree[CODES[e.code]] = false;
+    else if (e.code === "ShiftLeft" || e.code === "ShiftRight") entree.course = false;
+  });
+  window.addEventListener("blur", function(){ entree.haut = entree.bas = entree.gauche = entree.droite = entree.course = false; entree.manche = null; });
+  $("scene").addEventListener("pointerdown", function(){ $("scene").focus({ preventScroll: true }); });
+
+  /* la manette : zone morte 0,22 (MANCHE, nexus.js:14510), course au-dela de 0,75 */
+  var manche = $("manche"), bouton = $("bouton-manche"), pointeur = null;
+  function lisManche(e){
+    var r = manche.getBoundingClientRect(), R = r.width / 2, dx = (e.clientX - r.left - R) / R, dy = (e.clientY - r.top - R) / R, l = Math.hypot(dx, dy);
+    if (l > 1) { dx /= l; dy /= l; l = 1; }
+    bouton.style.transform = "translate(" + (dx * R * 0.6) + "px," + (dy * R * 0.6) + "px)";
+    entree.manche = l < 0.22 ? null : { x: dx, y: dy, l: l };
+  }
+  manche.addEventListener("pointerdown", function(e){
+    pointeur = e.pointerId;
+    /* la capture garde le doigt meme s'il sort du cercle ; un pointeur deja leve la refuse : on continue sans */
+    try { manche.setPointerCapture(e.pointerId); } catch (x) {}
+    lisManche(e); e.preventDefault();
+  });
+  manche.addEventListener("pointermove", function(e){ if (e.pointerId === pointeur) lisManche(e); });
+  function lache(e){ if (e.pointerId !== pointeur) return; pointeur = null; entree.manche = null; bouton.style.transform = ""; }
+  manche.addEventListener("pointerup", lache); manche.addEventListener("pointercancel", lache);
+  $("b-attaque").addEventListener("pointerdown", function(e){ e.preventDefault(); lanceGeste("attack"); });
+  $("b-saut").addEventListener("pointerdown", function(e){ e.preventDefault(); lanceGeste("jump"); });
+  $("b-course").addEventListener("click", function(){ entree.coursePad = !entree.coursePad; this.setAttribute("aria-pressed", String(entree.coursePad)); });
+
+  function lanceGeste(a){
+    if (!E.pret || E.geste) return;
+    E.geste = { action: a, t: 0 }; E.action = a; E.cadre = 0;
+  }
+
+  /* ---------------- la direction ---------------- */
+  function direction(vx, vy){
+    var dirs = P.fiche.dirs, ang = (Math.atan2(vy, vx) * 180 / Math.PI + 360) % 360, best = Infinity, cands = [];
+    dirs.forEach(function(d){
+      if (ANGLES[d] == null) return;
+      var x = Math.abs(ang - ANGLES[d]) % 360; x = Math.min(x, 360 - x);
+      if (x < best - 0.5) { best = x; cands = [d]; } else if (Math.abs(x - best) <= 0.5) cands.push(d);
+    });
+    /* egalite (gauche, droite, haut ou bas pur) : on garde la direction precedente si elle en est */
+    return cands.indexOf(E.dir) >= 0 ? E.dir : cands[0];
+  }
+
+  /* ---------------- la boucle ---------------- */
+  var avant = performance.now();
+  function tour(t){
+    var dt = Math.min(0.05, (t - avant) / 1000); avant = t;
+    if ($("ralenti").checked) dt *= 0.25;
+    if (P && E.pret && !E.pause) avance(dt);
+    dessine();
+    requestAnimationFrame(tour);
+  }
+
+  function cellule(){ return Number($("taille").value); }
+
+  function avance(dt){
+    var f = P.fiche, n = f.n, C = cellule(), animV = Number($("anim").value);
+    /* le geste en cours : au temps, une fois, deplacement gele pour l'attaque */
+    if (E.geste) {
+      var a = E.geste.action, x = f.actions[a];
+      var ips = x ? x.ips : 8;
+      E.cadre += dt * ips * animV;
+      if (E.cadre >= n) { E.geste = null; E.cadre = 0; E.action = "idle"; }
+      else if (a === "attack") return;
+    }
+    var vx = 0, vy = 0, course = entree.course || entree.coursePad;
+    if (entree.manche) { vx = entree.manche.x; vy = entree.manche.y; if (entree.manche.l > 0.75) course = true; }
+    else { vx = (entree.droite ? 1 : 0) - (entree.gauche ? 1 : 0); vy = (entree.bas ? 1 : 0) - (entree.haut ? 1 : 0); var l = Math.hypot(vx, vy); if (l) { vx /= l; vy /= l; } }
+    var bouge = Math.hypot(vx, vy) > 0;
+    var act = course && f.actions.run ? "run" : "walk";
+    if (!f.actions[act]) act = f.actions.walk ? "walk" : null;
+    var pas = Number($("pas").value) * (act === "run" && f.actions.run && f.actions.walk && f.actions.walk.pas ? f.actions.run.pas / f.actions.walk.pas : 1);
+    if (bouge) {
+      /* la vitesse « naturelle » : celle ou le pied ne glisse pas a l'ips de la fiche */
+      var ref = act ? f.actions[act] : { ips: 8 };
+      var v = (ref.ips || 8) * pas * C / n * Number($("vitesse").value) * (course && act !== "run" ? 1.8 : 1);
+      var d = v * dt, nx = Math.min(Math.max(E.x + vx * d, C * 0.2), W - C * 0.2), ny = Math.min(Math.max(E.y + vy * d, C * 0.35), H - 6);
+      var parcouru = Math.hypot(nx - E.x, ny - E.y);
+      E.x = nx; E.y = ny; E.distance += parcouru;
+      E.dir = direction(vx, vy);
+      if (!E.geste) {
+        if (E.action !== act) { E.action = act; E.cadre = 0; }
+        /* a la distance : une foulee (pas x case) = n images */
+        if (act) E.cadre = (E.cadre + parcouru / Math.max(1e-6, pas * C / n)) % n;
+      }
+    } else if (!E.geste) {
+      if (E.action !== "idle") { E.action = "idle"; E.cadre = 0; }
+      var ii = f.actions.idle ? f.actions.idle.ips : 4;
+      E.cadre = (E.cadre + dt * ii * animV) % n;
+    }
+  }
+
+  function sol(){
+    var C = cellule(), tw = Math.max(48, C * 0.5), th = tw / 2;
+    for (var j = -2; j * th / 2 < H + th; j++) {
+      for (var i = -2; i * tw < W + tw; i++) {
+        var cx = i * tw + (j % 2 ? tw / 2 : 0), cy = j * th / 2;
+        ctx.beginPath(); ctx.moveTo(cx, cy - th / 2); ctx.lineTo(cx + tw / 2, cy); ctx.lineTo(cx, cy + th / 2); ctx.lineTo(cx - tw / 2, cy); ctx.closePath();
+        ctx.fillStyle = ((i + j) % 2 === 0) ? getVar("--sol1") : getVar("--sol2"); ctx.fill();
+        ctx.strokeStyle = getVar("--sol-trait"); ctx.lineWidth = 1; ctx.stroke();
+      }
+    }
+  }
+  var vars = {};
+  function getVar(k){ if (!vars[k]) vars[k] = getComputedStyle(document.documentElement).getPropertyValue(k).trim(); return vars[k]; }
+
+  function dessine(){
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+    sol();
+    if (!P || !E.pret) return;
+    var f = P.fiche, C = cellule(), n = f.n;
+    var action = f.actions[E.action] ? E.action : (E.action === "run" && f.actions.walk ? "walk" : (f.actions.idle ? "idle" : Object.keys(f.actions)[0]));
+    var img = P.images[action], case0 = img.naturalWidth / n, ligne = Math.max(0, f.dirs.indexOf(E.dir)), col = Math.min(n - 1, Math.floor(E.cadre));
+    var leve = 0;
+    /* pas de planche de saut : un bond calcule sur l'image de repos */
+    if (E.geste && E.geste.action === "jump" && !f.actions.jump) leve = Math.sin(Math.PI * E.cadre / n) * C * 0.22;
+    /* l'ombre ovale, sous les pieds */
+    ctx.fillStyle = "rgba(0,0,0,.28)"; ctx.beginPath(); ctx.ellipse(E.x, E.y, C * 0.16, C * 0.055, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.imageSmoothingEnabled = $("lisse").checked; ctx.imageSmoothingQuality = "high";
+    var x0 = Math.round(E.x - C / 2), y0 = Math.round(E.y - f.sol * C - leve);
+    ctx.drawImage(img, col * case0, ligne * case0, case0, case0, x0, y0, C, C);
+    if ($("cadre").checked) {
+      ctx.strokeStyle = "rgba(255,181,71,.9)"; ctx.lineWidth = 1; ctx.strokeRect(x0 + 0.5, y0 + 0.5, C - 1, C - 1);
+      ctx.beginPath(); ctx.moveTo(E.x - 8, E.y); ctx.lineTo(E.x + 8, E.y); ctx.moveTo(E.x, E.y - 8); ctx.lineTo(E.x, E.y + 8); ctx.stroke();
+    }
+    var ips = f.actions[action] ? f.actions[action].ips : 0;
+    $("hud").textContent = (EN[E.action] || E.action) + " · " + E.dir.toUpperCase() + " · " + (col + 1) + "/" + n + (E.action === "walk" || E.action === "run" ? " · by distance" : " · " + (ips * Number($("anim").value)).toFixed(1) + " fps");
+    var sc = $("scene"); sc.dataset.action = E.action; sc.dataset.dir = E.dir; sc.dataset.cadre = String(col);
+  }
+
+  /* un acces en lecture pour les essais (sprite_lab.test.js) — rien a ecrire */
+  window.spriteLab = { etat: function(){ return { pret: E.pret, action: E.action, dir: E.dir, cadre: Math.floor(E.cadre), x: E.x, y: E.y, nom: P && P.nom, dirs: P && P.fiche.dirs }; } };
+
+  taille();
+  requestAnimationFrame(tour);
+  demarre();
+})();
+</script>
+</body>
+</html>

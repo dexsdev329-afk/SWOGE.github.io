@@ -504,6 +504,12 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
  * effet sous 1360px : la regle juste au-dessus y cache deja `.sw-cote`). */
 .sw-corps{ grid-template-columns:230px minmax(0,1fr) 300px; }
 .sw-cote{ width:auto; max-width:230px; }
+/* ---- UN ECRAN BAS NE COUPE PLUS LA COLONNE ----
+ * La neuvieme entree du menu commun (Studio, 12/10) allonge la colonne collante de 37 px. Mesure
+ * du 13/10 a 1366x768 : bas de la colonne a 745 px avant, 782 apres, pour 768 visibles — la carte
+ * « SWOGE WORLD · ENTER » etait coupee. Sous 840 px de haut, 8 px au lieu de 11 en haut et en bas
+ * de chaque lien : 6 px x 10 liens = 60 px rendus, plus que les 37 pris. */
+@media (min-width:1361px) and (max-height:840px){ .sw-nav a{ padding-top:8px; padding-bottom:8px } }
 </style>
 <body>
 <!-- ==================== LA BARRE BLANCHE ====================

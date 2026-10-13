@@ -153,7 +153,7 @@ video{ max-width:100%; }
 <!-- La bulle de staking. Chargee tot et SANS defer : elle enveloppe WebSocket
      pour ecouter ce qui passe deja, et doit donc etre en place avant que la page
      n ouvre sa connexion. -->
-<script src="stakebubble.min.js?v=c324151c"></script>
+<script src="stakebubble.min.js?v=f4d2b2d2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
 <!-- `swogebuy.js` pose un bloc « Buy $SWOGE » sous le champ de depot. Ici le
      depot est en $SWOGEBET : ce bloc ferait acheter le mauvais jeton au
@@ -2933,11 +2933,14 @@ main{ min-width:0; }
    * En clair sur le site public, ca ne donne rien de plus a personne : la
    * socket exige de toute facon un compte signe. */
   function sbAdresseServeur(){
-    try{ var q=new URLSearchParams(location.search).get("server"); if(q) return q; }catch(e){}
+    /* `?server=` : un serveur LOCAL seulement (les essais) — la socket presente le jeton de session (13/10). */
+    try{ var q=new URLSearchParams(location.search).get("server"); if(q && /^(127\.0\.0\.1|localhost|\[::1\])$/.test(new URL(String(q).replace(/^ws/,"http")).hostname)) return q; }catch(e){}
     return "wss://web-production-220a3.up.railway.app";
   }
   var SERVER_URL=sbAdresseServeur();
-  (function(){ var q=new URLSearchParams(location.search).get("server"); if(q) SERVER_URL=q; })();
+  /* `?server=` : un serveur LOCAL seulement (les essais) — cette socket presente le jeton de session ; sans borne,
+     un lien piege sur le vrai domaine le livrait a l hote de son choix (releve du 13/10, studio.html). */
+  (function(){ try{ var q=new URLSearchParams(location.search).get("server"); if(q && /^(127\.0\.0\.1|localhost|\[::1\])$/.test(new URL(String(q).replace(/^ws/,"http")).hostname)) SERVER_URL=q; }catch(e){} })();
 
   var CHAIN={ id:4663, hex:"0x1237", name:"Robinhood Chain", rpc:"https://rpc.mainnet.chain.robinhood.com", scan:"https://robinhoodchain.blockscout.com", sym:"ETH" };
   var TOKEN="0x8a166Fb41Cd659a0a43396272FF73973Ce29F817", VAULT="", MIN_WITHDRAW="50";

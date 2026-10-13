@@ -96,6 +96,33 @@ const T = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css', '.w
      'aucun lien ne sort de la colonne, et ils restent empiles'
      + (fautives.length ? ' — fautives : ' + fautives.join(', ') : ''));
 
+  /* ---- ET LA COLONNE TIENT DANS UN ECRAN DE PORTABLE ----
+     La colonne est COLLANTE : ce qui depasse le bas de l ecran ne se voit jamais. La neuvieme
+     entree du menu (Studio, 12/10) l a allongee de 37 px ; mesure du 13/10 a 1366x768, la
+     resolution de portable la plus courante : quatorze pages passaient au-dela des 768 px (la carte
+     « SWOGE WORLD · ENTER » de launchpad.html coupee, swoge_esim a 784, swoge_cinema a 811). Le
+     film decoratif du bas (.sw-clip) n est pas compte : il remplit le vide, rien ne s y clique. */
+  /* Et 1280x720, l autre ecran de portable courant : la colonne y est cachee sur la plupart des
+     pages (sous 1360 px de large), mais celles qui la gardent doivent tenir aussi. */
+  for (const [lw, lh] of [[1366, 768], [1280, 720]]) {
+    const coupees = [];
+    const p2 = await nav.newPage({ viewport: { width: lw, height: lh } });
+    await p2.route('**', (r) => (r.request().url().startsWith('http://127.0.0.1:' + port) ? r.continue() : r.abort()));
+    for (const f of pages) {
+      try {
+        await p2.goto('http://127.0.0.1:' + port + '/' + f, { waitUntil: 'domcontentloaded' });
+        await p2.waitForTimeout(250);
+        const bas = await p2.evaluate(() => {
+          const c = document.querySelector('.sw-cote'); if (!c || getComputedStyle(c).display === 'none') return null;
+          return Math.max(0, ...[...c.children].filter((k) => !k.classList.contains('sw-clip') && k.getBoundingClientRect().height > 0).map((k) => Math.round(k.getBoundingClientRect().bottom)));
+        });
+        if (bas != null && bas > lh) coupees.push(f + ' (' + bas + ' px)');
+      } catch (e) { coupees.push(f + ' (' + e.message.split('\n')[0].slice(0, 60) + ')'); }
+    }
+    await p2.close();
+    ok(coupees.length === 0, 'a ' + lw + 'x' + lh + ', la colonne collante tient dans l ecran sur chaque page' + (coupees.length ? ' — coupees : ' + coupees.join(', ') : ''));
+  }
+
   /* Et la regle elle-meme ne doit plus pouvoir viser le chrome de la page :
      la mesure ci-dessus ne verrait pas une regle reintroduite dans une page
      nouvelle tant qu'elle n'existe pas encore. */

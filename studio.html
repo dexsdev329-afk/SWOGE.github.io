@@ -17,12 +17,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>SWOGE Studio · AI images and videos, pay per use</title>
 <link rel="canonical" href="https://swoleeswoge.dog/studio.html">
-<meta name="description" content="SWOGE Studio: create AI images with Grok Imagine and ChatGPT Image, videos with Grok Imagine Video, and series or ads with the same characters scene after scene. The price is on the button before you click; nothing is charged if a generation fails.">
+<meta name="description" content="SWOGE Studio: create AI images with Grok Imagine and ChatGPT Image, videos with Grok Imagine Video, and series or ads with the same characters scene after scene. The price is on the button before you click, and you pay per use.">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="SWOGE WORLD">
 <meta property="og:locale" content="en_US">
 <meta property="og:title" content="SWOGE Studio · AI images and videos, pay per use">
-<meta property="og:description" content="SWOGE Studio: create AI images with Grok Imagine and ChatGPT Image, videos with Grok Imagine Video, and series or ads with the same characters scene after scene. The price is on the button before you click; nothing is charged if a generation fails.">
+<meta property="og:description" content="SWOGE Studio: create AI images with Grok Imagine and ChatGPT Image, videos with Grok Imagine Video, and series or ads with the same characters scene after scene. The price is on the button before you click, and you pay per use.">
 <meta property="og:url" content="https://swoleeswoge.dog/studio.html">
 <meta property="og:image" content="https://swoleeswoge.dog/img/site/partage.jpg">
 <meta property="og:image:width" content="1200">
@@ -30,7 +30,7 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:site" content="@SwoleDogeSwoge">
 <meta name="twitter:title" content="SWOGE Studio · AI images and videos, pay per use">
-<meta name="twitter:description" content="SWOGE Studio: create AI images with Grok Imagine and ChatGPT Image, videos with Grok Imagine Video, and series or ads with the same characters scene after scene. The price is on the button before you click; nothing is charged if a generation fails.">
+<meta name="twitter:description" content="SWOGE Studio: create AI images with Grok Imagine and ChatGPT Image, videos with Grok Imagine Video, and series or ads with the same characters scene after scene. The price is on the button before you click, and you pay per use.">
 <meta name="twitter:image" content="https://swoleeswoge.dog/img/site/partage.jpg">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="/img/site/icone-32.png">
@@ -55,7 +55,10 @@
    ====================================================================== */
 :root{
   --bg:#EEF3FB; --card:#FFFFFF; --line:#E1E9F6; --line2:#CFDBEE; --field:#F6F9FD;
-  --ink:#0B1B36; --navy:#0A1F44; --text2:#3A4C6B; --dim:#5A6B85; --dim2:#7E8DA8;
+  /* --dim2 porte du texte utile en 9,5 a 12 px (etiquettes, libelles de solde, prix secondaires).
+     #7E8DA8 de la maquette tombait a 3,01-3,35:1 (AA demande 4,5) ; #5F6E88, le gris de
+     stakebubble, fait 5,16:1 sur blanc, 4,88 sur #F6F9FD et 4,63 sur #EEF3FB (revue du 13/10). */
+  --ink:#0B1B36; --navy:#0A1F44; --text2:#3A4C6B; --dim:#5A6B85; --dim2:#5F6E88;
   --blue:#1B5FE0; --blue-h:#1750c4; --blue-soft:#EAF1FF; --blue-tint:#F5F8FF;
   --green:#12805A; --green-soft:#E3F3EB;
   --red:#B3261E; --red-soft:#FCECEA; --red-line:#F1CFCB;
@@ -71,7 +74,11 @@
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 html{-webkit-text-size-adjust:100%}
-html,body{margin:0;padding:0;max-width:100%;overflow-x:hidden}
+/* `clip` et non `hidden` : `overflow-x:hidden` sur body en fait un conteneur de defilement qui ne
+   defile jamais, et l'en-tete collant (.top) partait avec la page — mesure du 13/10 : a 1200 px de
+   defilement, en-tete a -1200 px, menu et soldes hors d'atteinte. `hidden` reste pour un navigateur
+   qui ne connait pas `clip`. */
+html,body{margin:0;padding:0;max-width:100%;overflow-x:hidden;overflow-x:clip}
 body{
   font-family:var(--f); font-size:14px; line-height:1.5; color:var(--ink);
   background:
@@ -92,7 +99,7 @@ a{color:inherit;text-decoration:none}
 
 /* ---------------- EN-TETE ----------------
  * La premiere <nav> du document est `nav.sb-ancre` : stakebubble.js y pose
- * « Sign in », la photo de profil et sa pastille de solde (l.466, 727, 3121).
+ * « Sign in », la photo de profil et sa pastille de solde (document.querySelector('nav'), l.470, 731, 3125).
  * Les liens du site sont donc dans une <div role="navigation"> : une <nav>
  * placee avant recevrait ces boutons et deborderait a 320 px. */
 .top{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.94);
@@ -152,7 +159,6 @@ h1{font:850 50px/1.04 var(--f);font-stretch:106%;letter-spacing:-1.8px;color:var
 /* Affiches decoratives (oeuvres SWOGE du site) de part et d'autre du titre, grand ecran seulement. */
 .art{position:absolute;margin:0;border-radius:18px;overflow:hidden;background:#fff;padding:5px;box-shadow:0 1px 2px rgba(11,27,54,.08),0 24px 50px -18px rgba(11,27,54,.35);pointer-events:none}
 .art img{border-radius:13px;width:100%;height:100%;object-fit:cover}
-.art em{position:absolute;left:12px;bottom:12px;font:700 10px/1 var(--f);font-style:normal;letter-spacing:.3px;color:var(--navy);background:rgba(255,255,255,.9);padding:5px 7px;border-radius:999px}
 .art.a1{left:1%;top:26px;width:150px;height:240px;transform:rotate(-7deg)}
 .art.a2{left:12%;top:170px;width:138px;height:138px;transform:rotate(5deg)}
 .art.a3{right:0;top:22px;width:228px;height:152px;transform:rotate(6deg)}
@@ -185,7 +191,8 @@ h1{font:850 50px/1.04 var(--f);font-stretch:106%;letter-spacing:-1.8px;color:var
 .ref.auto img{width:100%;height:100%;object-fit:cover;border-radius:14px}
 .ref.auto em{position:absolute;left:0;right:0;bottom:0;padding:3px 0;background:rgba(10,31,68,.82);color:#fff;font:800 9.5px/1 var(--f);font-style:normal;letter-spacing:.8px;text-align:center}
 textarea.prompt{flex:1;min-width:0;border:0;outline:0;resize:none;background:transparent;font:500 17px/1.45 var(--f);color:var(--ink);min-height:68px;padding:8px 4px}
-textarea.prompt::placeholder{color:#8B99B2}
+/* Le texte indicatif est le seul exemple de prompt montre a un joueur deconnecte : 5,42:1 et non 2,9. */
+textarea.prompt::placeholder{color:var(--dim)}
 textarea.prompt:disabled{cursor:not-allowed}
 .c-row{display:flex;align-items:center;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
 .ctls{display:flex;align-items:center;gap:8px;flex:1;min-width:0;flex-wrap:wrap}
@@ -264,6 +271,13 @@ textarea.prompt:disabled{cursor:not-allowed}
 .racts button:disabled{opacity:.6;cursor:wait}
 /* La video : ses commandes restent libres, le texte passe dessous. */
 .rfoot{padding:10px 4px 2px;text-align:left}
+/* Plusieurs images : la grille prend toute la scene, au rapport de la grille (2x2 : carre ;
+   deux cote a cote : 2/1), et le texte et les boutons passent DESSOUS (.rfoot), comme pour la
+   video. Mesure du 13/10 : la barre posee par-dessus couvrait la seconde rangee d'un x4 (images
+   3 et 4 visibles a 0 % a 1440 px, 1 % a 390, 37 % au mieux a 768) et le centre de chaque image
+   d'un x2 a 390 et a 1440 : un appui y touchait la barre, pas l'image. */
+.result.done.multi .stage{flex:none;aspect-ratio:1/1;min-height:0}
+.result.done.multi.n2 .stage{aspect-ratio:2/1}
 .rfoot b{display:block;font:700 13px/1.3 var(--f);color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rfoot small{display:block;font:600 11.5px/1.35 var(--f);color:var(--dim);margin-top:2px}
 .rfoot .racts a,.rfoot .racts button{background:var(--field);border:1px solid var(--line)}
@@ -352,7 +366,7 @@ select.inp{appearance:auto}
 .char .crow{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px}
 .char .crow button{border:0;background:none;padding:0;font:700 12px/1.3 var(--f);color:var(--blue)}
 .char .crow span{font:600 12px/1.3 var(--f);color:var(--dim)}
-/* La voix : la pastille bleue de la maquette, mais un vrai choix (les voix du serveur, server.js:6381). */
+/* La voix : la pastille bleue de la maquette, mais un vrai choix (les voix du serveur : route GET /studio/production, champ `voix`). */
 .char select.cvoix{width:auto;max-width:170px;flex:0 1 auto;height:30px;border:0;border-radius:999px;background:var(--blue-soft);color:var(--blue);font:700 12px/1 var(--f);padding:0 8px;cursor:pointer}
 .char .crm{width:28px;height:28px;flex:0 0 auto;border:0;border-radius:999px;background:var(--bg);color:var(--dim);display:grid;place-items:center}
 .char .crm .ic{width:12px;height:12px;stroke-width:2.4}
@@ -469,7 +483,8 @@ footer b{color:var(--navy)}
 /* ---- La recharge du credit en dollars (USDC, une signature : x402_paie.js) ---- */
 .sheet{position:fixed;inset:0;z-index:100000;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(11,27,54,.34)}
 .sheet-b{position:relative;width:min(420px,100%);max-height:calc(100dvh - 32px);overflow:auto;background:#fff;border:1px solid var(--line);border-radius:22px;box-shadow:0 30px 70px rgba(11,27,54,.3);padding:20px}
-.sheet-b h3{margin:0 0 4px;font:800 19px/1.2 var(--f);color:var(--navy)}
+/* La croix est en position absolue : le titre lui laisse sa place (a 320 px, « credit » passait dessous). */
+.sheet-b h3{margin:0 0 4px;padding-right:40px;font:800 19px/1.2 var(--f);color:var(--navy)}
 .sheet-b p{margin:0 0 12px;font:500 13.5px/1.5 var(--f);color:var(--dim)}
 .sheet-b .f-l{margin-top:14px}
 .sheet-b .seg{width:100%}
@@ -515,7 +530,6 @@ footer b{color:var(--navy)}
   .bal small{font-size:8.5px}
   .bal b{font-size:13px}
   .menub{width:38px;height:38px}
-  main{padding-bottom:calc(150px + env(safe-area-inset-bottom))}
   .hero{padding-top:22px}
   .eyebrow{font-size:10.5px}
   h1{font-size:34px;letter-spacing:-1.1px;margin:14px auto 10px}
@@ -578,7 +592,10 @@ footer b{color:var(--navy)}
   .prod[data-format="1:1"] .scene{width:130px}
   .mine{grid-template-columns:repeat(2,minmax(0,1fr))}
   .toast{bottom:calc(140px + env(safe-area-inset-bottom))}
-  footer{padding-bottom:calc(150px + env(safe-area-inset-bottom))}
+  /* Le bas de page passe au-dessus de la barre du bas ET de la bande des bulles du site
+     (12 + 56 px + un peu d'air) : avec 150 px fixes, la seconde ligne finissait sous les
+     bulles a 320 et a 390 px (barre de 134 px, bulles a 506 px). */
+  footer{padding-bottom:calc(var(--bar-h,150px) + 76px + env(safe-area-inset-bottom))}
   .result{padding:8px;border-radius:20px}
   .result.done .stage,.result.run .stage{aspect-ratio:4/3}
   .refnote .long{display:none}
@@ -596,8 +613,8 @@ footer b{color:var(--navy)}
   html.serie-vue .filmbar{transform:none;visibility:visible}
   html:not(.serie-vue) .filmbar{visibility:hidden;transition:transform .25s ease, visibility 0s .25s}
   /* Les bulles de stakebubble.js se posent a calc(var(--swbb-h) + 12px) du bas ;
-     stakebubble remet --swbb-h a 0 en style en ligne a son chargement (l.4022).
-     Comme swoge_agents.html (l.1223), la page l'impose en !important — ici a la
+     stakebubble remet --swbb-h a 0 en style en ligne a son chargement (l.4026).
+     Comme swoge_agents.html (l.1224), la page l'impose en !important — ici a la
      hauteur REELLE de la barre du bas, mesuree par la page (--bar-h). */
   :root{--swbb-h:var(--bar-h,150px)!important}
 }
@@ -609,11 +626,13 @@ footer b{color:var(--navy)}
 @media (max-width:380px){
   .tab .ic{display:none}
   .tab{font-size:13.5px}
-  .bal .bk small{display:none}
   .bal .bk{padding:0 7px}
   h1{font-size:30px}
   .composer .gen{min-width:96px;padding:0 10px}
 }
+/* Sous 360 px seulement, et seulement « Credit » (le $ du montant le dit) : « $SWOGE » reste,
+   sinon « 182.4k » s'affiche sans unite (regle de la maquette, l.521). */
+@media (max-width:359px){ .bal .bk:first-child small{display:none} }
 @media (prefers-reduced-motion:reduce){ *{transition:none!important;animation:none!important} }
 </style>
 </head>
@@ -671,7 +690,10 @@ footer b{color:var(--navy)}
         <span class="bk"><small>$SWOGE</small><b class="num" id="balSw">&mdash;</b></span>
       </div>
       <button class="gold tu" type="button" id="topUp" hidden><svg class="ic"><use href="#i-plus"/></svg>Top up</button>
-      <button class="menub" type="button" id="menuBtn" aria-expanded="false" aria-controls="drawer" aria-label="Menu"><svg class="ic"><use href="#i-menu"/></svg></button>
+      <!-- Pas « menuBtn » : stakebubble.js cache tout #menuBtn des que la session est reconnue (le bouton
+           des coquilles de jeu) ; le notre disparaissait connecte, de 320 a 1180 px, avec le menu du site
+           et la recharge du telephone (mesure du 13/10). -->
+      <button class="menub" type="button" id="stMenu" aria-expanded="false" aria-controls="drawer" aria-label="Menu"><svg class="ic"><use href="#i-menu"/></svg></button>
     </div>
   </div>
 </header>
@@ -697,13 +719,16 @@ footer b{color:var(--navy)}
 <main>
   <!-- ============ EN-TETE DU STUDIO ============ -->
   <section class="hero">
-    <figure class="art a1" aria-hidden="true"><img src="img/site/cinema/saga_ep6.webp" alt="" width="540" height="960"><em>AI-generated</em></figure>
+    <!-- Les quatre affiches ne portent AUCUNE etiquette : deux sur quatre l'etaient, dont une
+         (accueil/hero.webp, ajoutee avec le Launchpad) sans trace de sa fabrication, et l'autre
+         serie (s2_ep2) venue du meme commit que saga_ep6 passait pour faite a la main. -->
+    <figure class="art a1" aria-hidden="true"><img src="img/site/cinema/saga_ep6.webp" alt="" width="540" height="960"></figure>
     <figure class="art a2" aria-hidden="true"><img src="img/site/doge_roi.webp" alt="" width="560" height="560"></figure>
-    <figure class="art a3" aria-hidden="true"><img src="img/site/accueil/hero.webp" alt="" width="1600" height="1066"><em>AI-generated</em></figure>
+    <figure class="art a3" aria-hidden="true"><img src="img/site/accueil/hero.webp" alt="" width="1600" height="1066"></figure>
     <figure class="art a4" aria-hidden="true"><img src="img/site/cinema/s2_ep2.webp" alt="" width="540" height="960"></figure>
     <span class="eyebrow"><span><svg class="ic"><use href="#i-spark"/></svg></span>SWOGE Studio</span>
     <h1>Images, videos and series. <span class="hl">Pay per use.</span></h1>
-    <p class="sub">Pick a model, describe it, and see the price on the button before you click.<span class="s2"> You pay the real cost of each generation, and nothing if it fails.</span></p>
+    <p class="sub">Pick a model, describe it, and see the price on the button before you click.<span class="s2"> You pay what the provider charges plus our margin<span class="margeTxt"></span>, and a failed generation is refunded.</span></p>
     <ul class="checks" aria-label="How you pay">
       <li><svg class="ic"><use href="#i-check"/></svg>Pay per use</li>
       <li><svg class="ic"><use href="#i-check"/></svg>No subscription</li>
@@ -880,7 +905,7 @@ footer b{color:var(--navy)}
         <div class="box-h"><b id="hTitle">History</b><span class="ainote"><svg class="ic"><use href="#i-clock"/></svg>What each generation cost</span></div>
         <ul class="hist" id="hist"></ul>
         <p class="vide" id="histVide">Sign in to see what you made here.</p>
-        <div class="hsum" id="hsum" hidden><span>Last 7 days on this device<br><small>No subscription, nothing else charged</small></span><span class="hs"><b class="num" id="weekSum">$0.00</b> credit<br><b class="num" id="weekSw">0</b> $SWOGE</span></div>
+        <div class="hsum" id="hsum" hidden><span>Last 7 days · what this device saw<br><small>Your balances are the reference</small></span><span class="hs"><b class="num" id="weekSum">$0.00</b> credit<br><b class="num" id="weekSw">0</b> $SWOGE</span></div>
         <div class="crl" id="crBox" hidden><h3>Dollar credit · from the server</h3><ul id="crHist"></ul></div>
       </aside>
     </div>
@@ -897,12 +922,12 @@ footer b{color:var(--navy)}
     <div class="tcard">
       <div class="ti"><svg class="ic"><use href="#i-tag"/></svg></div>
       <h3>The price, before you click</h3>
-      <p>The button shows what a generation costs before you press it. You pay the <b>real cost</b>, never more than the amount held while it runs, and <b>nothing</b> if a generation fails.</p>
+      <p>The button shows what a generation costs before you press it. You pay what the provider charges for it <b>plus our margin</b><span class="margeTxt"></span>, never more than the amount held while it runs, and the hold <b>comes back</b> if a generation fails. One exception until the server keeps track of it: a server restart in the middle of a <b>$SWOGE</b> generation can keep the hold — your balance shows it.</p>
     </div>
     <div class="tcard nope">
       <div class="ti"><svg class="ic"><use href="#i-ban"/></svg></div>
       <h3>Not allowed here</h3>
-      <p>SWOGE and the characters you invent — never someone real. These are the rules of use; the model providers' moderation refuses such requests, and a refused request costs nothing. There is no face swap and no voice cloning here.</p>
+      <p>SWOGE and the characters you invent — never someone real. These are our rules of use. SWOGE runs no filter of its own; when a provider refuses a request, nothing is charged. There is no face swap tool and no voice cloning here.</p>
       <div class="nolist">
         <span><svg class="ic"><use href="#i-x"/></svg>Face swap</span>
         <span><svg class="ic"><use href="#i-x"/></svg>Voice cloning</span>
@@ -917,7 +942,7 @@ footer b{color:var(--navy)}
 
 <footer>
   <span><b>SWOGE Studio</b> · images and videos made with AI models · paid per use</span>
-  <span>Prices come from the server and can change: the button always shows the current one.</span>
+  <span>Prices come from the server and can change: the page reads them again every minute and just before each generation.</span>
 </footer>
 
 <!-- Telephone : quand Series & Ads est a l'ecran, la barre du bas devient celle de la scene. -->
@@ -931,7 +956,7 @@ footer b{color:var(--navy)}
   <div class="sheet-b">
     <button class="x" type="button" id="rcClose" aria-label="Close"><svg class="ic"><use href="#i-x"/></svg></button>
     <h3 id="rcTitre">Top up your dollar credit</h3>
-    <p>One signature in your wallet, in USDC. The credit pays images here at their real cost. It is not withdrawable.</p>
+    <p>One signature in your wallet, in USDC. The credit pays images here: what the provider charges plus our margin, billed on what each one uses. It is not withdrawable.</p>
     <p id="rcSolde"></p>
     <span class="f-l">Amount</span>
     <div class="seg" role="group" aria-label="Amount" id="rcMontants"></div>
@@ -951,7 +976,7 @@ footer b{color:var(--navy)}
 /* ==========================================================================
  * LA PAGE MONTRE ET ENVOIE ; LE SERVEUR DECIDE.
  *
- * - Le jeton de session (localStorage.swogeSession, pose par stakebubble.js:628
+ * - Le jeton de session (localStorage.swogeSession, pose par stakebubble.js:632
  *   ou par la bulle portefeuille) part en `Authorization: Bearer`. Le serveur
  *   en tire l'adresse (session.js:56-67) ; aucune adresse n'est jamais envoyee
  *   dans un corps.
@@ -965,8 +990,16 @@ footer b{color:var(--navy)}
  * ======================================================================== */
 (function(){
   "use strict";
+  /* `?server=` ne vaut que pour un serveur LOCAL (les essais). Sans borne, un lien piege sur le
+     vrai domaine envoyait le jeton de session (30 jours) en Authorization a l'hote de son choix,
+     et « Sign a $5 top-up » faisait signer un transfert USDC dont cet hote fixait le montant et le
+     destinataire (revue du 13/10 : 5 000 USDC demandes pour 5 $). stakebubble.js, qui porte la
+     socket, applique la meme borne. */
   function serveur(){
-    try { var q = new URLSearchParams(location.search).get("server"); if (q) return String(q).replace(/^ws/, "http").replace(/\/$/, ""); } catch (e) {}
+    try {
+      var q = new URLSearchParams(location.search).get("server");
+      if (q) { var u = new URL(String(q).replace(/^ws/, "http")); if (/^(127\.0\.0\.1|localhost|\[::1\])$/.test(u.hostname)) return u.origin; }
+    } catch (e) {}
     return "https://web-production-220a3.up.railway.app";
   }
   var $ = function(id){ return document.getElementById(id); };
@@ -1029,8 +1062,13 @@ footer b{color:var(--navy)}
     catCharge: "Loading the price list…",
     catErreur: "The price list could not be loaded, so nothing can be generated right now. Retrying…",
     reseau: "Connection lost.",
-    tenu: "more than this is held while it runs — you pay the real cost and the rest comes straight back",
-    rien: "nothing if it fails",
+    tenu: "more than this is held while it runs — you pay what it really uses (provider cost plus our margin) and the rest comes back",
+    rien: "refunded if it fails",
+    /* Ce que la page sait d'une demande qu'elle n'a pas vue finir : le serveur rend une demande
+       qui echoue ; un redemarrage du serveur pendant qu'elle tourne peut garder la reserve en
+       $SWOGE (rien ne la note, game.studioReserve) — la page ne promet donc rien de plus. */
+    inacheve: "an unfinished request is refunded; if the server restarted meanwhile, your balance shows what happened",
+    garde: "If it was charged, your balance shows it.",
     voix: "Voice-over is coming soon — nothing to generate or pay yet. Character voices already speak inside Series & Ads scenes (Video tab), included in the scene price.",
     avatar: "Talking avatars and lipsync are coming soon — nothing to generate or pay yet. Only SWOGE and characters you invent, never a real person.",
     videoSwoge: "Video is paid in $SWOGE for now."
@@ -1080,11 +1118,16 @@ footer b{color:var(--navy)}
     avatar: [{ id: "talk", nom: "Talking avatar", by: "SWOGE Studio", img: "accueil/wallet.webp", desc: "SWOGE or a character you invented reads your script." },
              { id: "lips", nom: "Lipsync", by: "SWOGE Studio", img: "accueil/jeux.webp", desc: "Sync your character's mouth to a voice track." }]
   };
-  /* Ce qui n'est pas propose : une regle d'usage, appuyee sur la moderation des fournisseurs
-     (aucun filtre propre a SWOGE, studio_xai.js:24) — dit comme tel. */
+  /* Ce qui n'est pas permis : une REGLE D'USAGE, rien de plus. SWOGE ne filtre rien lui-meme
+     (studio_xai.js:24 documente un champ de moderation que le serveur ne lit pas), et rien dans
+     les deux depots ne mesure ce que les fournisseurs refusent : la page ne le garantit pas en
+     leur nom. Seul fait verifie : une demande refusee (aucune image rendue, video en echec) est
+     rendue en entier (studio_media.js, `images` et `avance`). Une photo jointe peut montrer
+     n'importe qui (aucun controle de visage, ni ici ni au serveur) : c'est une regle, pas une
+     impossibilite. */
   var REFUS = {
-    image: { nom: "Real people", desc: "Not allowed: real people or public figures, minors, sexual content. The provider's moderation refuses them; a refused request costs nothing." },
-    video: { nom: "Face swap", desc: "Not offered: no tool here puts a real person's face into a video." },
+    image: { nom: "Real people", desc: "Not allowed: real people or public figures, minors, sexual content. These are our rules of use; SWOGE runs no filter of its own, and a request a provider refuses costs nothing." },
+    video: { nom: "Real faces", desc: "Not allowed: a real person's face in a video. Animate SWOGE or characters you invent." },
     voice: { nom: "Voice cloning", desc: "Not offered: only the built-in voices, never a copy of someone's voice." },
     avatar: { nom: "Real faces & voices", desc: "Not offered: no avatar, lipsync or voice of a real person." }
   };
@@ -1103,7 +1146,8 @@ footer b{color:var(--navy)}
     n: null, duree: null, res: null, formatI: "auto", formatV: "auto", style: "",
     jointe: null, payeurChoisi: lisLocal("swogeStudioPayeur", null),
     credit: null, swoge: null, adresse: null, limites: null, reseaux: null,
-    occupe: false, idee: 0, auto: false
+    occupe: false, idee: 0, auto: false,
+    catT: 0, verif: false   /* l'heure de la derniere lecture du catalogue ; une relecture avant envoi en cours */
   };
   /* Le resultat a cote du composeur : { st: vide|run|done|err, ... } */
   var R = { st: "vide" };
@@ -1135,12 +1179,17 @@ footer b{color:var(--navy)}
     return l.filter(function(x){ return x.cle === etat.sel[t]; })[0] || l.filter(function(x){ return x.actif; })[0] || l[0];
   }
   /* Ce qui empeche de generer avec ce modele, ou null : les seuls etats que le serveur publie
-     (ouvert, videoOuverte, fournisseurs[].actif — studio_media.js:146-156), avec SA phrase. */
+     (ouvert, videoOuverte, fournisseurs[].actif — studio_media.js, `catalogue`), avec SA phrase.
+     `ouvert` est faux des que le cours $SWOGE manque (ouvert = fournisseur && cours > 0) ; or une
+     image payee au CREDIT est facturee en dollars, au cours 1 (server.js, payeurDe), et le serveur
+     l'accepte. La page ne ferme donc que le paiement en $SWOGE ; au credit, un fournisseur eteint
+     se lit sur fournisseurs[].actif, et le reste, le serveur le tranche (sa 503 est montree telle
+     quelle). Avant : les joueurs au credit etaient bloques chaque fois que le cours se taisait. */
   function fermeture(mo){
     var c = etat.cat; if (!c || !mo) return null;
     if (mo.genre === "video") return c.videoOuverte === false ? (c.videoNote || c.note || "Video is paused right now.") : null;
-    if (c.ouvert === false) return c.note || "Image generation is paused right now.";
     if (!mo.actif) return mo.fnom + " is not switched on yet — pick another model.";
+    if (c.ouvert === false && payeur() === "swoge") return c.note || "Paying in $SWOGE is paused right now.";
     return null;
   }
   /* Le prix d'une video en $SWOGE, au catalogue : `typiqueSwoge` est le prix exact de la premiere
@@ -1160,7 +1209,7 @@ footer b{color:var(--navy)}
 
   /* ====================== LE PRIX, AVANT LE CLIC ====================== */
   function payeur(){
-    if (etat.onglet === "video") return "swoge";           /* server.js:6581 : la video ne se paie qu'en $SWOGE */
+    if (etat.onglet === "video") return "swoge";           /* server.js, route /studio/media : payeurDe pour une image seulement, la video reste en $SWOGE */
     var p = etat.payeurChoisi;
     if (p === "credit" || p === "swoge") return p;
     return etat.credit > 0 ? "credit" : etat.swoge > 0 ? "swoge" : "credit";
@@ -1184,28 +1233,37 @@ footer b{color:var(--navy)}
       var quoi = ref === "swoge" ? "the SWOGE reference" : "your reference picture";
       d.ref = ref;
       if (m.estime) {
-        /* ChatGPT Image : une ESTIMATION par image (6 893 jetons de sortie mesures, studio_media.js:59,144).
-           Une image envoyee ajoute des jetons d'ENTREE que le catalogue ne chiffre pas
-           (studio_media.js:198) : on le dit, sans inventer de nombre. */
+        /* ChatGPT Image : une ESTIMATION par image (6 893 jetons de sortie mesures, studio_media.js,
+           OPENAI_MESURE_SORTIE). Le texte du prompt (2 000 jetons comptes par le serveur dans sa
+           liste, OPENAI_RESERVE_TEXTE : 0,015 $ marge comprise a la grille gpt-image-2 du serveur, PRIX_OPENAI ;
+           ecart mesure le 13/10 : 0,3252 $ au serveur contre 0,3102 $ au bouton, n=1) et une image
+           envoyee ajoutent des jetons d'ENTREE que le catalogue ne chiffre pas : on le dit, sans
+           inventer de nombre. Le texte compte une fois par demande, pas par image. */
         d.usd = m.parImageUsd != null ? r4(Number(m.parImageUsd) * n) : null;
         d.sw = m.parImageSwoge != null ? Number(m.parImageSwoge) * n : null;
         d.estime = true;
         d.bouton = "~" + (pay === "credit" && d.usd != null ? dollars(d.usd) : nombre(d.sw) + " $SWOGE") + (ref ? " + ref" : "");
-        d.note = [{ b: d.bouton.replace(/ \+ ref$/, "") , suite: (n > 1 ? " for " + n + " images" : "") + (ref ? " plus the input tokens of " + quoi + " (not priced in advance)" : "") },
+        d.note = [{ b: d.bouton.replace(/ \+ ref$/, "") , suite: (n > 1 ? " for " + n + " images" : "") + " plus the input tokens of your prompt" + (ref ? " and of " + quoi : "") + " (not priced in advance)" },
           mo.fnom + " " + mo.nom, "an estimate: billed on the tokens it really uses", TXT.tenu, TXT.rien,
           pay === "credit" ? "paid from your dollar credit" : "≈ " + nombre(d.sw) + " $SWOGE from your balance"];
       } else {
         /* Grok Imagine : une image envoyee (la votre, ou la reference SWOGE posee par le serveur)
-           compte comme UNE image de liste en plus (studio_media.js:200-201). */
+           compte comme UNE image de liste en plus (studio_media.js, coutsImage). Mais la grille
+           xAI ne chiffre pas l'image d'entree d'une retouche (studio_media.js, en-tete : « sans
+           chiffrer l'ecart ») et la facture est le cout RENDU par xAI x marge : avec une image
+           envoyee, le prix est une ESTIMATION (« ~ »), comme chez ChatGPT Image. */
         var k = n + (ref ? 1 : 0);
         d.usd = m.parImageUsd != null ? r4(Number(m.parImageUsd) * k) : null;
         /* En $SWOGE, k x le prix d'une image : le serveur arrondit le total une seule fois
-           (studio_media.js:131), d'ou un ecart de quelques unites au plus pour k > 1. */
+           (studio_media.js, pourSwoge), d'ou un ecart de quelques unites au plus pour k > 1. */
         d.sw = m.parImageSwoge != null ? Number(m.parImageSwoge) * k : null;
-        d.bouton = pay === "credit" && d.usd != null ? dollars(d.usd) : nombre(d.sw) + " $SWOGE";
+        d.estime = !!ref;
+        d.bouton = (ref ? "~" : "") + (pay === "credit" && d.usd != null ? dollars(d.usd) : nombre(d.sw) + " $SWOGE");
         d.note = [{ b: d.bouton, suite: (n > 1 ? " for " + n + " images" : "") + (ref ? " (" + quoi + " counts as one more image)" : "") },
-          mo.fnom + " " + mo.nom, TXT.tenu, TXT.rien,
-          pay === "credit" ? "paid from your dollar credit" + (d.sw != null ? " (≈ " + nombre(d.sw) + " $SWOGE)" : "") : "from your $SWOGE balance" + (d.usd != null ? " (≈ " + dollars(d.usd) + ")" : "")];
+          mo.fnom + " " + mo.nom];
+        if (ref) d.note.push("estimated from xAI's list price; billed on what xAI reports");
+        d.note.push(TXT.tenu, TXT.rien,
+          pay === "credit" ? "paid from your dollar credit" + (d.sw != null ? " (≈ " + nombre(d.sw) + " $SWOGE)" : "") : "from your $SWOGE balance" + (d.usd != null ? " (≈ " + dollars(d.usd) + ")" : ""));
       }
       return d;
     }
@@ -1236,7 +1294,8 @@ footer b{color:var(--navy)}
     var d = devis(), g = $("gen"), j = jeton();
     g.classList.remove("go");
     var lib, prix = "", dis = false, aria;
-    if (etat.occupe) { lib = R.genre === "video" ? "Rendering video…" : "Generating…"; dis = true; aria = lib; }
+    if (etat.verif) { lib = "Checking the price…"; dis = true; aria = lib; }
+    else if (etat.occupe) { lib = R.genre === "video" ? "Rendering video…" : "Generating…"; dis = true; aria = lib; }
     else if (d.off) { lib = d.bouton; dis = true; aria = d.bouton + " — " + (d.note[0] || ""); }
     else if (!j) { lib = "Sign in to generate"; g.classList.add("go"); aria = "Sign in with your wallet to generate"; }
     else { lib = "Generate"; prix = d.bouton; dis = promptVide(); aria = "Generate · " + d.bouton + (dis ? " — describe it first" : ""); }
@@ -1252,7 +1311,7 @@ footer b{color:var(--navy)}
     if (auto) {
       rn.appendChild(h("img", { src: "img/site/swoge_reference.jpg", alt: "" }));
       rn.appendChild(h("span", null, [h("b", { text: "SWOGE reference added" }),
-        " — your prompt names SWOGE, so the server sends his official picture along. " + (d.estime ? "It adds input tokens, billed on what they really cost." : "It is already in the price.") + " ",
+        " — your prompt names SWOGE, so the server sends his official picture along. " + (d.mo && d.mo.f === "openai" ? "It adds input tokens, billed on what they really cost." : "It counts as one more image in the estimate.") + " ",
         h("span", { class: "long", text: "Attach your own picture to use it instead." })]));
     } else if (etat.onglet === "video" && !etat.jointe && nommeSwoge() && etat.cat) {
       /* Une video ne recoit jamais l'image officielle : on le dit, et on propose de la joindre. */
@@ -1261,8 +1320,10 @@ footer b{color:var(--navy)}
     }
     rn.hidden = !rn.firstChild;
     if (auto !== etat.auto) { etat.auto = auto; peintRef(); }
-    /* Le payeur. */
+    /* Le payeur. Cours indisponible : les cartes d'image se ferment pour le $SWOGE seulement (voir
+       fermeture) — la grille suit donc le payeur. */
     var vid = etat.onglet === "video", p = payeur();
+    if (etat.cat && etat.cat.ouvert === false && etat.grillePour !== p) peintGrille();
     [$("payCr"), $("paySw")].forEach(function(b){
       var x = b.getAttribute("data-pay");
       b.disabled = vid && x === "credit";
@@ -1338,6 +1399,7 @@ footer b{color:var(--navy)}
   }
   function peintGrille(){
     var g = $("grid"); g.textContent = "";
+    etat.grillePour = payeur();
     cartesOnglet(etat.onglet).forEach(function(o){ g.appendChild(carte(o)); });
     $("mLabel").textContent = ONGLETS[etat.onglet].label;
   }
@@ -1435,7 +1497,7 @@ footer b{color:var(--navy)}
     vignette(u, 1568, 0.85).then(function(d){ URL.revokeObjectURL(u); fn(d); })["catch"](function(){ URL.revokeObjectURL(u); toast("This picture could not be read."); });
   }
   /* Une image deja faite, reprise comme reference : il faut ses octets. Rangee chez nous
-     (/studio/media/fichier, CORS ouvert, server.js:6340-6346) : ca marche. Chez xAI
+     (/studio/media/fichier, CORS ouvert : server.js, route studioFichiers.PREFIXE) : ca marche. Chez xAI
      (imgen.x.ai) le CORS n'est pas garanti : si le navigateur refuse, on le dit. */
   function depuisAdresse(url){
     return fetch(url, { mode: "cors", cache: "force-cache" }).then(function(r){ if (!r.ok) throw new Error("http " + r.status); return r.blob(); })
@@ -1451,10 +1513,57 @@ footer b{color:var(--navy)}
     if (/^data:image\/(png|jpeg|webp);base64,/.test(String(u))) return String(u);
     return /^https:\/\//.test(String(u)) ? String(u) : null;
   }
+  /* ---- TELECHARGER POUR DE VRAI ----
+     `download` n'agit que sur une adresse de MEME origine : vers imgen.x.ai, vidgen.x.ai ou le
+     serveur Railway, le navigateur l'ignore et ouvre un onglet (revue du 13/10 : « Download »
+     ouvrait https://imgen.x.ai/i0.png, rien n'etait telecharge). On lit donc le fichier (blob) et
+     on le donne sous une adresse locale — possible seulement si l'hote l'autorise (CORS). Nos
+     fichiers (/studio/media/fichier, CORS ouvert, server.js, studioFichiers.PREFIXE) : oui. Un
+     autre hote : on le DEMANDE (HEAD) ; tant que ce n'est pas confirme, le bouton dit « Open » et
+     ouvre un onglet — ce qu'il fait reellement. */
+  var CORS = {};   /* origine -> "?" (en cours), true, false */
+  function origine(u){ try { return new URL(u).origin; } catch (e) { return null; } }
+  function nomFichier(u, video){
+    var m = /^data:image\/(png|jpeg|webp)/.exec(u) || /\.(png|jpe?g|webp|mp4|webm)(?:[?#]|$)/i.exec(u);
+    return "swoge-studio-" + Date.now().toString(36) + "." + (m ? m[1].toLowerCase().replace("jpeg", "jpg") : (video ? "mp4" : "png"));
+  }
+  function permetLecture(u){
+    if (/^data:/.test(u)) return true;
+    var o = origine(u);
+    return (o === origine(serveur()) && /\/studio\/media\/fichier\//.test(u)) || CORS[o] === true;
+  }
+  function lienFichier(u, video){
+    var ok = permetLecture(u), o = /^data:/.test(u) ? null : origine(u);
+    var a = h("a", { href: u, target: "_blank", rel: "noopener", "data-origine": o, "data-nom": nomFichier(u, video), "data-dl": ok ? "1" : null,
+      download: ok && /^data:/.test(u) ? nomFichier(u, video) : null }, [ico(ok ? "download" : "arrow"), ok ? "Download" : "Open"]);
+    if (!ok && o && CORS[o] == null) {
+      CORS[o] = "?";
+      fetch(u, { method: "HEAD", mode: "cors", cache: "no-store" }).then(function(r){ CORS[o] = !!r.ok; }, function(){ CORS[o] = false; })
+        .then(function(){ if (CORS[o] === true) [].forEach.call(document.querySelectorAll("a[data-origine]:not([data-dl])"), function(x){ if (x.getAttribute("data-origine") === o) passeEnTelechargement(x); }); });
+    }
+    return a;
+  }
+  function passeEnTelechargement(a){ a.setAttribute("data-dl", "1"); a.textContent = ""; a.appendChild(ico("download")); a.appendChild(document.createTextNode("Download")); }
+  function passeEnOuverture(a){ a.removeAttribute("data-dl"); a.removeAttribute("download"); a.textContent = ""; a.appendChild(ico("arrow")); a.appendChild(document.createTextNode("Open")); }
+  document.addEventListener("click", function(ev){
+    var a = ev.target.closest && ev.target.closest("a[data-dl]"); if (!a) return;
+    var u = a.getAttribute("href"); if (/^data:/.test(u)) return;   /* une data-URL se telecharge d'elle-meme */
+    ev.preventDefault();
+    fetch(u, { mode: "cors", cache: "force-cache" }).then(function(r){ if (!r.ok) throw new Error("http " + r.status); return r.blob(); }).then(function(b){
+      var l = URL.createObjectURL(b), t = document.createElement("a");
+      t.href = l; t.download = a.getAttribute("data-nom") || "swoge-studio"; document.body.appendChild(t); t.click(); t.remove();
+      setTimeout(function(){ URL.revokeObjectURL(l); }, 60000);
+    })["catch"](function(){
+      var o = a.getAttribute("data-origine"); if (o) CORS[o] = false;
+      passeEnOuverture(a); toast("This file can't be saved from here — tap Open, then save it from the new tab.");
+    });
+  });
+
   function peintResultat(){
     var el = $("result"), g = $("resStage"), pied = $("resFoot"), t = etat.onglet, soon = t === "voice" || t === "avatar";
     var st = (R.st === "vide" && soon) ? "off" : R.st;
-    el.className = "result " + st + (R.genre === "video" && st === "done" ? " vid" : "");
+    var urls = R.st === "done" && R.genre === "image" ? (R.urls || []) : [];
+    el.className = "result " + st + (R.genre === "video" && st === "done" ? " vid" : "") + (urls.length > 1 ? " multi n" + urls.length : "");
     g.textContent = ""; pied.textContent = ""; pied.hidden = true;
     var quoi = { image: "image", video: "video", voice: "voice-over", avatar: "talking avatar" }[t];
     if (st === "off") {
@@ -1465,7 +1574,7 @@ footer b{color:var(--navy)}
     if (st === "vide") {
       g.appendChild(ico(t === "video" ? "video" : "image"));
       g.appendChild(h("span", null, [h("b", { text: "Your " + quoi + " appears here" }),
-        h("small", { text: jeton() ? "The price is on the button before you click. Nothing is charged if it fails." : "Sign in with your wallet to generate. The price is on the button before you click." })]));
+        h("small", { text: jeton() ? "The price is on the button before you click. Refunded if it fails." : "Sign in with your wallet to generate. The price is on the button before you click." })]));
       return;
     }
     if (st === "run") {
@@ -1474,7 +1583,9 @@ footer b{color:var(--navy)}
       var bar = h("div", { class: "rprog" + (vid ? "" : " ind") }, [h("i")]);
       if (vid) bar.firstChild.style.width = Math.max(4, Math.min(99, R.pct || 0)) + "%";
       g.appendChild(bar);
-      g.appendChild(h("small", { text: vid ? "A video takes a minute or two. You can leave this page: it picks up where it was." : "You pay the real cost. Nothing is charged if it fails." }));
+      /* Le serveur oublie une video une heure apres sa fin (studio_media.js, `suit`) : « revenez
+         dans l'heure », pas « quand vous voulez ». */
+      g.appendChild(h("small", { text: vid ? "A video takes a minute or two. You can leave this page — come back within the hour to see it." : "Billed on what it really uses. Refunded if it fails." }));
       return;
     }
     if (st === "err") {
@@ -1494,30 +1605,41 @@ footer b{color:var(--navy)}
       pied.hidden = false;
       pied.appendChild(h("b", { text: info.prompt || "Your video" }));
       pied.appendChild(h("small", { text: ligne }));
-      pied.appendChild(h("div", { class: "racts" }, [h("a", { href: R.url, target: "_blank", rel: "noopener", download: "" }, [ico("download"), "Download"])]));
+      pied.appendChild(h("div", { class: "racts" }, [lienFichier(R.url, true)]));
       return;
     }
-    var urls = R.urls || [], i0 = Math.min(R.choisie || 0, urls.length - 1);
+    var i0 = Math.min(R.choisie || 0, urls.length - 1), u0 = urls[i0];
+    var actes = h("div", { class: "racts" }, [u0 ? lienFichier(u0, false) : null,
+      h("button", { type: "button", "data-comme-ref": "1" }, [ico("upload"), "Use as reference"])]);
     if (urls.length > 1) {
+      /* Plusieurs images : la grille seule dans la scene, tout le reste dessous. */
       var gr = h("div", { class: "rgrid" });
       urls.forEach(function(u, i){
-        var b = h("button", { type: "button", class: i === i0 ? "sel" : "", "data-choisie": String(i), "aria-label": "Image " + (i + 1) + " of " + urls.length }, [h("img", { src: u, alt: "Generated image " + (i + 1) })]);
-        gr.appendChild(b);
+        gr.appendChild(h("button", { type: "button", class: i === i0 ? "sel" : "", "data-choisie": String(i), "aria-pressed": String(i === i0), "aria-label": "Image " + (i + 1) + " of " + urls.length }, [h("img", { src: u, alt: "Generated image " + (i + 1) })]));
       });
       if (urls.length === 3) gr.style.gridTemplateRows = "1fr 1fr";
       g.appendChild(gr);
-    } else if (urls[0]) g.appendChild(h("img", { src: urls[0], alt: "Generated image" }));
-    g.appendChild(h("span", { class: "rtag", text: urls.length > 1 ? urls.length + " images · tap one to pick it" : (info.nom || "Image") }));
-    var u0 = urls[i0];
-    g.appendChild(h("div", { class: "rbar" }, [h("b", { text: info.prompt || "Your image" }), h("small", { text: ligne }),
-      h("div", { class: "racts" }, [
-        u0 ? h("a", { href: u0, target: "_blank", rel: "noopener", download: "" }, [ico("download"), "Download"]) : null,
-        h("button", { type: "button", "data-comme-ref": "1" }, [ico("upload"), "Use as reference"])])]));
+      pied.hidden = false;
+      pied.appendChild(h("b", { text: info.prompt || "Your images" }));
+      pied.appendChild(h("small", { text: urls.length + " images · tap one to pick it · " + ligne }));
+      pied.appendChild(actes);
+      return;
+    }
+    if (u0) g.appendChild(h("img", { src: u0, alt: "Generated image" }));
+    g.appendChild(h("span", { class: "rtag", text: info.nom || "Image" }));
+    g.appendChild(h("div", { class: "rbar" }, [h("b", { text: info.prompt || "Your image" }), h("small", { text: ligne }), actes]));
   }
-  /* Une colonne (<= 960 px) : le resultat entier au-dessus de la barre du bas ET des bulles du site. */
+  /* Le resultat entier au-dessus de la barre du bas ET des bulles du site, a toute largeur (a 1440x900,
+     un x4 finissait sous les bulles, en bas a droite, la ou elles se posent).
+     Les bulles (stakebubble : .swdb, .swwb) sont MESUREES ; avant qu'elles soient posees, on garde
+     leur bande : 16 + 56 + 12 px sans barre du bas, 72 px au-dessus d'elle sur telephone. Mesure du
+     13/10 : de 721 a 960 px, la bande n'etait pas comptee et « Use as reference » finissait sous la
+     bulle VS (un appui a sa droite ouvrait le tiroir VS). */
   function montreResultat(){
-    if (window.innerWidth > 960) return;
-    var r = $("result").getBoundingClientRect(), bas = window.innerHeight - (TEL.matches ? $("composer").offsetHeight + 72 : 0) - 10;
+    var r = $("result").getBoundingClientRect(), bas = window.innerHeight - (TEL.matches ? $("composer").offsetHeight : 0), vues = 0;
+    [].forEach.call(document.querySelectorAll(".swdb,.swwb"), function(e){ var b = e.getBoundingClientRect(); if (b.height > 0 && b.width > 0) { vues++; bas = Math.min(bas, b.top); } });
+    if (!vues && window.innerWidth <= 960) bas -= TEL.matches ? 72 : 84;
+    bas -= 10;
     var haut = (document.querySelector(".top").offsetHeight || 56) + 10;
     if (r.bottom > bas) window.scrollBy(0, Math.min(r.bottom - bas, r.top - haut));
     else if (r.top < haut) window.scrollBy(0, r.top - haut);
@@ -1534,6 +1656,9 @@ footer b{color:var(--navy)}
     return r.json().then(function(x){ if (!x || typeof x !== "object") return illisible; x.http = r.status; if (!r.ok && x.code == null) x.code = r.status; return x; },
                          function(){ return illisible; });
   }
+  /* Le serveur dit-il deja qu'il n'a rien facture ? La page ne l'ajoute jamais d'elle-meme : elle
+     relaie SA phrase (studio_media.js : « — you were not charged » sur chaque echec qu'il rend). */
+  function ditNonFacture(t){ return /not charged/i.test(String(t || "")); }
   /* La session a expire pendant le travail : il continue au serveur ; on le reprendra a la reconnexion. */
   function sessionPerdue(info){
     etat.occupe = false; peintPrix();
@@ -1541,16 +1666,54 @@ footer b{color:var(--navy)}
           boutons: [h("button", { type: "button", class: "rbtn", "data-r-signin": "1", text: "Sign in" })] };
     peintResultat();
   }
+  /* ---- UNE DEMANDE APPARTIENT A L'ADRESSE QUI L'A PAYEE ----
+     La note de reprise porte l'adresse de la session qui l'a envoyee. Mesure du 13/10 : la session
+     changeait de compte pendant le suivi d'une video, le serveur repondait 404 a l'autre adresse
+     (etatVideo n'est lisible que par son proprietaire), la page concluait « plus sur le serveur »
+     et effacait la note — revenu sur le premier compte, le joueur ne voyait jamais la video payee.
+     Une autre session : on cesse de demander SANS rien effacer ; surJeton -> reprend() repart
+     quand la session redevient la bonne. */
+  function memeSession(info){ return !info || !info.adresse || adresseSession() === info.adresse; }
+  function enAttente(){ etat.occupe = false; R = { st: "vide" }; peintResultat(); peintPrix(); }
+  /* Une demande dont le resultat n'est plus au serveur (il garde une reprise une heure, une video
+     une heure apres sa fin, rien apres un redemarrage) : une ligne d'historique le garde au lieu
+     d'un effacement muet, et la page ne pretend pas savoir ce qui a ete facture. */
+  function perdue(info, titre, raison){
+    libere();
+    noteHisto({ genre: info.genre, prompt: info.prompt, nom: info.nom, statut: "lost", raison: raison }, info.adresse);
+    R = { st: "err", genre: info.genre, info: info, titre: titre, raison: raison };
+    peintResultat();
+  }
   function avecStyle(q){
     if (!etat.style) return q;
     return q ? q.replace(/[\s.]+$/, "") + ". Style: " + etat.style : "Style: " + etat.style;
   }
+  /* ---- LE PRIX RELU AVANT D'ENVOYER ----
+     Le serveur relit le cours $SWOGE toutes les 60 s (studio_chat.js, COURS_TTL_MS). Mesure du
+     12/10 : 710 $SWOGE l'image Speed au releve du matin, 1 073 le soir au catalogue de production ;
+     une page restee ouverte gardait 710 et le joueur payait 51 % de plus que son bouton. Le
+     catalogue est donc relu toutes les 60 s (onglet visible), au retour sur l'onglet, et juste avant
+     un envoi s'il a plus de 60 s. Si le prix du bouton a change, RIEN ne part : le bouton montre le
+     nouveau prix et le joueur reclique. Sans catalogue frais, rien ne part non plus. */
+  var CAT_TTL = 60000;
+  function prixVerifie(prix, envoi){
+    if (Date.now() - etat.catT < CAT_TTL) return envoi();
+    var avant = prix();
+    etat.verif = true; peintPrix();
+    chargeCatalogue().then(function(ok){
+      etat.verif = false; peintPrix();
+      if (!ok) { toast("The current price could not be checked, so nothing was sent. Try again in a moment."); return; }
+      if (prix() !== avant) { toast("The price just changed — check the button and click again. Nothing was sent."); return; }
+      envoi();
+    });
+  }
   function genere(){
-    if (etat.occupe) return;
+    if (etat.occupe || etat.verif) return;
     var d = devis();
     if (d.off) return;
     if (!jeton()) return ouvreConnexion();
     if (promptVide()) { $("prompt").focus(); return; }
+    if (Date.now() - etat.catT >= CAT_TTL) return prixVerifie(function(){ var x = devis(); return x.off ? null : x.pay + "|" + x.bouton; }, genere);
     var t = etat.onglet, mo = d.mo, q = $("prompt").value.trim();
     var corps = { modele: mo.id, prompt: avecStyle(q), format: t === "video" ? etat.formatV : etat.formatI };
     if (etat.jointe) corps.image = etat.jointe;
@@ -1563,6 +1726,8 @@ footer b{color:var(--navy)}
   function envoie(corps, info){
     etat.occupe = true;
     corps.rid = nouveauRid(); info.rid = corps.rid; info.t = Date.now();
+    /* L'adresse de la session : rangee dans CE navigateur avec la note, jamais envoyee (corps ne la porte pas). */
+    info.adresse = adresseSession();
     /* Ecrit AVANT l'envoi : une page rechargee pendant la generation la retrouve (/studio/reprise, 1 h). */
     ecrisLocal("swogeStudioEnCours", info);
     R = { st: "run", genre: info.genre, info: info, n: info.n, pct: 0 };
@@ -1585,28 +1750,34 @@ footer b{color:var(--navy)}
   function libere(){ etat.occupe = false; oteLocal("swogeStudioEnCours"); peintPrix(); }
   function echec(e, corps, info){
     libere();
-    var code = e.code || e.http, b = [];
-    R = { st: "err", genre: info.genre, info: info, raison: e.raison || TXT.reseau, titre: "Not generated" };
+    var code = e.code || e.http, b = [], raison = e.raison || TXT.reseau;
+    /* Le payeur se lit dans la REPONSE : un refus du credit retrouve par la reprise arrive sans
+       `corps` (server.js, enCredit : payeur:'credit', requisUsd). Avant : faute de corps, il etait
+       titre « Your $SWOGE balance is too low » sous la phrase du serveur qui parlait du credit. */
+    var auCredit = e.payeur === "credit" || e.requisUsd != null;
+    /* Les titres ne repetent pas la phrase du serveur, montree telle quelle juste dessous. */
+    R = { st: "err", genre: info.genre, info: info, raison: raison, titre: "Not generated" };
     if (code === 401) { R.titre = "Sign in first"; b.push(h("button", { type: "button", class: "rbtn", "data-r-signin": "1", text: "Sign in" })); }
-    else if (code === 402 && e.requisUsd != null && corps) {
-      /* Le credit ne suffit pas (server.js:2801-2809) : UNE signature de ce qui manque (0,10 $ au
-         moins, credits.js:33), puis la MEME demande repart (un nouveau rid). */
-      var min = (etat.limites && etat.limites.minUsd) || 0.1;
-      var manque = Math.max(min, Math.ceil((Number(e.requisUsd) - (Number(e.creditUsd) || 0)) * 100) / 100);
-      R.titre = "Your dollar credit is too low";
-      R.relance = { corps: corps, info: info, manque: manque };
-      b.push(h("button", { type: "button", class: "rbtn", "data-r-signe": "1", text: "Sign " + dollars(manque) + " and generate" }));
-      b.push(h("button", { type: "button", class: "rbtn alt", "data-r-payeur": "swoge", text: "Pay with $SWOGE instead" }));
+    else if (code === 402 && auCredit) {
+      R.titre = "Not enough credit";
+      if (corps && e.requisUsd != null) {
+        /* UNE signature de ce qui manque (0,10 $ au moins, credits.js, MIN_RECHARGE_USD), puis la
+           MEME demande repart (un nouveau rid). */
+        var min = (etat.limites && etat.limites.minUsd) || 0.1;
+        var manque = Math.max(min, Math.ceil((Number(e.requisUsd) - (Number(e.creditUsd) || 0)) * 100) / 100);
+        R.relance = { corps: corps, info: info, manque: manque };
+        b.push(h("button", { type: "button", class: "rbtn", "data-r-signe": "1", text: "Sign " + dollars(manque) + " and generate" }));
+      } else b.push(h("button", { type: "button", class: "rbtn", "data-r-recharge": "1", text: "Top up" }));
+      if (info.genre === "image") b.push(h("button", { type: "button", class: "rbtn alt", "data-r-payeur": "swoge", text: "Pay with $SWOGE instead" }));
     } else if (code === 402) {
-      R.titre = "Your $SWOGE balance is too low";
-      if (e.requisSwoge) R.raison = e.raison + " — about " + nombre(e.requisSwoge) + " $SWOGE is held while it runs.";
+      R.titre = "Not enough $SWOGE";
+      if (e.requisSwoge) R.raison = raison + " — about " + nombre(e.requisSwoge) + " $SWOGE is held while it runs.";
       b.push(h("a", { class: "rbtn", href: "swoge_wallet.html", text: "Get $SWOGE" }));
       if (info.genre === "image") b.push(h("button", { type: "button", class: "rbtn alt", "data-r-payeur": "credit", text: "Pay with dollar credit" }));
     } else if (code === 429) R.titre = "Wait a moment";
     else if (code === 503) R.titre = "Paused";
     else if (code >= 500 || code == null) {
-      R.titre = "It failed — you were not charged";
-      noteHisto({ genre: info.genre, prompt: info.prompt, nom: info.nom, statut: "failed", raison: R.raison });
+      noteHisto({ genre: info.genre, prompt: info.prompt, nom: info.nom, statut: "failed", raison: raison }, info.adresse);
     }
     R.boutons = b;
     peintResultat(); montreResultat();
@@ -1623,41 +1794,41 @@ footer b{color:var(--navy)}
   function finImage(res, info){
     libere();
     var urls = (res.urls || []).map(enAdresse).filter(Boolean);
-    if (!urls.length) { R = { st: "err", genre: "image", info: info, titre: "Nothing came back", raison: "The server answered without a usable image." }; peintResultat(); return; }
+    if (!urls.length) { R = { st: "err", genre: "image", info: info, titre: "Nothing came back", raison: "The server answered without a usable image. " + TXT.garde }; peintResultat(); return; }
     R = { st: "done", genre: "image", info: info, urls: urls, cout: cout(res), reference: res.reference, compris: res.compris, choisie: 0 };
     poseSoldes(res);
     noteHisto({ genre: "image", prompt: info.prompt, nom: info.nom, urls: urls.slice(0, 4), statut: "done", payeur: res.payeur === "credit" ? "credit" : "swoge",
-                usd: res.payeur === "credit" ? Number(res.factureUsd) || 0 : null, sw: res.payeur === "credit" ? null : Number(res.factureSwoge) || 0 });
+                usd: res.payeur === "credit" ? Number(res.factureUsd) || 0 : null, sw: res.payeur === "credit" ? null : Number(res.factureSwoge) || 0 }, info.adresse);
     peintResultat(); montreResultat();
   }
   /* Suit une video sur le SERVEUR (jamais chez le fournisseur) : GET /studio/media/video/<id>,
-     toutes les 3 s, 5 s apres une erreur reseau (comme swolemind.html:2597). */
+     toutes les 3 s, 5 s apres une erreur reseau (comme swolemind.html, suivi des videos). */
   function suisVideo(info){
     etat.occupe = true;
     R = { st: "run", genre: "video", info: info, pct: R.pct || 0 }; peintResultat(); peintPrix();
     (function tour(){
-      /* Deconnecte en cours de route : on cesse de demander, la video reste notee (reprise a la reconnexion). */
-      var j = jeton(); if (!j) { etat.occupe = false; R = { st: "vide" }; peintResultat(); peintPrix(); return; }
+      /* Deconnecte, ou une autre adresse : on cesse de demander, la video reste notee (reprise). */
+      var j = jeton(); if (!j || !memeSession(info)) return enAttente();
       fetch(serveur() + "/studio/media/video/" + encodeURIComponent(info.id), { headers: { authorization: "Bearer " + j }, cache: "no-store" })
         .then(lisReponse)
         .then(function(v){
+          if (!memeSession(info)) return enAttente();
           if (v && v.status === "done") {
             libere();
             var u = enAdresse(v.url);
-            if (!u) { R = { st: "err", genre: "video", info: info, titre: "Nothing came back", raison: "The server answered without a usable video." }; peintResultat(); return; }
+            if (!u) { R = { st: "err", genre: "video", info: info, titre: "Nothing came back", raison: "The server answered without a usable video. " + TXT.garde }; peintResultat(); return; }
             R = { st: "done", genre: "video", info: info, url: u, cout: v.factureSwoge != null ? nombre(v.factureSwoge) + " $SWOGE" : "" };
             poseSoldes(v);
-            noteHisto({ genre: "video", prompt: info.prompt, nom: info.nom, url: u, statut: "done", payeur: "swoge", sw: Number(v.factureSwoge) || 0 });
+            noteHisto({ genre: "video", prompt: info.prompt, nom: info.nom, url: u, statut: "done", payeur: "swoge", sw: Number(v.factureSwoge) || 0 }, info.adresse);
             peintResultat(); montreResultat(); return;
           }
           if (!v || v.illisible) return setTimeout(tour, 5000);
           if (v.http === 401) return sessionPerdue(info);
+          if (v.http === 404) return perdue(info, "This video is no longer on the server", "The server forgets a video an hour after it ends, and when it restarts. " + TXT.garde);
           if (v.ok === false || v.status === "failed") {
             libere();
-            var oublie = v && (v.http === 404);
-            R = { st: "err", genre: "video", info: info, titre: oublie ? "This video is no longer on the server" : "It failed — you were not charged",
-                  raison: oublie ? "The server forgets a video an hour after it ends, or when it restarts." : ((v && v.raison) || "the video could not be generated — you were not charged") };
-            if (!oublie) noteHisto({ genre: "video", prompt: info.prompt, nom: info.nom, statut: "failed", raison: R.raison });
+            R = { st: "err", genre: "video", info: info, titre: "Not generated", raison: (v && v.raison) || "The video could not be generated." };
+            noteHisto({ genre: "video", prompt: info.prompt, nom: info.nom, statut: "failed", raison: R.raison }, info.adresse);
             if (v && v.solde != null) { etat.swoge = Number(v.solde); peintSoldes(); }
             peintResultat(); return;
           }
@@ -1666,35 +1837,42 @@ footer b{color:var(--navy)}
         })["catch"](function(){ setTimeout(tour, 5000); });
     })();
   }
-  /* ---- LA REPRISE APRES UN RECHARGEMENT (GET /studio/reprise/<rid>, server.js:6321-6332) ----
+  /* ---- LA REPRISE APRES UN RECHARGEMENT (GET /studio/reprise/<rid>, server.js, route '/studio/reprise/') ----
      Image en cours : on repasse. Finie : on l'affiche (elle a ete facturee). Video lancee : on la
-     suit. Oubliee (1 h, ou serveur redemarre) : on le DIT. */
+     suit. Oubliee (1 h, ou serveur redemarre) : on le DIT, et l'historique le garde. */
   function reprendInfo(info, essais){
-    var j = jeton(); if (!j) { libere(); return; }
+    var j = jeton(); if (!j || !memeSession(info)) return enAttente();
     etat.occupe = true; peintPrix();
     if (R.st !== "run") { R = { st: "run", genre: info.genre, info: info, n: info.n, pct: 0, reprise: true }; peintResultat(); }
+    /* Le serveur n'a pas pu repondre : la note RESTE (un rechargement reprend la meme demande). */
+    var injoignable = function(titre, debut){
+      etat.occupe = false; peintPrix();
+      R = { st: "err", genre: info.genre, info: info, titre: titre, raison: debut + " a finished request shows up here; " + TXT.inacheve + "." }; peintResultat();
+    };
     fetch(serveur() + "/studio/reprise/" + encodeURIComponent(info.rid), { headers: { authorization: "Bearer " + j }, cache: "no-store" })
       .then(lisReponse)
       .then(function(v){
+        if (!memeSession(info)) return enAttente();
         if (v.status === "pending") return setTimeout(function(){ reprendInfo(info, essais); }, 1500);
-        if (v.illisible) { if (essais > 0) return setTimeout(function(){ reprendInfo(info, essais - 1); }, 4000); etat.occupe = false; peintPrix();
-          R = { st: "err", genre: info.genre, info: info, titre: "Can't reach the server", raison: "Reload in a moment: an unfinished request is never charged, and a finished one shows up here." }; peintResultat(); return; }
+        if (v.illisible) { if (essais > 0) return setTimeout(function(){ reprendInfo(info, essais - 1); }, 4000); return injoignable("Can't reach the server", "Reload in a moment:"); }
         if (v.http === 401) return sessionPerdue(info);
         if (v.status === "done" && info.genre === "image") return finImage(v, info);
         if (v.status === "started" && v.id) { info.id = v.id; ecrisLocal("swogeStudioEnCours", info); return suisVideo(info); }
         if (v.status === "failed") return echec(v, null, info);
-        libere();
-        R = { st: "err", genre: info.genre, info: info, titre: "Not recovered", raison: "The server has no trace of this request (it keeps one for an hour). If it was charged, your balance shows it." };
-        peintResultat();
+        perdue(info, "Not recovered", "The server has no trace of this request (it keeps one for an hour, and none after a restart). " + TXT.garde);
       })["catch"](function(){
         if (essais > 0) return setTimeout(function(){ reprendInfo(info, essais - 1); }, 4000);
-        libere(); R = { st: "err", genre: info.genre, info: info, titre: "Connection lost", raison: "Check your connection and reload: an unfinished request is never charged." }; peintResultat();
+        injoignable("Connection lost", "Check your connection and reload:");
       });
   }
   function reprend(){
     var info = lisLocal("swogeStudioEnCours", null);
     if (etat.occupe || !info || !info.rid || !jeton()) return;
-    if (!(Date.now() - Number(info.t) < 65 * 60 * 1000)) { oteLocal("swogeStudioEnCours"); return; }
+    /* La note d'une autre adresse : elle n'est pas a cette session, on la garde pour la sienne. */
+    if (!memeSession(info)) return;
+    /* Plus d'une heure : on demande quand meme une fois (une video reste une heure apres sa FIN) ;
+       si le serveur ne l'a plus, perdue() le dit et l'historique le garde. Avant : effacee sans un
+       mot apres 65 min, alors qu'elle avait pu etre finie et facturee. */
     if (info.genre === "video" && info.id) return suisVideo(info);
     reprendInfo(info, 6);
   }
@@ -1756,7 +1934,9 @@ footer b{color:var(--navy)}
     var j = jeton();
     if (!j) return Promise.reject(new Error("Sign in first."));
     if (!window.SwogePaie) return Promise.reject(new Error("wallet payments are still loading — try again in a second"));
-    return window.SwogePaie.paie({ reseau: RC.reseau, serveur: serveur(), statut: statut, appel: function(hh){
+    /* `montantUsd` : x402_paie.js refuse de faire signer un montant qui n'est pas celui choisi ici
+       (frais de reglement du serveur compris, un centime au plus). */
+    return window.SwogePaie.paie({ reseau: RC.reseau, serveur: serveur(), statut: statut, montantUsd: montant, appel: function(hh){
       return fetch(serveur() + "/credit/topup", { method: "POST", cache: "no-store", headers: Object.assign({ "content-type": "application/json", authorization: "Bearer " + j }, hh || {}),
         body: JSON.stringify({ usd: montant }) });
     } }).then(window.SwogePaie.lit).then(function(r){
@@ -1767,7 +1947,7 @@ footer b{color:var(--navy)}
   }
   function ouvreRecharge(){
     if (!jeton()) return ouvreConnexion();
-    $("drawer").hidden = true; $("menuBtn").setAttribute("aria-expanded", "false");
+    $("drawer").hidden = true; $("stMenu").setAttribute("aria-expanded", "false");
     peintMontants(); $("rcStatut").textContent = ""; $("rcStatut").className = "rcst";
     $("rc").hidden = false; chargeCredit();
   }
@@ -1777,14 +1957,16 @@ footer b{color:var(--navy)}
      dernieres lignes du credit en dollars, credits.js:195-202). On garde donc ici, par adresse
      de session : le texte, le modele, ce qui a ete facture, et des adresses https — jamais une
      image en data-URL, jamais la photo jointe. */
-  function cleHisto(){ var a = adresseSession(); return a ? "swogeStudioHisto:" + a : null; }
-  function lisHisto(){ var k = cleHisto(); var l = k ? lisLocal(k, []) : []; return Array.isArray(l) ? l : []; }
-  function noteHisto(e){
-    var k = cleHisto(); if (!k) return;
+  function cleHisto(a){ a = a || adresseSession(); return a ? "swogeStudioHisto:" + a : null; }
+  function lisHisto(k){ k = k || cleHisto(); var l = k ? lisLocal(k, []) : []; return Array.isArray(l) ? l : []; }
+  /* `adresse` : celle de la session qui a envoye la demande (la note de reprise la porte) — une
+     ligne va toujours dans l'historique du compte qui a paye. */
+  function noteHisto(e, adresse){
+    var k = cleHisto(adresse); if (!k) return;
     e.t = Date.now();
     if (e.urls) e.urls = e.urls.filter(function(u){ return /^https:\/\//.test(u); });
     if (e.url && !/^https:\/\//.test(e.url)) delete e.url;
-    var l = lisHisto(); l.unshift(e); ecrisLocal(k, l.slice(0, 40));
+    var l = lisHisto(k); l.unshift(e); ecrisLocal(k, l.slice(0, 40));
     peintHisto();
   }
   function quand(t){
@@ -1798,12 +1980,16 @@ footer b{color:var(--navy)}
     $("histVide").hidden = !!l.length;
     $("histVide").textContent = j ? "Nothing yet. Each generation you make is listed here, with what it cost." : "Sign in to see what you made here.";
     l.slice(0, 12).forEach(function(e){
-      var th = e.statut === "failed" ? h("span", { class: "hth fail" }, [ico("ban")])
+      /* Un echec n'est dit « not charged » que si le serveur l'a dit ; une demande perdue (plus au
+         serveur) n'a pas de montant connu : le solde fait foi. */
+      var rate = e.statut === "failed" || e.statut === "lost", rendu = e.statut === "failed" && ditNonFacture(e.raison);
+      var th = rate ? h("span", { class: "hth fail" }, [ico(e.statut === "lost" ? "alert" : "ban")])
         : e.genre === "image" && e.urls && e.urls[0] ? h("span", { class: "hth" }, [h("img", { src: e.urls[0], alt: "", loading: "lazy" })])
         : h("span", { class: "hth" }, [ico("play")]);
-      var montant = e.statut === "failed" ? "$0.00" : e.payeur === "credit" ? dollars(e.usd || 0) : nombre(e.sw || 0) + " $SWOGE";
+      var montant = rendu ? "$0.00" : rate ? "—" : e.payeur === "credit" ? dollars(e.usd || 0) : nombre(e.sw || 0) + " $SWOGE";
+      var sous = rendu ? "Failed · not charged" : e.statut === "failed" ? "Failed · " + quand(e.t) : e.statut === "lost" ? "Not on the server any more · see your balance" : quand(e.t);
       ul.appendChild(h("li", null, [th, h("div", null, [h("b", { text: e.prompt || (e.genre === "video" ? "Video" : "Image") }), h("span", { text: e.nom || "" })]),
-        h("div", { class: "hp" + (e.statut === "failed" ? " z" : "") }, [h("b", { text: montant }), h("span", { text: e.statut === "failed" ? "Failed · not charged" : quand(e.t) })])]));
+        h("div", { class: "hp" + (rendu ? " z" : "") }, [h("b", { text: montant }), h("span", { text: sous, title: rate && e.raison ? e.raison : null })])]));
     });
     /* Les 7 derniers jours de CE navigateur : ce que chaque reponse du serveur a dit avoir facture. */
     var semaine = l.filter(function(e){ return e.statut === "done" && Date.now() - e.t < 7 * 86400000; });
@@ -1813,18 +1999,25 @@ footer b{color:var(--navy)}
     var faits = l.filter(function(e){ return e.statut === "done" && ((e.urls && e.urls.length) || e.url); });
     if (!faits.length) { gal.appendChild(h("p", { class: "vide", text: j ? "Nothing here yet. What you make appears here, on this device." : "Sign in to see what you made on this device." })); return; }
     var g = h("div", { class: "mine" });
-    faits.slice(0, 16).forEach(function(e){
-      var u = e.genre === "video" ? e.url : e.urls[0];
+    /* Toutes les images d'une generation (un x4 en a quatre, payees toutes les quatre) : avant,
+       seule la premiere entrait dans My work. */
+    var tuiles = [];
+    faits.forEach(function(e){
+      if (e.genre === "video") tuiles.push({ e: e, u: e.url });
+      else e.urls.forEach(function(u, i){ tuiles.push({ e: e, u: u, i: i, n: e.urls.length }); });
+    });
+    tuiles.slice(0, 16).forEach(function(x){
+      var e = x.e, u = x.u;
       var media = e.genre === "video" ? h("video", { src: u + "#t=0.1", muted: true, playsinline: true, preload: "metadata" }) : h("img", { src: u, alt: e.prompt || "", loading: "lazy" });
       g.appendChild(h("a", { class: "tile", href: u, target: "_blank", rel: "noopener" }, [media,
-        e.genre === "video" ? h("span", { class: "d" }, [ico("play"), "Video"]) : null,
+        e.genre === "video" ? h("span", { class: "d" }, [ico("play"), "Video"]) : x.n > 1 ? h("span", { class: "d", text: (x.i + 1) + "/" + x.n }) : null,
         h("span", { class: "cap" }, [e.prompt || "", h("span", { text: e.nom || "" })])]));
     });
     gal.appendChild(g);
   }
 
   /* ====================== SERIES & ADS (/studio/production) ====================== */
-  /* Le serveur garde la production sous l'adresse de la SESSION (server.js:6360-6453) ; la page
+  /* Le serveur garde la production sous l'adresse de la SESSION (server.js, route /studio/production) ; la page
      ne fait que montrer et envoyer. Creer est gratuit ; chaque scene est une video Quality (1.5). */
   var PROD = { cat: null, courante: null, brouillon: null, occupe: false, suivi: null, cam: "auto", duree: null, restant: null, choix: false, vierge: true };
   function prodErreur(t){ $("pErr").textContent = t || ""; }
@@ -1839,7 +2032,12 @@ footer b{color:var(--navy)}
     if (!j) return Promise.reject(new Error("Sign in with your wallet first."));
     return fetch(serveur() + chemin, { method: methode || "GET", headers: { "content-type": "application/json", authorization: "Bearer " + j },
       body: corps ? JSON.stringify(corps) : undefined, cache: "no-store" })
-      .then(function(r){ return r.json()["catch"](function(){ return {}; }).then(function(o){ if (!r.ok || o.ok === false) throw new Error(o.raison || ("error " + r.status)); return o; }); });
+      .then(function(r){ return r.json()["catch"](function(){ return {}; }).then(function(o){
+        if (!r.ok || o.ok === false) {
+          /* Le refus garde ses chiffres : un 402 porte `requisSwoge`, ce que le serveur tient (studio_media.js, reserve). */
+          var e = new Error(o.raison || ("error " + r.status)); e.code = o.code || r.status; e.requisSwoge = o.requisSwoge || null; throw e;
+        }
+        return o; }); });
   }
   function voixDefaut(){ var v = ((PROD.cat && PROD.cat.voix) || []).map(function(x){ return x.id; }); return v.indexOf("rex") >= 0 ? "rex" : (v[0] || null); }
   function nouveau(mode){
@@ -1965,15 +2163,25 @@ footer b{color:var(--navy)}
         enCours = true;
         box.appendChild(h("div", { class: "scene wait" }, [num, h("span", { class: "w", text: "Filming… a minute or two" })]));
       } else {
-        box.appendChild(h("div", { class: "scene fail", title: x.raison || "" }, [num, h("span", { class: "w", text: (x.raison || "This scene did not finish") + " — not charged" })]));
+        /* Un echec rendu par le serveur dit deja « you were not charged » (studio_media.js, `avance`,
+           qui rend tout) : la phrase passe telle quelle. « unknown » (server.js, `rafraichit`) ne dit
+           RIEN de l'argent, et pour cause : un redemarrage pendant le tournage garde la reserve (rien
+           ne la note), et une scene finie et FACTUREE que personne n'a relue dans l'heure tombe aussi
+           en « unknown ». Avant : « — not charged » sur les deux, un remboursement invente. */
+        var r = x.raison || "This scene did not finish.";
+        var dit = x.statut === "failed" ? (ditNonFacture(r) ? r : r.replace(/[.\s]+$/, "") + " — not charged")
+          : x.statut === "unknown" ? "The server lost track of this scene. If it was charged, your $SWOGE balance shows it." : r;
+        box.appendChild(h("div", { class: "scene fail", title: dit }, [num, h("span", { class: "w", text: dit })]));
       }
     });
     box.appendChild(h("button", { type: "button", class: "scene next", "data-scene-suivante": "1" }, [ico("plus"), "Scene " + (sc.length + 1)]));
     $("sceneLbl").textContent = (b.mode === "pub" ? "Ad scene " : "Scene ") + (sc.length + 1) + (b.mode === "pub" ? " (optional text)" : "");
     $("sceneTxt").placeholder = b.mode === "pub" ? "Optional: what the ad shows (the product, slogan and call to action are added)" : "What happens? Spoken lines in quotes — SWOGE says \"Let's go!\"";
-    var faite = sc.filter(function(x){ return x.statut === "done" && x.url; }).length;
-    $("contBox").hidden = !faite;
-    $("contL").textContent = "Continue from scene " + (sc.length) + " — starts on the last frame of the last finished scene";
+    /* La suite part de la DERNIERE SCENE FINIE (server.js, route .../scene : statut 'done' et url),
+       pas de la derniere scene du tableau, qui peut avoir echoue ou tourner encore. */
+    var der = -1; sc.forEach(function(x, i){ if (x.statut === "done" && x.url) der = i; });
+    $("contBox").hidden = der < 0;
+    $("contL").textContent = "Continue from scene " + (der + 1) + " — starts on its last frame";
     $("imagineL").textContent = sc.length ? "Imagine the next scene" : "Imagine a scene";
     $("imagineN").textContent = PROD.restant != null ? "Free · " + PROD.restant + " left today" : "Free";
     $("imagine").disabled = !p || !j || PROD.occupe;
@@ -2000,11 +2208,25 @@ footer b{color:var(--navy)}
     $("film").disabled = dis;
     var n = $("filmNote"); n.textContent = "";
     if (f) n.appendChild(h("span", { class: "warn", text: f }));
-    else if (sw != null) ecritNote(n, [{ b: "≈ " + nombre(sw) + " $SWOGE", suite: " for " + PROD.duree + " s" }, "Grok Imagine Video Quality (1.5), required for the same faces and voices", "the real cost, and nothing if it fails"]);
+    /* Une scene tient, elle aussi, plus que son prix pendant le tournage (studio_media.js, lanceVideo :
+       liste x duree x RESERVE_X) : dit en mots, le catalogue ne publie pas ce facteur. Sur un refus
+       402, filme() montre le chiffre que le serveur rend (requisSwoge). */
+    else if (sw != null) ecritNote(n, [{ b: "≈ " + nombre(sw) + " $SWOGE", suite: " for " + PROD.duree + " s" }, "Grok Imagine Video Quality (1.5), required for the same faces and voices", TXT.tenu, TXT.rien]);
     else n.textContent = TXT.catCharge;
     var sc = scenesDe(p).length, b = PROD.brouillon || {};
+    if (j && !p) {
+      /* Pas encore de production (le cas de tout premier visiteur) : la barre du bas du telephone
+         CREE, gratuitement, sans prix. Avant, elle restait celle de la video seule (« Generate ·
+         10,639 $SWOGE ») sous le formulaire de serie ou de pub, et un prompt video deja tape
+         pouvait partir en croyant creer la pub. */
+      $("fbT").textContent = b.mode === "pub" ? "New ad" : "New series";
+      $("fbS").textContent = "Free — then film its first scene";
+      $("fbBtn").textContent = PROD.occupe ? "Creating…" : (b.mode === "pub" ? "Create ad · free" : "Create series · free");
+      $("filmBar").disabled = !!PROD.occupe;
+      return;
+    }
     $("fbT").textContent = (b.mode === "pub" ? "Ad scene " : "Scene ") + (sc + 1) + " · " + PROD.duree + " s";
-    $("fbS").textContent = sw != null ? "≈ " + nombre(sw) + " $SWOGE · nothing if it fails" : "";
+    $("fbS").textContent = sw != null ? "≈ " + nombre(sw) + " $SWOGE · " + TXT.rien : "";
     $("fbBtn").textContent = lib; if (prix) $("fbBtn").appendChild(h("span", { class: "lg", text: " · " + prix }));
     $("filmBar").disabled = dis;
   }
@@ -2038,14 +2260,16 @@ footer b{color:var(--navy)}
   }
   function filme(){
     if (!jeton()) return ouvreConnexion();
-    var p = PROD.courante; if (!p || PROD.occupe || $("film").disabled) return;
+    var p = PROD.courante; if (!p || PROD.occupe || etat.verif || $("film").disabled) return;
+    /* Le prix de la scene vient du meme catalogue : relu s'il a plus de 60 s (voir prixVerifie). */
+    if (Date.now() - etat.catT >= CAT_TTL) return prixVerifie(function(){ return String(prixScene()); }, filme);
     PROD.occupe = true; prodErreur(""); peintFilm();
     var corps = { texte: $("sceneTxt").value, duree: PROD.duree, camera: PROD.cam };
-    /* La suite part d'office quand une scene est finie (server.js:6434-6435) ; decochee : suite:false. */
+    /* La suite part d'office quand une scene est finie (server.js, route .../scene : `q.suite`) ; decochee : suite:false. */
     if (!$("contBox").hidden) corps.suite = $("cont").checked;
     prodApi("/studio/production/" + p.id + "/scene", "POST", corps)
       .then(function(){ $("sceneTxt").value = ""; toast("Filming — the scene appears on the board when it's ready."); return chargeProd(); })
-      ["catch"](function(e){ prodErreur(e.message); })
+      ["catch"](function(e){ prodErreur(e.requisSwoge ? e.message + " — about " + nombre(e.requisSwoge) + " $SWOGE is held while it films." : e.message); })
       .then(function(){ PROD.occupe = false; peintProd(); chargeSoldes(); });
   }
 
@@ -2056,8 +2280,9 @@ footer b{color:var(--navy)}
     document.documentElement.style.setProperty("--bar-h", (TEL.matches ? (on ? $("filmbar") : $("composer")).offsetHeight : 0) + "px");
   }
   function majBarre(){
-    /* Seulement quand une production enregistree est ouverte : sans elle, pas de barre de scene. */
-    var on = serieVue && TEL.matches && etat.onglet === "video" && !!PROD.courante && !!jeton();
+    /* Series & Ads a l'ecran (connecte) : UNE action en bas — filmer la scene, ou, sans production
+       enregistree, la creer (gratuit). Le composeur video passe dessous, `inert`. */
+    var on = serieVue && TEL.matches && etat.onglet === "video" && !!jeton();
     document.documentElement.classList.toggle("serie-vue", on);
     $("filmbar").setAttribute("aria-hidden", on ? "false" : "true");
     $("filmBar").tabIndex = on ? 0 : -1;
@@ -2066,18 +2291,35 @@ footer b{color:var(--navy)}
   }
 
   /* ====================== LE CATALOGUE, LU AU SERVEUR ====================== */
+  /* Rend une promesse : true si le catalogue est frais, false sinon. Une seule lecture a la fois.
+     `mesure` (les compteurs du serveur) change a chaque generation : il ne compte pas dans la
+     comparaison, et un catalogue inchange ne repeint rien (la grille garde le focus). */
+  var catLecture = null, catEmpreinte = "";
+  function sansMesure(c){ var x = {}; Object.keys(c).forEach(function(k){ if (k !== "mesure") x[k] = c[k]; }); return JSON.stringify(x); }
+  function peintMarge(){
+    var mg = etat.cat && Number(etat.cat.marge);
+    [].forEach.call(document.querySelectorAll(".margeTxt"), function(e){ e.textContent = mg > 1 ? " of " + Math.round((mg - 1) * 100) + "%" : ""; });
+  }
   function chargeCatalogue(){
-    return fetch(serveur() + "/studio/media/catalogue", { cache: "no-store" })
+    if (catLecture) return catLecture;
+    catLecture = fetch(serveur() + "/studio/media/catalogue", { cache: "no-store" })
       .then(function(r){ if (!r.ok) throw new Error("http " + r.status); return r.json(); })
       .then(function(c){
         if (!c || typeof c !== "object") throw new Error("catalogue");
-        etat.cat = c; etat.catErreur = false;
-        peintCommandes(); peintGrille(); peintPrix();
+        var e = sansMesure(c), change = e !== catEmpreinte;
+        etat.cat = c; etat.catT = Date.now(); etat.catErreur = false; catEmpreinte = e;
+        if (change) { peintMarge(); peintCommandes(); peintGrille(); peintPrix(); }
+        return true;
       })["catch"](function(){
         etat.catErreur = !etat.cat;
         if (!etat.cat) { peintGrille(); peintPrix(); setTimeout(chargeCatalogue, 15000); }
-      });
+        return false;
+      }).then(function(ok){ catLecture = null; return ok; });
+    return catLecture;
   }
+  /* Relu toutes les 60 s quand l'onglet est visible, et au retour sur l'onglet (voir prixVerifie). */
+  setInterval(function(){ if (document.visibilityState !== "hidden" && etat.cat) chargeCatalogue(); }, CAT_TTL);
+  document.addEventListener("visibilitychange", function(){ if (document.visibilityState === "visible" && etat.cat && Date.now() - etat.catT >= CAT_TTL) chargeCatalogue(); });
 
   /* ====================== BRANCHEMENTS ====================== */
   [].forEach.call(document.querySelectorAll(".tab"), function(b){
@@ -2140,7 +2382,7 @@ footer b{color:var(--navy)}
   $("pDel").addEventListener("click", supprimeProd);
   $("imagine").addEventListener("click", imagine);
   $("film").addEventListener("click", filme);
-  $("filmBar").addEventListener("click", filme);
+  $("filmBar").addEventListener("click", function(){ if (PROD.courante) filme(); else sauveProd(); });
   $("scenes").addEventListener("click", function(ev){ if (ev.target.closest("[data-scene-suivante]")) $("sceneTxt").focus(); });
   [$("payCr"), $("paySw")].forEach(function(b){
     b.addEventListener("click", function(){ if (b.disabled) return; etat.payeurChoisi = b.getAttribute("data-pay"); ecrisLocal("swogeStudioPayeur", etat.payeurChoisi); peintPrix(); });
@@ -2179,6 +2421,7 @@ footer b{color:var(--navy)}
         ["catch"](function(){ toast("This picture can't be reused directly — download it, then attach it with Reference."); })
         .then(function(){ b.disabled = false; });
     } else if (b.hasAttribute("data-r-signin")) ouvreConnexion();
+    else if (b.hasAttribute("data-r-recharge")) ouvreRecharge();
     else if (b.hasAttribute("data-r-payeur")) { etat.payeurChoisi = b.getAttribute("data-r-payeur"); ecrisLocal("swogeStudioPayeur", etat.payeurChoisi); R = { st: "vide" }; peintResultat(); peintPrix(); }
     else if (b.hasAttribute("data-r-signe") && R.relance) {
       var x = R.relance; b.disabled = true;
@@ -2189,7 +2432,7 @@ footer b{color:var(--navy)}
   });
   $("topUp").addEventListener("click", ouvreRecharge);
   $("drTop").addEventListener("click", ouvreRecharge);
-  $("drSign").addEventListener("click", function(){ $("drawer").hidden = true; $("menuBtn").setAttribute("aria-expanded", "false"); ouvreConnexion(); });
+  $("drSign").addEventListener("click", function(){ $("drawer").hidden = true; $("stMenu").setAttribute("aria-expanded", "false"); ouvreConnexion(); });
   $("rcClose").addEventListener("click", function(){ $("rc").hidden = true; });
   $("rc").addEventListener("click", function(ev){ if (ev.target === $("rc")) $("rc").hidden = true; });
   $("rcSign").addEventListener("click", function(){
@@ -2199,10 +2442,10 @@ footer b{color:var(--navy)}
       st.textContent = r.corps.alreadyCredited ? "This payment was already credited." : "Done: " + dollars(r.corps.creditedUsd) + " added. Your credit: " + dollars(r.corps.balanceUsd) + ".";
     })["catch"](function(e){ b.disabled = false; st.className = "rcst err"; st.textContent = "Not topped up, not charged: " + String(e && (e.message || e.code) || e).slice(0, 200); });
   });
-  $("menuBtn").addEventListener("click", function(){
+  $("stMenu").addEventListener("click", function(){
     var d = $("drawer"), o = d.hidden; d.hidden = !o; this.setAttribute("aria-expanded", String(o));
   });
-  document.addEventListener("keydown", function(ev){ if (ev.key === "Escape") { $("rc").hidden = true; $("drawer").hidden = true; $("menuBtn").setAttribute("aria-expanded", "false"); } });
+  document.addEventListener("keydown", function(ev){ if (ev.key === "Escape") { $("rc").hidden = true; $("drawer").hidden = true; $("stMenu").setAttribute("aria-expanded", "false"); } });
   if (TEL.addEventListener) TEL.addEventListener("change", function(){ peintCommandes(); majBarre(); });
   if ("IntersectionObserver" in window) {
     new IntersectionObserver(function(es){ es.forEach(function(e){ serieVue = e.isIntersecting; }); majBarre(); },
@@ -2223,7 +2466,7 @@ footer b{color:var(--navy)}
   setInterval(surJeton, 2000);
 
   /* ====================== DEPART ====================== */
-  /* Le solde $SWOGE pousse par la socket de stakebubble apres chaque reglement (server.js:2445).
+  /* Le solde $SWOGE pousse par la socket de stakebubble apres chaque reglement (server.js : toAddr(addr, { type: 'balance' }) au reglement d'une reserve).
      stakebubble.js se charge APRES ce script : on s'abonne une fois la page chargee. */
   window.addEventListener("load", function(){
     if (window.swogeFil && typeof window.swogeFil.ecoute === "function")
@@ -2244,8 +2487,8 @@ footer b{color:var(--navy)}
      `stakebubble.js` porte la connexion par portefeuille et les bulles ; `SWOGE_SOCKET='aucune'`
      lui dit que cette page n'a pas de socket a elle (c'est par la sienne qu'arrive le jeton). -->
 <script>window.SWOGE_SOCKET = 'aucune';</script>
-<script src="stakebubble.min.js?v=c324151c"></script>
+<script src="stakebubble.min.js?v=f4d2b2d2"></script>
 <script src="x402_solana.js?v=1d86ed41"></script>
-<script src="x402_paie.js?v=6f6b9006"></script>
+<script src="x402_paie.js?v=8a30147a"></script>
 </body>
 </html>

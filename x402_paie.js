@@ -6,9 +6,11 @@
  * devises ». Le paiement de la boutique eSIM (swoge_esim.html), sorti en un
  * fichier que toute page peut charger :
  *
- *   SwogePaie.paie({ reseau: "base" | "solana", serveur, appel, statut })
+ *   SwogePaie.paie({ reseau: "base" | "solana", serveur, appel, statut, montantUsd? })
  *     appel(entetes) → fetch(...) : la MEME requete, sans puis avec
  *                      l'en-tete PAYMENT-SIGNATURE ;
+ *     montantUsd     : le montant que le JOUEUR a choisi (une recharge de 5 $) ;
+ *                      une demande de paiement qui en sort n'est jamais signee ;
  *     rend la reponse finale (Response) apres signature.
  *
  * Base : EIP-3009 transferWithAuthorization, domaine « USD Coin » v2 (lu sur la
@@ -37,6 +39,22 @@
   function hex32() { var a = new Uint8Array(32); crypto.getRandomValues(a); return "0x" + Array.prototype.map.call(a, function (x) { return ("0" + x.toString(16)).slice(-2); }).join(""); }
   function adresseOk(a) { return /^0x[0-9a-fA-F]{40}$/.test(String(a || "")); }
   function erreur(t) { return new Error(t); }
+  /* ---- LE MONTANT SIGNE EST CELUI QUE LE JOUEUR A CHOISI ----
+   * Releve du 13/10 (studio.html?server=<hote>) : la page faisait signer le montant ET le
+   * destinataire que la reponse 402 annoncait, sans les comparer a rien — 5 000 USDC demandes
+   * pour une recharge de 5 $. Quand la page dit ce que le joueur a choisi (`montantUsd`), la
+   * demande doit tomber entre ce montant et ce montant + FRAIS_MAX : le serveur y ajoute ses frais
+   * de reglement (x402.js : FRAIS_CDP_USD 0,001 $ sur Base, FRAIS_SOLANA_USD 0,002 $ sur Solana),
+   * soit 5,001 USDC sur Base pour 5 $. Un centime de plafond : cinq fois le plus cher des deux.
+   * Le destinataire n'est pas epingle ici : il vient de la configuration de l'hote
+   * (X402_BASE_PAYTO, X402_SOLANA_PAYTO), qu'aucun depot ne porte. */
+  var FRAIS_MAX = 10000;   /* 0,01 USDC, en unites de 6 decimales */
+  function montantAttendu(o, acc) {
+    if (o.montantUsd == null) return;
+    var voulu = Math.round(Number(o.montantUsd) * 1e6), demande = Number(acc.amount);
+    if (!(voulu > 0) || !(demande >= voulu && demande <= voulu + FRAIS_MAX))
+      throw erreur("the payment request (" + (demande / 1e6) + " USDC) does not match the $" + (voulu / 1e6).toFixed(2) + " you chose - nothing was signed");
+  }
 
   /* La demande de paiement : la requete SANS signature doit rendre un 402 avec PAYMENT-REQUIRED. */
   function demande(o) {
@@ -72,6 +90,7 @@
       var acc = (req.accepts || []).filter(function (a) { return a.network === "eip155:8453"; })[0];
       if (!acc) throw erreur("Base is not available right now - try Solana");
       if (String(acc.asset).toLowerCase() !== USDC_BASE.toLowerCase() || !adresseOk(acc.payTo) || !/^[0-9]+$/.test(String(acc.amount))) throw erreur("unexpected payment request");
+      montantAttendu(o, acc);
       var s = Math.floor(Date.now() / 1000);
       var auth = { from: etat.compte, to: acc.payTo, value: String(acc.amount), validAfter: String(s - 600),
                    validBefore: String(s + Math.max(30, (Number(acc.maxTimeoutSeconds) || 120) - 20)), nonce: hex32() };
@@ -123,6 +142,7 @@
       acc = (req.accepts || []).filter(function (x) { return x.network === SOL.reseau; })[0];
       if (!acc) throw erreur("Solana is not available right now - try Base");
       if (acc.asset !== SOL.usdc || !/^[0-9]+$/.test(String(acc.amount)) || !(acc.extra && acc.extra.feePayer)) throw erreur("unexpected payment request");
+      montantAttendu(o, acc);
       return solBlockhash(o, acc);
     }).then(function (bh) {
       return racine.SwogeSolana.construit(acc, { payeur: etat.solCompte.address, blockhash: bh, sansMemo: sansMemo });

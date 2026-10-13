@@ -80,9 +80,11 @@ const sse = (evs) => evs.map(([t, d]) => 'event: ' + t + '\ndata: ' + JSON.strin
       });
       await page.addInitScript(() => { window.ethereum = { request: ({ method, params }) => window.__portefeuille(method, params || []) }; });
     }
-    const envois = [], soldes = [], stops = [];
+    const envois = [], soldes = [], stops = [], hotes = [];
     await page.route((u) => !u.href.startsWith('http://127.0.0.1:' + port), async (r) => {
       const u = r.request().url();
+      /* Chaque hote touche, avec ce qu il recoit en Authorization (la borne de `?server=`, 13/10). */
+      hotes.push({ h: new URL(u).hostname, auth: r.request().headers().authorization || null });
       if (/\/studio\/chat\/catalogue/.test(u)) return r.fulfill({ status:200, contentType:'application/json', body: JSON.stringify(cat || CAT) });
       /* Les missions (29/09) : le catalogue de l'agent et sa route, quand le scenario les donne. */
       if (/\/studio\/agent\/catalogue/.test(u) && agent) return r.fulfill({ status:200, contentType:'application/json', body: JSON.stringify(agent.cat) });
@@ -139,7 +141,7 @@ const sse = (evs) => evs.map(([t, d]) => 'event: ' + t + '\ndata: ' + JSON.strin
     });
     await page.goto('http://127.0.0.1:' + port + '/swolemind.html' + (requete || ''), { waitUntil:'domcontentloaded' });
     await page.waitForFunction(() => /per (question|mission)/.test(document.getElementById('prixq').textContent));
-    return { page, ctx, envois, soldes, stops, signes };
+    return { page, ctx, envois, soldes, stops, signes, hotes };
   };
   const pose = async (page, q) => { await page.fill('#question', q); await page.click('#envoyer'); };
   /* 03/10 : sur un ecran large, la liste des discussions est TOUJOURS a gauche (le bouton History
@@ -230,6 +232,16 @@ const sse = (evs) => evs.map(([t, d]) => 'event: ' + t + '\ndata: ' + JSON.strin
     const sauve = await page.evaluate(() => JSON.parse(localStorage.getItem('swogeChats') || '[]'));
     eq(sauve.length && sauve[0].messages.length, 2, 'la conversation est gardee dans ce navigateur');
     await ctx.close();
+    /* `?server=` d un autre hote (un lien piege sur le vrai domaine) : il ne recoit RIEN, et le jeton ne
+       va qu au serveur. Releve du 13/10 sur studio.html : sans borne, le jeton de session (30 jours)
+       partait en Authorization vers l hote de l URL, et la recharge lui laissait choisir le montant. */
+    const x = await ouvre({ session:'jeton-de-test', rep, requete: '?server=' + encodeURIComponent('https://autre-hote.example') });
+    await pose(x.page, 'What is new today?');
+    await x.page.waitForSelector('.msg.ia .meta');
+    const vers = x.hotes.filter((v) => v.auth);
+    ok(x.envois.length === 1 && !x.hotes.some((v) => v.h === 'autre-hote.example') && vers.length > 0 && vers.every((v) => v.h === 'web-production-220a3.up.railway.app'),
+       '?server=https://autre-hote.example : cet hote ne recoit rien, le jeton ne va qu au serveur [' + [...new Set(vers.map((v) => v.h))].join(', ') + ']');
+    await x.ctx.close();
   }
 
   console.log('\n-- 5. un refus le dit, et la question non servie ne repart pas --');

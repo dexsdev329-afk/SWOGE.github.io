@@ -1,0 +1,2551 @@
+{
+ "format": "swoge-planche-iso/1",
+ "v": 1,
+ "nom": "mannequin",
+ "case": 256,
+ "n": 8,
+ "dirs": [
+  "se",
+  "sw",
+  "nw",
+  "ne"
+ ],
+ "sol": 0.88,
+ "corps": 0.5,
+ "k": 1.76,
+ "actions": {
+  "idle": {
+   "f": "mannequin/idle.webp",
+   "ips": 4,
+   "boucle": true
+  },
+  "walk": {
+   "f": "mannequin/walk.webp",
+   "ips": 8,
+   "boucle": true,
+   "pas": 0.31
+  },
+  "run": {
+   "f": "mannequin/run.webp",
+   "ips": 12,
+   "boucle": true,
+   "pas": 0.395
+  },
+  "attack": {
+   "f": "mannequin/attack.webp",
+   "ips": 6.1,
+   "boucle": false
+  },
+  "jump": {
+   "f": "mannequin/jump.webp",
+   "ips": 6,
+   "boucle": false
+  }
+ },
+ "qc": {
+  "verdict": "ok",
+  "echecs": [],
+  "controles": [
+   {
+    "id": "format",
+    "action": "idle",
+    "valeur": 0,
+    "seuil": 0.02,
+    "sens": "<=",
+    "n": 1,
+    "ok": true
+   },
+   {
+    "id": "format",
+    "action": "walk",
+    "valeur": 0,
+    "seuil": 0.02,
+    "sens": "<=",
+    "n": 1,
+    "ok": true
+   },
+   {
+    "id": "format",
+    "action": "run",
+    "valeur": 0,
+    "seuil": 0.02,
+    "sens": "<=",
+    "n": 1,
+    "ok": true
+   },
+   {
+    "id": "format",
+    "action": "attack",
+    "valeur": 0,
+    "seuil": 0.02,
+    "sens": "<=",
+    "n": 1,
+    "ok": true
+   },
+   {
+    "id": "format",
+    "action": "jump",
+    "valeur": 0,
+    "seuil": 0.02,
+    "sens": "<=",
+    "n": 1,
+    "ok": true
+   },
+   {
+    "id": "taille_ligne",
+    "action": "idle",
+    "dir": "se",
+    "valeur": 0,
+    "seuil": 6,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "glisse",
+    "action": "idle",
+    "dir": "se",
+    "valeur": 0.4,
+    "seuil": 6,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "boucle",
+    "action": "idle",
+    "dir": "se",
+    "valeur": 1.422,
+    "seuil": 1.8,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "pieds",
+    "action": "idle",
+    "dir": "se",
+    "valeur": 0,
+    "seuil": 6,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "repos_mouvement",
+    "action": "idle",
+    "dir": "se",
+    "valeur": 0.033,
+    "seuil": 0.002,
+    "sens": ">=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "sol",
+    "action": "idle",
+    "dir": "se",
+    "valeur": 0.102,
+    "seuil": 0.32,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "halo",
+    "action": "idle",
+    "dir": "se",
+    "valeur": 0.012,
+    "seuil": 0.03,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "coupes",
+    "action": "idle",
+    "dir": "se",
+    "valeur": 0,
+    "seuil": 0,
+    "sens": "<=",
+    "n": 8,
+    "ok": true,
+    "px_coupes": 0,
+    "images_au_bord": 0,
+    "images_hors_emplacement": 0
+   },
+   {
+    "id": "taches",
+    "action": "idle",
+    "dir": "se",
+    "valeur": 0,
+    "seuil": 0.01,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "couleur",
+    "action": "idle",
+    "dir": "se",
+    "valeur": 0.042,
+    "seuil": 0.12,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "depart",
+    "action": "idle",
+    "dir": "se",
+    "valeur": 0.147,
+    "seuil": 0.2,
+    "sens": "<=",
+    "n": 1,
+    "ok": true
+   },
+   {
+    "id": "taille_ligne",
+    "action": "idle",
+    "dir": "sw",
+    "valeur": 0,
+    "seuil": 6,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "glisse",
+    "action": "idle",
+    "dir": "sw",
+    "valeur": 1.31,
+    "seuil": 6,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "boucle",
+    "action": "idle",
+    "dir": "sw",
+    "valeur": 1.395,
+    "seuil": 1.8,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "pieds",
+    "action": "idle",
+    "dir": "sw",
+    "valeur": 0,
+    "seuil": 6,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "repos_mouvement",
+    "action": "idle",
+    "dir": "sw",
+    "valeur": 0.089,
+    "seuil": 0.002,
+    "sens": ">=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "sol",
+    "action": "idle",
+    "dir": "sw",
+    "valeur": 0.094,
+    "seuil": 0.32,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "halo",
+    "action": "idle",
+    "dir": "sw",
+    "valeur": 0.017,
+    "seuil": 0.03,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "coupes",
+    "action": "idle",
+    "dir": "sw",
+    "valeur": 0,
+    "seuil": 0,
+    "sens": "<=",
+    "n": 8,
+    "ok": true,
+    "px_coupes": 0,
+    "images_au_bord": 0,
+    "images_hors_emplacement": 0
+   },
+   {
+    "id": "taches",
+    "action": "idle",
+    "dir": "sw",
+    "valeur": 0,
+    "seuil": 0.01,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "couleur",
+    "action": "idle",
+    "dir": "sw",
+    "valeur": 0.032,
+    "seuil": 0.12,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "depart",
+    "action": "idle",
+    "dir": "sw",
+    "valeur": 0.153,
+    "seuil": 0.2,
+    "sens": "<=",
+    "n": 1,
+    "ok": true
+   },
+   {
+    "id": "taille_ligne",
+    "action": "idle",
+    "dir": "nw",
+    "valeur": 0,
+    "seuil": 6,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "glisse",
+    "action": "idle",
+    "dir": "nw",
+    "valeur": 0.052,
+    "seuil": 6,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "boucle",
+    "action": "idle",
+    "dir": "nw",
+    "valeur": 1.419,
+    "seuil": 1.8,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "pieds",
+    "action": "idle",
+    "dir": "nw",
+    "valeur": 0,
+    "seuil": 6,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "repos_mouvement",
+    "action": "idle",
+    "dir": "nw",
+    "valeur": 0.036,
+    "seuil": 0.002,
+    "sens": ">=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "sol",
+    "action": "idle",
+    "dir": "nw",
+    "valeur": 0.147,
+    "seuil": 0.32,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "halo",
+    "action": "idle",
+    "dir": "nw",
+    "valeur": 0.013,
+    "seuil": 0.03,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "coupes",
+    "action": "idle",
+    "dir": "nw",
+    "valeur": 0,
+    "seuil": 0,
+    "sens": "<=",
+    "n": 8,
+    "ok": true,
+    "px_coupes": 0,
+    "images_au_bord": 0,
+    "images_hors_emplacement": 0
+   },
+   {
+    "id": "taches",
+    "action": "idle",
+    "dir": "nw",
+    "valeur": 0,
+    "seuil": 0.01,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "couleur",
+    "action": "idle",
+    "dir": "nw",
+    "valeur": 0.034,
+    "seuil": 0.12,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "depart",
+    "action": "idle",
+    "dir": "nw",
+    "valeur": 0.143,
+    "seuil": 0.2,
+    "sens": "<=",
+    "n": 1,
+    "ok": true
+   },
+   {
+    "id": "taille_ligne",
+    "action": "idle",
+    "dir": "ne",
+    "valeur": 0,
+    "seuil": 6,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "glisse",
+    "action": "idle",
+    "dir": "ne",
+    "valeur": 0.685,
+    "seuil": 6,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "boucle",
+    "action": "idle",
+    "dir": "ne",
+    "valeur": 1.461,
+    "seuil": 1.8,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "pieds",
+    "action": "idle",
+    "dir": "ne",
+    "valeur": 0,
+    "seuil": 6,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "repos_mouvement",
+    "action": "idle",
+    "dir": "ne",
+    "valeur": 0.087,
+    "seuil": 0.002,
+    "sens": ">=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "sol",
+    "action": "idle",
+    "dir": "ne",
+    "valeur": 0.147,
+    "seuil": 0.32,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "halo",
+    "action": "idle",
+    "dir": "ne",
+    "valeur": 0.018,
+    "seuil": 0.03,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "coupes",
+    "action": "idle",
+    "dir": "ne",
+    "valeur": 0,
+    "seuil": 0,
+    "sens": "<=",
+    "n": 8,
+    "ok": true,
+    "px_coupes": 0,
+    "images_au_bord": 0,
+    "images_hors_emplacement": 0
+   },
+   {
+    "id": "taches",
+    "action": "idle",
+    "dir": "ne",
+    "valeur": 0,
+    "seuil": 0.01,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "couleur",
+    "action": "idle",
+    "dir": "ne",
+    "valeur": 0.027,
+    "seuil": 0.12,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "depart",
+    "action": "idle",
+    "dir": "ne",
+    "valeur": 0.153,
+    "seuil": 0.2,
+    "sens": "<=",
+    "n": 1,
+    "ok": true
+   },
+   {
+    "id": "taille_ligne",
+    "action": "walk",
+    "dir": "se",
+    "valeur": 0,
+    "seuil": 6,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "glisse",
+    "action": "walk",
+    "dir": "se",
+    "valeur": 1.68,
+    "seuil": 6,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "boucle",
+    "action": "walk",
+    "dir": "se",
+    "valeur": 1.115,
+    "seuil": 1.8,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "pieds",
+    "action": "walk",
+    "dir": "se",
+    "valeur": 11.133,
+    "seuil": 14,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "boucle_clip",
+    "action": "walk",
+    "dir": "se",
+    "valeur": 0.077,
+    "seuil": 0.8,
+    "sens": "<=",
+    "n": 8,
+    "ok": true,
+    "periodeS": 1
+   },
+   {
+    "id": "jambes",
+    "action": "walk",
+    "dir": "se",
+    "valeur": 2.376,
+    "seuil": 1.3,
+    "sens": ">=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "jambes_ecart",
+    "action": "walk",
+    "dir": "se",
+    "valeur": 2.633,
+    "seuil": 1.25,
+    "sens": ">=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "sol",
+    "action": "walk",
+    "dir": "se",
+    "valeur": 0.107,
+    "seuil": 0.32,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "halo",
+    "action": "walk",
+    "dir": "se",
+    "valeur": 0.016,
+    "seuil": 0.03,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "coupes",
+    "action": "walk",
+    "dir": "se",
+    "valeur": 0,
+    "seuil": 0,
+    "sens": "<=",
+    "n": 8,
+    "ok": true,
+    "px_coupes": 0,
+    "images_au_bord": 0,
+    "images_hors_emplacement": 0
+   },
+   {
+    "id": "taches",
+    "action": "walk",
+    "dir": "se",
+    "valeur": 0,
+    "seuil": 0.01,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "couleur",
+    "action": "walk",
+    "dir": "se",
+    "valeur": 0.076,
+    "seuil": 0.12,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "depart",
+    "action": "walk",
+    "dir": "se",
+    "valeur": 0.147,
+    "seuil": 0.2,
+    "sens": "<=",
+    "n": 1,
+    "ok": true
+   },
+   {
+    "id": "taille_ligne",
+    "action": "walk",
+    "dir": "sw",
+    "valeur": 0,
+    "seuil": 6,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "glisse",
+    "action": "walk",
+    "dir": "sw",
+    "valeur": 2.152,
+    "seuil": 6,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "boucle",
+    "action": "walk",
+    "dir": "sw",
+    "valeur": 1.273,
+    "seuil": 1.8,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "pieds",
+    "action": "walk",
+    "dir": "sw",
+    "valeur": 10.117,
+    "seuil": 14,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "boucle_clip",
+    "action": "walk",
+    "dir": "sw",
+    "valeur": 0.06,
+    "seuil": 0.8,
+    "sens": "<=",
+    "n": 8,
+    "ok": true,
+    "periodeS": 1
+   },
+   {
+    "id": "jambes",
+    "action": "walk",
+    "dir": "sw",
+    "valeur": 2.055,
+    "seuil": 1.3,
+    "sens": ">=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "jambes_ecart",
+    "action": "walk",
+    "dir": "sw",
+    "valeur": 2.51,
+    "seuil": 1.25,
+    "sens": ">=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "sol",
+    "action": "walk",
+    "dir": "sw",
+    "valeur": 0.094,
+    "seuil": 0.32,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "halo",
+    "action": "walk",
+    "dir": "sw",
+    "valeur": 0.014,
+    "seuil": 0.03,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "coupes",
+    "action": "walk",
+    "dir": "sw",
+    "valeur": 0,
+    "seuil": 0,
+    "sens": "<=",
+    "n": 8,
+    "ok": true,
+    "px_coupes": 0,
+    "images_au_bord": 0,
+    "images_hors_emplacement": 0
+   },
+   {
+    "id": "taches",
+    "action": "walk",
+    "dir": "sw",
+    "valeur": 0,
+    "seuil": 0.01,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "couleur",
+    "action": "walk",
+    "dir": "sw",
+    "valeur": 0.083,
+    "seuil": 0.12,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "depart",
+    "action": "walk",
+    "dir": "sw",
+    "valeur": 0.152,
+    "seuil": 0.2,
+    "sens": "<=",
+    "n": 1,
+    "ok": true
+   },
+   {
+    "id": "taille_ligne",
+    "action": "walk",
+    "dir": "nw",
+    "valeur": 0,
+    "seuil": 6,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "glisse",
+    "action": "walk",
+    "dir": "nw",
+    "valeur": 2.559,
+    "seuil": 6,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "boucle",
+    "action": "walk",
+    "dir": "nw",
+    "valeur": 0.991,
+    "seuil": 1.8,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "pieds",
+    "action": "walk",
+    "dir": "nw",
+    "valeur": 11.155,
+    "seuil": 14,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "boucle_clip",
+    "action": "walk",
+    "dir": "nw",
+    "valeur": 0.057,
+    "seuil": 0.8,
+    "sens": "<=",
+    "n": 8,
+    "ok": true,
+    "periodeS": 1
+   },
+   {
+    "id": "jambes",
+    "action": "walk",
+    "dir": "nw",
+    "valeur": 2.361,
+    "seuil": 1.3,
+    "sens": ">=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "jambes_ecart",
+    "action": "walk",
+    "dir": "nw",
+    "valeur": 3.214,
+    "seuil": 1.25,
+    "sens": ">=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "sol",
+    "action": "walk",
+    "dir": "nw",
+    "valeur": 0.159,
+    "seuil": 0.32,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "halo",
+    "action": "walk",
+    "dir": "nw",
+    "valeur": 0.016,
+    "seuil": 0.03,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "coupes",
+    "action": "walk",
+    "dir": "nw",
+    "valeur": 0,
+    "seuil": 0,
+    "sens": "<=",
+    "n": 8,
+    "ok": true,
+    "px_coupes": 0,
+    "images_au_bord": 0,
+    "images_hors_emplacement": 0
+   },
+   {
+    "id": "taches",
+    "action": "walk",
+    "dir": "nw",
+    "valeur": 0,
+    "seuil": 0.01,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "couleur",
+    "action": "walk",
+    "dir": "nw",
+    "valeur": 0.098,
+    "seuil": 0.12,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "depart",
+    "action": "walk",
+    "dir": "nw",
+    "valeur": 0.149,
+    "seuil": 0.2,
+    "sens": "<=",
+    "n": 1,
+    "ok": true
+   },
+   {
+    "id": "taille_ligne",
+    "action": "walk",
+    "dir": "ne",
+    "valeur": 0,
+    "seuil": 6,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "glisse",
+    "action": "walk",
+    "dir": "ne",
+    "valeur": 2.873,
+    "seuil": 6,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "boucle",
+    "action": "walk",
+    "dir": "ne",
+    "valeur": 1.188,
+    "seuil": 1.8,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "pieds",
+    "action": "walk",
+    "dir": "ne",
+    "valeur": 10.146,
+    "seuil": 14,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "boucle_clip",
+    "action": "walk",
+    "dir": "ne",
+    "valeur": 0.028,
+    "seuil": 0.8,
+    "sens": "<=",
+    "n": 8,
+    "ok": true,
+    "periodeS": 1
+   },
+   {
+    "id": "jambes",
+    "action": "walk",
+    "dir": "ne",
+    "valeur": 2.154,
+    "seuil": 1.3,
+    "sens": ">=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "jambes_ecart",
+    "action": "walk",
+    "dir": "ne",
+    "valeur": 3.19,
+    "seuil": 1.25,
+    "sens": ">=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "sol",
+    "action": "walk",
+    "dir": "ne",
+    "valeur": 0.156,
+    "seuil": 0.32,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "halo",
+    "action": "walk",
+    "dir": "ne",
+    "valeur": 0.019,
+    "seuil": 0.03,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "coupes",
+    "action": "walk",
+    "dir": "ne",
+    "valeur": 0,
+    "seuil": 0,
+    "sens": "<=",
+    "n": 8,
+    "ok": true,
+    "px_coupes": 0,
+    "images_au_bord": 0,
+    "images_hors_emplacement": 0
+   },
+   {
+    "id": "taches",
+    "action": "walk",
+    "dir": "ne",
+    "valeur": 0,
+    "seuil": 0.01,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "couleur",
+    "action": "walk",
+    "dir": "ne",
+    "valeur": 0.073,
+    "seuil": 0.12,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "depart",
+    "action": "walk",
+    "dir": "ne",
+    "valeur": 0.15,
+    "seuil": 0.2,
+    "sens": "<=",
+    "n": 1,
+    "ok": true
+   },
+   {
+    "id": "taille_ligne",
+    "action": "run",
+    "dir": "se",
+    "valeur": 0,
+    "seuil": 6,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "glisse",
+    "action": "run",
+    "dir": "se",
+    "valeur": 3.182,
+    "seuil": 6,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "boucle",
+    "action": "run",
+    "dir": "se",
+    "valeur": 1.089,
+    "seuil": 1.8,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "pieds",
+    "action": "run",
+    "dir": "se",
+    "valeur": 17.248,
+    "seuil": 20,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "boucle_clip",
+    "action": "run",
+    "dir": "se",
+    "valeur": 0.149,
+    "seuil": 0.8,
+    "sens": "<=",
+    "n": 8,
+    "ok": true,
+    "periodeS": 0.667
+   },
+   {
+    "id": "jambes",
+    "action": "run",
+    "dir": "se",
+    "valeur": 2.331,
+    "seuil": 1.3,
+    "sens": ">=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "jambes_ecart",
+    "action": "run",
+    "dir": "se",
+    "valeur": 3.188,
+    "seuil": 1.25,
+    "sens": ">=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "sol",
+    "action": "run",
+    "dir": "se",
+    "valeur": 0.105,
+    "seuil": 0.32,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "halo",
+    "action": "run",
+    "dir": "se",
+    "valeur": 0.015,
+    "seuil": 0.03,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "coupes",
+    "action": "run",
+    "dir": "se",
+    "valeur": 0,
+    "seuil": 0,
+    "sens": "<=",
+    "n": 8,
+    "ok": true,
+    "px_coupes": 0,
+    "images_au_bord": 0,
+    "images_hors_emplacement": 0
+   },
+   {
+    "id": "taches",
+    "action": "run",
+    "dir": "se",
+    "valeur": 0,
+    "seuil": 0.01,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "couleur",
+    "action": "run",
+    "dir": "se",
+    "valeur": 0.087,
+    "seuil": 0.12,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "depart",
+    "action": "run",
+    "dir": "se",
+    "valeur": 0.15,
+    "seuil": 0.2,
+    "sens": "<=",
+    "n": 1,
+    "ok": true
+   },
+   {
+    "id": "taille_ligne",
+    "action": "run",
+    "dir": "sw",
+    "valeur": 0,
+    "seuil": 6,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "glisse",
+    "action": "run",
+    "dir": "sw",
+    "valeur": 5.402,
+    "seuil": 6,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "boucle",
+    "action": "run",
+    "dir": "sw",
+    "valeur": 1.003,
+    "seuil": 1.8,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "pieds",
+    "action": "run",
+    "dir": "sw",
+    "valeur": 16.834,
+    "seuil": 20,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "boucle_clip",
+    "action": "run",
+    "dir": "sw",
+    "valeur": 0.122,
+    "seuil": 0.8,
+    "sens": "<=",
+    "n": 8,
+    "ok": true,
+    "periodeS": 0.667
+   },
+   {
+    "id": "jambes",
+    "action": "run",
+    "dir": "sw",
+    "valeur": 2.078,
+    "seuil": 1.3,
+    "sens": ">=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "jambes_ecart",
+    "action": "run",
+    "dir": "sw",
+    "valeur": 3.143,
+    "seuil": 1.25,
+    "sens": ">=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "sol",
+    "action": "run",
+    "dir": "sw",
+    "valeur": 0.101,
+    "seuil": 0.32,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "halo",
+    "action": "run",
+    "dir": "sw",
+    "valeur": 0.017,
+    "seuil": 0.03,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "coupes",
+    "action": "run",
+    "dir": "sw",
+    "valeur": 0,
+    "seuil": 0,
+    "sens": "<=",
+    "n": 8,
+    "ok": true,
+    "px_coupes": 0,
+    "images_au_bord": 0,
+    "images_hors_emplacement": 0
+   },
+   {
+    "id": "taches",
+    "action": "run",
+    "dir": "sw",
+    "valeur": 0,
+    "seuil": 0.01,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "couleur",
+    "action": "run",
+    "dir": "sw",
+    "valeur": 0.11,
+    "seuil": 0.12,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "depart",
+    "action": "run",
+    "dir": "sw",
+    "valeur": 0.154,
+    "seuil": 0.2,
+    "sens": "<=",
+    "n": 1,
+    "ok": true
+   },
+   {
+    "id": "taille_ligne",
+    "action": "run",
+    "dir": "nw",
+    "valeur": 0.762,
+    "seuil": 6,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "glisse",
+    "action": "run",
+    "dir": "nw",
+    "valeur": 3.785,
+    "seuil": 6,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "boucle",
+    "action": "run",
+    "dir": "nw",
+    "valeur": 1.006,
+    "seuil": 1.8,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "pieds",
+    "action": "run",
+    "dir": "nw",
+    "valeur": 13.386,
+    "seuil": 20,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "boucle_clip",
+    "action": "run",
+    "dir": "nw",
+    "valeur": 0.141,
+    "seuil": 0.8,
+    "sens": "<=",
+    "n": 8,
+    "ok": true,
+    "periodeS": 0.667
+   },
+   {
+    "id": "jambes",
+    "action": "run",
+    "dir": "nw",
+    "valeur": 2.245,
+    "seuil": 1.3,
+    "sens": ">=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "jambes_ecart",
+    "action": "run",
+    "dir": "nw",
+    "valeur": 3.878,
+    "seuil": 1.25,
+    "sens": ">=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "sol",
+    "action": "run",
+    "dir": "nw",
+    "valeur": 0.148,
+    "seuil": 0.32,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "halo",
+    "action": "run",
+    "dir": "nw",
+    "valeur": 0.018,
+    "seuil": 0.03,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "coupes",
+    "action": "run",
+    "dir": "nw",
+    "valeur": 0,
+    "seuil": 0,
+    "sens": "<=",
+    "n": 8,
+    "ok": true,
+    "px_coupes": 0,
+    "images_au_bord": 0,
+    "images_hors_emplacement": 0
+   },
+   {
+    "id": "taches",
+    "action": "run",
+    "dir": "nw",
+    "valeur": 0,
+    "seuil": 0.01,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "couleur",
+    "action": "run",
+    "dir": "nw",
+    "valeur": 0.107,
+    "seuil": 0.12,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "depart",
+    "action": "run",
+    "dir": "nw",
+    "valeur": 0.145,
+    "seuil": 0.2,
+    "sens": "<=",
+    "n": 1,
+    "ok": true
+   },
+   {
+    "id": "taille_ligne",
+    "action": "run",
+    "dir": "ne",
+    "valeur": 0.762,
+    "seuil": 6,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "glisse",
+    "action": "run",
+    "dir": "ne",
+    "valeur": 4.482,
+    "seuil": 6,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "boucle",
+    "action": "run",
+    "dir": "ne",
+    "valeur": 1.089,
+    "seuil": 1.8,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "pieds",
+    "action": "run",
+    "dir": "ne",
+    "valeur": 13.859,
+    "seuil": 20,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "boucle_clip",
+    "action": "run",
+    "dir": "ne",
+    "valeur": 0.113,
+    "seuil": 0.8,
+    "sens": "<=",
+    "n": 8,
+    "ok": true,
+    "periodeS": 0.667
+   },
+   {
+    "id": "jambes",
+    "action": "run",
+    "dir": "ne",
+    "valeur": 2.169,
+    "seuil": 1.3,
+    "sens": ">=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "jambes_ecart",
+    "action": "run",
+    "dir": "ne",
+    "valeur": 3.929,
+    "seuil": 1.25,
+    "sens": ">=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "sol",
+    "action": "run",
+    "dir": "ne",
+    "valeur": 0.16,
+    "seuil": 0.32,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "halo",
+    "action": "run",
+    "dir": "ne",
+    "valeur": 0.019,
+    "seuil": 0.03,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "coupes",
+    "action": "run",
+    "dir": "ne",
+    "valeur": 0,
+    "seuil": 0,
+    "sens": "<=",
+    "n": 8,
+    "ok": true,
+    "px_coupes": 0,
+    "images_au_bord": 0,
+    "images_hors_emplacement": 0
+   },
+   {
+    "id": "taches",
+    "action": "run",
+    "dir": "ne",
+    "valeur": 0,
+    "seuil": 0.01,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "couleur",
+    "action": "run",
+    "dir": "ne",
+    "valeur": 0.088,
+    "seuil": 0.12,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "depart",
+    "action": "run",
+    "dir": "ne",
+    "valeur": 0.151,
+    "seuil": 0.2,
+    "sens": "<=",
+    "n": 1,
+    "ok": true
+   },
+   {
+    "id": "pieds",
+    "action": "attack",
+    "dir": "se",
+    "valeur": 3.653,
+    "seuil": 6,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "geste_ampleur",
+    "action": "attack",
+    "dir": "se",
+    "valeur": 116.245,
+    "seuil": 12,
+    "sens": ">=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "geste_retour",
+    "action": "attack",
+    "dir": "se",
+    "valeur": 0.096,
+    "seuil": 0.35,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "sol",
+    "action": "attack",
+    "dir": "se",
+    "valeur": 0.099,
+    "seuil": 0.32,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "halo",
+    "action": "attack",
+    "dir": "se",
+    "valeur": 0.014,
+    "seuil": 0.03,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "coupes",
+    "action": "attack",
+    "dir": "se",
+    "valeur": 0,
+    "seuil": 0,
+    "sens": "<=",
+    "n": 8,
+    "ok": true,
+    "px_coupes": 0,
+    "images_au_bord": 0,
+    "images_hors_emplacement": 0
+   },
+   {
+    "id": "taches",
+    "action": "attack",
+    "dir": "se",
+    "valeur": 0,
+    "seuil": 0.01,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "couleur",
+    "action": "attack",
+    "dir": "se",
+    "valeur": 0.078,
+    "seuil": 0.12,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "depart",
+    "action": "attack",
+    "dir": "se",
+    "valeur": 0.155,
+    "seuil": 0.2,
+    "sens": "<=",
+    "n": 1,
+    "ok": true
+   },
+   {
+    "id": "pieds",
+    "action": "attack",
+    "dir": "sw",
+    "valeur": 0,
+    "seuil": 6,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "geste_ampleur",
+    "action": "attack",
+    "dir": "sw",
+    "valeur": 198.227,
+    "seuil": 12,
+    "sens": ">=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "geste_retour",
+    "action": "attack",
+    "dir": "sw",
+    "valeur": 0.106,
+    "seuil": 0.35,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "sol",
+    "action": "attack",
+    "dir": "sw",
+    "valeur": 0.094,
+    "seuil": 0.32,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "halo",
+    "action": "attack",
+    "dir": "sw",
+    "valeur": 0.018,
+    "seuil": 0.03,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "coupes",
+    "action": "attack",
+    "dir": "sw",
+    "valeur": 0,
+    "seuil": 0,
+    "sens": "<=",
+    "n": 8,
+    "ok": true,
+    "px_coupes": 0,
+    "images_au_bord": 0,
+    "images_hors_emplacement": 0
+   },
+   {
+    "id": "taches",
+    "action": "attack",
+    "dir": "sw",
+    "valeur": 0,
+    "seuil": 0.01,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "couleur",
+    "action": "attack",
+    "dir": "sw",
+    "valeur": 0.063,
+    "seuil": 0.12,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "depart",
+    "action": "attack",
+    "dir": "sw",
+    "valeur": 0.152,
+    "seuil": 0.2,
+    "sens": "<=",
+    "n": 1,
+    "ok": true
+   },
+   {
+    "id": "pieds",
+    "action": "attack",
+    "dir": "nw",
+    "valeur": 0.688,
+    "seuil": 6,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "geste_ampleur",
+    "action": "attack",
+    "dir": "nw",
+    "valeur": 137.681,
+    "seuil": 12,
+    "sens": ">=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "geste_retour",
+    "action": "attack",
+    "dir": "nw",
+    "valeur": 0.059,
+    "seuil": 0.35,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "sol",
+    "action": "attack",
+    "dir": "nw",
+    "valeur": 0.147,
+    "seuil": 0.32,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "halo",
+    "action": "attack",
+    "dir": "nw",
+    "valeur": 0.017,
+    "seuil": 0.03,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "coupes",
+    "action": "attack",
+    "dir": "nw",
+    "valeur": 0,
+    "seuil": 0,
+    "sens": "<=",
+    "n": 8,
+    "ok": true,
+    "px_coupes": 0,
+    "images_au_bord": 0,
+    "images_hors_emplacement": 0
+   },
+   {
+    "id": "taches",
+    "action": "attack",
+    "dir": "nw",
+    "valeur": 0,
+    "seuil": 0.01,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "couleur",
+    "action": "attack",
+    "dir": "nw",
+    "valeur": 0.084,
+    "seuil": 0.12,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "depart",
+    "action": "attack",
+    "dir": "nw",
+    "valeur": 0.146,
+    "seuil": 0.2,
+    "sens": "<=",
+    "n": 1,
+    "ok": true
+   },
+   {
+    "id": "pieds",
+    "action": "attack",
+    "dir": "ne",
+    "valeur": 3.883,
+    "seuil": 6,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "geste_ampleur",
+    "action": "attack",
+    "dir": "ne",
+    "valeur": 190.748,
+    "seuil": 12,
+    "sens": ">=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "geste_retour",
+    "action": "attack",
+    "dir": "ne",
+    "valeur": 0.033,
+    "seuil": 0.35,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "sol",
+    "action": "attack",
+    "dir": "ne",
+    "valeur": 0.153,
+    "seuil": 0.32,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "halo",
+    "action": "attack",
+    "dir": "ne",
+    "valeur": 0.02,
+    "seuil": 0.03,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "coupes",
+    "action": "attack",
+    "dir": "ne",
+    "valeur": 0,
+    "seuil": 0,
+    "sens": "<=",
+    "n": 8,
+    "ok": true,
+    "px_coupes": 0,
+    "images_au_bord": 0,
+    "images_hors_emplacement": 0
+   },
+   {
+    "id": "taches",
+    "action": "attack",
+    "dir": "ne",
+    "valeur": 0,
+    "seuil": 0.01,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "couleur",
+    "action": "attack",
+    "dir": "ne",
+    "valeur": 0.074,
+    "seuil": 0.12,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "depart",
+    "action": "attack",
+    "dir": "ne",
+    "valeur": 0.158,
+    "seuil": 0.2,
+    "sens": "<=",
+    "n": 1,
+    "ok": true
+   },
+   {
+    "id": "geste_ampleur",
+    "action": "jump",
+    "dir": "se",
+    "valeur": 242.084,
+    "seuil": 12,
+    "sens": ">=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "geste_retour",
+    "action": "jump",
+    "dir": "se",
+    "valeur": 0.054,
+    "seuil": 0.35,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "sol",
+    "action": "jump",
+    "dir": "se",
+    "valeur": 0.102,
+    "seuil": 0.32,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "halo",
+    "action": "jump",
+    "dir": "se",
+    "valeur": 0.015,
+    "seuil": 0.03,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "coupes",
+    "action": "jump",
+    "dir": "se",
+    "valeur": 0,
+    "seuil": 0,
+    "sens": "<=",
+    "n": 8,
+    "ok": true,
+    "px_coupes": 0,
+    "images_au_bord": 0,
+    "images_hors_emplacement": 0
+   },
+   {
+    "id": "taches",
+    "action": "jump",
+    "dir": "se",
+    "valeur": 0,
+    "seuil": 0.01,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "couleur",
+    "action": "jump",
+    "dir": "se",
+    "valeur": 0.063,
+    "seuil": 0.12,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "depart",
+    "action": "jump",
+    "dir": "se",
+    "valeur": 0.148,
+    "seuil": 0.2,
+    "sens": "<=",
+    "n": 1,
+    "ok": true
+   },
+   {
+    "id": "geste_ampleur",
+    "action": "jump",
+    "dir": "sw",
+    "valeur": 268.559,
+    "seuil": 12,
+    "sens": ">=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "geste_retour",
+    "action": "jump",
+    "dir": "sw",
+    "valeur": 0.044,
+    "seuil": 0.35,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "sol",
+    "action": "jump",
+    "dir": "sw",
+    "valeur": 0.095,
+    "seuil": 0.32,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "halo",
+    "action": "jump",
+    "dir": "sw",
+    "valeur": 0.019,
+    "seuil": 0.03,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "coupes",
+    "action": "jump",
+    "dir": "sw",
+    "valeur": 0,
+    "seuil": 0,
+    "sens": "<=",
+    "n": 8,
+    "ok": true,
+    "px_coupes": 0,
+    "images_au_bord": 0,
+    "images_hors_emplacement": 0
+   },
+   {
+    "id": "taches",
+    "action": "jump",
+    "dir": "sw",
+    "valeur": 0,
+    "seuil": 0.01,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "couleur",
+    "action": "jump",
+    "dir": "sw",
+    "valeur": 0.051,
+    "seuil": 0.12,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "depart",
+    "action": "jump",
+    "dir": "sw",
+    "valeur": 0.151,
+    "seuil": 0.2,
+    "sens": "<=",
+    "n": 1,
+    "ok": true
+   },
+   {
+    "id": "geste_ampleur",
+    "action": "jump",
+    "dir": "nw",
+    "valeur": 244.566,
+    "seuil": 12,
+    "sens": ">=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "geste_retour",
+    "action": "jump",
+    "dir": "nw",
+    "valeur": 0.032,
+    "seuil": 0.35,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "sol",
+    "action": "jump",
+    "dir": "nw",
+    "valeur": 0.147,
+    "seuil": 0.32,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "halo",
+    "action": "jump",
+    "dir": "nw",
+    "valeur": 0.016,
+    "seuil": 0.03,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "coupes",
+    "action": "jump",
+    "dir": "nw",
+    "valeur": 0,
+    "seuil": 0,
+    "sens": "<=",
+    "n": 8,
+    "ok": true,
+    "px_coupes": 0,
+    "images_au_bord": 0,
+    "images_hors_emplacement": 0
+   },
+   {
+    "id": "taches",
+    "action": "jump",
+    "dir": "nw",
+    "valeur": 0,
+    "seuil": 0.01,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "couleur",
+    "action": "jump",
+    "dir": "nw",
+    "valeur": 0.061,
+    "seuil": 0.12,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "depart",
+    "action": "jump",
+    "dir": "nw",
+    "valeur": 0.146,
+    "seuil": 0.2,
+    "sens": "<=",
+    "n": 1,
+    "ok": true
+   },
+   {
+    "id": "geste_ampleur",
+    "action": "jump",
+    "dir": "ne",
+    "valeur": 261.226,
+    "seuil": 12,
+    "sens": ">=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "geste_retour",
+    "action": "jump",
+    "dir": "ne",
+    "valeur": 0.071,
+    "seuil": 0.35,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "sol",
+    "action": "jump",
+    "dir": "ne",
+    "valeur": 0.15,
+    "seuil": 0.32,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "halo",
+    "action": "jump",
+    "dir": "ne",
+    "valeur": 0.019,
+    "seuil": 0.03,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "coupes",
+    "action": "jump",
+    "dir": "ne",
+    "valeur": 0,
+    "seuil": 0,
+    "sens": "<=",
+    "n": 8,
+    "ok": true,
+    "px_coupes": 0,
+    "images_au_bord": 0,
+    "images_hors_emplacement": 0
+   },
+   {
+    "id": "taches",
+    "action": "jump",
+    "dir": "ne",
+    "valeur": 0,
+    "seuil": 0.01,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "couleur",
+    "action": "jump",
+    "dir": "ne",
+    "valeur": 0.048,
+    "seuil": 0.12,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "depart",
+    "action": "jump",
+    "dir": "ne",
+    "valeur": 0.148,
+    "seuil": 0.2,
+    "sens": "<=",
+    "n": 1,
+    "ok": true
+   },
+   {
+    "id": "taille_dirs",
+    "action": "idle",
+    "valeur": 1,
+    "seuil": 1.15,
+    "sens": "<=",
+    "n": 32,
+    "ok": true
+   },
+   {
+    "id": "taille_dirs",
+    "action": "walk",
+    "valeur": 1,
+    "seuil": 1.15,
+    "sens": "<=",
+    "n": 32,
+    "ok": true
+   },
+   {
+    "id": "taille_dirs",
+    "action": "run",
+    "valeur": 1.048,
+    "seuil": 1.15,
+    "sens": "<=",
+    "n": 32,
+    "ok": true
+   },
+   {
+    "id": "taille_actions",
+    "dir": "se",
+    "valeur": 1.024,
+    "seuil": 1.15,
+    "sens": "<=",
+    "n": 24,
+    "ok": true
+   },
+   {
+    "id": "taille_actions",
+    "dir": "sw",
+    "valeur": 1.024,
+    "seuil": 1.15,
+    "sens": "<=",
+    "n": 24,
+    "ok": true
+   },
+   {
+    "id": "taille_actions",
+    "dir": "nw",
+    "valeur": 1.023,
+    "seuil": 1.15,
+    "sens": "<=",
+    "n": 24,
+    "ok": true
+   },
+   {
+    "id": "taille_actions",
+    "dir": "ne",
+    "valeur": 1.023,
+    "seuil": 1.15,
+    "sens": "<=",
+    "n": 24,
+    "ok": true
+   },
+   {
+    "id": "miroir",
+    "action": "idle",
+    "dir": "sw/se",
+    "valeur": 0.262,
+    "seuil": 0.6,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "miroir",
+    "action": "idle",
+    "dir": "nw/ne",
+    "valeur": 0.287,
+    "seuil": 0.6,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "miroir",
+    "action": "walk",
+    "dir": "sw/se",
+    "valeur": 0.316,
+    "seuil": 0.6,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "miroir",
+    "action": "walk",
+    "dir": "nw/ne",
+    "valeur": 0.354,
+    "seuil": 0.6,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "miroir",
+    "action": "run",
+    "dir": "sw/se",
+    "valeur": 0.304,
+    "seuil": 0.6,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "miroir",
+    "action": "run",
+    "dir": "nw/ne",
+    "valeur": 0.363,
+    "seuil": 0.6,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "miroir",
+    "action": "attack",
+    "dir": "sw/se",
+    "valeur": 0.235,
+    "seuil": 0.6,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "miroir",
+    "action": "attack",
+    "dir": "nw/ne",
+    "valeur": 0.283,
+    "seuil": 0.6,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "miroir",
+    "action": "jump",
+    "dir": "sw/se",
+    "valeur": 0.263,
+    "seuil": 0.6,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   },
+   {
+    "id": "miroir",
+    "action": "jump",
+    "dir": "nw/ne",
+    "valeur": 0.315,
+    "seuil": 0.6,
+    "sens": "<=",
+    "n": 8,
+    "ok": true
+   }
+  ]
+ },
+ "sources": {
+  "pose": "dd1813848da5db1f32e41d1dee35fd7ac2f031042fb8bdfd1b911c8ea0ec71e5",
+  "ancienne": null,
+  "halo_ancienne": null,
+  "clips": [
+   {
+    "action": "idle",
+    "mode": "bande",
+    "dir": null,
+    "sha256": "96f41ba241cd1d5e05e52ff8940cbcce7174bdf8daefd1a509f6914c60461a49",
+    "w": 960,
+    "h": 384,
+    "fps": 24,
+    "images": 48,
+    "dureeS": 2
+   },
+   {
+    "action": "walk",
+    "mode": "bande",
+    "dir": null,
+    "sha256": "94a27a5da78a1bc16205ded884adcc6f8ca3ca43f405fdf32071e0d0d3225fc2",
+    "w": 960,
+    "h": 384,
+    "fps": 24,
+    "images": 72,
+    "dureeS": 3
+   },
+   {
+    "action": "run",
+    "mode": "bande",
+    "dir": null,
+    "sha256": "bbda9bb1564cdee8a54f98d19859ce4ba4f0c5ac217f881abeb3183de812a43c",
+    "w": 960,
+    "h": 384,
+    "fps": 24,
+    "images": 72,
+    "dureeS": 3
+   },
+   {
+    "action": "attack",
+    "mode": "bande",
+    "dir": null,
+    "sha256": "0004fb62faeb7493855358399bf6d42151f5d419d015224c864f6fe4d0a7600c",
+    "w": 960,
+    "h": 384,
+    "fps": 24,
+    "images": 48,
+    "dureeS": 2
+   },
+   {
+    "action": "jump",
+    "mode": "bande",
+    "dir": null,
+    "sha256": "2078cf26d258310905ec234c2d0a0f5f0d3497502b77fa218cc261bb5fe4350d",
+    "w": 960,
+    "h": 384,
+    "fps": 24,
+    "images": 48,
+    "dureeS": 2
+   }
+  ]
+ },
+ "cout_usd": null,
+ "secondes": 18.4
+}

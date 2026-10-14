@@ -729,7 +729,7 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
     lanc_s: function(r, m){ var l=[]; l.push(r + " on a known launchpad"); l.push(m + " migration" + (m === 1 ? "" : "s") + " sent"); return l.join(" · "); },
     lanc_nc: "not counted yet",
     peak_not_read: function(r, k, n){ return r + " / " + n + " (" + (n - k) + " not read)"; },
-    jetonsNote: function(r){ return "Found among pools traded by " + r.actifs_min + "+ wallets in the last 24 hours (GeckoTerminal top pools); kept when the current value or the best daily close passed $1M — the close is looked up only for tokens worth $" + Math.round(r.pic_candidat_usd / 1000) + "k+ now. A token that peaked over $1M and then died is not listed. Excluded: WETH, USDG, tokenized stocks, assets from other chains and address look-alikes. Launch, creator and first buyers are read on chain; dollar values are not."; },
+    jetonsNote: function(r, h){ return "Found two ways: among pools traded by " + r.actifs_min + "+ wallets in the last 24 hours (GeckoTerminal top pools), and by a slow walk that walks back through every ETH pool created on chain, a few days of blocks per pass" + (h && h.bas != null ? " (" + (h.fini ? "done" : "reached block " + Number(h.bas).toLocaleString("en-US")) + ", " + Number(h.vus || 0).toLocaleString("en-US") + " tokens judged)" : "") + ". Kept when the current value or the best daily close passed $1M — the close is looked up only for tokens worth $" + Math.round(r.pic_candidat_usd / 1000) + "k+ now or $" + Math.round((r.histo_liq_min_usd || 10000) / 1000) + "k+ of liquidity left, so a token that peaked and then lost all its liquidity can still be missed. Excluded: WETH, USDG, tokenized stocks, assets from other chains and address look-alikes. Launch, creator and first buyers are read on chain, on the token’s own pools whatever they trade against; dollar values are not."; },
     pic_s: function(j){ return "best daily close" + (j ? ", " + j : ""); },
     now: function(u){ return "now " + u; },
     src_gt: "GeckoTerminal", src_ds: "DexScreener",
@@ -738,7 +738,12 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
     premiers_moins: function(n, r){ return "only " + n + " first buyers of " + r + " read"; },
     base_petite: function(r){ return "under " + r + ": no base rate"; },
     statut_a_lire: "to read", statut_erreur: "not readable",
-    erreur: { "no ETH pool found on chain": "no ETH pool found on chain (it trades against another asset)", "totalSupply or decimals unreadable": "supply or decimals could not be read" },
+    erreur: { "no ETH pool found on chain": "no ETH pool found on chain (it trades against another asset)", "totalSupply or decimals unreadable": "supply or decimals could not be read", "no readable pool found on chain": "none of its pools could be read on chain" },
+    erreur_ref: function(q){ return "no on-chain price to convert its quote asset " + q + " into ETH"; },
+    contre: function(v, q){ return "Uniswap v" + v + " pool against " + q; },
+    prix_lu: function(s){ return "price: " + (s === "reserves" ? "pool reserves" : "last swap") + ", "; },
+    prix_conv: "converted to ETH through ", prix_jour: " at today’s rate",
+    prix_choix: "reference pools picked by DexScreener liquidity",
     ancien_j: "old token", ancien_c: "created by",
     d_dead: function(q, s){ return q + " " + s + " moved out of 0x…dead (a burn address cannot sign)"; },
     d_retire: function(p){ return p + "% of the liquidity added was removed"; },
@@ -948,10 +953,30 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
       tb.appendChild(tr);
     });
   }
+  /* lot du 14/10 : la cote de la piscine de lancement quand ce n'est pas l'ETH, et
+     la SOURCE du prix — dernier Swap lu (Verified), chaque etape de conversion
+     (Verified), le choix des piscines de reference (Not verified) */
+  var COTES_ETH = ["0x0000000000000000000000000000000000000000", "0x0bd7d308f8e1639fab988df18a8011f41eacad73", "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"];
+  function peintPrix(c, j){
+    var p = j.details && j.details.prix;
+    if (!p) return;
+    var pl = ((j.details && j.details.piscines) || []).filter(function(x){ return x.pool === j.lancement.piscine; })[0];
+    var cl = pl ? pl.cote : (p.piscine === j.lancement.piscine ? p.cote : null);
+    if (cl && COTES_ETH.indexOf(String(cl).toLowerCase()) < 0) { var s0 = el("span","sm-sous"); texte(s0, ph("contre", j.lancement.version, court(cl))); c.appendChild(s0); }
+    var s = el("span","sm-sous"); texte(s, ph("prix_lu", p.source));
+    s.appendChild(lien("tx", p.tx, ph("bloc", p.bloc))); s.appendChild(src(!!p.verifie));
+    if ((p.chemin || []).length) {
+      texte(s, " " + ph("prix_conv"));
+      p.chemin.forEach(function(e, i){ if (i) texte(s, " "); s.appendChild(lien("tx", e.tx, ph("bloc", e.bloc))); s.appendChild(src(true)); });
+      texte(s, ph("prix_jour"));
+    }
+    c.appendChild(s);
+    if (p.choix) { var s2 = el("span","sm-sous"); texte(s2, ph("prix_choix")); s2.appendChild(src(false)); c.appendChild(s2); }
+  }
   function peintJetons(d, vide){
     var tb=$("jetons"); tb.textContent="";
     var r = regles(d);
-    $("jetonsNote").textContent = ph("jetonsNote", r);
+    $("jetonsNote").textContent = ph("jetonsNote", r, d.historique);
     var l=d.jetons||[];
     if (!l.length) { ligneVide(tb, 6, vide); return; }
     l.forEach(function(j){
@@ -959,14 +984,14 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
       var c0=td("mots"); c0.appendChild(lien("dex", j.adresse, j.symbole || court(j.adresse), "sm-nom"));
       var st = j.statut !== "lu" ? " · " + ph("statut_" + (j.statut === "erreur" ? "erreur" : "a_lire")) : "";
       c0.appendChild(el("span","sm-sous", court(j.adresse) + st));
-      if (j.statut === "erreur" && j.erreur) c0.appendChild(el("span","sm-sous", PH.erreur[j.erreur] || j.erreur));
+      if (j.statut === "erreur" && j.erreur) { var mq = /^no on-chain reference price for quote (0x[0-9a-fA-F]{40})/.exec(j.erreur); c0.appendChild(el("span","sm-sous", mq ? ph("erreur_ref", court(mq[1])) : (PH.erreur[j.erreur] || j.erreur))); }
       tr.appendChild(c0);
       var c1=td("num");
       if (j.pic) { c1.appendChild(el("span","sm-val",usd(j.pic.usd))); c1.appendChild(src(false)); c1.appendChild(el("span","sm-sous", ph("pic_s", j.pic.jour))); c1.appendChild(source("gt", j.pic.piscine, j.pic.source || ph("src_gt"))); }
       if (j.cap) { var pn=el("span","sm-sous"); pn.appendChild(el("span","sm-val",ph("now", usd(j.cap.usd)))); pn.appendChild(src(false)); c1.appendChild(pn); c1.appendChild(source("gt", j.cap.piscine, j.cap.source || ph("src_gt"))); }
       if (!j.pic && !j.cap) c1.textContent="--";
       tr.appendChild(c1);
-      var c3=td(); if (j.lancement) { c3.appendChild(lien("tx", j.lancement.tx, ph("bloc", j.lancement.bloc))); c3.appendChild(src(true)); c3.appendChild(el("span","sm-sous", ph("pool_v", j.lancement.version))); } else c3.textContent="--"; tr.appendChild(c3);
+      var c3=td(); if (j.lancement) { c3.appendChild(lien("tx", j.lancement.tx, ph("bloc", j.lancement.bloc))); c3.appendChild(src(true)); c3.appendChild(el("span","sm-sous", ph("pool_v", j.lancement.version))); peintPrix(c3, j); } else c3.textContent="--"; tr.appendChild(c3);
       var c4=td("mots");
       if (j.createur && j.createur.adresse) {
         c4.appendChild(lien("adresse", j.createur.adresse)); c4.appendChild(src(!!j.createur.verifie));

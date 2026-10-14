@@ -35,7 +35,7 @@ const VUE = {
   actif: true, pret: true, mode: 'envoi', t: T,
   maintenant: T,
   regles: { acheteurs: 50, mise_min_eth: 0.01, tot_min: 60, smart_jetons: 3, projets_assez: 10, z_verdict: 2, groupe_min: 3, groupe_ecart_pct: 2, bloc_charge: 5, relais_pct: 99, relais_blocs: 6000, seuil_usd: 1e6,
-    base_assez: 20, robots_min: 3, lanceur_auto: 8, actifs_min: 50, pic_candidat_usd: 100000, passe_min: 30, veille_min: 5 },
+    base_assez: 20, robots_min: 3, lanceur_auto: 8, actifs_min: 50, pic_candidat_usd: 100000, passe_min: 30, veille_min: 5, histo_liq_min_usd: 10000 },
   passe: { id: 9, genre: 'passe', debut: T - 900, fin: T - 60, statut: 'ok', appels: 600, octets: 41234567, gt: 13, ds: 9, jetons: 2, detail: { retenus: 1, pics: 2, lus: 2, statut: 'ok' } },
   veille: { id: 10, genre: 'veille', debut: T - 30, fin: T - 29, statut: 'ok', appels: 7, octets: 120000, gt: 0, ds: 0, jetons: 0, detail: { de: 87100001, a: 87102900, creations: 21, achats: 2, alertes: 1, saute: 0 } },
   passe_ok: { fin: T - 60, statut: 'ok' }, veille_ok: { fin: T - 29, statut: 'ok' },
@@ -75,7 +75,19 @@ const VUE = {
     { adresse: A('a7'), symbole: 'NOVAAI', statut: 'lu', mode: 'acheteur', lancement: { bloc: 40138722, t: T - 9e6, tx: H('d7'), piscine: H('b7'), version: 4 },
       createur: { adresse: '0x2d74000000000000000000000000000000000001', role: 'inconnu', verifie: false, bloc: 40138722, tx: H('d7') }, details: { nPremiers: 7 },
       pic: null, cap: { usd: 434477642, source: 'geckoterminal fdv (pons-v2-dex)', piscine: H('b7') }, base: { n: 5, gagnants: 3 }, recette: null, drapeaux: [], liquidite: null },
+    /* lot du 14/10 : CPU lu sur sa piscine de lancement contre INTC ; le prix dit sa source et sa conversion */
+    { adresse: '0x8eaa17be69ae9616cede4671e6d837bb89491e18', symbole: 'CPU', statut: 'lu', mode: 'tout',
+      lancement: { bloc: 59789737, t: 1789082265, tx: '0x93d5944e9d8c58bc284e913302cf23bcaeab9260426255fdfa2316f9f1969419', piscine: '0xaf8aa959b7e460fbbc61d25b9896a6e3f92cbf3a2bde01fa2b5ac811f2d6a986', version: 4 },
+      createur: { adresse: '0xa63126c2041b1d4eb28f025ab8457815aeb74d3e', role: 'lanceur', verifie: true, bloc: 59789737, tx: '0x93d5944e9d8c58bc284e913302cf23bcaeab9260426255fdfa2316f9f1969419', via: '0x1eef016f22a943abc7dd11422edee9d235942104' },
+      details: { nPremiers: 50, prix: { verifie: true, piscine: '0xaf8aa959b7e460fbbc61d25b9896a6e3f92cbf3a2bde01fa2b5ac811f2d6a986', version: 4, cote: '0xc72b96e0e48ecd4dc75e1e45396e26300bc39681', source: 'last Swap', bloc: 87000123, tx: H('c1'), conversion: 'today',
+        chemin: [{ pool: '0xf2e329e631d0fb315a5c563ee3a9120f24822b5ef6c502a91cb56b174d5d8c22', version: 4, de: '0xc72b96e0e48ecd4dc75e1e45396e26300bc39681', vers: '0x5fc5360d0400a0fd4f2af552add042d716f1d168', source: 'last Swap', bloc: 87001000, tx: H('c2') },
+          { pool: '0x52e65b17fb6e5ba00ed806f37afcd2daa50271ca', version: 3, de: '0x5fc5360d0400a0fd4f2af552add042d716f1d168', vers: '0x0bd7d308f8e1639fab988df18a8011f41eacad73', source: 'last Swap', bloc: 87001200, tx: H('c3') }],
+        choix: 'deepest pool by DexScreener liquidity ($139015, Not verified)' } },
+      pic: { usd: 3880000, jour: '2026-09-12', source: 'geckoterminal daily close × totalSupply read on chain', piscine: '0xaf8aa959b7e460fbbc61d25b9896a6e3f92cbf3a2bde01fa2b5ac811f2d6a986' }, cap: null, base: { n: 31, gagnants: 9 }, recette: null, drapeaux: [], liquidite: { version: 4, retirePct: 0 } },
+    { adresse: A('a8'), symbole: 'ZED', statut: 'erreur', erreur: 'no on-chain reference price for quote 0x3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c', pic: { usd: 1.2e6, jour: '2026-09-01', source: 'geckoterminal daily close × implied supply (historical discovery)', piscine: H('b8') }, cap: null },
   ],
+  /* lot du 14/10 : ou en est la decouverte historique */
+  historique: { bas: 56000000, fini: false, vus: 1234, parStatut: { retenu: 2, candidat: 5, ecarte: 900, absent: 327 } },
   nouveaux: [
     { pool: H('c4'), jeton: A('a4'), version: 4, bloc: 87100100, t: T - 600, tx: H('d1'), createur: '0xb760edab21dd2855327d2a72be90f86b523fba7d', role: 'deployeur', verifie: 1 },
     /* un lancement v2 = deux paires du meme jeton : UNE ligne (revue P8) */
@@ -200,7 +212,13 @@ const PREUVE_W = { adresse: A('61'), participations: [
   ok(gt.some((h) => /^https:\/\/www\.geckoterminal\.com\/robinhood\/pools\/0x[0-9a-f]{64}$/.test(h)) && gt.some((h) => /^https:\/\/www\.geckoterminal\.com\/robinhood\/pools\/0x[0-9a-f]{40}$/.test(h)), 'chaque valeur Not verified a un lien vers sa source GeckoTerminal (piscine v4 ou v2) (revue P3)');
   const nonSource = await p.evaluate(() => [...document.querySelectorAll('#jetons tr')].filter((tr) => tr.querySelector('td a.sm-nom')).map((tr) => tr.children[1]).filter((td) => td.querySelector('.sm-src.nv') && /\$/.test(td.textContent) && !td.querySelector('a.sm-source')).length);
   ok(nonSource === 0, 'aucune valeur en dollars « Not verified » sans lien de source');
-  ok(/50\+ wallets in the last 24 hours/.test(r.texte) && /\$100k\+ now/.test(r.texte) && /peaked over \$1M and then died is not listed/.test(r.texte), 'la note dit la VRAIE regle de decouverte (revue P7)');
+  /* la note dit la VRAIE regle de decouverte (revue P7) ; lot du 14/10 : la marche historique en fait partie, et ou elle en est */
+  ok(/50\+ wallets in the last 24 hours/.test(r.texte) && /\$100k\+ now or \$10k\+ of liquidity left/.test(r.texte) && /walks back through every ETH pool created on chain/.test(r.texte) && /reached block 56,000,000, 1,234 tokens judged/.test(r.texte) && !/peaked over \$1M and then died is not listed/.test(r.texte), 'la note dit la VRAIE regle de decouverte, historique comprise, et ou en est la marche (revue P7, lot du 14/10)');
+  const j4 = r.jetons[4], j5 = r.jetons[5];
+  ok(/^block 59,789,737Verified/.test(j4[2]) && /Uniswap v4 pool against 0xc72b…9681/.test(j4[2]), 'CPU : lancement sur la piscine contre INTC, la cote est dite (lot du 14/10)');
+  ok(/price: last swap, block 87,000,123Verified/.test(j4[2]) && /converted to ETH through block 87,001,000Verified block 87,001,200Verified at today’s rate/.test(j4[2]), 'le prix dit sa source lue sur la chaine et CHAQUE etape de conversion, « Verified »');
+  ok(/reference pools picked by DexScreener liquidityNot verified/.test(j4[2]), 'le choix de la reference est « Not verified »');
+  ok(/not readable/.test(j5[0]) && /no on-chain price to convert its quote asset 0x3c3c…3c3c into ETH/.test(j5[0]), 'une cote sans reference : la raison nomme la cote (lot du 14/10)');
   ok(r.nouveaux.length === 3 && /Verified/.test(r.nouveaux[0][2]) && /Not verified/.test(r.nouveaux[1][3]), 'nouveaux jetons : une ligne par JETON (4 piscines, 3 jetons), naissance « Verified », createur non verifie « Not verified » (revue P8)');
   ok(/Uniswap v2Uniswap v2 ?2 pools/.test(r.nouveaux[1][1].replace(/\s+/g, ' ').replace(/ /g, '')) || /2 pools/.test(r.nouveaux[1][1]), 'un lancement v2 : ses 2 piscines dans la meme ligne');
   ok(/automated launcher \(38 in 24 h\)/.test(r.nouveaux[2][3]), 'un lanceur automatique est dit tel (revue INI-07)');

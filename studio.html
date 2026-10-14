@@ -1009,6 +1009,8 @@ footer b{color:var(--navy)}
     </div>
     <button class="gold" type="button" id="rcSign">Sign a top-up</button>
     <p class="rcst" id="rcStatut" role="status"></p>
+    <!-- SOL ou USDT, sans signature : une adresse de depot a usage unique (credit_depot.js). -->
+    <div data-credit-depot></div>
   </div>
 </div>
 
@@ -2128,6 +2130,11 @@ footer b{color:var(--navy)}
       return vu ? x : relisRecharge(j, montant, avant, debut, statut, i + 1);
     }, function(){ return relisRecharge(j, montant, avant, debut, statut, i + 1); });
   }
+  /* Un depot SOL/USDT credite (credit_depot.js) : le solde que le serveur vient de rendre. */
+  window.addEventListener("swoge:credit", function(e){
+    if (e && e.detail && e.detail.balanceUsd != null) { etat.credit = Number(e.detail.balanceUsd) || 0; peintSoldes(); }
+    chargeCredit();
+  });
   function ouvreRecharge(){
     if (!jeton()) return ouvreConnexion();
     $("drawer").hidden = true; $("stMenu").setAttribute("aria-expanded", "false");
@@ -2727,5 +2734,6 @@ footer b{color:var(--navy)}
 <script src="stakebubble.min.js?v=f4d2b2d2"></script>
 <script src="x402_solana.js?v=1d86ed41"></script>
 <script src="x402_paie.js?v=da0c0ca4"></script>
+<script src="credit_depot.js?v=c4f65ad6"></script>
 </body>
 </html>

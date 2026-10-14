@@ -1098,6 +1098,8 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     </div>
     <button type="button" class="rc-signer" id="rcSigner">Sign a $5 top-up</button>
     <p class="rc-statut" id="rcStatut" role="status"></p>
+    <!-- SOL ou USDT, sans signature : une adresse de depot a usage unique (credit_depot.js). -->
+    <div data-credit-depot></div>
     <div class="rc-histo" id="rcHisto"></div>
   </div>
   <div class="etat" id="etat" hidden></div>
@@ -2067,6 +2069,8 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       return r;
     });
   }
+  /* Un depot SOL/USDT credite (credit_depot.js) : le solde que le serveur vient de rendre. */
+  window.addEventListener("swoge:credit", function(e){ if (e && e.detail && e.detail.balanceUsd != null) poseCredit(e.detail.balanceUsd); chargeCredit(); });
   function rcStatut(t, err){ var s = $("rcStatut"); s.textContent = t || ""; s.className = "rc-statut" + (err ? " err" : ""); }
   $("recharger").addEventListener("click", function(){
     var b = $("rechargeBox"); b.hidden = !b.hidden; this.setAttribute("aria-expanded", String(!b.hidden));
@@ -3525,6 +3529,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 <script src="stakebubble.min.js?v=f4d2b2d2"></script>
 <script src="x402_solana.js?v=1d86ed41"></script>
 <script src="x402_paie.js?v=da0c0ca4"></script>
+<script src="credit_depot.js?v=c4f65ad6"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
 <script src="lance_v4.js?v=6f7f9ced"></script>
 

@@ -305,7 +305,7 @@ a{ color:var(--bleu); }
   if (b) b.addEventListener("click", function(){
     if (window.swogeConnexion && typeof window.swogeConnexion.ouvre === "function") return ouvre();
     b.disabled = true; b.textContent = "Loading…";
-    var s = document.createElement("script"); s.src = "stakebubble.min.js?v=f4d2b2d2";
+    var s = document.createElement("script"); s.src = "stakebubble.min.js?v=a481bde5";
     s.onload = function(){ b.disabled = false; b.textContent = "Sign in with your wallet"; if (window.swogeConnexion) ouvre(); };
     s.onerror = function(){ b.disabled = false; b.textContent = "Sign-in could not load — reload the page"; };
     document.body.appendChild(s);

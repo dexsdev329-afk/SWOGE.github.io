@@ -8102,7 +8102,7 @@
       'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}' +
       '.swdw .hd .x{position:relative;width:24px;height:24px;font-size:13px;flex:0 0 auto;touch-action:manipulation;}' +
       /* La croix mesurait 24 px de cote : on agrandit la ZONE SENSIBLE a 44 sans toucher au dessin, avec un pseudo-element centre. Grossir le bouton lui-meme aurait pousse le titre du tiroir. */
-      '.x::after{content:"";position:absolute;left:50%;top:50%;width:44px;height:44px;transform:translate(-50%,-50%);}' +
+      '.swdw .hd .x::after{content:"";position:absolute;left:50%;top:50%;width:44px;height:44px;transform:translate(-50%,-50%);}' +
       '.swdw .gr{display:grid;gap:3px;padding:8px;}' +
       '.swdw .c{display:block;width:100%;aspect-ratio:1/1;border-radius:50%;' +
       'background:rgba(11,27,54,.05);border:1px solid rgba(11,27,54,.08);}' +

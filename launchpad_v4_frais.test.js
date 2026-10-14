@@ -89,12 +89,13 @@ const T = { '.html': 'text/html', '.js': 'application/javascript', '.json': 'app
   ok(JETONS.map((j) => j.toLowerCase()).includes(String(premier).toLowerCase()), 'tri « New » : un V4, le plus recent, passe en tete');
 
   console.log('\n-- un jeton V4 s ouvre dans l echange, cote dans son actif --');
-  for (const [i, lib, sym] of [[0, 'Buy — SWOGE to spend', 'SWV4TEST'], [1, 'Buy — ETH (RH) to spend', 'SWV4WTEST']]) {
+  /* 14/10/2026 (fiche v2) : l actif paye est nomme dans la pastille a cote du montant (#bbPayQ). */
+  for (const [i, lib, sym] of [[0, 'SWOGE', 'SWV4TEST'], [1, 'ETH (RH)', 'SWV4WTEST']]) {
     await pg.click('#list .tcard[data-addr="' + JETONS[i] + '"]');
     /* On attend CE jeton (son symbole) et sa capitalisation lue : le badge « live on Uniswap » du
        jeton precedent est encore affiche pendant que le suivant se charge. */
     await pg.waitForFunction((s) => document.getElementById('tvSym').textContent === '$' + s && document.getElementById('tvMcap').textContent.trim() !== '—', sym, { timeout: 45000 }).catch(() => {});
-    const t = await pg.evaluate(() => ({ lbl: document.getElementById('buyLbl').textContent.trim(), col: document.getElementById('tvCollectBtn').textContent,
+    const t = await pg.evaluate(() => ({ lbl: document.getElementById('bbPayQ').textContent.trim(), col: document.getElementById('tvCollectBtn').textContent,
       mc: document.getElementById('tvMcap').textContent, dex: document.getElementById('tvDexBtn').href }));
     ok(t.lbl === lib && /50% creator/.test(t.col) && !/70%/.test(t.col), (i ? 'ETH' : '$SWOGE') + ' : « ' + t.lbl + ' », frais « ' + t.col.trim() + ' »');
     ok(/dexscreener\.com\/robinhood\/0x[0-9a-f]{40}$/i.test(t.dex) && t.mc && t.mc !== '—', 'la piscine est lue (DexScreener) et la capitalisation affichee : ' + t.mc);

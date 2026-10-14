@@ -182,11 +182,16 @@ const RPC = 'https://rpc.mainnet.chain.robinhood.com';
   await pg.waitForTimeout(4000);
   const vue = await pg.$eval('#tradeView', (e) => !e.classList.contains('hidden'));
   ok(vue, 'la vue d echange s ouvre');
-  const tok = ((await pg.textContent('#tvAddr')) || '').trim().split(/\s/)[0];
+  /* 14/10/2026 (fiche v2) : la puce « Contract » montre 0x1234…abcd ; l adresse entiere est dans
+     data-addr (et dans le bouton de copie). L intention ne change pas : l adresse du jeton OUVERT. */
+  const tok = ((await pg.getAttribute('#tvAddr', 'data-addr')) || '').trim();
   await pg.evaluate((t) => { window.__tok = t; }, tok);
-  const lbl = await pg.textContent('#buyLbl');
-  eq((lbl || '').trim(), 'Buy — ETH (RH) to spend',
-     'le libelle d achat porte ETH (RH) pour un jeton V2 : « ETH » tout court se confond'
+  /* 14/10/2026 (fiche v2) : le libelle dit « You pay » et l actif paye est nomme dans la pastille
+     a cote du montant (#bbPayQ), comme sur la maquette approuvee. L intention reste : un jeton V2
+     se paie en « ETH (RH) », jamais en « ETH » tout court. */
+  const lbl = await pg.textContent('#bbPayQ');
+  eq((lbl || '').trim(), 'ETH (RH)',
+     'l actif paye porte ETH (RH) pour un jeton V2 : « ETH » tout court se confond'
      + ' avec l ether du reseau principal, que le joueur detient aussi');
   const collecte = await pg.textContent('#tvCollectBtn');
   ok(/70% creator/.test(collecte || ''), 'le partage V2 annonce est celui du V2 : ' + collecte);
@@ -215,7 +220,10 @@ const RPC = 'https://rpc.mainnet.chain.robinhood.com';
   }).catch(() => null);
   ok(attendu != null, 'la contre-verification a pu lire le pool sur la chaine');
   if (attendu != null) {
-    const lu = parseFloat((mcap || '').replace(/[^0-9.]/g, ''));
+    /* 14/10/2026 (fiche v2) : #tvMcap montre les dollars quand un taux est lu (le reseau de l essai
+       peut le lire) ; la capitalisation dans l actif de cotation, celle qui vient du pool, est dans
+       data-q. L intention ne change pas : le chiffre affiche vient du pool, pas de la formule de la courbe. */
+    const lu = parseFloat((await pg.getAttribute('#tvMcap', 'data-q')) || 'NaN');
     ok(Math.abs(lu - attendu) / attendu < 0.02,
        `la capitalisation affichee vient bien du pool [page ${lu} vs chaine ${attendu.toFixed(4)}]`);
   }

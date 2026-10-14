@@ -1165,7 +1165,8 @@ footer b{color:var(--navy)}
      et .mp4. Clips xAI lite 480p (lot proprietaire vignettes_essai.html), boucles aller-retour, muets.
      Changer la version quand un fichier est remplace (le navigateur garde l'ancien sinon).
      Une carte absente d'ici, un fichier qui manque ou ne se lit pas : l'image fixe reste. */
-  var VIDEOS = {};
+  /* 14/10/2026 : les 16 boucles du lot proprietaire (lite 480p, 736x400, 4 s aller-retour, 113-604 Ko) */
+  var VIDEOS = { "grok:rapide": "1", "grok:qualite": "1", "openai:rapide": "1", "openai:qualite": "1", "video:rapide": "1", "video:qualite": "1", "cvoices": "1", "kling-i": "1", "upscale": "1", "kling3": "1", "kling26": "1", "veo": "1", "motion": "1", "vo": "1", "talk": "1", "lips": "1" };
   /* Ce qui n'est pas permis : une REGLE D'USAGE, rien de plus. SWOGE ne filtre rien lui-meme
      (studio_xai.js:24 documente un champ de moderation que le serveur ne lit pas), et rien dans
      les deux depots ne mesure ce que les fournisseurs refusent : la page ne le garantit pas en

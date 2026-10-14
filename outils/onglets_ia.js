@@ -11,19 +11,17 @@
  *
  *   node outils/onglets_ia.js      reecrit les pages et les menus du site
  * 03/10/2026 : une cinquieme, swoge_colonies.html (Solana & ETH) ; la grille suit PAGES.length.
+ * 14/10/2026 : plus que deux pages, SWOGE AI et Polymarket AI (les quatre autres renvoient vers SWOGE AI).
  * onglets_ia.test.js echoue si une page n'est plus celle que donne ce script.
  * ==========================================================================*/
 const fs = require('fs'), path = require('path');
 const SITE = path.join(__dirname, '..');
 const PAGES = [
   { f: 'swoge_ai.html', ic: '&#129302;', nom: 'SWOGE AI', sous: 'Trading colony on new tokens' },
-  { f: 'swoge_perp.html', ic: '&#128200;', nom: 'AI Perps', sous: 'Agents on BTC, ETH, SOL perps' },
-  { f: 'swoge_predict.html', ic: '&#128302;', nom: 'Predict', sous: 'PancakeSwap rounds, 5 min' },
   { f: 'swoge_polymarket_ai.html', ic: '&#127919;', nom: 'Polymarket AI', sous: '15-minute crypto markets' },
-  /* 08/10 : la colonie Solana/Ethereum, scindee en DEUX pages propres (demande du proprietaire) :
-     chaque chaine est sa propre colonie papier. swoge_colonies.html redirige vers swoge_sol_ai.html. */
-  { f: 'swoge_sol_ai.html', ic: '&#9728;&#65039;', nom: 'Solana AI', sous: 'New Solana tokens, paper colony' },
-  { f: 'swoge_eth_ai.html', ic: '&#9670;&#65039;', nom: 'Ethereum AI', sous: 'New Ethereum tokens, paper colony' },
+  /* 14/10/2026 : AI Perps, Predict (BNB), Solana AI et Ethereum AI sont RETIREES (demande du
+     proprietaire : « ca ne sert a rien, ont de mauvais resultats ») ; leurs adresses renvoient
+     vers swoge_ai.html, comme swoge_colonies.html. Restent la colonie Robinhood et Polymarket AI. */
 ];
 const DEBUT = '<!-- ONGLETS-IA:debut (genere par outils/onglets_ia.js, ne pas editer ici) -->';
 const FIN = '<!-- ONGLETS-IA:fin -->';

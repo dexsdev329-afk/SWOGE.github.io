@@ -43,10 +43,12 @@ const srv = http.createServer((q, r) => {
 
 (async () => {
   console.log('-- les fichiers --');
-  const attendues = ['games.html', 'swogebet.html', 'swoge_ai.html', 'swoge_perp.html', 'swoge_predict.html',
+  /* 14/10/2026 : AI Perps et Predict sont retirees (leurs adresses renvoient vers swoge_ai.html) :
+     restent sept pages du menu, et un renvoi ne porte pas de fond. */
+  const attendues = ['games.html', 'swogebet.html', 'swoge_ai.html',
                      'swoge_polymarket_ai.html', 'swoge_agents.html', 'whitepaper.html', 'swoge_wallet.html'];
-  ok(attendues.every((a) => PAGES.some((p) => p.f === a)),
-     'les neuf pages du menu ont leur fond (' + PAGES.map((p) => p.f + ':' + p.nom).join(', ') + ')');
+  ok(attendues.every((a) => PAGES.some((p) => p.f === a)) && !PAGES.some((p) => /^swoge_(perp|predict|sol_ai|eth_ai|colonies)\.html$/.test(p.f)),
+     'les sept pages du menu ont leur fond, aucune page retiree n en porte (' + PAGES.map((p) => p.f + ':' + p.nom).join(', ') + ')');
   for (const p of PAGES) {
     const t = (f) => { try { return fs.statSync(path.join(SITE, f)).size; } catch (e) { return -1; } };
     const mp4 = t('media/fond_' + p.nom + '.mp4'), webm = t('media/fond_' + p.nom + '.webm'), af = t('img/site/fonds/' + p.nom + '.webp');

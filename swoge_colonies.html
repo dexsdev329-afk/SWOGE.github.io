@@ -1,24 +1,23 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
+<!-- ---- PAGE RETIREE LE 14/10/2026 ----
+     L ancienne page « Solana & ETH » (scindee le 08/10 en Solana AI et Ethereum AI) est retiree a la demande du proprietaire : « retire la page swoge ai perp,
+     swoge ai eth et swoge ai solana, ca ne sert a rien, ont de mauvais resultats, meme
+     swoge ai predict pour BNB. SWOGE AI colonie ETH Robinhood on le garde. »
+     Cette adresse a deja ete partagee : elle ne casse pas, elle renvoie vers la colonie
+     Robinhood (swoge_ai.html), en gardant `?server=` et l ancre. Hors des moteurs
+     (`noindex`) : plus aucun menu ne la liste (pages_retirees.test.js). -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="robots" content="noindex,follow">
-<title>Solana &amp; Ethereum colonies &rarr; Solana AI</title>
-<link rel="canonical" href="https://swoleeswoge.dog/swoge_sol_ai.html">
-<!-- 08/10/2026 : la page « Solana & ETH » a ete scindee en deux colonies propres,
-     swoge_sol_ai.html et swoge_eth_ai.html. Cette URL redirige vers Solana AI en
-     gardant ?server= et le hash ; Ethereum AI est a un clic (l'onglet en haut). -->
-<script>
-(function(){
-  try{
-    var q = location.search || "";
-    location.replace("swoge_sol_ai.html" + q + location.hash);
-  }catch(e){ location.replace("swoge_sol_ai.html"); }
-})();
-</script>
-</head>
-<body>
-<p>Moved to <a href="swoge_sol_ai.html">Solana AI</a> &middot; <a href="swoge_eth_ai.html">Ethereum AI</a>.</p>
+<meta name="robots" content="noindex">
+<title>Solana &amp; Ethereum colonies &rarr; SWOGE AI</title>
+<link rel="canonical" href="https://swoleeswoge.dog/swoge_ai.html">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/img/site/icone-32.png">
+<link rel="apple-touch-icon" href="/img/site/icone-180.png">
+<meta http-equiv="refresh" content="0; url=swoge_ai.html">
+<script>location.replace("swoge_ai.html" + location.search + location.hash);</script>
+<body style="font-family:system-ui,sans-serif;padding:24px">
+<p>The Solana &amp; Ethereum colonies have been retired. The AI trading colony lives on <a href="swoge_ai.html">SWOGE AI</a>.</p>
 </body>
 </html>

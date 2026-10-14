@@ -1090,8 +1090,7 @@ body{ background:#F7F9FC; }
                  muted loop playsinline disablepictureinpicture preload="none" aria-hidden="true" width="960" height="540"></video>
           <div class="voile"></div>
           <div class="dit"><b>SWOGE AI</b><i>AI agents trade crypto at real prices &mdash; measured in public, losses included.</i>
-            <span class="boutons"><a class="sw-b vif" href="swoge_ai.html">SWOGE AI &nbsp;&rarr;</a>
-            <a class="sw-b vif second" href="swoge_perp.html">AI PERPS &nbsp;&rarr;</a></span></div>
+            <span class="boutons"><a class="sw-b vif" href="swoge_ai.html">SWOGE AI &nbsp;&rarr;</a></span></div>
         </article>
       </section>
     </section>
@@ -1108,8 +1107,6 @@ body{ background:#F7F9FC; }
         <p class="sous">AI agents trading at real prices &mdash; measured in public, losses included.</p>
         <nav class="ia-liste" aria-label="SWOGE AI">
           <a class="ia-l vif" href="swoge_ai.html"><span class="ic">&#129302;</span><span><b>AI Trading Colony</b><small>Agents read new Robinhood Chain tokens, score them and trade what they see.</small></span><span class="fl">&rarr;</span></a>
-          <a class="ia-l vif" href="swoge_perp.html"><span class="ic">&#128200;</span><span><b>AI Perps</b><small>Agents on BTC, ETH, SOL, XRP and DOGE perpetuals, funding included.</small></span><span class="fl">&rarr;</span></a>
-          <a class="ia-l vif" href="swoge_predict.html"><span class="ic">&#128302;</span><span><b>Predict</b><small>PancakeSwap Prediction rounds on BNB Chain, read live.</small></span><span class="fl">&rarr;</span></a>
           <a class="ia-l vif" href="swoge_polymarket_ai.html"><span class="ic">&#127922;</span><span><b>Polymarket AI</b><small>A colony on Polymarket&rsquo;s 15-minute crypto markets.</small></span><span class="fl">&rarr;</span></a>
           <a class="ia-l vif" href="swoge_agents.html"><span class="ic">&#129504;</span><span><b>Agents</b><small>Chat with Claude, ChatGPT and Grok &mdash; or give an agent a task.</small></span><span class="fl">&rarr;</span></a>
         </nav>
@@ -1124,8 +1121,6 @@ body{ background:#F7F9FC; }
         <div class="acc-tete"><small>THE COLONY</small><h2 id="accTCol">What the colonies measured</h2>
           <p>Paper money at real prices and real fees. Each figure says how many observations it rests on, and none is a promise.</p></div>
         <div class="acc-mesures" id="accColonie">
-          <a class="acc-m vif" href="swoge_perp.html" data-m="perp"><small>AI PERPS</small><b>--</b><span>Loading&hellip;</span></a>
-          <a class="acc-m vif" href="swoge_predict.html" data-m="predict"><small>PREDICT</small><b>--</b><span>Loading&hellip;</span></a>
           <a class="acc-m vif" href="swoge_polymarket_ai.html" data-m="poly"><small>POLYMARKET AI</small><b>--</b><span>Loads when you scroll here.</span></a>
         </div>
         <p class="acc-note" id="accColonieNote">Paper trading only &mdash; no result here is a profit, and none is financial advice.</p>
@@ -1312,7 +1307,7 @@ body{ background:#F7F9FC; }
     <footer class="acc-pied">
       <div class="acc-pied-g">
         <div><b>PLAY</b><a class="vif" href="games.html">Casino</a><a class="vif" href="swogebet.html">Sports</a><a class="vif" href="nexus.html">SWOGE World</a><a class="vif" href="swoge_poker.html">Poker</a></div>
-        <div><b>AI</b><a class="vif" href="swoge_ai.html">AI Trading</a><a class="vif" href="swoge_perp.html">AI Perps</a><a class="vif" href="swoge_predict.html">Predict</a><a class="vif" href="swoge_polymarket_ai.html">Polymarket AI</a></div>
+        <div><b>AI</b><a class="vif" href="swoge_ai.html">AI Trading</a><a class="vif" href="swoge_polymarket_ai.html">Polymarket AI</a></div>
         <div><b>AGENTS</b><a class="vif" href="swoge_agents.html">Agents</a><a class="vif" href="swoge_agents.html?mode=store">Agent Store</a><a class="vif" href="agent_passport.html">Agent Passport</a><a class="vif" href="swogeagentic_api.html">Developers</a></div>
         <div><b>$SWOGE</b><a class="vif" href="swoge_wallet.html">Wallet</a><a class="vif" href="launchpad.html">Launchpad</a><a class="vif" href="whitepaper.html">Docs</a><a class="vif" href="https://dexscreener.com/robinhood/0x2dc0fb72d9284228046cc95910eeaabebfe48456" target="_blank" rel="noopener">Chart &#8599;</a></div>
         <div><b>COMMUNITY</b><a class="vif" href="https://x.com/SwoleDogeSwoge" target="_blank" rel="noopener">X &#8599;</a><a class="vif" href="https://t.me/swoleswoge" target="_blank" rel="noopener">Telegram &#8599;</a></div>
@@ -1647,7 +1642,10 @@ body{ background:#F7F9FC; }
      Trois chiffres lus sur le serveur, chacun avec son effectif, et seulement quand la
      section arrive a l ecran : /poly/etat pese 180 Ko, l accueil ne le paie que pour qui
      descend jusque-la. Une reponse absente laisse « -- » : jamais un zero, jamais un
-     chiffre de maquette. Tout est pose en textContent. -->
+     chiffre de maquette. Tout est pose en textContent.
+     14/10/2026 : AI Perps (/ai/perp) et Predict (/predict/etat) sont retirees du site
+     (demande du proprietaire : « ca ne sert a rien, ont de mauvais resultats ») ; leurs
+     cartes et leurs lectures partent avec. Reste Polymarket AI. -->
 <script>
 (function(){
   "use strict";
@@ -1666,17 +1664,6 @@ body{ background:#F7F9FC; }
   }
   function lit(chemin){ return fetch(serveur() + chemin, { cache: "no-store" }).then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); }); }
   function charge(){
-    lit("/ai/perp").then(function(v){
-      var b = v && v.bilan;
-      if(!b || !b.n || b.netReel == null) return pose("perp", "--", "No closed trade yet.");
-      var ci = b.seReel != null ? " (95% CI " + pc(b.netReel - 1.96 * b.seReel) + " to " + pc(b.netReel + 1.96 * b.seReel) + ")" : "";
-      pose("perp", pc(b.netReel) + " / trade", "Net at real fees over " + nb(b.n) + " closed trades" + ci + (b.jugeable ? "." : " \u2014 not judgeable below " + nb(b.seuil) + " trades."), b.jugeable ? (b.netReel > 0 ? "pos" : "neg") : "");
-    })["catch"](function(){ pose("perp", "--", "The server did not answer."); });
-    lit("/predict/etat").then(function(j){
-      var t = j && j.toutesCaisses, pm = (j && j.parConfiance && j.parConfiance.pointMort) || 51.5;
-      if(!t || !t.trades) return pose("predict", "--", "No call scored yet.");
-      pose("predict", Number(t.winRate).toFixed(1) + "% right", "Over " + nb(t.trades) + " calls" + (t.wilson ? " (95% CI " + t.wilson[0] + "\u2013" + t.wilson[1] + "%)" : "") + "; " + pm + "% is needed to break even on PancakeSwap.");
-    })["catch"](function(){ pose("predict", "--", "The server did not answer."); });
     lit("/poly/etat").then(function(d){
       var e = d && d.evidence, c = (d && d.calibration) || {};
       if(!e || !e.tested) return pose("poly", "--", "No strategy measured yet.");

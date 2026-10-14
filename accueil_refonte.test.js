@@ -11,6 +11,8 @@ let chromium = null; try { chromium = require('playwright').chromium; } catch (e
 let n = 0, rates = 0;
 const ok = (c, m) => { n++; if (c) console.log('  ok   ' + m); else { rates++; console.log('  RATE ' + m); } };
 const T = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.webp': 'image/webp', '.mp4': 'video/mp4' };
+/* 14/10/2026 : AI Perps et Predict sont retirees du site (demande du proprietaire). Leurs reponses restent
+   servies ici pour une seule raison : prouver que l accueil ne les demande PLUS. */
 const PERP = { bilan: { n: 103, netReel: -0.399, seReel: 0.103, jugeable: false, seuil: 143 } };
 const PRED = { toutesCaisses: { trades: 1104, winRate: 49.1, wilson: [46.2, 52.1] }, parConfiance: { pointMort: 51.5 } };
 /* 11/10 : les chiffres de l instantane public /poly/etat du 11/10 22:24 UTC (audit des colonies) : une strategie
@@ -76,13 +78,16 @@ ok(!/24\/7|Fastest withdrawals|Provably fair/i.test(src.replace(/<!--[\s\S]*?-->
     ok(true, 'arrive a l ecran, le film du portefeuille se charge et joue');
     await page.evaluate(() => document.getElementById('accColonie').scrollIntoView());
     await page.waitForFunction(() => /candidate/.test(document.querySelector('[data-m="poly"] b').textContent), null, { timeout: 8000 });
+    const cartes = await page.$$eval('#accColonie .acc-m', (l) => l.map((a) => a.getAttribute('data-m') + ':' + a.getAttribute('href')));
+    ok(cartes.join() === 'poly:swoge_polymarket_ai.html' && !vus.some((u) => /\/ai\/perp$|\/predict\/etat$/.test(u)),
+       'pages retirees : plus de carte AI Perps ni Predict, et ni /ai/perp ni /predict/etat ne sont demandes [' + cartes.join(', ') + ']');
+    const retirees = await page.$$eval('a[href]', (l) => l.map((a) => a.getAttribute('href')).filter((h) => /^swoge_(perp|predict|sol_ai|eth_ai|colonies)\.html/.test(h)));
+    ok(retirees.length === 0, 'aucun lien de l accueil vers une page retiree ' + JSON.stringify(retirees));
     const m = await page.$$eval('#accColonie .acc-m', (l) => l.map((a) => [a.querySelector('b').textContent, a.querySelector('span').textContent]));
-    ok(m[0][0] === '-0.40% / trade' && /over 103 closed trades/.test(m[0][1]) && /not judgeable below 143/.test(m[0][1]), 'AI Perps : net par trade aux frais reels, son effectif, et « pas jugeable » [' + m[0].join(' | ') + ']');
-    ok(m[1][0] === '49.1% right' && /1,104 calls/.test(m[1][1]) && /51\.5% is needed/.test(m[1][1]), 'Predict : le taux juste, sur combien d appels, contre le point mort');
-    ok(m[2][0] === '1 candidate' && /unconfirmed, out of 1,458 strategies tested/.test(m[2][1]) && /not valid at extreme prices/.test(m[2][1]) && /Over 4,596 windows, the market was better calibrated/.test(m[2][1]),
-       'Polymarket AI : 1 candidate non confirmee sur 1 458, la barre pas valide aux prix extremes, le marche mieux calibre [' + m[2].join(' | ') + ']');
-    ok(/Kept strategies lose after selection: −\$0\.60 per bet over 89,050 settled bets/.test(m[2][1]), 'et les gardees perdent apres selection : −0,60 $ par pari sur 89 050');
-    ok(!/edge|proven/i.test(m[2].join(' ')), 'la carte ne dit jamais « edge » ni « proven » pour une candidate');
+    ok(m[0][0] === '1 candidate' && /unconfirmed, out of 1,458 strategies tested/.test(m[0][1]) && /not valid at extreme prices/.test(m[0][1]) && /Over 4,596 windows, the market was better calibrated/.test(m[0][1]),
+       'Polymarket AI : 1 candidate non confirmee sur 1 458, la barre pas valide aux prix extremes, le marche mieux calibre [' + m[0].join(' | ') + ']');
+    ok(/Kept strategies lose after selection: −\$0\.60 per bet over 89,050 settled bets/.test(m[0][1]), 'et les gardees perdent apres selection : −0,60 $ par pari sur 89 050');
+    ok(!/edge|proven/i.test(m[0].join(' ')), 'la carte ne dit jamais « edge » ni « proven » pour une candidate');
     const morts = await page.evaluate(() => [...document.querySelectorAll('main.acc a[href], main.acc button')].filter((e) => getComputedStyle(e).pointerEvents === 'none' && e.offsetParent).map((e) => e.textContent.trim().slice(0, 30)));
     ok(morts.length === 0, 'chaque lien et bouton des sections repond au clic ' + JSON.stringify(morts.slice(0, 5)));
     await ctx.close();
@@ -101,7 +106,7 @@ ok(!/24\/7|Fastest withdrawals|Provably fair/i.test(src.replace(/<!--[\s\S]*?-->
   {
     const { page, ctx } = await ouvre(360, true);
     await page.evaluate(() => document.getElementById('accColonie').scrollIntoView());
-    await page.waitForFunction(() => /did not answer/.test(document.querySelector('[data-m="perp"] span').textContent), null, { timeout: 8000 });
+    await page.waitForFunction(() => /did not answer/.test(document.querySelector('[data-m="poly"] span').textContent), null, { timeout: 8000 });
     ok(await page.$$eval('#accColonie .acc-m b', (l) => l.every((b) => b.textContent === '--')), 'serveur muet : « -- » partout, jamais un zero');
     const deb = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     ok(deb <= 1, 'a 360 px, rien ne deborde [' + deb + ']');

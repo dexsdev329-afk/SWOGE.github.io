@@ -64,7 +64,7 @@ a{ color:var(--bleu); }
   <h1>Sprite sheet batches</h1>
   <p class="pale">Owner only. Each batch is a list of xAI video clips written in <code>demandes.json</code> on the site. The server checks the owner, the poses (sha256) and the cap again before every clip; this page only shows what it says. Finished sheets can be played in <a href="sprite_lab.html">Sprite Lab</a>.</p>
 
-  <div class="carte" id="porte"><p id="acces">Checking access…</p></div>
+  <div class="carte" id="porte"><p id="acces">Checking access…</p><p style="margin:10px 0 0"><button type="button" id="seConnecter" style="min-height:44px;padding:0 18px;border-radius:10px;border:0;background:#1B5FE0;color:#fff;font-weight:700;cursor:pointer">Sign in with your wallet</button></p></div>
 
   <div class="carte" id="budget" hidden>
     <h2>Budget (xAI, on Railway)</h2>
@@ -257,7 +257,7 @@ a{ color:var(--bleu); }
   function charge(){
     if (suivi) { clearTimeout(suivi); suivi = null; }
     if (!jeton()) {
-      $("acces").textContent = "Sign in with your wallet on SwoleMind first, then come back to this page. Batches are listed below; only the owner can run them.";
+      $("acces").textContent = "Sign in with your wallet (button below). Batches are listed below; only the owner can run them.";
       PROPRIO = false; V = null; peintBudget(); peintLots();
       return litFichier().then(function(l){ peintDemandes(l); }, function(e){ peintDemandes([], "Could not read the published batches: " + e.message); });
     }
@@ -276,7 +276,7 @@ a{ color:var(--bleu); }
       if (vivant) suivi = setTimeout(charge, 5000);
     })["catch"](function(e){
       PROPRIO = false; V = null; peintBudget(); peintLots();
-      $("acces").textContent = e.code === 401 ? "Your session has expired: sign in again on SwoleMind." : "Access check failed: " + e.message;
+      $("acces").textContent = e.code === 401 ? "Your session has expired: sign in again (button below)." : "Access check failed: " + e.message;
       return litFichier().then(function(l){ peintDemandes(l); }, function(){ peintDemandes([]); });
     });
   }
@@ -303,6 +303,29 @@ a{ color:var(--bleu); }
     }).then(function(){ envoi = false; return charge(); });
   }
   charge();
+})();
+</script>
+<!-- 14/10/2026 : la page n'avait pas de bouton de connexion (« il faut passer par l'accueil »,
+     les boutons restaient gris). Le formulaire qui signe est celui de stakebubble.js, exposé en
+     window.swogeConnexion : le même que toutes les pages, aucun second chemin vers une session.
+     Une fois le jeton swogeSession posé, la page se recharge et relit l'accès au serveur. -->
+<script>
+/* Chargé AU CLIC seulement : stakebubble ouvre sa socket des son chargement, et sur une page
+   d'essai (ou dans l'essai Playwright) il n'a rien a faire tant qu'on ne veut pas se connecter. */
+(function(){
+  var b = document.getElementById("seConnecter");
+  function jeton(){ try { return localStorage.getItem("swogeSession"); } catch (e) { return null; } }
+  var avant = jeton(), suivi = null;
+  if (avant && b) b.textContent = "Switch wallet";
+  function ouvre(){ window.swogeConnexion.ouvre(); if (!suivi) suivi = setInterval(function(){ var j = jeton(); if (j && j !== avant) location.reload(); }, 1500); }
+  if (b) b.addEventListener("click", function(){
+    if (window.swogeConnexion && typeof window.swogeConnexion.ouvre === "function") return ouvre();
+    b.disabled = true; b.textContent = "Loading…";
+    var s = document.createElement("script"); s.src = "stakebubble.min.js?v=f4d2b2d2";
+    s.onload = function(){ b.disabled = false; b.textContent = "Sign in with your wallet"; if (window.swogeConnexion) ouvre(); };
+    s.onerror = function(){ b.disabled = false; b.textContent = "Sign-in could not load — reload the page"; };
+    document.body.appendChild(s);
+  });
 })();
 </script>
 </body>

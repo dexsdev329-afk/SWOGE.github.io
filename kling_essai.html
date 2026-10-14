@@ -66,7 +66,7 @@ img.vign{ width:64px; height:64px; object-fit:cover; border-radius:10px; vertica
   <h1>Kling video test</h1>
   <p class="pale">Owner only. Tests Kling before it is offered to players: quality, waiting time and real cost. Paid by the owner's Kling account; nothing is charged in $SWOGE.</p>
 
-  <div class="carte" id="porte"><p id="acces">Checking access…</p></div>
+  <div class="carte" id="porte"><p id="acces">Checking access…</p><p style="margin:10px 0 0"><button type="button" id="seConnecter" style="min-height:44px;padding:0 18px;border-radius:10px;border:0;background:#1B5FE0;color:#fff;font-weight:700;cursor:pointer">Sign in with your wallet</button></p></div>
 
   <div class="carte" id="formulaire" hidden>
     <label for="prompt">What happens in the video</label>
@@ -168,7 +168,7 @@ img.vign{ width:64px; height:64px; object-fit:cover; border-radius:10px; vertica
     $("historique").hidden = !(essais && essais.length);
   }
   function charge(){
-    if (!jeton()) { $("acces").textContent = "Sign in with your wallet on SwoleMind first, then come back to this page."; return; }
+    if (!jeton()) { $("acces").textContent = "Sign in with your wallet (button below)."; return; }
     api("/studio/kling").then(function(o){
       if (!o.proprietaire) { $("acces").textContent = "This test is for the owner only."; return; }
       M = o.modeles;
@@ -378,6 +378,29 @@ img.vign{ width:64px; height:64px; object-fit:cover; border-radius:10px; vertica
       ["catch"](function(e){ wStatut("Not sent: " + e.message, "err"); E.occupeW = false; peintEdition(); });
   });
   charge();
+})();
+</script>
+<!-- 14/10/2026 : la page n'avait pas de bouton de connexion (« il faut passer par l'accueil »,
+     les boutons restaient gris). Le formulaire qui signe est celui de stakebubble.js, exposé en
+     window.swogeConnexion : le même que toutes les pages, aucun second chemin vers une session.
+     Une fois le jeton swogeSession posé, la page se recharge et relit l'accès au serveur. -->
+<script>
+/* Chargé AU CLIC seulement : stakebubble ouvre sa socket des son chargement, et sur une page
+   d'essai (ou dans l'essai Playwright) il n'a rien a faire tant qu'on ne veut pas se connecter. */
+(function(){
+  var b = document.getElementById("seConnecter");
+  function jeton(){ try { return localStorage.getItem("swogeSession"); } catch (e) { return null; } }
+  var avant = jeton(), suivi = null;
+  if (avant && b) b.textContent = "Switch wallet";
+  function ouvre(){ window.swogeConnexion.ouvre(); if (!suivi) suivi = setInterval(function(){ var j = jeton(); if (j && j !== avant) location.reload(); }, 1500); }
+  if (b) b.addEventListener("click", function(){
+    if (window.swogeConnexion && typeof window.swogeConnexion.ouvre === "function") return ouvre();
+    b.disabled = true; b.textContent = "Loading…";
+    var s = document.createElement("script"); s.src = "stakebubble.min.js?v=f4d2b2d2";
+    s.onload = function(){ b.disabled = false; b.textContent = "Sign in with your wallet"; if (window.swogeConnexion) ouvre(); };
+    s.onerror = function(){ b.disabled = false; b.textContent = "Sign-in could not load — reload the page"; };
+    document.body.appendChild(s);
+  });
 })();
 </script>
 </body>

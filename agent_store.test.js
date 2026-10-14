@@ -138,8 +138,9 @@ const SERVICES = { ok: true, query: 'weather', note: 'x', summary: {}, services:
      atteint l Agent Store — mais par l entree Agents, dont il est un onglet (?mode=store). */
   const menus = fs.readdirSync(SITE).filter((f) => f.endsWith('.html')).map((f) => [f, (fs.readFileSync(path.join(SITE, f), 'utf8').match(/<nav class="(?:sw-nav|wl-nav)">[\s\S]*?<\/nav>/) || [''])[0]]).filter((x) => x[1]);
   ok(/<meta name="robots" content="noindex">/.test(html) && menus.length > 20 && menus.every((x) => /href="swoge_agents\.html(\?mode=store)?"/.test(x[1]) && !/href="agent_store\.html"/.test(x[1]))
-     && /id="ongletStore"/.test(fs.readFileSync(path.join(SITE, 'swoge_agents.html'), 'utf8')),
-    'chaque menu commun mene a Agents, ou l Agent Store est un onglet ; plus d entree a part (' + menus.length + ' menus)');
+     /* 14/10 : plus d onglet (« ca sert a rien de l afficher ») ; la vue reste a son adresse, ?mode=store. */
+     && /id="modeStore"/.test(fs.readFileSync(path.join(SITE, 'swoge_agents.html'), 'utf8')),
+    'chaque menu commun mene a Agents, ou l Agent Store garde sa vue (?mode=store) ; plus d entree a part (' + menus.length + ' menus)');
 
   await nav.close(); srv.close();
   console.log('\n' + (rates ? 'RATES : ' + rates + '/' + n : 'VERIFICATIONS : ' + n + ' — tout passe'));

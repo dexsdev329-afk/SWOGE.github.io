@@ -9,6 +9,8 @@
  * SOURCES et restent en ligne : le serveur les cite (decouverte x402, fiche
  * MCP, annonces) et douze essais les chargent. `swoge_agents.html` en est
  * l assemblage : deux onglets, Chat et Agent, sous une seule entree de menu.
+ * 14/10/2026 : un seul chat (Chat et Browse en onglets), au gabarit de studio.html — voir
+ * « UN SEUL CHAT, AU GABARIT DU STUDIO » plus bas.
  *
  * La premiere fusion, faite a la main, remplacait CHAQUE `</script>` de la
  * page : le code des onglets se retrouvait neuf fois a l interieur des autres
@@ -210,108 +212,226 @@ const TITRE = 'SWOGE Agents · AI chat and AI agent tasks';
 const RESUME = 'SWOGE Agents: chat with Claude, ChatGPT and Grok, create images and videos, or give an AI agent a task — it reads tokens, the SWOGE AI colony and the web, then answers with sources.';
 const LIEN = '<a href="swoge_agents.html" class="on" aria-current="page"><span class="ic">&#129504;</span>Agents</a>';
 
+/* ---- UN SEUL CHAT, AU GABARIT DU STUDIO (14/10/2026) ----
+ * Demande du proprietaire : « le store ca sert a rien de l afficher, c est bien d avoir ses
+ * donnees si on demande a l agent de trouver un bon service ; le osint aussi sert a rien, on
+ * peut demander dans le chat ; le esim aussi ; et peut-etre meme que chat et agent chat c est
+ * la meme chose, autant mettre qu un chat ; et refaire le design de la page comme swoge studio ».
+ *
+ * Ce qui a ete lu avant de trancher (14/10) :
+ *   - Chat et Agent partent vers la MEME route : le mode Mission du chat (swolemind.html,
+ *     envoyerMission) et la tache de l agent (swogeagentic.html) postent tous deux sur
+ *     /studio/agent, avec le meme catalogue (/studio/agent/catalogue) et donc les memes outils
+ *     cote serveur (studio_agent.js : scan_token, colony_activity, osint_lookup,
+ *     find_esim_plans / propose_esim_purchase, find_paid_services / hire_paid_service,
+ *     web_search, read_page…). Le chat montre deja l offre eSIM et la carte de lancement.
+ *     Mission est le mode par defaut d un nouveau visiteur depuis le 29/09.
+ *   - Ce que seul l onglet Agent montrait : les embauches du jour et leur plafond, la liste
+ *     « Your eSIMs » (le code d activation d une eSIM achetee par le chat y arrive), la section
+ *     x402 et les cles d API. Ce n est pas un second chat : c est un compte. Il reste dans la
+ *     page (vue « account », lien sous les onglets), sans son cadre de tache.
+ *   - OSINT, eSIM et Store restent dans la page, sans onglet : `?q=` (enquete partagee),
+ *     `?order=` (le lien de commande, SEUL moyen de revoir son code d activation hors compte),
+ *     `?mode=osint|esim|store` et `?tab=x402` rouvrent toujours leur vue. Le chat les atteint
+ *     par ses outils (osint_lookup, find_esim_plans, find_paid_services).
+ *
+ * La page prend la charte de studio.html : fond #EEF3FB sous un halo, cartes blanches bordees
+ * #E1E9F6, encre #0B1B36, UN accent bleu #1B5FE0, Archivo elargie, titre au mot surligne,
+ * onglets en pilule dont l actif est marine, icones SVG en ligne. Le menu commun (.sw-cote)
+ * reste celui des quarante autres pages (menu_rangee.test.js, colonne_nav.test.js) ; seule la
+ * colonne d affiches de droite tombe, comme le Studio qui n en a pas. */
 const ONGLETS_CSS = `
-/* ---- SWOGE AGENTS : deux onglets, une page (30/09/2026) ----
- * Une entree de menu au lieu de deux. Chaque onglet dit en une ligne ce
- * qu il fait : le joueur choisit sans connaitre les anciens noms. Le bouton
- * general de la page (Anton, majuscules, fond bleu) est entierement repris. */
-.onglets-cadre{max-width:780px;margin:0 auto;padding:12px 16px 0}
-.onglets{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:4px;padding:4px;background:var(--panel2);border-radius:16px}
-@media (max-width:900px){ .onglets{grid-template-columns:repeat(3,minmax(0,1fr))} }
-@media (max-width:560px){ .onglets{grid-template-columns:1fr 1fr} }
-.onglets button{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;min-width:0;
-  font:inherit;text-transform:none;letter-spacing:0;background:transparent;color:var(--dim);
-  border:0;border-radius:12px;padding:7px 12px;min-height:44px;cursor:pointer}
-.onglets button:hover{transform:none;filter:none;color:var(--paper)}
-.onglets button[aria-selected="true"]{background:var(--panel);color:var(--paper);
-  box-shadow:0 1px 2px rgba(11,27,54,.08),0 4px 12px rgba(11,27,54,.06)}
-.onglets button:focus-visible{outline:2px solid var(--pool);outline-offset:2px}
-.onglets b{font:800 14px/1.2 'Archivo',system-ui,sans-serif}
-.onglets small{font-size:11.5px;line-height:1.3;color:var(--dim)}
-@media (max-width:420px){ .onglets small{display:none} }
+:root{--hb-bg:#EEF3FB;--hb-line:#E1E9F6;--hb-ink:#0B1B36;--hb-navy:#0A1F44;--hb-text2:#3A4C6B;--hb-dim:#5A6B85;--hb-dim2:#5F6E88;
+  --hb-blue:#1B5FE0;--hb-blue-soft:#EAF1FF;--hb-green:#12805A;
+  --hb-sh-card:0 1px 2px rgba(11,27,54,.06),0 8px 24px rgba(11,27,54,.05);
+  --hb-sh-box:0 2px 14px rgba(11,27,54,.06),0 30px 60px -30px rgba(27,95,224,.30);
+  --hb-f:'Archivo',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif}
+body{background:radial-gradient(900px 420px at 50% -140px,#D9E6FF 0%,rgba(217,230,255,0) 72%),var(--hb-bg)}
+/* La barre du haut : verre blanc et marque du Studio (l icone du site, pas l emoji). */
+.sw-haut{background:rgba(255,255,255,.94);backdrop-filter:saturate(1.4) blur(10px);-webkit-backdrop-filter:saturate(1.4) blur(10px)}
+.sw-marque img{width:36px;height:36px;border-radius:11px;box-shadow:0 0 0 1px var(--hb-line);display:block}
+.sw-marque b,.sw-marque i{font-family:var(--hb-f)}
+.sw-marque i{color:var(--hb-dim2)}
+.sw-nav a{font-family:var(--hb-f);color:var(--hb-text2)}
+.sw-nav a:hover{background:var(--hb-blue-soft);color:var(--hb-blue)}
+.sw-nav a.on{color:var(--hb-blue)}
+@media (min-width:1361px){
+  .sw-lat{display:none}
+  .sw-corps{grid-template-columns:230px minmax(0,1fr);max-width:1480px;gap:24px;padding:14px 24px}
+}
+.hub{max-width:1040px;margin:0 auto;padding:20px 16px 0;text-align:center;font-family:var(--hb-f);color:var(--hb-ink)}
+.hub .ic{width:18px;height:18px;flex:0 0 auto;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.hub .eyebrow{display:inline-flex;align-items:center;gap:8px;padding:5px 12px 5px 6px;border-radius:999px;background:#fff;border:1px solid var(--hb-line);
+  font:800 11.5px/1 var(--hb-f);letter-spacing:1.6px;text-transform:uppercase;color:var(--hb-navy);box-shadow:var(--hb-sh-card)}
+.hub .eyebrow span{width:22px;height:22px;border-radius:999px;background:var(--hb-blue);display:grid;place-items:center;color:#fff}
+.hub .eyebrow .ic{width:13px;height:13px;stroke-width:2.2}
+.hub h1{font:850 42px/1.06 var(--hb-f);font-stretch:106%;letter-spacing:-1.5px;text-transform:none;color:var(--hb-navy);margin:12px auto 8px;max-width:860px}
+.hub .hl{display:inline-block;background:var(--hb-blue);color:#fff;padding:0 .2em .04em;border-radius:12px;
+  box-shadow:0 12px 30px -8px rgba(27,95,224,.55);transform:rotate(-1.2deg)}
+.hub .sub{font:500 16px/1.5 var(--hb-f);color:var(--hb-dim);max-width:760px;margin:0 auto}
+.hub .checks{list-style:none;display:flex;justify-content:center;flex-wrap:wrap;gap:8px 18px;margin:12px 0 0;padding:0}
+.hub .checks li{display:inline-flex;align-items:center;gap:6px;font:700 13.5px/1 var(--hb-f);color:var(--hb-navy)}
+.hub .checks .ic{width:16px;height:16px;color:#fff;background:var(--hb-green);border-radius:999px;padding:3px;stroke-width:3}
+.hub .rangee{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:6px 14px;margin:16px 0 14px}
+/* Les onglets du Studio. Le bouton general de la page (Anton, majuscules, fond bleu) est repris en entier. */
+.onglets{display:inline-flex;gap:4px;padding:5px;background:#fff;border:1px solid var(--hb-line);border-radius:999px;box-shadow:var(--hb-sh-card)}
+.onglets button{display:inline-flex;align-items:center;gap:8px;height:42px;padding:0 20px;border:0;border-radius:999px;background:transparent;min-width:0;
+  font:650 15px/1 var(--hb-f);text-transform:none;letter-spacing:0;color:var(--hb-dim);cursor:pointer;box-shadow:none}
+.onglets button:hover{color:var(--hb-navy);transform:none;filter:none;background:transparent}
+.onglets button[aria-selected="true"]{background:var(--hb-navy);color:#fff;box-shadow:0 6px 16px -6px rgba(10,31,68,.55)}
+.onglets button:focus-visible,.hub a:focus-visible{outline:2px solid var(--hb-blue);outline-offset:2px}
+.hub-lien{display:inline-flex;align-items:center;gap:7px;height:40px;padding:0 14px;border-radius:999px;font:650 13.5px/1 var(--hb-f);
+  color:var(--hb-text2);text-decoration:none;border:1px solid transparent}
+.hub-lien:hover{background:#fff;border-color:var(--hb-line);color:var(--hb-blue)}
+.hub-lien[aria-current="page"]{background:var(--hb-blue-soft);color:var(--hb-blue)}
+.hub-retour[hidden]{display:none}
+.hub-retour{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:6px 12px;margin:0 0 12px;font:600 13.5px/1.4 var(--hb-f);color:var(--hb-dim)}
+.hub-retour b{color:var(--hb-navy)}
+.hub-retour a{color:var(--hb-blue);text-decoration:none;font-weight:700}
 .ag-mode[hidden]{display:none}
-.ag-cadre{max-width:780px;margin:0 auto;padding:12px 16px 0}
-/* Les onglets NOMMENT les deux vues : les titres « SwoleMind » et
-   « SwogeAgentic » faisaient doublon. Et ils coutaient la place que la barre
-   prend : le chat pose le curseur dans sa saisie, collee en bas, et le
-   navigateur defile jusqu a elle. Mesure a 1280x860 avec titres : la page
-   arrivait defilee de 100 px, la barre d onglets a moitie sous le haut de
-   l ecran (SwoleMind seule : 23 px). */
-#modeChat .chat-tete .titre,#modeAgent .ag-tete h1{display:none}
+/* Le chat et le compte prennent la largeur du Studio ; le cadre du chat devient une carte du Studio. */
+#modeChat .chat{max-width:1040px}
+#modeChat .ch-cadre{border-radius:22px;border-color:var(--hb-line);box-shadow:var(--hb-sh-box)}
+/* Les onglets NOMMENT la vue : le titre « SwoleMind » faisait doublon (mesure du 30/09 a
+   1280x860 : avec titres, la page arrivait defilee de 100 px). */
+#modeChat .chat-tete .titre{display:none}
 #modeChat .chat-tete .droite{margin-left:0}
-#modeChat .chat{padding-top:12px}
-/* OSINT et eSIM (30/09) : l onglet les nomme, leurs grands titres restent ; eSIM garde sa
-   typographie a lui, le bouton general de la page (Anton, majuscules) est repris. */
+#modeChat .chat{padding-top:0}
+/* L accueil du chat se centrait en flex : plus haut que le cadre, son haut passait SOUS le bord, hors
+   d atteinte (titre coupe a 1440x900 avant ce changement deja). Des marges automatiques centrent sans
+   jamais couper : ce qui deborde defile. */
+#modeChat .accueil{justify-content:flex-start}
+#modeChat .accueil > :first-child{margin-top:auto}
+#modeChat .accueil > :last-child{margin-bottom:auto}
+/* Le titre et l intro Mission de l accueil redisent ce que dit le titre de la page : ils tombent ici
+   (swolemind.html, seule, les garde). Reste ce qui sert : les suggestions et la facon de payer. */
+#modeChat .accueil > h1,#modeChat .accueil > .mission-intro{display:none}
+/* Le compte : ce que l onglet Agent avait en plus du chat (embauches, eSIM, x402, cles d API). Son
+   cadre de tache ne s affiche plus : la tache part du chat, mode Mission, sur la meme route. */
+.ag-cadre{max-width:1040px;margin:0 auto;padding:0 16px}
+#modeAgent .ta-cadre{display:none}
+#modeAgent .ta-plus{margin-top:0}
+#modeAgent details.dev{background:#fff;border:1px solid var(--hb-line);border-radius:18px;box-shadow:var(--hb-sh-card)}
+.compte-vide{font:500 14px/1.5 var(--hb-f);color:var(--hb-dim);text-align:center;margin:0 0 12px}
+/* Browse : « .bw-cadre img{display:block} » l emportait sur l attribut hidden — avant la premiere
+   page, le texte de remplacement de l ecran vide s affichait sous la consigne (releve du 14/10). */
+#modeBrowse .bw-cadre img[hidden]{display:none}
+/* OSINT et eSIM : l onglet n est plus la, leurs grands titres les nomment. */
 #modeOsint .wrap{padding-top:14px}
-/* Browse (30/09) : le navigateur a sa propre vue (outils/browse_onglet.html). */
 #modeEsim .es-cadre{font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:var(--encre)}
 #modeEsim h1{font-family:inherit;text-transform:none;letter-spacing:0}
 #modeEsim button{text-transform:none;letter-spacing:0}
 #modeEsim button:hover{transform:none;filter:none}
-/* Agent Store (01/10) : sa typographie et ses boutons a lui. */
 #modeStore .st-cadre{max-width:1080px;margin:0 auto;font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:var(--encre)}
 #modeStore h1{font-family:inherit;text-transform:none;letter-spacing:-.01em}
 #modeStore button{text-transform:none;letter-spacing:0}
 #modeStore button:hover{transform:none;filter:none}
+/* La hauteur va au chat : les trois garanties ne s affichent que sur un grand ecran. */
+@media (max-height:1000px){ .hub .checks{display:none} }
+/* Un ecran bas : le chat doit tenir sous l en-tete, composeur visible a l arrivee (1024x768). */
+@media (max-height:860px){
+  .hub{padding-top:14px}
+  .hub h1{font-size:34px;letter-spacing:-1.1px;margin:10px auto 6px}
+  .hub .checks{display:none}
+  .hub .rangee{margin:12px 0 10px}
+}
+@media (max-height:780px){ .hub .sub{display:none} }
+@media (max-width:720px){
+  .hub{padding:14px 16px 0}
+  .hub .eyebrow{font-size:10.5px}
+  .hub h1{font-size:28px;letter-spacing:-.9px;margin:10px auto 6px}
+  .hub .hl{border-radius:9px}
+  .hub .sub{font-size:14.5px}
+  .hub .sub .s2,.hub .checks{display:none}
+  /* Au telephone, la place va au composeur : le titre et les onglets disent deja tout. */
+  .hub .sub{display:none}
+  .hub .rangee{margin:12px 0 10px}
+  .onglets{display:flex;width:100%}
+  .onglets button{flex:1 1 0;justify-content:center;height:40px;padding:0 8px;font-size:14px}
+  .hub-lien{height:34px}
+}
 `;
 
-const ONGLETS_HTML = `<div class="onglets-cadre">
-  <div class="onglets" role="tablist" aria-label="SWOGE Agents">
-    <button type="button" role="tab" id="ongletChat" aria-controls="modeChat" aria-selected="true">
-      <b>&#128172; Chat &amp; create</b><small>Claude, ChatGPT, Grok &middot; images &middot; videos</small></button>
-    <button type="button" role="tab" id="ongletAgent" aria-controls="modeAgent" aria-selected="false" tabindex="-1">
-      <b>&#129302; Agent</b><small>Give it a task: tokens, the colony, the web</small></button>
-    <button type="button" role="tab" id="ongletBrowse" aria-controls="modeBrowse" aria-selected="false" tabindex="-1">
-      <b>&#127760; Browse</b><small>A real browser; Screen asks the AI about what you see</small></button>
-    <button type="button" role="tab" id="ongletOsint" aria-controls="modeOsint" aria-selected="false" tabindex="-1">
-      <b>&#128269; OSINT</b><small>Domain, IP, site or address, from public sources</small></button>
-    <button type="button" role="tab" id="ongletEsim" aria-controls="modeEsim" aria-selected="false" tabindex="-1">
-      <b>&#128246; eSIM</b><small>Travel data, paid in USDC from your wallet</small></button>
-    <button type="button" role="tab" id="ongletStore" aria-controls="modeStore" aria-selected="false" tabindex="-1">
-      <b>&#129513; Store</b><small>Measured agents and paid tools, per task</small></button>
+/* Les icones du Studio (studio.html, <symbol>), et deux de plus pour les onglets. */
+const ONGLETS_HTML = `<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="hb-spark" viewBox="0 0 24 24"><path d="M11 2.8l2.1 6 6.1 2.1-6.1 2.1-2.1 6-2.1-6-6.1-2.1 6.1-2.1z" fill="currentColor" stroke="none"/><path d="M18.6 14.6l.9 2.4 2.4.9-2.4.9-.9 2.4-.9-2.4-2.4-.9 2.4-.9z" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="hb-check" viewBox="0 0 24 24"><path d="M5 12.5l4.4 4.4L19 7.4"/></symbol>
+  <symbol id="hb-chat" viewBox="0 0 24 24"><path d="M4.5 6.5A2.5 2.5 0 0 1 7 4h10a2.5 2.5 0 0 1 2.5 2.5v7A2.5 2.5 0 0 1 17 16h-6.2L6.5 19.5V16H7a2.5 2.5 0 0 1-2.5-2.5z"/></symbol>
+  <symbol id="hb-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.6"/><path d="M3.6 12h16.8M12 3.4c2.3 2.4 3.5 5.3 3.5 8.6s-1.2 6.2-3.5 8.6c-2.3-2.4-3.5-5.3-3.5-8.6s1.2-6.2 3.5-8.6z"/></symbol>
+  <symbol id="hb-user" viewBox="0 0 24 24"><circle cx="12" cy="8.8" r="3.8"/><path d="M4.8 19.5c1.4-3.4 4.1-5.2 7.2-5.2s5.8 1.8 7.2 5.2"/></symbol>
+</svg>
+<div class="hub">
+  <span class="eyebrow"><span><svg class="ic"><use href="#hb-spark"/></svg></span>SWOGE Agents</span>
+  <h1>One chat that <span class="hl">gets it done.</span></h1>
+  <p class="sub">Ask Claude, ChatGPT or Grok, make an image or a video, or give it a mission.<span class="s2"> It runs real tools &mdash; tokens, the colony, the web, domains, eSIMs &mdash; and shows each step&rsquo;s cost.</span></p>
+  <ul class="checks" aria-label="How it works">
+    <li><svg class="ic"><use href="#hb-check"/></svg>Claude, ChatGPT, Grok</li>
+    <li><svg class="ic"><use href="#hb-check"/></svg>Every step shown</li>
+    <li><svg class="ic"><use href="#hb-check"/></svg>Pay per use</li>
+  </ul>
+  <div class="rangee">
+    <div class="onglets" role="tablist" aria-label="SWOGE Agents">
+      <button type="button" role="tab" id="ongletChat" aria-controls="modeChat" aria-selected="true"><svg class="ic"><use href="#hb-chat"/></svg>Chat</button>
+      <button type="button" role="tab" id="ongletBrowse" aria-controls="modeBrowse" aria-selected="false" tabindex="-1"><svg class="ic"><use href="#hb-globe"/></svg>Browse</button>
+    </div>
+    <a class="hub-lien" id="lienCompte" href="swoge_agents.html?mode=account"><svg class="ic"><use href="#hb-user"/></svg>Your eSIMs, hires &amp; API keys</a>
   </div>
+  <div class="hub-retour" id="hubRetour" hidden><b id="hubRetourNom"></b><a href="swoge_agents.html?mode=chat" id="hubRetourChat">&larr; Back to the chat</a></div>
 </div>
+`;
+
+/* Le compte : ce qui coiffe la vue « account ». Le reste vient de swogeagentic.html. */
+const COMPTE_HTML = `<p class="compte-vide">Missions run in the chat. Here: the eSIMs you bought, the paid services the agent hired for you and their daily limit, and API keys for your own agents.</p>
 `;
 
 /* Browse (30/09) : le navigateur et son bouton Screen, ecrits a part pour rester lisibles. */
 const BROWSE = () => lis('outils/browse_onglet.html');
 
-/* Pose la vue avant que les deux gros scripts tournent : pas d eclair du
-   mauvais onglet. `?mode=` (lien partageable) passe avant le choix garde. A
-   l affichage, la zone de saisie est redimensionnee : cachee, elle mesurait 0. */
+/* Pose la vue avant que les gros scripts tournent : pas d eclair de la mauvaise vue. `?mode=`
+   (lien partageable) passe avant le choix garde. A l affichage, la zone de saisie est
+   redimensionnee : cachee, elle mesurait 0. Deux onglets (Chat, Browse) ; les autres vues n ont
+   pas d onglet, s ouvrent par leur adresse et disent comment revenir au chat. */
 const ONGLETS_JS = `<script>
 (function(){
   "use strict";
-  var ordre = ["chat", "agent", "browse", "osint", "esim", "store"];
-  var onglets = { chat: document.getElementById("ongletChat"), agent: document.getElementById("ongletAgent"), browse: document.getElementById("ongletBrowse"),
-                  osint: document.getElementById("ongletOsint"), esim: document.getElementById("ongletEsim"), store: document.getElementById("ongletStore") };
-  /* Browse (30/09) : un vrai navigateur, sur un service a part (outils/browse_onglet.html). */
-  var vues = { chat: document.getElementById("modeChat"), agent: document.getElementById("modeAgent"), browse: document.getElementById("modeBrowse"),
-               osint: document.getElementById("modeOsint"), esim: document.getElementById("modeEsim"), store: document.getElementById("modeStore") };
-  var saisies = { chat: "question", agent: "ag-question" };
+  var el = function(id){ return document.getElementById(id); };
+  var ordre = ["chat", "browse"];
+  var onglets = { chat: el("ongletChat"), browse: el("ongletBrowse") };
+  var vues = { chat: el("modeChat"), compte: el("modeAgent"), browse: el("modeBrowse"), osint: el("modeOsint"), esim: el("modeEsim"), store: el("modeStore") };
+  var NOMS = { compte: "Your eSIMs, paid hires and API keys", osint: "OSINT lookup \\u2014 or just ask the chat", esim: "Travel eSIM \\u2014 or just ask the chat", store: "Agent Store \\u2014 the chat finds paid services for you" };
+  /* L adresse : « account » pour le compte (l identifiant de la section reste modeAgent). */
+  var ADRESSE = { compte: "account" };
+  var saisies = { chat: "question" };
   var courant = "chat";
   function montre(m, garde){
     if (!vues[m]) m = "chat";
     courant = m;
-    Object.keys(vues).forEach(function(k){
+    Object.keys(onglets).forEach(function(k){
       onglets[k].setAttribute("aria-selected", String(k === m));
-      onglets[k].tabIndex = k === m ? 0 : -1;
+      onglets[k].tabIndex = (k === m || (!onglets[m] && k === "chat")) ? 0 : -1;
     });
     Object.keys(vues).forEach(function(k){ vues[k].hidden = k !== m; });
-    var t = document.getElementById(saisies[m]);
+    el("hubRetour").hidden = !!onglets[m];
+    el("hubRetourNom").textContent = NOMS[m] || "";
+    if (m === "compte") el("lienCompte").setAttribute("aria-current", "page"); else el("lienCompte").removeAttribute("aria-current");
+    var t = el(saisies[m]);
     if (t) try { t.dispatchEvent(new Event("input")); } catch (e) {}
     if (!garde) return;
-    try { localStorage.setItem("swogeAgentsVue", m); } catch (e) {}
-    try { var u = new URL(location.href); u.searchParams.set("mode", m); history.replaceState(history.state, "", u); } catch (e) {}
+    /* Seules les vues a onglet se retiennent : un ancien choix (agent, osint, esim, store) rouvre le chat. */
+    if (onglets[m]) try { localStorage.setItem("swogeAgentsVue", m); } catch (e) {}
+    try { var u = new URL(location.href); u.searchParams.set("mode", ADRESSE[m] || m); history.replaceState(history.state, "", u); } catch (e) {}
   }
-  var depart = null;
-  /* Les liens des anciennes pages rouvrent leur onglet : ?q= (enquete OSINT partagee),
-     ?order= (le lien de commande eSIM, seul moyen de revoir son code d activation). */
-  try { var u0 = new URLSearchParams(location.search); depart = u0.get("mode") || (u0.get("order") ? "esim" : u0.get("q") ? "osint" : null); } catch (e) {}
-  /* ?tab=x402 : l ancien lien du rayon « x402 services » de l Agent Store. */
-  try { if (!depart && new URLSearchParams(location.search).get("tab") === "x402") depart = "store"; } catch (e) {}
-  if (!depart && /^#(agent|browse|chat|osint|esim|store)$/.test(location.hash)) depart = location.hash.slice(1);
-  if (!depart) try { depart = localStorage.getItem("swogeAgentsVue"); } catch (e) {}
+  /* ?mode=agent (les liens d avant le 14/10) : le chat, en mode Mission — la meme route
+     /studio/agent, les memes outils. ?mode=account : le compte. */
+  var depart = null, mission = false;
+  function lis(m){ if (m === "agent") { mission = true; return "chat"; } return m === "account" ? "compte" : m; }
+  /* Les liens des anciennes pages rouvrent leur vue : ?q= (enquete OSINT partagee), ?order= (le
+     lien de commande eSIM, seul moyen de revoir son code d activation), ?tab=x402 (l ancien rayon
+     « x402 services » de l Agent Store). */
+  try { var u0 = new URLSearchParams(location.search);
+    depart = u0.get("mode") ? lis(u0.get("mode")) : u0.get("order") ? "esim" : u0.get("q") ? "osint" : u0.get("tab") === "x402" ? "store" : null; } catch (e) {}
+  if (!depart && /^#(agent|account|browse|chat|osint|esim|store)$/.test(location.hash)) depart = lis(location.hash.slice(1));
+  if (!depart) try { var g = localStorage.getItem("swogeAgentsVue"); if (onglets[g]) depart = g; } catch (e) {}
   montre(depart || "chat", false);
   Object.keys(onglets).forEach(function(k){
     onglets[k].addEventListener("click", function(){ montre(k, true); });
@@ -321,13 +441,14 @@ const ONGLETS_JS = `<script>
       montre(autre, true); onglets[autre].focus(); e.preventDefault();
     });
   });
-  /* Le chat pose le curseur dans sa saisie au demarrage, et le navigateur
-     defile jusqu a elle. Mesure a 390x800 : SwoleMind seule arrive a 287 px,
-     la page fusionnee a 304 — la barre d onglets 237 px au-dessus de l ecran,
-     le choix Chat/Agent invisible. Si elle est passee au-dessus, on remonte
-     juste assez pour la montrer ; a 1280 elle reste visible et rien ne bouge. */
+  el("lienCompte").addEventListener("click", function(e){ e.preventDefault(); montre("compte", true); });
+  el("hubRetourChat").addEventListener("click", function(e){ e.preventDefault(); montre("chat", true); el("ongletChat").focus(); });
+  /* Le chat pose le curseur dans sa saisie au demarrage, et le navigateur defile jusqu a elle.
+     Mesure a 390x800 (30/09) : la barre d onglets finissait 237 px au-dessus de l ecran. Si elle
+     est passee au-dessus, on remonte juste assez pour la montrer ; sinon rien ne bouge. */
   document.addEventListener("DOMContentLoaded", function(){
     montre(courant, false);
+    if (mission) { var b = document.querySelector('#modeChat .mode[data-mode="mission"]'); if (b) b.click(); }
     var haut = document.querySelector(".onglets").getBoundingClientRect().top;
     if (!location.hash && haut < 0) window.scrollBy(0, haut - 8);
   });
@@ -347,6 +468,9 @@ function fusionne() {
   tete = remplace(tete, 'SwoleMind: chat with Claude, ChatGPT and Grok, search the web with sources, create images and videos.', RESUME, 3, 'resumes');
   remplace(tete, LIEN, LIEN, 1, 'entree Agents du menu');
   if (/href="swolemind\.html"|href="swogeagentic\.html"/.test(tete)) throw new Error('tete : le menu pointe encore vers une ancienne page');
+  /* Le gabarit du Studio (14/10) : Archivo avec son axe de largeur, la marque du site en image. */
+  tete = remplace(tete, 'family=Archivo:wght@600;700;800', 'family=Archivo:wdth,wght@100..125,400..900', 1, 'police du Studio');
+  tete = remplace(tete, '<span class="sw-patte">&#128062;</span>', '<img src="img/site/icone-180.png" alt="" width="36" height="36">', 1, 'marque du Studio');
 
   /* ---- l agent : identifiants prefixes, requetes globales bornees ---- */
   let html = ag.html.replace(/(\s)id="([^"]+)"/g, '$1id="ag-$2"')
@@ -363,7 +487,12 @@ function fusionne() {
 
   /* ---- le chat : sa seule requete globale qui aurait pris les boutons de l agent ---- */
   const os = osint(), es = esim(), st = store();
-  const jsChat = remplace(chat.script, 'document.querySelectorAll(".suggestion")', 'document.querySelectorAll("#accueil .suggestion")', 1, 'chat : suggestions');
+  let jsChat = remplace(chat.script, 'document.querySelectorAll(".suggestion")', 'document.querySelectorAll("#accueil .suggestion")', 1, 'chat : suggestions');
+  /* L eSIM achetee depuis le chat : son code arrive dans le compte de CETTE page, plus « sur SwogeAgentic ». */
+  jsChat = remplace(jsChat, '"Bought. Your activation code is under \u201cYour eSIMs\u201d on SwogeAgentic."',
+    '"Bought. Your activation code is under \u201cYour eSIMs, hires & API keys\u201d, just above the chat."', 1, 'chat : eSIM livree');
+  jsChat = remplace(jsChat, '"Paid: your eSIM is being prepared (see SwogeAgentic)."',
+    '"Paid: your eSIM is being prepared. It will appear under \u201cYour eSIMs, hires & API keys\u201d, just above the chat."', 1, 'chat : eSIM en preparation');
 
   return tete +
     '<main class="chat-main">\n' +
@@ -376,11 +505,11 @@ function fusionne() {
     '<style>' + ONGLETS_CSS + '</style>\n' +
     ONGLETS_HTML +
     '<section class="ag-mode" id="modeChat" role="tabpanel" aria-labelledby="ongletChat">\n' + chat.html + '</section>\n' +
-    '<section class="ag-mode" id="modeAgent" role="tabpanel" aria-labelledby="ongletAgent" hidden>\n<div class="ag-cadre">\n' + html + '</div>\n</section>\n' +
+    '<section class="ag-mode" id="modeAgent" role="region" aria-label="Your eSIMs, paid hires and API keys" hidden>\n<div class="ag-cadre">\n' + COMPTE_HTML + html + '</div>\n</section>\n' +
     '<section class="ag-mode" id="modeBrowse" role="tabpanel" aria-labelledby="ongletBrowse" hidden>\n' + BROWSE() + '</section>\n' +
-    '<section class="ag-mode" id="modeOsint" role="tabpanel" aria-labelledby="ongletOsint" hidden>\n' + os.html + '</section>\n' +
-    '<section class="ag-mode" id="modeEsim" role="tabpanel" aria-labelledby="ongletEsim" hidden>\n' + es.html + '</section>\n' +
-    '<section class="ag-mode" id="modeStore" role="tabpanel" aria-labelledby="ongletStore" hidden>\n' + st.html + '</section>\n' +
+    '<section class="ag-mode" id="modeOsint" role="region" aria-label="OSINT lookup" hidden>\n' + os.html + '</section>\n' +
+    '<section class="ag-mode" id="modeEsim" role="region" aria-label="Travel eSIM" hidden>\n' + es.html + '</section>\n' +
+    '<section class="ag-mode" id="modeStore" role="region" aria-label="Agent Store" hidden>\n' + st.html + '</section>\n' +
     ONGLETS_JS +
     jsChat + '\n' +
     js + '\n' + os.js + es.js + st.js +

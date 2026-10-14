@@ -53,6 +53,11 @@ const PEPE = { adresse:'0x6982508145454ce325ddbe47a25d4ec3d2311933', trouve:true
   const nav = await chromium.launch();
   const ouvre = async ({ session, rep, largeur, reprise, portefeuille, cat, local } = {}) => {
     const ctx = await nav.newContext({ viewport: { width: largeur || 1200, height: 900 } });
+    /* La socket de stakebubble.js joignait le vrai serveur, qui repond `resumeFailed` au jeton d essai
+       et l efface : selon le moment, la suite des gestes partait sans session et l essai attendait sans
+       fin (releve du 14/10 : ligne « Payments ON » puis « from your dollar credit », une fois sur deux).
+       Les sockets restent dans l essai, comme les requetes. */
+    await ctx.routeWebSocket(/.*/, () => {});
     if (local) await ctx.addInitScript((o) => { try { Object.keys(o).forEach((k) => { if (localStorage.getItem(k) === null) localStorage.setItem(k, JSON.stringify(o[k])); }); } catch (e) {} }, local);
     if (session) await ctx.addInitScript((j) => { try { localStorage.setItem('swogeSession', j); } catch (e) {} }, session);
     const page = await ctx.newPage();

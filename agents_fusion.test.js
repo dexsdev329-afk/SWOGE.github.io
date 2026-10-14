@@ -1,6 +1,6 @@
 'use strict';
 /* ============================================================================
- * SWOGE AGENTS — UNE PAGE, DEUX ONGLETS, ET CHACUN GARDE SES MAINS
+ * SWOGE AGENTS — UNE PAGE, UN CHAT, ET CHAQUE VUE GARDE SES MAINS
  *
  * `swoge_agents.html` est generee depuis swolemind.html et swogeagentic.html
  * (`node outils/fusionne_agents.js`). Ce que cet essai tient :
@@ -8,9 +8,13 @@
  *   2. aucun identifiant en double, aucun <script> dans un autre, chaque
  *      script se lit : la premiere fusion, faite a la main, avait injecte le
  *      code des onglets dans neuf scripts et plus rien ne tournait ;
- *   3. dans un vrai navigateur : aucune erreur de script, un onglet a la fois,
- *      `?mode=agent` ouvre l agent, une suggestion de l agent remplit SA zone
- *      et pas celle du chat (et l inverse), rien ne deborde a 360 px.
+ *   3. dans un vrai navigateur : aucune erreur de script, une vue a la fois,
+ *      rien ne deborde a 360 px.
+ * 14/10 : « autant mettre qu un chat » — Chat et Agent postaient deja sur la
+ * meme route (/studio/agent, mode Mission du chat) : deux onglets restent,
+ * Chat et Browse. L agent garde son compte (eSIM, embauches, x402, cles) sous
+ * `?mode=account` ; OSINT, eSIM et Store n ont plus d onglet mais leurs
+ * adresses (?mode=, ?q=, ?order=, ?tab=x402) rouvrent toujours leur vue.
  * ==========================================================================*/
 const fs = require('fs'), path = require('path'), http = require('http'), vm = require('vm');
 const SITE = __dirname;
@@ -49,6 +53,12 @@ let chromium = null; try { chromium = require('playwright').chromium; } catch (e
   await new Promise((s) => srv.listen(0, '127.0.0.1', s));
   const base = 'http://127.0.0.1:' + srv.address().port + '/';
   const nav = await chromium.launch();
+  /* « Rien ne sort » valait pour fetch, pas pour la socket de stakebubble.js : elle joignait le vrai
+     serveur, qui repondait `resumeFailed` au jeton d essai et l effacait — d ou « Sign in with your
+     wallet to browse » et l attente sans fin de l ecran Browse (releve du 14/10, rouge sur la base
+     aussi). Chaque contexte de l essai garde donc ses sockets chez lui. */
+  const nouveauContexte = nav.newContext.bind(nav);
+  nav.newContext = async (o) => { const c = await nouveauContexte(o); await c.routeWebSocket(/.*/, () => {}); return c; };
   const ouvre = async (q, largeur) => {
     const ctx = await nav.newContext({ viewport: { width: largeur || 1200, height: 900 } });
     const p = await ctx.newPage();
@@ -62,44 +72,58 @@ let chromium = null; try { chromium = require('playwright').chromium; } catch (e
   };
   const visible = (p, id) => p.evaluate((i) => { const e = document.getElementById(i); return !!e && e.offsetParent !== null; }, id);
 
-  console.log('\n-- dans un navigateur --');
+  console.log('\n-- dans un navigateur : un chat, deux onglets --');
   let { p, ctx, erreurs } = await ouvre('');
   ok(erreurs.length === 0, erreurs.length ? 'erreurs de script : ' + erreurs.slice(0, 3).join(' | ') : 'aucune erreur de script au chargement');
   ok(await visible(p, 'question') && !(await visible(p, 'ag-question')), 'par defaut, le chat est affiche et l agent cache');
-  await p.click('#ongletAgent');
-  ok(await visible(p, 'ag-question') && !(await visible(p, 'question')), 'un clic sur Agent montre l agent et cache le chat');
-  ok(/[?&]mode=agent/.test(p.url()), 'l adresse garde l onglet (?mode=agent), pour un lien partageable');
-  ok((await p.$eval('#ag-question', (t) => t.offsetHeight)) >= 20, 'la zone de saisie de l agent a sa hauteur une fois affichee');
-  await p.click('#ag-accueil .suggestion');
-  const agT = await p.$eval('#ag-question', (t) => t.value), chT = await p.$eval('#question', (t) => t.value);
-  ok(agT.length > 0 && chT === '', 'une suggestion de l agent remplit la zone de l agent, pas celle du chat [' + agT.slice(0, 30) + ']');
-  await p.click('#ongletChat');
+  const tabs = await p.$$eval('.onglets [role="tab"]', (b) => b.map((x) => x.id).join(','));
+  ok(tabs === 'ongletChat,ongletBrowse', 'deux onglets, Chat et Browse : plus d Agent, d OSINT, d eSIM ni de Store a part [' + tabs + ']');
+  ok(await p.$eval('#modeChat', (s) => !!s.querySelector('.mode[data-mode="mission"]')), 'le chat porte le mode Mission, qui pose la tache a l agent (/studio/agent)');
   await p.click('#accueil .suggestion');
-  ok((await p.$eval('#ag-question', (t) => t.value)) === agT, 'une suggestion du chat ne touche pas la zone de l agent');
+  ok((await p.$eval('#question', (t) => t.value)).length > 0 && (await p.$eval('#ag-question', (t) => t.value)) === '', 'une suggestion du chat remplit le chat, pas la zone de l agent');
   ok(await p.$eval('#ongletChat', (b) => b.getAttribute('aria-selected')) === 'true', 'l onglet actif le dit aux lecteurs d ecran (aria-selected)');
+  await p.click('#ongletBrowse');
+  ok(await visible(p, 'bw-adresse') && !(await visible(p, 'question')) && /[?&]mode=browse/.test(p.url()), 'un clic sur Browse montre le navigateur, cache le chat, et l adresse garde la vue');
+  await p.click('#ongletChat');
+  await p.click('#lienCompte');
+  ok(await visible(p, 'ag-dev') && await p.$eval('#modeAgent', (s) => !s.hidden && !!s.querySelector('#ag-achBox') && !!s.querySelector('#ag-embBox')) && !(await visible(p, 'ag-question')) && !(await visible(p, 'question'))
+     && /[?&]mode=account/.test(p.url()), 'le lien du compte ouvre le compte de l agent (eSIM, embauches, x402, cles), sans second cadre de tache (?mode=account)');
+  ok(await visible(p, 'hubRetour') && await p.$$eval('.onglets [role="tab"]', (b) => b.every((x) => x.getAttribute('aria-selected') === 'false')), 'hors onglet, aucun onglet ne se dit actif et le retour au chat est montre');
+  await p.click('#hubRetourChat');
+  ok(await visible(p, 'question') && !(await visible(p, 'hubRetour')), 'le retour ramene au chat');
   ok(erreurs.length === 0, erreurs.length ? 'erreurs de script apres les gestes : ' + erreurs.slice(0, 3).join(' | ') : 'aucune erreur de script apres les gestes');
   await ctx.close();
 
+  /* Les liens d avant le 14/10 : ?mode=agent posait une tache — le chat, en mode Mission, la pose. */
   ({ p, ctx, erreurs } = await ouvre('?mode=agent'));
-  ok(await visible(p, 'ag-question') && !(await visible(p, 'question')), '?mode=agent ouvre directement l agent');
+  ok(await visible(p, 'question') && !(await visible(p, 'ag-question')) && await p.getAttribute('#modeChat .mode[data-mode="mission"]', 'aria-pressed') === 'true',
+     '?mode=agent ouvre le chat en mode Mission');
   await ctx.close();
+  /* Un ancien choix garde (agent, osint, esim, store) ne rouvre pas une vue sans onglet. */
+  {
+    const c = await nav.newContext({ viewport: { width: 1200, height: 900 } });
+    await c.addInitScript(() => { try { localStorage.setItem('swogeAgentsVue', 'store'); } catch (e) {} });
+    const q = await c.newPage();
+    await q.route('**/*', (r) => r.request().url().startsWith(base) ? r.continue() : r.abort());
+    await q.goto(base + CIBLE, { waitUntil: 'load' });
+    ok(await visible(q, 'question') && !(await visible(q, 'st-grilleSwoge')), 'un ancien choix garde « store » rouvre le chat');
+    await c.close();
+  }
 
-  /* 30/09 : OSINT et eSIM rejoignent la page (« une fusion pour gagner de la place »). */
-  console.log('\n-- OSINT et eSIM, deux onglets de plus --');
-  ({ p, ctx, erreurs } = await ouvre(''));
-  /* 01/10 : l Agent Store fait le sixieme. */
-  ok((await p.$$('.onglets [role="tab"]')).length === 6, 'six onglets : Chat, Agent, Browse, OSINT, eSIM, Store');
-  await p.click('#ongletOsint');
-  ok(await visible(p, 'os-q') && !(await visible(p, 'question')) && !(await visible(p, 'es-pays')), 'OSINT s affiche seul');
+  /* 30/09 : OSINT et eSIM rejoignent la page ; 14/10 : sans onglet, par leur adresse et par le chat. */
+  console.log('\n-- OSINT et eSIM, sans onglet, toujours a leur adresse --');
+  ({ p, ctx, erreurs } = await ouvre('?mode=osint'));
+  ok(await visible(p, 'os-q') && !(await visible(p, 'question')) && !(await visible(p, 'es-pays')) && await visible(p, 'hubRetour'), '?mode=osint : OSINT s affiche seul, avec le retour au chat');
   await p.fill('#os-q', 'example.com');
   ok((await p.$eval('#question', (t) => t.value)) === '', 'taper dans OSINT ne touche pas le chat');
-  await p.click('#ongletEsim');
-  ok(await visible(p, 'es-pays') && !(await visible(p, 'os-q')), 'eSIM s affiche seul');
+  await ctx.close();
+  ({ p, ctx, erreurs } = await ouvre('?mode=esim'));
+  ok(await visible(p, 'es-pays') && !(await visible(p, 'os-q')), '?mode=esim : eSIM s affiche seul');
   /* La carte de paiement n apparait qu apres le choix d un forfait : on coche par le script. */
   await p.evaluate(() => { const r = document.querySelector('#modeEsim input[name="esReseau"][value="solana"]'); r.checked = true; r.dispatchEvent(new Event('change', { bubbles: true })); });
   ok(await p.evaluate(() => document.querySelector('#modeEsim input[name="esReseau"][value="solana"]').checked
      && document.querySelector('input[name="rcReseau"][value="base"]').checked), 'choisir Solana dans eSIM ne change pas le reseau de recharge du chat');
-  ok(erreurs.length === 0, erreurs.length ? 'erreurs : ' + erreurs.slice(0, 2).join(' | ') : 'aucune erreur de script en passant par les quatre onglets');
+  ok(erreurs.length === 0, erreurs.length ? 'erreurs : ' + erreurs.slice(0, 2).join(' | ') : 'aucune erreur de script dans OSINT ni eSIM');
   await ctx.close();
   ({ p, ctx, erreurs } = await ouvre('?q=example.com'));
   ok(await visible(p, 'os-q') && (await p.$eval('#os-q', (t) => t.value)) === 'example.com', 'un lien OSINT partage (?q=) ouvre l onglet OSINT, la cible remplie');
@@ -415,24 +439,25 @@ let chromium = null; try { chromium = require('playwright').chromium; } catch (e
     await ctx.close();
   }
 
-  /* 01/10 : l Agent Store devient le sixieme onglet. */
-  console.log('\n-- Store : l Agent Store, dans Agents --');
+  /* 01/10 : l Agent Store devient le sixieme onglet ; 14/10 : sans onglet (« ses donnees servent a
+     l agent »), son adresse reste — agent_store.html et le menu de cette page y menent. */
+  console.log('\n-- Store : l Agent Store, a son adresse --');
   {
     ({ p, ctx, erreurs } = await ouvre('?mode=store', 1280));
     await p.waitForTimeout(300);
-    ok(await visible(p, 'st-grilleSwoge') && !(await visible(p, 'question')) && (await p.getAttribute('#ongletStore', 'aria-selected')) === 'true',
-       '?mode=store ouvre l Agent Store, seul, l onglet marque');
+    ok(await visible(p, 'st-grilleSwoge') && !(await visible(p, 'question')) && await visible(p, 'hubRetour'),
+       '?mode=store ouvre l Agent Store, seul, avec le retour au chat');
     await p.click('#st-ongletX402');
     ok(await visible(p, 'st-rayonX402') && !(await visible(p, 'st-rayonSwoge')), 'ses deux rayons (SWOGE agents / x402) se basculent dans l onglet');
     ok(erreurs.length === 0, erreurs.length ? 'erreurs : ' + erreurs.slice(0, 2).join(' | ') : 'aucune erreur de script');
     await ctx.close();
     ({ p, ctx, erreurs } = await ouvre('?tab=x402', 1280));
     await p.waitForTimeout(300);
-    ok((await p.getAttribute('#ongletStore', 'aria-selected')) === 'true' && await visible(p, 'st-rayonX402'), 'l ancien lien ?tab=x402 rouvre le rayon x402 du Store');
+    ok(await visible(p, 'st-rayonX402') && !(await visible(p, 'question')), 'l ancien lien ?tab=x402 rouvre le rayon x402 du Store');
     await ctx.close();
   }
 
-  for (const m of ['chat', 'agent', 'browse', 'osint', 'esim', 'store']) {
+  for (const m of ['chat', 'agent', 'account', 'browse', 'osint', 'esim', 'store']) {
     ({ p, ctx, erreurs } = await ouvre('?mode=' + m, 360));
     const large = await p.evaluate(() => document.documentElement.scrollWidth);
     ok(large <= 360, 'onglet ' + m + ' a 360 px : rien ne deborde (' + large + ' px)');
@@ -442,7 +467,7 @@ let chromium = null; try { chromium = require('playwright').chromium; } catch (e
   /* Le chat pose le curseur dans sa saisie et le navigateur defile jusqu a
      elle : a 390 px, la barre d onglets finissait 237 px au-dessus de
      l ecran, et le choix Chat/Agent avec elle. */
-  console.log('\n-- le choix Chat/Agent est la premiere chose qu on voit --');
+  console.log('\n-- les onglets sont la premiere chose qu on voit --');
   for (const [w, h] of [[1280, 860], [390, 800]]) {
     const ctx2 = await nav.newContext({ viewport: { width: w, height: h } });
     const p2 = await ctx2.newPage();

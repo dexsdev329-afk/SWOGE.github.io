@@ -29,6 +29,14 @@
  * (fal, wan_remplace.js) — sans texte, reechantillonne a 16 i/s par le
  * serveur, son d'origine remis par ffmpeg ; son resultat ne sort qu'avec la
  * session (lu en blob, jamais par une adresse publique).
+ *
+ * VIDEO ENTIERE (14 octobre 2026) : la meme edition sur un clip entier, coupe
+ * en morceaux par le serveur (kling_entier.js) ; plan et prix au pire montres
+ * avant de payer, un clic pour confirmer, un etat par morceau, relance d'un
+ * seul morceau, resultat recolle avec le son d'origine (lu en blob, session).
+ * Les references par defaut des editions : le corps, le Swole Doge
+ * (img/site/swoge_swole_ref.jpg, image_1), et le visage officiel
+ * (img/site/swoge_face_ref.jpg, image_2) — choix du proprietaire le 14/10/2026.
  * ================================================================== -->
 <style>
 :root{ --fond:#EEF3FB; --carte:#fff; --encre:#0B1B36; --pale:#5a6b85; --bleu:#1652f0; --ligne:#E1E9F6; --ok:#0a7d3e; --err:#b3261e; }
@@ -58,6 +66,21 @@ h3{ font-size:15px; margin:16px 0 0; padding-top:12px; border-top:1px solid var(
 #eStatut{ min-height:22px; font-weight:600; margin-top:10px; overflow-wrap:anywhere; }
 #eStatut.err{ color:var(--err); } #eStatut.ok{ color:var(--ok); }
 a.telecharge{ display:inline-block; margin-top:8px; font-weight:700; color:var(--bleu); }
+/* 14/10/2026 : « Download the result » se montrait avant tout resultat — la regle
+   inline-block ci-dessus ecrasait l'attribut hidden. Il l'emporte desormais partout. */
+[hidden]{ display:none !important; }
+.refs{ display:flex; flex-wrap:wrap; gap:8px; margin-top:4px; }
+.ref{ display:flex; align-items:center; gap:6px; border:1px solid var(--ligne); border-radius:12px; padding:4px 6px; max-width:100%; min-width:0; }
+.ref img{ width:48px; height:48px; object-fit:cover; border-radius:8px; }
+.ref span{ font-size:13px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:130px; }
+.ref button{ margin:0; padding:4px 10px; min-height:32px; font-size:13px; }
+.grille{ display:grid; grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); gap:6px; margin-top:10px; }
+.part{ border:1px solid var(--ligne); border-radius:10px; padding:6px 8px; font-size:12.5px; min-width:0; overflow-wrap:anywhere; }
+.part b{ display:block; font-size:13px; }
+.part.done{ border-color:var(--ok); } .part.failed{ border-color:var(--err); }
+.part button{ margin-top:6px; padding:4px 10px; min-height:32px; font-size:13px; }
+#tStatut{ min-height:22px; font-weight:600; margin-top:10px; overflow-wrap:anywhere; }
+#tStatut.err{ color:var(--err); } #tStatut.ok{ color:var(--ok); }
 img.vign{ width:64px; height:64px; object-fit:cover; border-radius:10px; vertical-align:middle; margin-right:8px; }
 </style>
 </head>
@@ -94,13 +117,13 @@ img.vign{ width:64px; height:64px; object-fit:cover; border-radius:10px; vertica
     <input id="eClip" type="file" accept="video/mp4">
     <p class="pale" id="eClipInfo"></p>
     <label>Reference picture</label>
-    <div><img class="vign" id="eVign" src="/img/site/swoge_reference.jpg" alt="Reference"><span id="eRefNom">SWOGE (default)</span>
-      <button class="pale2" id="eImage" type="button">Choose another</button> <button class="pale2" id="eSansImage" type="button" hidden>Back to SWOGE</button></div>
+    <div><img class="vign" id="eVign" src="/img/site/swoge_swole_ref.jpg" alt="Reference"><img class="vign" id="eVign2" src="/img/site/swoge_face_ref.jpg" alt="Face"><span id="eRefNom">SWOGE (default: body @image_1, face @image_2)</span>
+      <button class="pale2" id="eImage" type="button">Choose another (replaces both)</button> <button class="pale2" id="eSansImage" type="button" hidden>Back to SWOGE</button></div>
     <label class="coche"><input id="eSon" type="checkbox" checked> Keep the original sound</label>
 
     <h3>Kling O1</h3>
     <label for="ePrompt">What to change</label>
-    <textarea id="ePrompt" maxlength="2500" style="min-height:150px">Replace only the young man in the black beanie and grey hoodie who is singing with the character from @image_1: SWOGE, a muscular anthropomorphic shiba inu dog, wearing the same black beanie and grey hoodie, singing with the same mouth movements, gestures and timing. Keep the blond man holding the phone and the speaker exactly as he is. Keep exactly the same shots, framing, camera motion, timing, lighting, background, captions and logo in @video_1.</textarea>
+    <textarea id="ePrompt" maxlength="2500" style="min-height:150px">Replace the singer in @video_1 with the character of @image_1 (body: huge muscular shirtless Swole Doge, cream-beige fur everywhere, furry dog paws with black pads instead of hands), with exactly the face of @image_2: the classic Doge meme face, pale cream-beige fur (not orange, not red), white cheeks and muzzle, small dark eyes glancing sideways, raised eyebrows, mouth closed in a slight smirk that only opens to lip-sync the words, the head proportionally small on a thick neck. Keep the other person, the camera, the background and the original audio unchanged.</textarea>
     <div class="rang">
       <div><label for="eResolution">Resolution</label><select id="eResolution"><option value="720p">720p</option><option value="1080p">1080p</option></select></div>
     </div>
@@ -111,7 +134,7 @@ img.vign{ width:64px; height:64px; object-fit:cover; border-radius:10px; vertica
     <a id="eLien" class="telecharge" href="#" target="_blank" rel="noopener" download hidden>Download the result</a>
 
     <h3>Wan 2.2 Animate Replace (fal)</h3>
-    <p class="pale">Same clip and picture. Wan takes no text: it swaps the main moving person for the picture. The server sends the clip at 16 fps (fal bills 16 frames as one second) and puts the original sound back on the result.</p>
+    <p class="pale">Same clip and picture. Wan takes no text: it swaps the main moving person for the picture. The server sends the clip at 16 fps (fal bills 16 frames as one second) and puts the original sound back on the result. Without a chosen picture, Wan still uses the older SWOGE picture (red suit).</p>
     <div class="rang">
       <div><label for="wResolution">Resolution</label><select id="wResolution"><option value="480p">480p</option><option value="580p">580p</option><option value="720p" selected>720p</option></select></div>
     </div>
@@ -120,6 +143,31 @@ img.vign{ width:64px; height:64px; object-fit:cover; border-radius:10px; vertica
     <p id="wStatut" role="status"></p>
     <video id="wVideo" controls playsinline hidden></video>
     <a id="wLien" class="telecharge" href="#" download="swoge_wan.mp4" hidden>Download the result</a>
+
+    <h3>Whole video (split into parts)</h3>
+    <div id="tBloc">
+    <p class="pale" id="tAide">Kling O1 edits 3 to 10 s at a time. The server cuts the whole video into parts (at scene cuts when it finds them, otherwise even parts of 9.5 s at most), edits each part with the same pictures and text, glues them back and puts the original sound on the whole video. You see the parts and the worst-case price before anything is paid.</p>
+    <label for="tClip">Whole video (MP4)</label>
+    <input id="tClip" type="file" accept="video/mp4,video/quicktime">
+    <p class="pale" id="tClipInfo"></p>
+    <label>Reference pictures (<span id="tRefsMax">4</span> at most: @image_1, @image_2…)</label>
+    <div class="refs" id="tRefs"></div>
+    <button class="pale2" id="tAjout" type="button">Add a picture</button>
+    <label for="tPrompt">What to change</label>
+    <textarea id="tPrompt" maxlength="2500" style="min-height:170px">Replace the singer in @video_1 with the character of @image_1 (body: huge muscular shirtless Swole Doge, cream-beige fur everywhere, furry dog paws with black pads instead of hands), with exactly the face of @image_2: the classic Doge meme face, pale cream-beige fur (not orange, not red), white cheeks and muzzle, small dark eyes glancing sideways, raised eyebrows, mouth closed in a slight smirk that only opens to lip-sync the words, the head proportionally small on a thick neck. Keep the other person, the camera, the background and the original audio unchanged.</textarea>
+    <div class="rang">
+      <div><label for="tResolution">Resolution</label><select id="tResolution"><option value="720p">720p</option><option value="1080p">1080p</option></select></div>
+    </div>
+    <button id="tPlan" type="button" disabled>Plan (upload and cut, nothing is paid)</button>
+    <p class="pale" id="tPlanInfo"></p>
+    <button id="tLancer" type="button" hidden disabled>Run all parts</button>
+    <p id="tStatut" role="status"></p>
+    <div class="grille" id="tGrille"></div>
+    <button class="pale2" id="tRecolle" type="button" hidden>Glue again</button>
+    <button class="pale2" id="tAbandon" type="button" hidden>Abandon this video</button>
+    <video id="tVideo" controls playsinline hidden></video>
+    <a id="tLien" class="telecharge" href="#" download="swoge_whole.mp4" hidden>Download the result</a>
+    </div>
   </div>
 
   <div class="carte" id="historique" hidden><b>Recent tests</b><div id="liste"></div></div>
@@ -174,9 +222,10 @@ img.vign{ width:64px; height:64px; object-fit:cover; border-radius:10px; vertica
       M = o.modeles;
       $("acces").textContent = o.actif ? "Kling is connected." : "Kling is not set up yet: add KLING_API_KEY on Railway.";
       $("formulaire").hidden = !o.actif;
-      E.vue = o.edition || null; E.wan = o.wan || null;
+      E.vue = o.edition || null; E.wan = o.wan || null; T.vue = o.entier || null;
       $("edition").hidden = !((o.actif && E.vue) || (E.wan && E.wan.actif));
-      peintReglages(); peintEdition(); peintHistorique(o.essais);
+      peintReglages(); peintEdition(); peintEntier(); peintHistorique(o.essais);
+      if (T.vue && T.vue.passe && !T.id) { T.id = T.vue.passe; tSuis(); }
     })["catch"](function(e){ $("acces").textContent = "Access check failed: " + e.message; });
   }
   function suis(id, depart){
@@ -215,6 +264,10 @@ img.vign{ width:64px; height:64px; object-fit:cover; border-radius:10px; vertica
    * puis l'efface. Sans image choisie, aucune image n'est envoyee : le serveur
    * prend la reference SWOGE du site. */
   var E = { vue: null, clip: null, dureeS: null, image: null, suivi: null };
+  /* Les references par defaut des editions, les memes que le serveur (14/10/2026) :
+     le corps (Swole Doge, image_1) et le visage officiel (image_2) — le premier
+     vrai resultat avait la mauvaise tete (un shiba orange realiste). */
+  var REF_SWOGE = "/img/site/swoge_swole_ref.jpg", REF_VISAGE = "/img/site/swoge_face_ref.jpg";
   function eStatut(t, g){ var s = $("eStatut"); s.textContent = t || ""; s.className = g || ""; }
   /* La duree d'un MP4 (copie de swolemind.html, meme lecture que le serveur) :
      ftyp en premier, moov > mvhd v0/v1 ; un MP4 fragmente (mvex) ne se lit
@@ -316,11 +369,11 @@ img.vign{ width:64px; height:64px; object-fit:cover; border-radius:10px; vertica
       if (!/^image\/(png|jpeg)$/.test(f.type)) { eStatut("The reference must be a PNG or JPEG picture.", "err"); return; }
       var max = (E.vue && E.vue.imageOctetsMax) || 6 * 1024 * 1024;
       if (f.size > max) { eStatut("Picture too large (" + Math.round(max / 1048576) + " MB at most).", "err"); return; }
-      var r = new FileReader(); r.onload = function(){ E.image = String(r.result); $("eVign").src = E.image; $("eRefNom").textContent = f.name; $("eSansImage").hidden = false; }; r.readAsDataURL(f);
+      var r = new FileReader(); r.onload = function(){ E.image = String(r.result); $("eVign").src = E.image; $("eVign2").hidden = true; $("eRefNom").textContent = f.name; $("eSansImage").hidden = false; }; r.readAsDataURL(f);
     });
     i.click();
   });
-  $("eSansImage").addEventListener("click", function(){ E.image = null; $("eVign").src = "/img/site/swoge_reference.jpg"; $("eRefNom").textContent = "SWOGE (default)"; $("eSansImage").hidden = true; });
+  $("eSansImage").addEventListener("click", function(){ E.image = null; $("eVign").src = REF_SWOGE; $("eVign2").hidden = false; $("eRefNom").textContent = "SWOGE (default: body @image_1, face @image_2)"; $("eSansImage").hidden = true; });
   function eSuis(id, depart){
     api("/studio/kling/" + encodeURIComponent(id)).then(function(r){
       var s = Math.round((Date.now() - depart) / 1000);
@@ -376,6 +429,156 @@ img.vign{ width:64px; height:64px; object-fit:cover; border-radius:10px; vertica
     api("/studio/kling/wan", "POST", corps)
       .then(function(r){ wStatut("Sent to fal (~$" + Number(r.estimationUsd).toFixed(3) + ", " + r.images + " frames at 16 fps)."); wSuis(r.id, Date.now()); })
       ["catch"](function(e){ wStatut("Not sent: " + e.message, "err"); E.occupeW = false; peintEdition(); });
+  });
+
+  /* ---- UNE VIDEO ENTIERE, PAR MORCEAUX (kling_entier.js, 14/10/2026) ----
+   * La video part BRUTE (video/mp4) ; le serveur la coupe et rend le plan
+   * (morceaux, prix au pire aux deux resolutions, plafond). Rien n'est paye
+   * avant « Run all parts », qui renvoie le prix montre : le serveur refuse
+   * s'il ne retrouve pas le meme. Les images : « swoge » (le corps) et
+   * « swoge-face » (le visage), a leur place dans la liste, ou une data-URL
+   * PNG/JPEG. Le resultat
+   * ne sort qu'avec la session (lu en blob). */
+  var T = { vue: null, fichier: null, refs: [{ jeton: "swoge", nom: "SWOGE body (default)", src: REF_SWOGE }, { jeton: "swoge-face", nom: "SWOGE face (default)", src: REF_VISAGE }], id: null, etat: null, suivi: null, blob: null, occupe: false };
+  function tStatut(t, g){ var s = $("tStatut"); s.textContent = t || ""; s.className = g || ""; }
+  function dollars(x){ return "$" + Number(x).toFixed(3); }
+  function mmss(s){ var m = Math.floor(s / 60), r = s - m * 60; return m + ":" + (r < 10 ? "0" : "") + r.toFixed(1); }
+  function peintRefs(){
+    var l = $("tRefs"); l.innerHTML = "";
+    var max = (T.vue && T.vue.imagesMax) || 4;
+    $("tRefsMax").textContent = String(max);
+    T.refs.forEach(function(r, k){
+      var d = document.createElement("div"); d.className = "ref";
+      var im = document.createElement("img"); im.src = r.src; im.alt = "";
+      var n = document.createElement("span"); n.textContent = "@image_" + (k + 1) + " · " + r.nom;
+      var b = document.createElement("button"); b.type = "button"; b.className = "pale2"; b.textContent = "Remove";
+      b.addEventListener("click", function(){ T.refs.splice(k, 1); peintRefs(); });
+      d.appendChild(im); d.appendChild(n); d.appendChild(b); l.appendChild(d);
+    });
+    if (!T.refs.length) { var v = document.createElement("span"); v.className = "pale"; v.textContent = "No picture: the server will use the SWOGE body and face."; l.appendChild(v); }
+    $("tAjout").disabled = T.refs.length >= max;
+  }
+  function prixPlan(){ return T.etat && T.etat.prixPire ? T.etat.prixPire[$("tResolution").value] : null; }
+  function peintEntier(){
+    var v = T.vue;
+    $("tBloc").hidden = !v;
+    if (!v) return;
+    peintRefs();
+    var e = T.etat, enCours = e && ["decoupe", "en_cours", "assemblage", "incomplet"].indexOf(e.statut) >= 0;
+    $("tPlan").disabled = !T.fichier || T.occupe || !!enCours;
+    var p = prixPlan();
+    if (e && e.statut === "pret" && p != null) {
+      var ds = e.morceaux.map(function(m){ return m.duree.toFixed(1) + " s"; });
+      var trop = p > e.plafondUsd + 1e-9;
+      $("tPlanInfo").textContent = e.morceaux.length + " parts (" + (e.scenes ? e.scenes + " scene cuts found" : "no scene cut found, even parts") + "): " + ds.join(", ")
+        + ". Worst case " + dollars(p) + " at " + $("tResolution").value + " (every started second of every part counts; cap " + dollars(e.plafondUsd) + " per run)."
+        + (trop ? " Over the cap: use 720p or a shorter video." : "");
+      $("tLancer").hidden = false; $("tLancer").disabled = trop || T.occupe;
+      $("tLancer").textContent = "Run all parts — " + dollars(p) + " worst case";
+    } else if (!e || e.statut !== "decoupe") {
+      $("tLancer").hidden = true;
+      if (!e) $("tPlanInfo").textContent = "Up to " + Math.round(v.dureeEntierMaxS) + " s and " + Math.round(v.octetsMax / 1048576) + " MB. Cap " + dollars(v.plafondUsd) + " per run, " + v.parallele + " parts at a time.";
+    }
+    $("tResolution").disabled = !!(e && e.statut !== "pret" && e.statut !== "erreur");
+    peintGrille();
+  }
+  var ETIQ = { planned: "planned", waiting: "waiting", sending: "sending", processing: "at Kling", downloading: "downloading", done: "done", failed: "failed" };
+  function peintGrille(){
+    var g = $("tGrille"); g.innerHTML = "";
+    var e = T.etat; if (!e || !e.morceaux) return;
+    e.morceaux.forEach(function(m){
+      var c = document.createElement("div"); c.className = "part " + m.statut; c.setAttribute("data-statut", m.statut);
+      var t = document.createElement("b"); t.textContent = "Part " + (m.i + 1) + " · " + ETIQ[m.statut];
+      var d = document.createElement("div"); d.textContent = mmss(m.debut) + " · " + m.duree.toFixed(1) + " s";
+      c.appendChild(t); c.appendChild(d);
+      if (m.message) { var x = document.createElement("div"); x.textContent = m.message; c.appendChild(x); }
+      if (m.rejouable) {
+        var b = document.createElement("button"); b.type = "button"; b.textContent = "Retry part " + (m.i + 1);
+        b.addEventListener("click", function(){
+          b.disabled = true;
+          api("/studio/kling/entier/" + T.id + "/reessaie/" + m.i, "POST", {}).then(function(r){ T.etat = r; peintEntier(); tSuis(); })
+            ["catch"](function(err){ tStatut("Retry refused: " + err.message, "err"); b.disabled = false; });
+        });
+        c.appendChild(b);
+      }
+      g.appendChild(c);
+    });
+    var tous = e.morceaux.every(function(m){ return m.statut === "done"; });
+    $("tRecolle").hidden = !(e.statut === "incomplet" && tous);
+    $("tAbandon").hidden = ["en_cours", "incomplet", "pret"].indexOf(e.statut) < 0;
+  }
+  function tMontre(chemin){
+    return fetch(serveur() + chemin, { cache: "no-store", headers: { authorization: "Bearer " + jeton() } })
+      .then(function(r){ if (!r.ok) throw new Error("error " + r.status); return r.blob(); })
+      .then(function(b){ if (T.blob) URL.revokeObjectURL(T.blob); T.blob = URL.createObjectURL(b);
+        var v = $("tVideo"); v.src = T.blob; v.hidden = false; $("tLien").href = T.blob; $("tLien").hidden = false; });
+  }
+  function tSuis(){
+    if (T.suivi) clearTimeout(T.suivi);
+    if (!T.id) return;
+    api("/studio/kling/entier/" + T.id).then(function(e){
+      T.etat = e; peintEntier();
+      var faits = e.morceaux ? e.morceaux.filter(function(m){ return m.statut === "done"; }).length : 0;
+      if (e.statut === "decoupe") { tStatut("Cutting the video into parts…"); }
+      else if (e.statut === "pret") { tStatut("Plan ready: check the parts and the price, then run.", "ok"); T.occupe = false; peintEntier(); return; }
+      else if (e.statut === "erreur") { tStatut("Not planned: " + (e.message || "error"), "err"); T.occupe = false; peintEntier(); return; }
+      else if (e.statut === "en_cours") { tStatut("Editing: " + faits + " of " + e.morceaux.length + " parts done (" + e.parallele + " at a time)…"); }
+      else if (e.statut === "assemblage") { tStatut("All parts done — gluing them and putting the original sound back…"); }
+      else if (e.statut === "incomplet") { tStatut(e.message || "Some parts failed: retry them.", "err"); return; }
+      else if (e.statut === "fini") {
+        tStatut("Done: " + e.morceaux.length + " parts glued, original sound, " + (e.dureeFinale || e.source.duree).toFixed(1) + " s. Kept 48 h on the server.", "ok");
+        if (!T.blob) tMontre(e.video)["catch"](function(err){ tStatut("Result not loaded: " + err.message, "err"); });
+        charge(); return;
+      }
+      else if (e.statut === "abandon") { tStatut("Abandoned.", "err"); return; }
+      T.suivi = setTimeout(tSuis, 5000);
+    })["catch"](function(err){ tStatut("Follow-up failed: " + err.message, "err"); T.suivi = setTimeout(tSuis, 15000); });
+  }
+  $("tClip").addEventListener("change", function(){
+    var f = $("tClip").files && $("tClip").files[0];
+    T.fichier = null; $("tClipInfo").textContent = ""; tStatut("");
+    var max = (T.vue && T.vue.octetsMax) || 100 * 1024 * 1024;
+    if (f && f.size > max) tStatut("Video too large: " + (f.size / 1048576).toFixed(1) + " MB (" + Math.round(max / 1048576) + " MB at most).", "err");
+    else if (f) { T.fichier = f; $("tClipInfo").textContent = f.name + " · " + (f.size / 1048576).toFixed(1) + " MB"; }
+    peintEntier();
+  });
+  $("tAjout").addEventListener("click", function(){
+    var i = document.createElement("input"); i.type = "file"; i.accept = "image/png,image/jpeg";
+    i.addEventListener("change", function(){
+      var f = i.files && i.files[0]; if (!f) return;
+      if (!/^image\/(png|jpeg)$/.test(f.type)) { tStatut("A reference must be a PNG or JPEG picture.", "err"); return; }
+      var max = (T.vue && T.vue.imageOctetsMax) || 6 * 1024 * 1024;
+      if (f.size > max) { tStatut("Picture too large (" + Math.round(max / 1048576) + " MB at most).", "err"); return; }
+      var r = new FileReader(); r.onload = function(){ T.refs.push({ nom: f.name, src: String(r.result), data: String(r.result) }); peintRefs(); }; r.readAsDataURL(f);
+    });
+    i.click();
+  });
+  $("tResolution").addEventListener("change", peintEntier);
+  $("tPlan").addEventListener("click", function(){
+    if (!T.fichier) return;
+    if (T.suivi) clearTimeout(T.suivi);
+    T.occupe = true; T.etat = null; T.id = null; $("tVideo").hidden = true; $("tLien").hidden = true; peintEntier();
+    tStatut("Uploading the video (" + (T.fichier.size / 1048576).toFixed(1) + " MB)…");
+    fetch(serveur() + "/studio/kling/entier", { method: "POST", cache: "no-store", headers: { "content-type": "video/mp4", authorization: "Bearer " + jeton() }, body: T.fichier })
+      .then(function(r){ return r.json().catch(function(){ return {}; }).then(function(o){ if (!r.ok || o.ok === false) throw new Error(o.raison || ("error " + r.status)); return o; }); })
+      .then(function(o){ T.id = o.id; tStatut("Cutting the video into parts…"); tSuis(); })
+      ["catch"](function(e){ tStatut("Not planned: " + e.message, "err"); T.occupe = false; peintEntier(); });
+  });
+  $("tLancer").addEventListener("click", function(){
+    var t = $("tPrompt").value.trim(); if (!t) { tStatut("Write what to change first.", "err"); return; }
+    var p = prixPlan(); if (p == null || !T.id) return;
+    T.occupe = true; $("tLancer").disabled = true; tStatut("Sending the first parts to Kling…");
+    var images = T.refs.map(function(r){ return r.jeton || r.data; });
+    api("/studio/kling/entier/" + T.id + "/lance", "POST", { images: images, prompt: t, resolution: $("tResolution").value, confirmeUsd: p })
+      .then(function(e){ T.etat = e; T.occupe = false; peintEntier(); tSuis(); })
+      ["catch"](function(e){ tStatut("Not sent: " + e.message, "err"); T.occupe = false; peintEntier(); });
+  });
+  $("tRecolle").addEventListener("click", function(){
+    api("/studio/kling/entier/" + T.id + "/recolle", "POST", {}).then(function(e){ T.etat = e; peintEntier(); tSuis(); })["catch"](function(e){ tStatut("Not glued: " + e.message, "err"); });
+  });
+  $("tAbandon").addEventListener("click", function(){
+    api("/studio/kling/entier/" + T.id + "/abandonne", "POST", {}).then(function(e){ if (T.suivi) clearTimeout(T.suivi); T.etat = e.statut === "supprime" ? null : e; T.id = null; peintEntier(); tStatut("Abandoned: the parts were deleted.", "err"); })
+      ["catch"](function(e){ tStatut("Not abandoned: " + e.message, "err"); });
   });
   charge();
 })();

@@ -4,8 +4,9 @@
  *
  * Le serveur est simule par page.route ; ce que la page DOIT tenir :
  *   1. Un autre portefeuille ne voit pas la section ; le proprietaire la voit,
- *      avec le texte demande pre-rempli, 720p, son d'origine coche, SWOGE en
- *      reference par defaut, et le bouton ferme tant qu'il n'y a pas de clip.
+ *      avec le texte demande pre-rempli, 720p, son d'origine coche, le corps
+ *      (Swole Doge) et le visage officiel en references par defaut, le bouton ferme tant qu'il n'y a pas de
+ *      clip, et aucun lien de telechargement avant un resultat.
  *   2. Un clip hors 3-10 s ou qui n'est pas un MP4 est refuse AVANT toute
  *      requete (duree lue dans la boite mvhd).
  *   3. Un clip de 5,2 s : prix d'apres la grille du serveur, seconde entamee
@@ -28,7 +29,8 @@ let n = 0, rates = 0;
 const ok = (c, m) => { n++; if (c) console.log('  ok   ' + m); else { rates++; console.log('  RATE ' + m); } };
 const eq = (a, b, m) => ok(a === b, m + ' [' + JSON.stringify(a) + ']');
 const T = { '.html': 'text/html', '.js': 'text/javascript', '.json': 'application/json', '.jpg': 'image/jpeg', '.png': 'image/png', '.ico': 'image/x-icon' };
-const PROMPT = 'Replace only the young man in the black beanie and grey hoodie who is singing with the character from @image_1: SWOGE, a muscular anthropomorphic shiba inu dog, wearing the same black beanie and grey hoodie, singing with the same mouth movements, gestures and timing. Keep the blond man holding the phone and the speaker exactly as he is. Keep exactly the same shots, framing, camera motion, timing, lighting, background, captions and logo in @video_1.';
+/* le texte demande par le proprietaire le 14/10/2026 : le corps de @image_1, le visage EXACT de @image_2 */
+const PROMPT = 'Replace the singer in @video_1 with the character of @image_1 (body: huge muscular shirtless Swole Doge, cream-beige fur everywhere, furry dog paws with black pads instead of hands), with exactly the face of @image_2: the classic Doge meme face, pale cream-beige fur (not orange, not red), white cheeks and muzzle, small dark eyes glancing sideways, raised eyebrows, mouth closed in a slight smirk that only opens to lip-sync the words, the head proportionally small on a thick neck. Keep the other person, the camera, the background and the original audio unchanged.';
 
 /* MP4 synthetique : ftyp, mdat, moov/mvhd v0 */
 const u32 = (x) => { const b = Buffer.alloc(4); b.writeUInt32BE(x); return b; };
@@ -120,7 +122,11 @@ const clip = (s) => Buffer.concat([boite('ftyp', Buffer.from('isom\0\0\x02\0isom
   eq(await p.inputValue('#ePrompt'), PROMPT, 'le texte demande, pre-rempli');
   eq(await p.inputValue('#eResolution'), '720p', '720p par defaut');
   ok(await p.isChecked('#eSon'), 'son d origine coche');
-  ok(await p.evaluate(() => /\/img\/site\/swoge_reference\.jpg$/.test(document.getElementById('eVign').src) && document.getElementById('eVign').naturalWidth > 0), 'la vignette SWOGE par defaut (chargee)');
+  ok(await p.evaluate(() => /\/img\/site\/swoge_swole_ref\.jpg$/.test(document.getElementById('eVign').src) && document.getElementById('eVign').naturalWidth === 832
+     && /\/img\/site\/swoge_face_ref\.jpg$/.test(document.getElementById('eVign2').src) && document.getElementById('eVign2').naturalWidth === 768 && !document.getElementById('eVign2').hidden),
+     'les vignettes par defaut : le corps (Swole Doge, 832 px) et le visage (768 px), chargees');
+  ok(/@image_2/.test(await p.inputValue('#ePrompt')) && /face of @image_2/.test(await p.inputValue('#ePrompt')), 'le texte prend le visage de @image_2');
+  ok(!(await p.isVisible('#eLien')) && !(await p.isVisible('#wLien')) && !(await p.isVisible('#tLien')), 'aucun « Download the result » avant un resultat (l attribut hidden l emporte)');
   ok(await p.isDisabled('#eLancer'), 'bouton ferme sans clip');
 
   console.log('\n-- 2. les refus avant toute requete --');
@@ -173,7 +179,7 @@ const clip = (s) => Buffer.concat([boite('ftyp', Buffer.from('isom\0\0\x02\0isom
   const [choix] = await Promise.all([p.waitForEvent('filechooser'), p.click('#eImage')]);
   await choix.setFiles(F.ref);
   await p.waitForFunction(() => /^data:image\/png/.test(document.getElementById('eVign').src), null, { timeout: 5000 }).catch(() => {});
-  ok(await p.isVisible('#eSansImage') && /icone-192|ref\.png/.test(await p.textContent('#eRefNom')), 'l image choisie remplace la vignette');
+  ok(await p.isVisible('#eSansImage') && /icone-192|ref\.png/.test(await p.textContent('#eRefNom')) && !(await p.isVisible('#eVign2')), 'l image choisie remplace les deux vignettes');
   await p.uncheck('#eSon');
   S.refus = [502, { ok: false, raison: 'Kling refused: content risk' }];
   await p.click('#eLancer');
@@ -182,7 +188,7 @@ const clip = (s) => Buffer.concat([boite('ftyp', Buffer.from('isom\0\0\x02\0isom
   ok(c2.corps && /^data:image\/png;base64,/.test(c2.corps.image) && c2.corps.audio === 'off', 'l image part en data-URL PNG, son « off »');
   ok(/content risk/.test(await p.textContent('#eStatut')) && await p.isEnabled('#eLancer'), 'l echec montre la raison, le bouton se rouvre');
   await p.click('#eSansImage');
-  ok(/swoge_reference\.jpg$/.test(await p.getAttribute('#eVign', 'src')), '« Back to SWOGE » remet la reference');
+  ok(/swoge_swole_ref\.jpg$/.test(await p.getAttribute('#eVign', 'src')) && await p.isVisible('#eVign2'), '« Back to SWOGE » remet les deux references (corps et visage)');
   ok(!journal.some((x) => x.erreurPage), 'aucune erreur JavaScript ' + JSON.stringify(journal.filter((x) => x.erreurPage)));
   await p.close();
 

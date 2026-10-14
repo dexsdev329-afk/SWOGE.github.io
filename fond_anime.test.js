@@ -44,11 +44,13 @@ const srv = http.createServer((q, r) => {
 (async () => {
   console.log('-- les fichiers --');
   /* 14/10/2026 : AI Perps et Predict sont retirees (leurs adresses renvoient vers swoge_ai.html) :
-     restent sept pages du menu, et un renvoi ne porte pas de fond. */
+     restent sept pages du menu, et un renvoi ne porte pas de fond.
+     14/10/2026 (suite) : Polymarket AI est retiree a son tour : six pages ; son fond (poly) reste dans
+     le depot, plus aucune page ne le porte. */
   const attendues = ['games.html', 'swogebet.html', 'swoge_ai.html',
-                     'swoge_polymarket_ai.html', 'swoge_agents.html', 'whitepaper.html', 'swoge_wallet.html'];
-  ok(attendues.every((a) => PAGES.some((p) => p.f === a)) && !PAGES.some((p) => /^swoge_(perp|predict|sol_ai|eth_ai|colonies)\.html$/.test(p.f)),
-     'les sept pages du menu ont leur fond, aucune page retiree n en porte (' + PAGES.map((p) => p.f + ':' + p.nom).join(', ') + ')');
+                     'swoge_agents.html', 'whitepaper.html', 'swoge_wallet.html'];
+  ok(attendues.every((a) => PAGES.some((p) => p.f === a)) && !PAGES.some((p) => /^swoge_(perp|predict|sol_ai|eth_ai|colonies|polymarket_ai)\.html$/.test(p.f)),
+     'les six pages du menu ont leur fond, aucune page retiree n en porte (' + PAGES.map((p) => p.f + ':' + p.nom).join(', ') + ')');
   for (const p of PAGES) {
     const t = (f) => { try { return fs.statSync(path.join(SITE, f)).size; } catch (e) { return -1; } };
     const mp4 = t('media/fond_' + p.nom + '.mp4'), webm = t('media/fond_' + p.nom + '.webm'), af = t('img/site/fonds/' + p.nom + '.webp');

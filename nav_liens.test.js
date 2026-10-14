@@ -32,7 +32,8 @@ const ok = (c, m) => { n++; if (c) console.log('  ok   ' + m); else { rates++; c
     /* 30/09 : « au moins 12 » gardait d un menu tronque ; OSINT et eSIM sont devenus des onglets
        d Agents et le menu en compte 11. On exige la liste exacte, dans l ordre : plus strict qu un nombre. */
     /* 01/10 : SWOGE AI, AI Perps, Predict et Polymarket AI ne font plus qu une entree, « AI Trading »
-       (outils/onglets_ia.js) ; on passe de l une a l autre par les onglets en tete des quatre pages. */
+       (outils/onglets_ia.js) ; on passe de l une a l autre par les onglets en tete des quatre pages.
+       14/10/2026 : les autres pages IA sont retirees ; « AI Trading » mene a la seule colonie, sans onglets. */
     /* 01/10 : « met le dans Agents » — l Agent Store est un onglet d Agents (?mode=store), plus une entree a part. */
     /* 02/10 : « rajoute le launchpad dans menu » — entre Agents et Docs. */
     /* 12/10 : « tres propre fait ca » — la maquette blanche du Studio devient studio.html, et son entree

@@ -12,16 +12,19 @@
  *   node outils/onglets_ia.js      reecrit les pages et les menus du site
  * 03/10/2026 : une cinquieme, swoge_colonies.html (Solana & ETH) ; la grille suit PAGES.length.
  * 14/10/2026 : plus que deux pages, SWOGE AI et Polymarket AI (les quatre autres renvoient vers SWOGE AI).
+ * 14/10/2026 (suite) : Polymarket AI est retiree a son tour ; SWOGE AI reste SEULE. Une barre
+ *   d'onglets a un seul onglet ne mene nulle part : sous deux pages, le script RETIRE le bloc
+ *   ONGLETS-IA des pages au lieu de l'ecrire (et l'ecrirait de nouveau si une page revenait).
  * onglets_ia.test.js echoue si une page n'est plus celle que donne ce script.
  * ==========================================================================*/
 const fs = require('fs'), path = require('path');
 const SITE = path.join(__dirname, '..');
 const PAGES = [
   { f: 'swoge_ai.html', ic: '&#129302;', nom: 'SWOGE AI', sous: 'Trading colony on new tokens' },
-  { f: 'swoge_polymarket_ai.html', ic: '&#127919;', nom: 'Polymarket AI', sous: '15-minute crypto markets' },
   /* 14/10/2026 : AI Perps, Predict (BNB), Solana AI et Ethereum AI sont RETIREES (demande du
      proprietaire : « ca ne sert a rien, ont de mauvais resultats ») ; leurs adresses renvoient
-     vers swoge_ai.html, comme swoge_colonies.html. Restent la colonie Robinhood et Polymarket AI. */
+     vers swoge_ai.html, comme swoge_colonies.html. Le meme jour, Polymarket AI suit (colonie
+     eteinte cote serveur, POLY_PAPIER=0) : reste la seule colonie Robinhood. */
 ];
 const DEBUT = '<!-- ONGLETS-IA:debut (genere par outils/onglets_ia.js, ne pas editer ici) -->';
 const FIN = '<!-- ONGLETS-IA:fin -->';
@@ -30,6 +33,8 @@ const FIN = '<!-- ONGLETS-IA:fin -->';
 const D_DEBUT = '<!-- IA-DESIGN:debut (copie de outils/ia_design.css par outils/onglets_ia.js, ne pas editer ici) -->';
 const D_FIN = '<!-- IA-DESIGN:fin -->';
 function design() { return D_DEBUT + '\n<style>\n' + fs.readFileSync(path.join(__dirname, 'ia_design.css'), 'utf8').replace(/\s+$/, '') + '\n</style>\n' + D_FIN; }
+/* Une barre d'onglets n'a de sens qu'a partir de deux pages. */
+const AVEC_BARRE = PAGES.length >= 2;
 const ENTREE = '<a href="swoge_ai.html"%CLS%><span class="ic">&#129302;</span>AI Trading</a>';
 
 function bloc(courante) {
@@ -75,7 +80,11 @@ function transforme(f, html) {
   let h = menu(html, f);
   const di = h.indexOf(D_DEBUT);
   if (di >= 0) h = h.slice(0, di) + design() + h.slice(h.indexOf(D_FIN, di) + D_FIN.length);
-  if (PAGES.some((p) => p.f === f)) {
+  if (!AVEC_BARRE) {
+    /* Une seule page : la barre part, avec le saut de ligne qui la suivait. */
+    const i = h.indexOf(DEBUT);
+    if (i >= 0) { let j = h.indexOf(FIN, i) + FIN.length; if (h[j] === '\n') j++; h = h.slice(0, i) + h.slice(j); }
+  } else if (PAGES.some((p) => p.f === f)) {
     const b = bloc(f);
     const i = h.indexOf(DEBUT);
     if (i >= 0) h = h.slice(0, i) + b + h.slice(h.indexOf(FIN, i) + FIN.length);
@@ -90,7 +99,7 @@ function transforme(f, html) {
 
 function pagesDuSite() { return fs.readdirSync(SITE).filter((f) => f.endsWith('.html')); }
 
-module.exports = { PAGES, bloc, menu, design, transforme, pagesDuSite, DEBUT, FIN, D_DEBUT, D_FIN, SITE };
+module.exports = { PAGES, AVEC_BARRE, bloc, menu, design, transforme, pagesDuSite, DEBUT, FIN, D_DEBUT, D_FIN, SITE };
 if (require.main === module) {
   let n = 0;
   for (const f of pagesDuSite()) {

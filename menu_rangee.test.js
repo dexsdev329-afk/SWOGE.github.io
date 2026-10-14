@@ -13,6 +13,7 @@
  * sur 43 a 1024, 6 a 1280, 43 a 1366 (revue2_fidelite/s8_menu_pages.js).
  * Sur trois pages (swoge_cinema, swoge_polymarket, swoge_polymarket_ai) un
  * burger ouvrait la colonne : il fallait savoir qu il etait la.
+ * (swoge_polymarket_ai est retiree le 14/10/2026 : un renvoi sans colonne.)
  *
  * ---- CE QUE L ESSAI TIENT ----
  *

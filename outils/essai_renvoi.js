@@ -14,15 +14,18 @@
  *   2. elle sort du sitemap, de la barre des onglets IA, et AUCUNE page du site n'y mene ;
  *   3. dans un vrai navigateur, avec ou sans JavaScript, on arrive sur swoge_ai.html, la
  *      requete et l'ancre intactes (avec JavaScript).
- * Utilise par perp_page.test.js, predict_page.test.js et colonies_page.test.js, qui
- * gardaient ces pages tant qu'elles existaient.
+ * Utilise par perp_page.test.js, predict_page.test.js, colonies_page.test.js et
+ * polymarket_ai_page.test.js, qui gardaient ces pages tant qu'elles existaient.
+ * 14/10/2026 (suite) : Polymarket AI est retiree a son tour (colonie eteinte cote serveur,
+ * POLY_PAPIER=0) ; swoge_ai.html reste la seule page IA.
  * ==========================================================================*/
 const fs = require('fs'), path = require('path'), http = require('http');
 const SITE = path.join(__dirname, '..');
 const DOMAINE = 'https://swoleeswoge.dog';
 const CIBLE = 'swoge_ai.html';
 /* Toutes les pages retirees : un renvoi n'est pas un lien qu'un menu propose. */
-const RETIREES = ['swoge_perp.html', 'swoge_predict.html', 'swoge_sol_ai.html', 'swoge_eth_ai.html', 'swoge_colonies.html'];
+const RETIREES = ['swoge_perp.html', 'swoge_predict.html', 'swoge_sol_ai.html', 'swoge_eth_ai.html', 'swoge_colonies.html',
+  'swoge_polymarket_ai.html'];
 
 async function verifieRenvoi(pages, titre) {
   let n = 0, rates = 0;

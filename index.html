@@ -771,18 +771,6 @@ body{ background:#F7F9FC; }
 /* L ecosysteme : les quatre portes gardent leur film. */
 .acc .univers{ gap:14px; }
 .acc .uni{ border-radius:18px; }
-/* La colonie : trois mesures, chacune avec son effectif. */
-.acc-mesures{ display:grid; grid-template-columns:1fr; gap:10px; }
-.acc-m{ display:grid !important; grid-template-columns:150px minmax(0,1fr); grid-template-rows:auto auto; column-gap:14px; align-items:baseline; }
-.acc-m small{ grid-column:1; } .acc-m b{ grid-column:1; grid-row:2; } .acc-m span{ grid-column:2; grid-row:1 / span 2; align-self:center; }
-@media (max-width:480px){ .acc-m{ grid-template-columns:1fr; } .acc-m span{ grid-column:1; grid-row:auto; } }
-.acc-m{ display:flex; flex-direction:column; gap:6px; border:1px solid #E6EBF2; border-radius:16px; padding:14px; background:#F7F9FC; min-width:0; color:#0B1736; }
-.acc-m:hover{ border-color:#1652F0; }
-.acc-m small{ font:800 11px/1.2 'Inter',system-ui,sans-serif; letter-spacing:.08em; color:#5B6B86; }
-.acc-m b{ font:800 22px/1.2 'Inter',system-ui,sans-serif; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
-.acc-m span{ font:500 12.5px/1.45 'Inter',system-ui,sans-serif; color:#5B6B86; }
-.acc-m b.pos{ color:#0E8A4F; } .acc-m b.neg{ color:#C8322B; }
-.acc-note{ margin:12px 0 0; font:500 12.5px/1.5 'Inter',system-ui,sans-serif; color:#5B6B86; }
 /* Le monde du jeu : une banniere claire, puis le classement, le niveau, le salon. */
 .acc-banniere{ position:relative; border-radius:18px; overflow:hidden; min-height:300px; display:flex; align-items:center; background:#EEF2F8; margin-bottom:16px; }
 .acc-banniere .film{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:center 10%; }
@@ -988,6 +976,7 @@ body{ background:#F7F9FC; }
        Demande du proprietaire, maquette a l appui : en-tete, heros, ecosysteme, couche IA,
        colonie, monde du jeu, SWOGE BET, economie des agents, economie $SWOGE, portefeuille,
        dernier appel, pied de page. Blanc dominant, aucune fausse donnee.
+       14/10/2026 : la section « colonie » est retiree (ses trois pages le sont) : onze sections.
        TOUT CE QUI VIVAIT ICI RESTE, avec ses identifiants et ses scripts : les quatre univers,
        l economie lue sur la chaine, le classement, le salon de poker, l offre de bienvenue, la
        liste SWOGE AI et le calendrier sportif. Les images et les trois films sont neufs —
@@ -1114,26 +1103,17 @@ body{ background:#F7F9FC; }
         <p class="sous">AI agents trading at real prices &mdash; measured in public, losses included.</p>
         <nav class="ia-liste" aria-label="SWOGE AI">
           <a class="ia-l vif" href="swoge_ai.html"><span class="ic">&#129302;</span><span><b>AI Trading Colony</b><small>Agents read new Robinhood Chain tokens, score them and trade what they see.</small></span><span class="fl">&rarr;</span></a>
-          <a class="ia-l vif" href="swoge_polymarket_ai.html"><span class="ic">&#127922;</span><span><b>Polymarket AI</b><small>A colony on Polymarket&rsquo;s 15-minute crypto markets.</small></span><span class="fl">&rarr;</span></a>
           <a class="ia-l vif" href="swoge_agents.html"><span class="ic">&#129504;</span><span><b>Agents</b><small>Chat with Claude, ChatGPT and Grok &mdash; or give an agent a task.</small></span><span class="fl">&rarr;</span></a>
         </nav>
       </section>
       </div>
     </section>
 
-    <!-- 5. LA COLONIE : ce que les colonies ont MESURE, lu sur le serveur, avec l effectif. -->
-    <section class="acc-sec acc-duo inverse" aria-labelledby="accTCol">
-      <div class="acc-visuel"><video class="film" data-src="media/accueil_colonie.mp4" poster="img/site/accueil/colonie.webp" muted loop playsinline disablepictureinpicture preload="none" aria-hidden="true" width="1200" height="800"></video></div>
-      <div class="acc-texte">
-        <div class="acc-tete"><small>THE COLONY</small><h2 id="accTCol">What the colonies measured</h2>
-          <p>Paper money at real prices and real fees. Each figure says how many observations it rests on, and none is a promise.</p></div>
-        <div class="acc-mesures" id="accColonie">
-          <a class="acc-m vif" href="swoge_polymarket_ai.html" data-m="poly"><small>POLYMARKET AI</small><b>--</b><span>Loads when you scroll here.</span></a>
-        </div>
-        <p class="acc-note" id="accColonieNote">Paper trading only &mdash; no result here is a profit, and none is financial advice.</p>
-      </div>
-    </section>
-
+    <!-- 5. LA COLONIE (14/10/2026) : section retiree. Ses cartes lisaient AI Perps, Predict puis
+         Polymarket AI (/poly/etat), toutes trois retirees du site a la demande du proprietaire ; la
+         colonie Polymarket est eteinte cote serveur (POLY_PAPIER=0). Une section « What the colonies
+         measured » sans aucune mesure ne montrerait rien : elle part, et la colonie Robinhood reste
+         joignable par la section IA ci-dessus et la tuile SWOGE AI. -->
     <!-- 6. LE MONDE DU JEU -->
     <section class="acc-sec" aria-labelledby="accTJeu">
       <div class="acc-banniere">
@@ -1314,7 +1294,7 @@ body{ background:#F7F9FC; }
     <footer class="acc-pied">
       <div class="acc-pied-g">
         <div><b>PLAY</b><a class="vif" href="games.html">Casino</a><a class="vif" href="swogebet.html">Sports</a><a class="vif" href="nexus.html">SWOGE World</a><a class="vif" href="swoge_poker.html">Poker</a></div>
-        <div><b>AI</b><a class="vif" href="swoge_ai.html">AI Trading</a><a class="vif" href="swoge_polymarket_ai.html">Polymarket AI</a></div>
+        <div><b>AI</b><a class="vif" href="swoge_ai.html">AI Trading</a></div>
         <div><b>AGENTS</b><a class="vif" href="swoge_agents.html">Agents</a><a class="vif" href="studio.html">Studio</a><a class="vif" href="swoge_agents.html?mode=store">Agent Store</a><a class="vif" href="agent_passport.html">Agent Passport</a><a class="vif" href="swogeagentic_api.html">Developers</a></div>
         <div><b>$SWOGE</b><a class="vif" href="swoge_wallet.html">Wallet</a><a class="vif" href="launchpad.html">Launchpad</a><a class="vif" href="whitepaper.html">Docs</a><a class="vif" href="https://dexscreener.com/robinhood/0x2dc0fb72d9284228046cc95910eeaabebfe48456" target="_blank" rel="noopener">Chart &#8599;</a></div>
         <div><b>COMMUNITY</b><a class="vif" href="https://x.com/SwoleDogeSwoge" target="_blank" rel="noopener">X &#8599;</a><a class="vif" href="https://t.me/swoleswoge" target="_blank" rel="noopener">Telegram &#8599;</a></div>
@@ -1645,53 +1625,8 @@ body{ background:#F7F9FC; }
     });
 })();
 </script>
-<!-- ---- LA COLONIE, MESUREE (01/10/2026) ----
-     Trois chiffres lus sur le serveur, chacun avec son effectif, et seulement quand la
-     section arrive a l ecran : /poly/etat pese 180 Ko, l accueil ne le paie que pour qui
-     descend jusque-la. Une reponse absente laisse « -- » : jamais un zero, jamais un
-     chiffre de maquette. Tout est pose en textContent.
-     14/10/2026 : AI Perps (/ai/perp) et Predict (/predict/etat) sont retirees du site
-     (demande du proprietaire : « ca ne sert a rien, ont de mauvais resultats ») ; leurs
-     cartes et leurs lectures partent avec. Reste Polymarket AI. -->
-<script>
-(function(){
-  "use strict";
-  var hote = document.getElementById("accColonie");
-  if(!hote) return;
-  function serveur(){
-    try{ var q=new URLSearchParams(location.search).get("server"); if(q) return String(q).replace(/^ws/,"http").replace(/\/$/,""); }catch(e){}
-    return "https://web-production-220a3.up.railway.app";
-  }
-  function nb(x){ return Number(x || 0).toLocaleString("en-US"); }
-  function pc(x, d){ var n = Number(x); return (n > 0 ? "+" : "") + n.toFixed(d == null ? 2 : d) + "%"; }
-  function pose(cle, valeur, sous, cls){
-    var a = hote.querySelector('[data-m="' + cle + '"]'); if(!a) return;
-    var b = a.querySelector("b"), sp = a.querySelector("span");
-    b.textContent = valeur; b.className = cls || ""; sp.textContent = sous;
-  }
-  function lit(chemin){ return fetch(serveur() + chemin, { cache: "no-store" }).then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); }); }
-  function charge(){
-    lit("/poly/etat").then(function(d){
-      var e = d && d.evidence, c = (d && d.calibration) || {};
-      if(!e || !e.tested) return pose("poly", "--", "No strategy measured yet.");
-      var cal = c.enough ? " Over " + nb(c.n) + " windows, the " + (c.brierMarket < c.brierModel ? "market was better calibrated than the model." : "model was better calibrated than the market.") : "";
-      /* 11/10 : « N proven », « Strategies with an edge » — faux tel quel. La barre du score par fenetre n est
-         pas valide aux prix extremes (sous H0, a 91-99 ¢, elle est franchie 37 fois plus souvent que suppose),
-         et les gardees perdent apres selection (−0,60 $ par pari sur 89 050, Coin −0,92 $). Une strategie
-         au-dessus de la barre est une candidate, non confirmee (voir swoge_polymarket_ai.html, pourquoiCandidate). */
-      var sv = d.survivors, apres = sv && sv.enough && sv.pnlPerBet != null && sv.pnl < 0
-        ? " Kept strategies lose after selection: " + (sv.pnlPerBet < 0 ? "\u2212$" : "$") + Math.abs(sv.pnlPerBet).toFixed(2) + " per bet over " + nb(sv.resolved) + " settled bets." : "";
-      pose("poly", nb(e.proven || 0) + " candidate" + (e.proven === 1 ? "" : "s"), "Above the skill bar and unconfirmed, out of " + nb(e.tested) + " strategies tested on Polymarket\u2019s 15-minute markets: the bar is not valid at extreme prices yet." + apres + cal);
-    })["catch"](function(){ pose("poly", "--", "The server did not answer."); });
-  }
-  if("IntersectionObserver" in window){
-    var vu = new IntersectionObserver(function(l){ if(l.some(function(x){ return x.isIntersecting; })){ vu.disconnect(); charge(); } }, { rootMargin: "300px" });
-    vu.observe(hote);
-  } else charge();
-})();
-</script>
 <!-- ---- LES FILMS DE L ACCUEIL, A LA DEMANDE (01/10/2026) ----
-     Neuf films, 6 a 8 Mo en tout : un telephone ne doit pas tout tirer a l ouverture. Hors du
+     Neuf films (huit depuis le retrait de la section colonie, 14/10/2026), 6 a 8 Mo en tout : un telephone ne doit pas tout tirer a l ouverture. Hors du
      heros, chaque film porte `data-src` et `preload="none"` : il se charge quand il approche de
      l ecran, joue tant qu il y est, et se met en pause quand il en sort. Mouvement reduit :
      aucun ne joue, l affiche (premiere image) reste. -->

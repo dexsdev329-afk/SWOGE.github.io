@@ -13,7 +13,8 @@
    ],
    "verdict": "ok",
    "titre": "Test mannequin",
-   "note": "Our pose guide, animated by our own code: it proves the format, not the art."
+   "essai": true,
+   "note": "Our pose guide, animated by our own code: it proves the format and the checks, not the art."
   }
  ]
 }

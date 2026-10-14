@@ -305,11 +305,36 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
    source (Verified / Not verified) et une ligne d'explication ; sur une ligne,
    le tableau des jetons faisait 1 400 px et cachait ses colonnes a 1440 (capture
    du 13/10). Les cellules passent a la ligne, la pastille de source jamais. */
-#sm .ds-table th, #sm .ds-table td{ white-space:normal; vertical-align:top; padding:9px 10px; }
+#sm .ds-table th, #sm .ds-table td{ white-space:normal; vertical-align:top; padding:9px 8px; }   /* 8 px (14/10) : le tableau des jetons de la base de controle debordait de 4 px a 1440 */
 #sm .ds-table td.num .sm-val{ white-space:nowrap; }
 #sm .ds-table td.mots{ overflow-wrap:anywhere; min-width:96px; }
 .sm-fil{ font-size:13px; color:var(--ds-pale); margin:0 0 10px; }
 .sm-fil a{ color:var(--ds-bleu); text-decoration:none; }
+/* Revue du 13/10 : l'etat perime se VOIT (pastille ambre, P4) ; chaque ligne a
+   sa preuve (P2), depliee a la demande (details : ni bouton ni formulaire) ;
+   les sources « Not verified » sont des liens (P3). */
+.ds-badge.vieux{ background:#FFF4E0; border-color:#F2D9A8; color:var(--ds-ambre); }
+.ds-badge.vieux .pt{ background:var(--ds-ambre); }
+.sm-bandeau{ background:#FDECEB; border:1px solid #F6C9C6; color:var(--ds-rouge); border-radius:12px; padding:10px 12px; font-weight:600; margin:0 0 10px; }
+.sm-preuve{ display:block; margin-top:4px; font-size:12px; }
+.sm-preuve > summary{ cursor:pointer; color:var(--ds-bleu); font-weight:600; list-style:none; white-space:nowrap; }
+.sm-preuve > summary::-webkit-details-marker{ display:none; }
+.sm-preuve > summary::before{ content:"\25B8  "; }
+.sm-preuve[open] > summary::before{ content:"\25BE  "; }
+.sm-preuve .sm-detail{ margin-top:6px; border-left:2px solid var(--ds-ligne); padding:2px 0 2px 8px; display:grid; gap:6px; min-width:0; }
+.sm-ligne{ font-size:12px; line-height:1.45; overflow-wrap:anywhere; }
+.sm-ligne a{ color:var(--ds-bleu); }
+a.sm-source{ font-size:11.5px; color:var(--ds-bleu); text-decoration:none; overflow-wrap:anywhere; }
+.sm-etroit{ display:none; }
+/* les etiquettes du tableau des jetons passent a la ligne (14/10 : « 3+ buyers in the first minute » en une
+   ligne faisait deborder le tableau de controle de 4 px a 1440 et de 7 px a 768) */
+#sm #jetons .sm-tag{ white-space:normal; }
+/* Sous 520 px, le Verdict passe sous la regle (P10 : a 320 et 390 px, la colonne
+   etait hors champ et l'on voyait « 1 / 1 Verified » sans la reserve). */
+@media (max-width:520px){ #sm .col-verdict{ display:none; } #sm .sm-etroit{ display:block; } }
+/* 768 px (P6) : le tableau des jetons defilait dans sa carte (744/692) et coupait
+   la colonne des drapeaux ; les cellules serrent un peu sous 1000 px. */
+@media (max-width:1000px){ #sm .ds-table th, #sm .ds-table td{ padding:8px 6px; } #sm .ds-table td.mots{ min-width:72px; } #sm .sm-adr{ font-size:11.5px; } #sm .sm-tag.flag, #sm a.sm-source{ overflow-wrap:anywhere; } #sm #jetons .sm-tag{ white-space:normal; } #sm .ds-table td .sm-src{ margin-left:2px; } }
 </style>
 <!-- IA-DESIGN:debut (copie de outils/ia_design.css par outils/onglets_ia.js, ne pas editer ici) -->
 <style>
@@ -516,7 +541,7 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
         <span class="ds-badge" id="pastille"><span class="pt"></span><span id="pastilleTxt">Connecting</span></span>
       </div>
       <h1 id="t-titre">Smart <em>Money</em></h1>
-      <p>Robinhood Chain tokens that went over <b>$1M</b>, and their <b>first 50 buyers</b>, read on chain: when each wallet entered, the ETH it paid and got back, what it still holds, and whether it came out ahead. Wallets that buy in coordinated groups, relay tokens or are funded by the creator get an <b>insider mark</b> and are never called smart.</p>
+      <p>Robinhood Chain tokens that went over <b>$1M</b>, and their <b>first 50 buyers</b>, read on chain: when each wallet entered, the ETH it paid and got back (fees included), what it still holds, and whether it came out ahead. Wallets that buy in the same block as others, relay tokens or get WETH from the creator carry an <b>insider pattern</b> mark and are never called smart. Funding in native ETH leaves no log: it is not read.</p>
       <p class="ds-sous" id="depuis"></p>
     </div>
     <div class="ds-faits">
@@ -525,6 +550,7 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
       <div class="ds-fait"><i>&#128202;</i><div><b>Every number says where it comes from</b><span>Verified = read on chain, with its block and transaction. Not verified = an outside price or an estimate.</span></div></div>
     </div>
   </section>
+  <p class="sm-bandeau" id="bandeau" hidden></p>
   <p class="ds-statut statut" id="statut" role="status">Loading the detector&hellip;</p>
 
   <section aria-label="Detector status">
@@ -537,7 +563,7 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
       <p id="walletsNote"></p>
     </div></div>
     <div class="ds-table haut"><table>
-      <thead><tr><th>Wallet</th><th>Rule</th><th class="num">Early &amp; up</th><th class="num">Base rate expects</th><th class="num">z</th><th>Verdict</th><th class="num">Gain (ETH)</th><th class="num">Avg entry</th></tr></thead>
+      <thead><tr><th>Wallet</th><th>Rule</th><th class="num">Early &amp; up</th><th class="num">Base rate expects</th><th class="num">z</th><th class="col-verdict">Verdict</th><th class="num">Gain (ETH)</th><th class="num">Avg entry</th></tr></thead>
       <tbody id="wallets"></tbody>
     </table></div>
     <div class="sm-legende" id="legende"></div>
@@ -578,12 +604,23 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
 
   <section class="ds-carte" aria-labelledby="t-groupes">
     <div class="ds-tete"><div>
-      <h2 id="t-groupes">Insider groups</h2>
+      <h2 id="t-groupes">Same-block buy groups</h2>
       <p id="groupesNote"></p>
     </div></div>
     <div class="ds-table"><table>
-      <thead><tr><th>Token</th><th>Block</th><th class="num">Wallets</th><th>Wallets</th></tr></thead>
+      <thead><tr><th>Token</th><th>Block</th><th class="num">Wallets</th><th>Among its first 50</th></tr></thead>
       <tbody id="groupes"></tbody>
+    </table></div>
+  </section>
+
+  <section class="ds-carte" aria-labelledby="t-liens">
+    <div class="ds-tete"><div>
+      <h2 id="t-liens">Links between tokens</h2>
+      <p id="liensNote"></p>
+    </div></div>
+    <div class="ds-table"><table>
+      <thead><tr><th>Link</th><th>Tokens</th><th>Read on chain</th></tr></thead>
+      <tbody id="liens"></tbody>
     </table></div>
   </section>
 
@@ -618,60 +655,109 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
  * La page MONTRE /ai/smart (smart_money.js) et ne decide rien. Les phrases vivent
  * dans PH (ph(cle, ...)), jamais en dur dans les peintres ; tout ce qui vient du
  * serveur est pose en textContent ; un lien n'est fait que vers dexscreener.com/
- * robinhood ou robinhoodchain.blockscout.com, pour une adresse ou un hash de la
- * bonne forme. Chaque chiffre porte « Verified » (lu sur la chaine) ou « Not
- * verified » (prix exterieur, estimation). */
+ * robinhood, robinhoodchain.blockscout.com ou geckoterminal.com/robinhood, pour
+ * une adresse ou un hash de la bonne forme. Chaque chiffre porte « Verified »
+ * (lu sur la chaine) ou « Not verified » (prix exterieur, estimation).
+ * Revue du 13/10 : chaque ligne deplie sa PREUVE (details, lue a la demande dans
+ * /ai/smart/wallet|jeton|createur : bloc, tx, marques) ; les sources Not verified
+ * sont des liens ; l'etat perime se voit ; ?server= n'accepte que le serveur
+ * officiel (et localhost pour les essais). */
 (function(){
   "use strict";
   var $ = function(id){ return document.getElementById(id); };
+  var OFFICIEL = "https://web-production-220a3.up.railway.app";
+  /* ?server= : liste FERMEE (revue N11 : un lien piege aurait affiche, sous le
+     domaine officiel, des wallets « Smart » et des « Verified » choisis par un tiers) */
+  var HOTES = ["web-production-220a3.up.railway.app", "localhost", "127.0.0.1"];
+  var ignore = false;
   function serveur(){
-    try{ var q=new URLSearchParams(location.search).get("server"); if(q) return String(q).replace(/^ws/,"http"); }catch(e){}
-    return "https://web-production-220a3.up.railway.app";
+    try{
+      var q=new URLSearchParams(location.search).get("server");
+      if(q){
+        var u = new URL(String(q).replace(/^ws/,"http"));
+        if (HOTES.indexOf(u.hostname) >= 0 && /^https?:$/.test(u.protocol)) return u.href.replace(/\/$/, "");
+        ignore = true;
+      }
+    }catch(e){ ignore = true; }
+    return OFFICIEL;
   }
+  var BASE = serveur();
   var ADR = /^0x[0-9a-fA-F]{40}$/, HASH = /^0x[0-9a-fA-F]{64}$/;
-  var EXPL = "https://robinhoodchain.blockscout.com/", DEX = "https://dexscreener.com/robinhood/";
+  var EXPL = "https://robinhoodchain.blockscout.com/", DEX = "https://dexscreener.com/robinhood/", GT = "https://www.geckoterminal.com/robinhood/pools/";
   /* Les phrases montrees aux joueurs (anglais). */
   var PH = {
-    connecting: "Connecting", live: "Reading live", off: "Off on the server", starting: "Starting", down: "Unreachable",
+    connecting: "Connecting", live: "Reading live", off: "Off on the server", starting: "Starting", down: "Unreachable", stale: "Stale", failing: "Last pass failed",
+    ignore: "The server address in this link was ignored: this page only reads the official server.",
     st_load: "Loading the detector…",
     st_off: "The detector is off on the server: nothing is read and no alert is sent. The last results are not shown while it is off.",
     st_start: "The detector is on and opening its database. The first pass reads the sources, then the chain.",
-    st_down: "The detector could not be read right now.",
+    st_down: "The detector could not be read right now. Retrying every minute.",
     st_ok: function(m){ return m === "observe" ? "Observing: results are computed and kept, no alert is sent yet." : "Alerts go to the owner only. Nothing is ever bought."; },
-    depuis: function(t){ return "Updated " + t + "."; },
+    st_stale: function(v, p){ return "The numbers below are old: last successful watch " + v + ", last complete pass " + p + ". The detector may be stopped or refused by the node."; },
+    st_failing: function(e){ return "The last pass did not finish: " + e + ". The numbers below come from earlier passes."; },
+    depuis: function(t){ return "Last chain read " + t + "."; },
+    jamais: "never",
     k_lus: "Tokens over $1M read", k_lus_s: function(r){ return "of " + r + " found (GeckoTerminal, DexScreener)"; },
     k_w: "Wallets scored", k_w_s: "first 50 buyers of each token",
-    k_smart: "Smart (owner’s rule)", k_smart_s: function(n){ return "early and up on " + n + "+ tokens, no insider mark"; },
-    k_ini: "Insider marks", k_ini_s: "never smart, whatever they won",
-    walletsNote: function(r){ return "A wallet is “smart” by the owner’s rule: it entered within the first hour and came out ahead on at least " + r.smart_jetons + " tokens over $1M, with no insider mark. Next to it: how many of those tokens ANY first-hour buyer won on average (the base rate), and the gap in standard deviations (z). No verdict under " + r.projets_assez + " projects. Gains are in ETH: paid and received in the pool’s swaps, plus what is still held at the pool’s last swap price."; },
+    k_smart: "Smart (owner’s rule)", k_smart_s: function(n){ return "early and up on " + n + "+ tokens, no insider pattern"; },
+    k_ini: "Insider patterns", k_ini_s: "never smart, whatever they won",
+    walletsNote: function(r){ return "A wallet is “smart” by the owner’s rule: it entered within the first hour and came out ahead on at least " + r.smart_jetons + " tokens over $1M, with no insider pattern. Next to it: how many of those tokens ANY first-hour buyer won on average (the base rate, without the wallet itself and without marked wallets, and only on tokens with " + r.base_assez + "+ known outcomes), and the gap in standard deviations (z). No verdict under " + r.projets_assez + " known outcomes. Gains are in ETH: what the wallet paid and got back, fees read in its receipts included, plus what it still holds at the pool’s last swap price — a price no sale may reach for a large bag."; },
     legende_v: "read on chain (block, transaction)", legende_nv: "outside price or estimate",
-    r_smart: "Smart", r_ini: "Insider", r_none: "—",
-    m_groupe: "group buy", m_relais: "relay", m_renvoi: "sent back to creator", m_finance: "funded by creator",
-    v_pas: function(n, r){ return "No verdict under " + r + " projects (" + n + " so far)"; },
-    v_mieux: "Beats the base rate", v_comme: "No better than the base rate", v_ini: "Insider mark — never smart",
-    vide: "Nothing yet.", vide_off: "Off on the server.",
+    r_smart: "Smart", r_ini: "Insider pattern", r_none: "—",
+    m_groupe: "same-block group buy", m_groupe_charge: "same-block pattern", m_paire: "repeated pair buy", m_coentree: "same blocks on several tokens", m_relais: "relay", m_renvoi: "sent back to creator", m_finance: "WETH from the creator",
+    m_preuve_bloc: function(b){ return "block " + Number(b).toLocaleString("en-US"); },
+    m_groupe_s: function(n, a){ return n + " wallets within ±2% in this block" + (a ? " (" + a + " buyers in the block)" : ""); },
+    m_paire_s: function(w){ return "with " + w + ", same block and same stake, twice or more"; },
+    m_coentree_s: function(n, k){ return n + " wallets bought in the same block on " + k + " tokens"; },
+    m_relais_s: function(nc){ return "99%+ sent on within 6,000 blocks" + (nc != null ? "; its buy was its transaction #" + nc : "") + ". A send to one’s own other wallet looks the same."; },
+    deduit: "“insider” is a reading of this pattern, not a fact about the wallet’s owner",
+    v_pas: function(n, r){ return "No verdict under " + r + " known outcomes (" + n + " so far)"; },
+    v_mieux: "Beats the base rate", v_comme: "No better than the base rate", v_ini: "Insider pattern — never smart",
+    vide: "Nothing yet.", vide_off: "Off on the server.", vide_down: "Unreachable — retrying every minute.",
     min: function(m){ return m == null ? "--" : (Math.round(m * 10) / 10) + " min"; },
-    createursNote: "The wallet that sent the transaction creating the token, read in its receipt. A wallet that runs a MIGRATION is shown as such: it did not create the original token. “Closed a day above $1M” uses GeckoTerminal’s daily close times the supply read on chain — an outside price, never a single wick. “Liquidity pulled”: 90% or more of the liquidity added was removed, read in the pool’s events.",
+    connus: function(g, c){ return g + " of " + c + " known"; },
+    connus_s: function(p){ return p + " early; the rest: outcome unknown"; },
+    preuve: "Proof", preuve_charge: "Reading…", preuve_ko: "Could not be read.",
+    p_part: function(sym, rang){ return sym + " — buyer #" + rang; },
+    p_inout: function(e, s, g){ return "paid " + e + " ETH · got " + s + " ETH · gain " + g + " ETH"; },
+    p_issue: { gagnant: "came out ahead", perdant: "came out behind", inconnu: "outcome unknown (tokens received or sent off-market)" },
+    p_frais_nv: "fees not read for every swap",
+    p_contrat: "a contract, not a wallet",
+    p_tot: "within the first hour", p_tard: "after the first hour",
+    createursNote: "The wallet that sent the transaction creating the token, read in its receipt. A wallet that runs a MIGRATION is shown as such: it did not create the original token. “Closed a day above $1M” uses GeckoTerminal’s daily close times the supply read on chain, or the current value when no close was read — an outside price, never a single wick. “Liquidity pulled”: 90% or more of the liquidity added was removed, read in the pool’s events.",
     role_deployeur: "Deployed the token", role_lanceur: "Launched it through a contract", role_migration: "Ran a migration (not the original creator)", role_inconnu: "First transaction read (not verified as deployer)",
-    lanc: function(n){ return n + " read"; }, lanc_s: function(r, m){ var l=[]; if(r) l.push(r + " on a known launchpad"); if(m) l.push(m + " migration" + (m === 1 ? "" : "s") + " sent"); return l.join(" · "); },
-    jetonsNote: "Kept when the current value or the best daily close passed $1M. Excluded: WETH, USDG, tokenized stocks, assets from other chains and address look-alikes. Launch, creator and first buyers are read on chain; dollar values are not.",
+    lanc_s: function(r, m){ var l=[]; l.push(r + " on a known launchpad"); l.push(m + " migration" + (m === 1 ? "" : "s") + " sent"); return l.join(" · "); },
+    lanc_nc: "not counted yet",
+    peak_not_read: function(r, k, n){ return r + " / " + n + " (" + (n - k) + " not read)"; },
+    jetonsNote: function(r){ return "Found among pools traded by " + r.actifs_min + "+ wallets in the last 24 hours (GeckoTerminal top pools); kept when the current value or the best daily close passed $1M — the close is looked up only for tokens worth $" + Math.round(r.pic_candidat_usd / 1000) + "k+ now. A token that peaked over $1M and then died is not listed. Excluded: WETH, USDG, tokenized stocks, assets from other chains and address look-alikes. Launch, creator and first buyers are read on chain; dollar values are not."; },
     pic_s: function(j){ return "best daily close" + (j ? ", " + j : ""); },
     now: function(u){ return "now " + u; },
+    src_gt: "GeckoTerminal", src_ds: "DexScreener",
     bloc: function(b){ return "block " + Number(b).toLocaleString("en-US"); },
-    gagnants: function(g, n){ return g + " of " + n; }, gagnants_s: "on paper, at the last swap",
+    gagnants: function(g, n){ return g + " of " + n; }, gagnants_s: "known outcomes, marked wallets left out; on paper, at the last swap",
+    premiers_moins: function(n, r){ return "only " + n + " first buyers of " + r + " read"; },
+    base_petite: function(r){ return "under " + r + ": no base rate"; },
     statut_a_lire: "to read", statut_erreur: "not readable",
-    ancien: function(a, c){ return "old token " + a + " created by " + c; },
+    erreur: { "no ETH pool found on chain": "no ETH pool found on chain (it trades against another asset)", "totalSupply or decimals unreadable": "supply or decimals could not be read" },
+    ancien_j: "old token", ancien_c: "created by",
     d_dead: function(q, s){ return q + " " + s + " moved out of 0x…dead (a burn address cannot sign)"; },
     d_retire: function(p){ return p + "% of the liquidity added was removed"; },
-    rc_burn: "creator bought, then burned", rc_bots: "bots in the first minute", rc_profil: "paid DexScreener profile within 3 h",
-    nouveauxNote: "Pools born in the last 24 hours against ETH, read on chain every 5 minutes. An alert fires when a creator already known launches, or when 2 smart wallets buy the same new token within an hour.",
-    groupesNote: function(r){ return r.groupe_min + " or more wallets buying in the same block with amounts within ±" + r.groupe_ecart_pct + "% of each other. Each one gets an insider mark."; },
-    passeNote: "A pass every 30 minutes, a watch every 5 minutes, both read-only and within a call budget.",
+    d_sur: function(s){ return "on " + s; },
+    rc_burn: "creator bought, then burned", rc_bots: function(n){ return n + "+ buyers in the first minute"; }, rc_bots_nv: "read as bots", rc_profil: "paid DexScreener profile within 3 h",
+    nouveauxNote: function(r){ return "Tokens whose pool against ETH was born in the last 24 hours, read on chain every " + r.veille_min + " minutes. An alert fires when a creator already known launches, or when 2 smart wallets buy the same new token within an hour. A wallet with " + r.lanceur_auto + "+ launches in 24 hours is an automated launcher: no alert per token."; },
+    auto: function(n){ return "automated launcher (" + n + " in 24 h)"; },
+    pools: function(n){ return n + " pools"; },
+    groupesNote: function(r){ return r.groupe_min + " or more wallets buying in the same block with amounts within ±" + r.groupe_ecart_pct + "% of each other — the pattern is read on chain. Some groups are chance: in a busy block (more than " + r.bloc_charge + " buyers) the mark reads “same-block pattern”."; },
+    g_taille: function(n, k){ return n + " wallets, " + k + " among its first 50"; },
+    liensNote: "Two tokens are linked when they share a creator, a migration operator, 5 or more of their first 50 buyers, or a launch recipe. A recipe mixes on-chain reads with an outside source.",
+    l_meme_createur: "Same creator", l_meme_operateur_migration: "Same migration operator", l_memes_premiers: "Shared first buyers", l_meme_recette: "Same launch recipe",
+    l_memes_premiers_s: function(n){ return n + " of their first 50 buyers"; },
+    passeNote: function(r){ return "A pass every " + r.passe_min + " minutes, a watch every " + r.veille_min + " minutes, both read-only and within a call budget."; },
     p_statut: "Last pass", p_appels: "Node calls", p_sources: "Source calls", p_veille: "Last watch",
-    p_statut_s: function(n){ return n + " token" + (n === 1 ? "" : "s") + " read"; },
+    p_statut_s: function(n, f){ return n + " token" + (n === 1 ? "" : "s") + " read · ended " + f; },
     p_appels_s: function(o){ return (Math.round(o / 1e5) / 10) + " MB read"; },
     p_sources_s: "GeckoTerminal · DexScreener",
-    p_veille_s: function(c, a){ return c + " pools born · " + a + " alert" + (a === 1 ? "" : "s"); },
+    p_veille_s: function(c, a, f){ return c + " pools born · " + a + " alert" + (a === 1 ? "" : "s") + " · ended " + f; },
     s_ok: "complete", s_budget: "stopped at its budget", s_abandon: "stopped (node refused)", s_erreur: "error",
     pool_v: function(v){ return v ? "Uniswap v" + v : "pool"; }
   };
@@ -681,6 +767,7 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
   function court(a){ a=String(a||""); return a.length>14 ? a.slice(0,6)+"…"+a.slice(-4) : a; }
   function nb(n){ return n==null||!isFinite(n) ? "--" : Number(n).toLocaleString("en-US"); }
   function usd(u){ if(u==null||!isFinite(u)) return "--"; if(u>=1e9) return "$"+(u/1e9).toFixed(2)+"B"; if(u>=1e6) return "$"+(u/1e6).toFixed(2)+"M"; if(u>=1e3) return "$"+Math.round(u/1e3)+"k"; return "$"+Math.round(u); }
+  function heure(t){ return t ? new Date(t*1000).toISOString().replace("T"," ").slice(0,16) + " UTC" : ph("jamais"); }
   /* wei (chaine) -> ETH signe, 4 decimales au plus ; BigInt quand le navigateur l'a */
   function eth(w){
     if (w == null || !/^-?\d+$/.test(String(w))) return "--";
@@ -690,6 +777,7 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
     var t = x >= 100 ? x.toFixed(1) : x >= 1 ? x.toFixed(3) : x >= 0.0001 ? x.toFixed(4) : x > 0 ? "<0.0001" : "0";
     return (neg && t !== "0" ? "−" : (t !== "0" ? "+" : "")) + t;
   }
+  function ethNu(w){ var t = eth(w); return t.replace(/^[+−]/, ""); }
   function quantite(brut, dec){
     if (!/^\d+$/.test(String(brut||""))) return "?";
     var v = Number(String(brut)) / Math.pow(10, Number(dec)||0);
@@ -697,16 +785,93 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
   }
   function src(v){ var s = el("span", "sm-src " + (v ? "v" : "nv"), v ? "Verified" : "Not verified"); return s; }
   function lien(type, x, txt, cls){
-    var ok = type === "tx" ? HASH.test(String(x||"")) : ADR.test(String(x||""));
+    var ok = type === "tx" ? HASH.test(String(x||"")) : type === "gt" ? (ADR.test(String(x||"")) || HASH.test(String(x||""))) : ADR.test(String(x||""));
     if (!ok) return el("span", cls || "sm-adr", txt != null ? txt : court(x));
     var a = el("a", cls || "sm-adr", txt != null ? txt : court(x));
-    a.href = (type === "dex" ? DEX : EXPL + (type === "tx" ? "tx/" : "address/")) + String(x).toLowerCase();
+    a.href = (type === "dex" ? DEX : type === "gt" ? GT : EXPL + (type === "tx" ? "tx/" : "address/")) + String(x).toLowerCase();
     a.target = "_blank"; a.rel = "noopener";
     return a;
   }
+  /* la source d'une valeur Not verified, en clair et cliquable (revue P3) */
+  function source(type, x, txt){ return lien(type, x, txt, "sm-source"); }
   function td(cls){ return el("td", cls || null); }
   function ligneVide(tb, n, txt){ var tr=el("tr"), c=el("td", null, txt); c.colSpan=n; tr.appendChild(c); tb.appendChild(tr); }
   function kpi(titre, val, sous){ var k=el("div","ds-kpi"); k.appendChild(el("small",null,titre)); k.appendChild(el("b",null,val)); k.appendChild(el("span",null,sous)); return k; }
+  function ligne(parent){ var d = el("div", "sm-ligne"); parent.appendChild(d); return d; }
+  function texte(parent, t){ parent.appendChild(document.createTextNode(t)); }
+
+  /* ---- la PREUVE d'une ligne : lue a la demande (revue P2) ---- */
+  function preuve(route, a, peintre){
+    var d = el("details", "sm-preuve"); d.appendChild(el("summary", null, ph("preuve")));
+    var corps = el("div", "sm-detail"); d.appendChild(corps);
+    var lue = false;
+    d.addEventListener("toggle", function(){
+      if (!d.open || lue || !ADR.test(String(a||""))) return;
+      lue = true; corps.textContent = ""; corps.appendChild(el("span", "sm-sous", ph("preuve_charge")));
+      fetch(BASE + "/ai/smart/" + route + "?a=" + String(a).toLowerCase(), { cache: "no-store" }).then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); })
+        .then(function(x){ corps.textContent = ""; peintre(corps, x || {}); })
+        ["catch"](function(){ lue = false; corps.textContent = ""; corps.appendChild(el("span", "sm-sous", ph("preuve_ko"))); });
+    });
+    return d;
+  }
+  function peintMarque(l, m, sym){
+    var p = m.preuve || {};
+    var nom = m.type === "groupe" && p.acheteursBloc > ((etat.d && etat.d.regles && etat.d.regles.bloc_charge) || 5) ? ph("m_groupe_charge") : ph("m_" + m.type);
+    l.appendChild(el("span", "sm-tag initie", nom));
+    if (m.type === "coentree") {
+      texte(l, " " + ph("m_coentree_s", (p.membres||[]).length, (p.blocs||[]).length ? (function(){ var s={}; p.blocs.forEach(function(b){ s[b.jeton]=1; }); return Object.keys(s).length; })() : 0) + " ");
+      (p.blocs||[]).forEach(function(b){ l.appendChild(lien("tx", b.tx, ph("m_preuve_bloc", b.bloc))); texte(l, " "); });
+    } else if (m.type === "paire") {
+      texte(l, " " + ph("m_paire_s", court(p.avec)) + " ");
+      (p.blocs||[]).forEach(function(b){ l.appendChild(lien("tx", b.tx, ph("m_preuve_bloc", b.bloc))); texte(l, " "); });
+    } else {
+      if (m.type === "groupe") texte(l, " " + ph("m_groupe_s", p.n || "?", p.acheteursBloc) + " ");
+      if (m.type === "relais") texte(l, " " + ph("m_relais_s", p.nonceAchat) + " ");
+      if (p.bloc != null) l.appendChild(lien("tx", p.tx, ph("m_preuve_bloc", p.bloc)));
+    }
+    l.appendChild(src(true));
+  }
+  function peintParticipation(c, x){
+    var l = ligne(c);
+    l.appendChild(lien("dex", x.jeton, ph("p_part", x.symbole || court(x.jeton), x.rang), "sm-nom"));
+    texte(l, " · "); l.appendChild(lien("tx", x.tx, ph("bloc", x.bloc))); l.appendChild(src(true));
+    texte(l, " · " + (x.tot ? ph("p_tot") : ph("p_tard")));
+    var l2 = ligne(c);
+    texte(l2, ph("p_inout", ethNu(x.entre_wei), ethNu(x.sorti_wei), eth(x.gain_wei)) + " — " + (PH.p_issue[x.issue] || x.issue) + " ");
+    l2.appendChild(src(true));
+    if (x.frais_lus === false) { l2.appendChild(el("span", "sm-sous", ph("p_frais_nv"))); l2.appendChild(src(false)); }
+    if (x.contrat) l2.appendChild(el("span", "sm-tag", ph("p_contrat")));
+    (x.marques || []).forEach(function(m){ peintMarque(ligne(c), m); });
+    if ((x.marques || []).length) c.appendChild(el("span", "sm-sous", ph("deduit")));
+  }
+  function peintPreuveWallet(c, w){
+    var l = w.participations || [];
+    if (!l.length) { c.appendChild(el("span", "sm-sous", ph("vide"))); return; }
+    l.forEach(function(x){ peintParticipation(c, x); });
+  }
+  function peintPreuveJeton(c, j){
+    (j.acheteurs || []).slice(0, 50).forEach(function(x){
+      var l = ligne(c);
+      texte(l, "#" + x.rang + " "); l.appendChild(lien("adresse", x.wallet)); texte(l, " · "); l.appendChild(lien("tx", x.tx, ph("bloc", x.bloc)));
+      texte(l, " · " + ph("p_inout", ethNu(x.entre_wei), ethNu(x.sorti_wei), eth(x.gain_wei)) + " — " + (PH.p_issue[x.issue] || x.issue) + " ");
+      l.appendChild(src(true));
+      if (x.frais_lus === false) l.appendChild(src(false));
+      (x.marques || []).forEach(function(m){ texte(l, " "); l.appendChild(el("span", "sm-tag initie", ph("m_" + m.type))); });
+    });
+    (j.liens || []).filter(function(x){ return x.type !== "migration"; }).forEach(function(x){
+      var l = ligne(c); l.appendChild(el("span", "sm-tag", ph("l_" + x.type))); texte(l, " "); l.appendChild(lien("dex", x.a === j.adresse ? x.b : x.a)); l.appendChild(src(x.type !== "meme_recette"));
+    });
+  }
+  function peintPreuveCreateur(c, x){
+    (x.lus || []).forEach(function(j){
+      var l = ligne(c);
+      l.appendChild(lien("dex", j.adresse, j.symbole || court(j.adresse), "sm-nom")); texte(l, " · ");
+      if (j.lancement) { l.appendChild(lien("tx", j.lancement.tx, ph("bloc", j.lancement.bloc))); l.appendChild(src(true)); }
+      if (j.pic) { texte(l, " · " + usd(j.pic.usd) + " "); l.appendChild(src(false)); texte(l, " "); l.appendChild(source("gt", j.pic.piscine, ph("src_gt"))); }
+      else if (j.cap) { texte(l, " · " + ph("now", usd(j.cap.usd)) + " "); l.appendChild(src(false)); texte(l, " "); l.appendChild(source("gt", j.cap.piscine, ph("src_gt"))); }
+    });
+    (x.creations || []).slice(0, 10).forEach(function(n){ var l = ligne(c); l.appendChild(lien("dex", n.jeton)); texte(l, " · "); l.appendChild(lien("tx", n.tx, ph("bloc", n.bloc))); l.appendChild(src(true)); });
+  }
 
   var etat = { d: null };
   function peintKpis(d){
@@ -719,24 +884,32 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
   }
   function verdict(w, r){
     if (w.verdict === "initie") return ph("v_ini");
-    if (w.verdict === "pas_assez") return ph("v_pas", w.projets, r.projets_assez||10);
+    if (w.verdict === "pas_assez") return ph("v_pas", w.jugeables != null ? w.jugeables : (w.connus != null ? w.connus : w.projets), r.projets_assez||10);
     if (w.verdict === "mieux_que_la_base") return ph("v_mieux");
     return ph("v_comme");
   }
-  function peintWallets(d){
+  function regles(d){ var r = d.regles || {}; return { smart_jetons: r.smart_jetons||3, projets_assez: r.projets_assez||10, base_assez: r.base_assez||20, groupe_min: r.groupe_min||3, groupe_ecart_pct: r.groupe_ecart_pct||2, bloc_charge: r.bloc_charge||5,
+    actifs_min: r.actifs_min||50, pic_candidat_usd: r.pic_candidat_usd||100000, lanceur_auto: r.lanceur_auto||8, veille_min: r.veille_min||5, passe_min: r.passe_min||30, acheteurs: r.acheteurs||50 }; }
+  function peintWallets(d, vide){
     var tb=$("wallets"); tb.textContent="";
-    var r=d.regles||{}, l=d.wallets||[];
-    $("walletsNote").textContent = ph("walletsNote", { smart_jetons: r.smart_jetons||3, projets_assez: r.projets_assez||10 });
-    if (!l.length) { ligneVide(tb, 8, d.actif ? ph("vide") : ph("vide_off")); return; }
+    var r=regles(d), l=d.wallets||[];
+    $("walletsNote").textContent = ph("walletsNote", r);
+    if (!l.length) { ligneVide(tb, 8, vide); return; }
     l.forEach(function(w){
       var tr=el("tr");
-      var c0=td(); c0.appendChild(lien("adresse", w.adresse)); tr.appendChild(c0);
-      var c1=td(); c1.appendChild(el("span", "sm-tag " + (w.smart ? "smart" : w.initie ? "initie" : ""), w.smart ? ph("r_smart") : w.initie ? ph("r_ini") : ph("r_none"))); tr.appendChild(c1);
-      var c2=td("num"); c2.textContent = nb(w.gagnants) + " / " + nb(w.projets); c2.appendChild(src(true)); tr.appendChild(c2);
-      tr.appendChild(el("td", "num", w.attendu==null ? "--" : (Math.round(w.attendu*10)/10).toFixed(1)));
+      var c0=td(); c0.appendChild(lien("adresse", w.adresse)); c0.appendChild(preuve("wallet", w.adresse, peintPreuveWallet)); tr.appendChild(c0);
+      var c1=td("mots"); c1.appendChild(el("span", "sm-tag " + (w.smart ? "smart" : w.initie ? "initie" : ""), w.smart ? ph("r_smart") : w.initie ? ph("r_ini") : ph("r_none")));
+      c1.appendChild(el("span", "sm-sous sm-etroit", verdict(w, r))); tr.appendChild(c1);
+      /* gagnants sur les issues CONNUES, et le nombre de jetons « tot » a cote (revue P10) */
+      var connus = w.connus != null ? w.connus : w.projets;
+      var c2=td("num"); c2.appendChild(el("span", "sm-val", ph("connus", nb(w.gagnants), nb(connus)))); c2.appendChild(src(true));
+      if (connus < w.projets) c2.appendChild(el("span", "sm-sous", ph("connus_s", nb(w.projets))));
+      tr.appendChild(c2);
+      /* aucun jeton a taux jugeable : pas d'attendu (jamais un 0.0 qui ressemble a une mesure) */
+      tr.appendChild(el("td", "num", w.attendu==null || w.jugeables === 0 ? "--" : (Math.round(w.attendu*10)/10).toFixed(1)));
       tr.appendChild(el("td", "num", w.z==null || !isFinite(w.z) ? "n/a" : (w.z>=0?"+":"−") + Math.abs(Math.round(w.z*10)/10).toFixed(1)));
-      tr.appendChild(el("td", "mots", verdict(w, r)));
-      var c6=td("num"); c6.textContent = eth(w.gain_total_wei); c6.appendChild(src(true)); tr.appendChild(c6);
+      tr.appendChild(el("td", "mots col-verdict", verdict(w, r)));
+      var c6=td("num"); c6.appendChild(el("span", "sm-val", eth(w.gain_total_wei))); c6.appendChild(src(true)); tr.appendChild(c6);
       tr.appendChild(el("td", "num", ph("min", w.delai_moyen_min)));
       tb.appendChild(tr);
     });
@@ -744,113 +917,182 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
     var a=el("span"); a.appendChild(src(true)); a.appendChild(document.createTextNode(" " + ph("legende_v"))); lg.appendChild(a);
     var b=el("span"); b.appendChild(src(false)); b.appendChild(document.createTextNode(" " + ph("legende_nv"))); lg.appendChild(b);
   }
-  function role(r){ return ph("role_" + (["deployeur","lanceur","migration"].indexOf(r) >= 0 ? r : "inconnu")); }
-  function peintCreateurs(d){
+  var ROLES_VERIFIES = ["deployeur","lanceur","migration"];
+  function role(r){ return ph("role_" + (ROLES_VERIFIES.indexOf(r) >= 0 ? r : "inconnu")); }
+  function peintCreateurs(d, vide){
     var tb=$("createurs"); tb.textContent="";
     $("createursNote").textContent = ph("createursNote");
     var l=d.createurs||[];
-    if (!l.length) { ligneVide(tb, 8, d.actif ? ph("vide") : ph("vide_off")); return; }
+    if (!l.length) { ligneVide(tb, 8, vide); return; }
     l.forEach(function(c){
       var tr=el("tr");
-      var c0=td(); c0.appendChild(lien("adresse", c.adresse)); tr.appendChild(c0);
-      var c1=td("mots"); c1.textContent=role(c.role); c1.appendChild(src(true)); tr.appendChild(c1);
+      var c0=td(); c0.appendChild(lien("adresse", c.adresse)); c0.appendChild(preuve("createur", c.adresse, peintPreuveCreateur)); tr.appendChild(c0);
+      /* la pastille suit la verification du role (revue P1) */
+      var c1=td("mots"); c1.textContent=role(c.role); c1.appendChild(src(ROLES_VERIFIES.indexOf(c.role) >= 0)); tr.appendChild(c1);
       tr.appendChild(el("td", "num", nb(c.lancements)));
-      var c3=td("num"); c3.textContent=nb(c.reussites) + " / " + nb(c.lancements); c3.appendChild(src(false)); tr.appendChild(c3);
+      var c3=td("num");
+      var k = c.reussites_connues != null ? c.reussites_connues : c.lancements;
+      c3.textContent = k < c.lancements ? ph("peak_not_read", nb(c.reussites), k, c.lancements) : nb(c.reussites) + " / " + nb(c.lancements);
+      c3.appendChild(src(false)); tr.appendChild(c3);
       var c4=td("num"); c4.textContent=nb(c.retraits); c4.appendChild(src(true)); tr.appendChild(c4);
       var c5=td("num"); c5.textContent=nb(c.lp_brulees); c5.appendChild(src(true)); tr.appendChild(c5);
-      var c6=td("num"); c6.textContent=ph("lanc", nb(c.lancements)); var s=ph("lanc_s", c.rampes||0, c.migrations||0); if (s) c6.appendChild(el("span","sm-sous", s)); tr.appendChild(c6);
-      tr.appendChild(el("td", null, c.drapeaux ? String(c.drapeaux) : "—"));
+      /* null = pas encore compte, jamais 0 (revue P5) */
+      var c6=td("mots"); c6.textContent = c.rampes == null || c.migrations == null ? ph("lanc_nc") : ph("lanc_s", c.rampes, c.migrations); if (c.rampes != null && c.migrations != null) c6.appendChild(src(true)); tr.appendChild(c6);
+      var c7=td("mots");
+      (c.drapeaux_liste||[]).forEach(function(f){
+        if (f.type === "sortie_de_dead") { c7.appendChild(el("span","sm-tag flag", ph("d_dead", quantite(f.valeur, f.decimales), f.symbole||""))); c7.appendChild(lien("tx", f.tx, ph("bloc", f.bloc))); c7.appendChild(src(true)); }
+        else if (f.type === "retrait") { c7.appendChild(el("span","sm-tag flag", ph("d_retire", Math.round(f.pct)) + " — " + ph("d_sur", f.symbole || court(f.jeton)))); if (f.tx) c7.appendChild(lien("tx", f.tx, ph("bloc", f.bloc))); c7.appendChild(src(true)); }
+      });
+      if (!c7.childNodes.length) c7.textContent = c.drapeaux ? String(c.drapeaux) : "—";
+      tr.appendChild(c7);
       tb.appendChild(tr);
     });
   }
-  function peintJetons(d){
+  function peintJetons(d, vide){
     var tb=$("jetons"); tb.textContent="";
-    $("jetonsNote").textContent = ph("jetonsNote");
+    var r = regles(d);
+    $("jetonsNote").textContent = ph("jetonsNote", r);
     var l=d.jetons||[];
-    if (!l.length) { ligneVide(tb, 6, d.actif ? ph("vide") : ph("vide_off")); return; }
+    if (!l.length) { ligneVide(tb, 6, vide); return; }
     l.forEach(function(j){
       var tr=el("tr");
-      var c0=td("mots"); c0.appendChild(lien("dex", j.adresse, j.symbole || court(j.adresse), "sm-nom")); c0.appendChild(el("span","sm-sous", court(j.adresse) + (j.statut !== "lu" ? " · " + ph("statut_" + (j.statut === "erreur" ? "erreur" : "a_lire")) : ""))); tr.appendChild(c0);
-      var c1=td("num"); if (j.pic) { c1.appendChild(el("span","sm-val",usd(j.pic.usd))); c1.appendChild(src(false)); var ps=el("span","sm-sous", ph("pic_s", j.pic.jour)); ps.title=j.pic.source||""; c1.appendChild(ps); } else c1.textContent="--"; tr.appendChild(c1);
-      if (j.cap) { var pn=el("span","sm-sous"); pn.appendChild(el("span","sm-val",ph("now", usd(j.cap.usd)))); pn.appendChild(src(false)); c1.appendChild(pn); }
+      var c0=td("mots"); c0.appendChild(lien("dex", j.adresse, j.symbole || court(j.adresse), "sm-nom"));
+      var st = j.statut !== "lu" ? " · " + ph("statut_" + (j.statut === "erreur" ? "erreur" : "a_lire")) : "";
+      c0.appendChild(el("span","sm-sous", court(j.adresse) + st));
+      if (j.statut === "erreur" && j.erreur) c0.appendChild(el("span","sm-sous", PH.erreur[j.erreur] || j.erreur));
+      tr.appendChild(c0);
+      var c1=td("num");
+      if (j.pic) { c1.appendChild(el("span","sm-val",usd(j.pic.usd))); c1.appendChild(src(false)); c1.appendChild(el("span","sm-sous", ph("pic_s", j.pic.jour))); c1.appendChild(source("gt", j.pic.piscine, j.pic.source || ph("src_gt"))); }
+      if (j.cap) { var pn=el("span","sm-sous"); pn.appendChild(el("span","sm-val",ph("now", usd(j.cap.usd)))); pn.appendChild(src(false)); c1.appendChild(pn); c1.appendChild(source("gt", j.cap.piscine, j.cap.source || ph("src_gt"))); }
+      if (!j.pic && !j.cap) c1.textContent="--";
+      tr.appendChild(c1);
       var c3=td(); if (j.lancement) { c3.appendChild(lien("tx", j.lancement.tx, ph("bloc", j.lancement.bloc))); c3.appendChild(src(true)); c3.appendChild(el("span","sm-sous", ph("pool_v", j.lancement.version))); } else c3.textContent="--"; tr.appendChild(c3);
       var c4=td("mots");
       if (j.createur && j.createur.adresse) {
         c4.appendChild(lien("adresse", j.createur.adresse)); c4.appendChild(src(!!j.createur.verifie));
         c4.appendChild(el("span","sm-sous", role(j.createur.role)));
         var an = j.details && j.details.ancien;
-        if (an && an.createur) c4.appendChild(el("span","sm-sous", ph("ancien", court(an.jeton), court(an.createur))));
+        if (an && an.createur) {
+          var s = el("span","sm-sous"); texte(s, ph("ancien_j") + " "); s.appendChild(lien("dex", an.jeton)); texte(s, " " + ph("ancien_c") + " "); s.appendChild(lien("adresse", an.createur));
+          if (an.tx) { texte(s, " "); s.appendChild(lien("tx", an.tx, ph("bloc", an.bloc))); }
+          s.appendChild(src(an.role === "deployeur" || an.role === "lanceur")); c4.appendChild(s);
+        }
       } else c4.textContent="--";
       tr.appendChild(c4);
-      var c5=td("num"); if (j.base && j.base.n) { c5.textContent=ph("gagnants", j.base.gagnants, j.base.n); c5.appendChild(src(true)); c5.appendChild(el("span","sm-sous", ph("gagnants_s"))); } else c5.textContent="--"; tr.appendChild(c5);
+      var c5=td("num");
+      var np = j.details && j.details.nPremiers;
+      if (j.base && j.base.n) { c5.appendChild(el("span","sm-val", ph("gagnants", j.base.gagnants, j.base.n))); c5.appendChild(src(true)); c5.appendChild(el("span","sm-sous", ph("gagnants_s"))); if (j.base.n < r.base_assez) c5.appendChild(el("span","sm-sous", ph("base_petite", r.base_assez))); }
+      else c5.textContent="--";
+      if (j.statut === "lu" && np != null && np < r.acheteurs) c5.appendChild(el("span","sm-sous", ph("premiers_moins", np, r.acheteurs)));
+      if (j.statut === "lu") c5.appendChild(preuve("jeton", j.adresse, peintPreuveJeton));
+      tr.appendChild(c5);
       var c6=td("mots");
       (j.drapeaux||[]).forEach(function(f){ if (f.type === "sortie_de_dead") { var t=el("span","sm-tag flag", ph("d_dead", quantite(f.valeur, f.decimales), j.symbole||"")); c6.appendChild(t); c6.appendChild(lien("tx", f.tx, ph("bloc", f.bloc))); c6.appendChild(src(true)); } });
       if (j.liquidite && j.liquidite.retirePct >= 90) { c6.appendChild(el("span","sm-tag flag", ph("d_retire", Math.round(j.liquidite.retirePct)))); if (j.liquidite.plusGrosRetrait) c6.appendChild(lien("tx", j.liquidite.plusGrosRetrait.tx, ph("bloc", j.liquidite.plusGrosRetrait.bloc))); c6.appendChild(src(true)); }
       var rc=j.recette||{};
-      if (rc.achatPuisBrule) c6.appendChild(el("span","sm-tag", ph("rc_burn")));
-      if (rc.robots1reMinute >= 3) c6.appendChild(el("span","sm-tag", ph("rc_bots")));
-      if (rc.profilSous3h) { c6.appendChild(el("span","sm-tag", ph("rc_profil"))); c6.appendChild(src(false)); }
+      if (rc.achatPuisBrule) { c6.appendChild(el("span","sm-tag", ph("rc_burn"))); c6.appendChild(src(true)); }
+      if (rc.robots1reMinute >= (d.regles && d.regles.robots_min || 3)) { c6.appendChild(el("span","sm-tag", ph("rc_bots", d.regles && d.regles.robots_min || 3))); c6.appendChild(src(true)); c6.appendChild(el("span","sm-sous", ph("rc_bots_nv"))); c6.appendChild(src(false)); }
+      if (rc.profilSous3h) { c6.appendChild(el("span","sm-tag", ph("rc_profil"))); c6.appendChild(src(false)); c6.appendChild(source("dex", j.adresse, ph("src_ds"))); }
       if (!c6.childNodes.length) c6.textContent="—";
       tr.appendChild(c6);
       tb.appendChild(tr);
     });
   }
-  function peintNouveaux(d){
+  function peintNouveaux(d, vide){
     var tb=$("nouveaux"); tb.textContent="";
-    $("nouveauxNote").textContent = ph("nouveauxNote");
+    $("nouveauxNote").textContent = ph("nouveauxNote", regles(d));
     var l=d.nouveaux||[];
-    if (!l.length) { ligneVide(tb, 4, d.actif ? ph("vide") : ph("vide_off")); return; }
-    l.forEach(function(n){
+    if (!l.length) { ligneVide(tb, 4, vide); return; }
+    /* une ligne par JETON (un lancement v2 cree deux paires : revue P8) */
+    var ordre = [], par = {};
+    l.forEach(function(n){ var k = String(n.jeton); if (!par[k]) { par[k] = []; ordre.push(k); } par[k].push(n); });
+    ordre.slice(0, 30).forEach(function(k){
+      var g = par[k], n = g[0];
       var tr=el("tr");
       var c0=td(); c0.appendChild(lien("dex", n.jeton)); tr.appendChild(c0);
-      tr.appendChild(el("td", null, ph("pool_v", n.version)));
+      var c1=td("mots"); g.forEach(function(x, i){ if (i) texte(c1, " "); c1.appendChild(lien("adresse", x.pool, ph("pool_v", x.version))); }); if (g.length > 1) c1.appendChild(el("span","sm-sous", ph("pools", g.length))); tr.appendChild(c1);
       var c2=td(); c2.appendChild(lien("tx", n.tx, ph("bloc", n.bloc))); c2.appendChild(src(true)); tr.appendChild(c2);
-      var c3=td("mots"); if (n.createur) { c3.appendChild(lien("adresse", n.createur)); c3.appendChild(src(!!n.verifie)); c3.appendChild(el("span","sm-sous", role(n.role))); } else c3.textContent="--"; tr.appendChild(c3);
+      var c3=td("mots"); if (n.createur) { c3.appendChild(lien("adresse", n.createur)); c3.appendChild(src(!!n.verifie)); c3.appendChild(el("span","sm-sous", n.auto ? ph("auto", n.auto) : role(n.role))); } else c3.textContent="--"; tr.appendChild(c3);
       tb.appendChild(tr);
     });
   }
-  function peintGroupes(d){
+  function peintGroupes(d, vide){
     var tb=$("groupes"); tb.textContent="";
-    $("groupesNote").textContent = ph("groupesNote", { groupe_min: (d.regles||{}).groupe_min||3, groupe_ecart_pct: (d.regles||{}).groupe_ecart_pct||2 });
+    $("groupesNote").textContent = ph("groupesNote", regles(d));
     var l=d.groupes||[];
-    if (!l.length) { ligneVide(tb, 4, d.actif ? ph("vide") : ph("vide_off")); return; }
+    if (!l.length) { ligneVide(tb, 4, vide); return; }
     l.forEach(function(g){
       var tr=el("tr");
       var c0=td(); c0.appendChild(lien("dex", g.jeton)); tr.appendChild(c0);
-      var c1=td(); c1.appendChild(lien("tx", g.tx, ph("bloc", g.bloc))); c1.appendChild(src(true)); tr.appendChild(c1);
-      tr.appendChild(el("td", "num", nb((g.wallets||[]).length)));
+      var c1=td(); c1.appendChild(lien("tx", g.tx, ph("bloc", g.bloc))); c1.appendChild(src(true)); if (g.charge) c1.appendChild(el("span","sm-sous", ph("m_groupe_charge"))); tr.appendChild(c1);
+      tr.appendChild(el("td", "num", ph("g_taille", nb(g.n || (g.wallets||[]).length), nb((g.wallets||[]).length))));
       var c3=td("mots"); (g.wallets||[]).slice(0, 12).forEach(function(w, i){ if (i) c3.appendChild(document.createTextNode(" ")); c3.appendChild(lien("adresse", w)); }); tr.appendChild(c3);
+      tb.appendChild(tr);
+    });
+  }
+  function peintLiens(d, vide){
+    var tb=$("liens"); tb.textContent="";
+    $("liensNote").textContent = ph("liensNote");
+    var l=d.liens||[];
+    if (!l.length) { ligneVide(tb, 3, vide); return; }
+    l.forEach(function(x){
+      var tr=el("tr");
+      tr.appendChild(el("td", "mots", ph("l_" + x.type)));
+      var c1=td("mots"); c1.appendChild(lien("dex", x.a, x.symA || court(x.a), "sm-nom")); texte(c1, " · "); c1.appendChild(lien("dex", x.b, x.symB || court(x.b), "sm-nom")); tr.appendChild(c1);
+      var c2=td("mots");
+      if (x.type === "memes_premiers") texte(c2, ph("l_memes_premiers_s", x.detail) + " ");
+      else if (x.type === "meme_recette") texte(c2, String(x.detail||"") + " ");
+      else if (ADR.test(String(x.detail||""))) { c2.appendChild(lien("adresse", x.detail)); texte(c2, " "); }
+      c2.appendChild(src(x.type !== "meme_recette"));
+      tr.appendChild(c2);
       tb.appendChild(tr);
     });
   }
   function peintPasse(d){
     var k=$("passe"); k.textContent="";
-    $("passeNote").textContent = ph("passeNote");
+    $("passeNote").textContent = ph("passeNote", regles(d));
     var p=d.passe, v=d.veille;
-    k.appendChild(kpi(ph("p_statut"), p ? ph("s_" + (["ok","budget","abandon"].indexOf(p.statut) >= 0 ? p.statut : "erreur")) : "--", p ? ph("p_statut_s", p.jetons||0) : ""));
+    var kp = kpi(ph("p_statut"), p ? ph("s_" + (["ok","budget","abandon"].indexOf(p.statut) >= 0 ? p.statut : "erreur")) : "--", p ? ph("p_statut_s", p.jetons||0, heure(p.fin)) : "");
+    if (p && p.detail && p.detail.erreur && p.statut !== "ok") kp.appendChild(el("span", "sm-sous", String(p.detail.erreur)));
+    k.appendChild(kp);
     k.appendChild(kpi(ph("p_appels"), p ? nb(p.appels) : "--", p ? ph("p_appels_s", p.octets||0) : ""));
     k.appendChild(kpi(ph("p_sources"), p ? nb(p.gt) + " · " + nb(p.ds) : "--", ph("p_sources_s")));
     var dv = v && v.detail || {};
-    k.appendChild(kpi(ph("p_veille"), v ? ph("s_" + (["ok","budget","abandon"].indexOf(v.statut) >= 0 ? v.statut : "erreur")) : "--", v ? ph("p_veille_s", dv.creations||0, dv.alertes||0) : ""));
+    var kv = kpi(ph("p_veille"), v ? ph("s_" + (["ok","budget","abandon"].indexOf(v.statut) >= 0 ? v.statut : "erreur")) : "--", v ? ph("p_veille_s", dv.creations||0, dv.alertes||0, heure(v.fin)) : "");
+    if (v && v.statut !== "ok" && dv.erreur) kv.appendChild(el("span", "sm-sous", String(dv.erreur)));
+    k.appendChild(kv);
   }
+  /* PERIME (revue P4) : derniere veille reussie de plus de 3 periodes, ou derniere
+     passe complete de plus de 2 h ; derniere passe en echec : dit aussi */
+  function perime(d){
+    var r = regles(d), now = d.maintenant || Math.floor(Date.now() / 1000);
+    var vo = d.veille_ok && d.veille_ok.fin, po = d.passe_ok && d.passe_ok.fin;
+    return (!vo || now - vo > 3 * r.veille_min * 60) || (!po || now - po > 2 * 3600);
+  }
+  function peintTables(d, vide){ peintWallets(d, vide); peintCreateurs(d, vide); peintJetons(d, vide); peintNouveaux(d, vide); peintGroupes(d, vide); peintLiens(d, vide); }
   function peint(){
     var d=etat.d; if(!d) return;
-    var s=$("statut");
+    var s=$("statut"), pt=$("pastille"), tx=$("pastilleTxt");
     s.className="ds-statut statut";
-    if (!d.actif) s.textContent=ph("st_off"); else if (!d.pret) s.textContent=ph("st_start"); else s.textContent=ph("st_ok", d.mode);
-    $("depuis").textContent = d.t ? ph("depuis", new Date(d.t*1000).toISOString().replace("T"," ").slice(0,16) + " UTC") : "";
-    peintKpis(d); peintWallets(d); peintCreateurs(d); peintJetons(d); peintNouveaux(d); peintGroupes(d); peintPasse(d);
+    if (!d.actif) { s.textContent=ph("st_off"); pt.className="ds-badge panne"; tx.textContent=ph("off"); }
+    else if (!d.pret) { s.textContent=ph("st_start"); pt.className="ds-badge"; tx.textContent=ph("starting"); }
+    else if (perime(d)) { s.className="ds-statut statut err"; s.textContent=ph("st_stale", heure(d.veille_ok && d.veille_ok.fin), heure(d.passe_ok && d.passe_ok.fin)); pt.className="ds-badge vieux"; tx.textContent=ph("stale"); }
+    else if (d.passe && d.passe.statut !== "ok") { s.textContent=ph("st_failing", ph("s_" + (["budget","abandon"].indexOf(d.passe.statut) >= 0 ? d.passe.statut : "erreur"))) + " " + ph("st_ok", d.mode); pt.className="ds-badge vieux"; tx.textContent=ph("failing"); }
+    else { s.textContent=ph("st_ok", d.mode); pt.className="ds-badge vif"; tx.textContent=ph("live"); }
+    $("depuis").textContent = d.actif && d.pret ? ph("depuis", heure(d.t)) : "";
+    peintKpis(d); peintTables(d, d.actif ? ph("vide") : ph("vide_off")); peintPasse(d);
   }
   function charge(){
-    fetch(serveur()+"/ai/smart", { cache:"no-store" }).then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); }).then(function(d){
+    fetch(BASE+"/ai/smart", { cache:"no-store" }).then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); }).then(function(d){
       etat.d=d||{};
-      var pt=$("pastille"), tx=$("pastilleTxt");
-      if (!etat.d.actif) { pt.className="ds-badge panne"; tx.textContent=ph("off"); }
-      else if (!etat.d.pret) { pt.className="ds-badge"; tx.textContent=ph("starting"); }
-      else { pt.className="ds-badge vif"; tx.textContent=ph("live"); }
       peint();
-    })["catch"](function(){ $("pastille").className="ds-badge panne"; $("pastilleTxt").textContent=ph("down"); $("statut").className="ds-statut statut err"; $("statut").textContent=ph("st_down"); });
+    })["catch"](function(){
+      $("pastille").className="ds-badge panne"; $("pastilleTxt").textContent=ph("down"); $("statut").className="ds-statut statut err"; $("statut").textContent=ph("st_down");
+      /* en panne, chaque tableau le DIT (revue P9) — sauf si une vue a deja ete lue */
+      if (!etat.d) peintTables({ regles: {} }, ph("vide_down"));
+    });
   }
+  if (ignore) { $("bandeau").hidden = false; $("bandeau").textContent = ph("ignore"); }
   $("pastilleTxt").textContent=ph("connecting");
   charge();
   setInterval(charge, 60000);

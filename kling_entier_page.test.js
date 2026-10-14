@@ -26,7 +26,7 @@ let n = 0, rates = 0;
 const ok = (c, m) => { n++; if (c) console.log('  ok   ' + m); else { rates++; console.log('  RATE ' + m); } };
 const T = { '.html': 'text/html', '.js': 'text/javascript', '.json': 'application/json', '.jpg': 'image/jpeg', '.png': 'image/png', '.ico': 'image/x-icon' };
 const PROMPT = 'Replace the singer in @video_1 with the character of @image_1 (body: huge muscular shirtless Swole Doge, cream-beige fur everywhere, furry dog paws with black pads instead of hands), with exactly the face of @image_2: the classic Doge meme face, pale cream-beige fur (not orange, not red), white cheeks and muzzle, small dark eyes glancing sideways, raised eyebrows, mouth closed in a slight smirk that only opens to lip-sync the words, the head proportionally small on a thick neck. Keep the other person, the camera, the background and the original audio unchanged.';
-const ID = 'e'.repeat(24);
+let ID = 'e'.repeat(24);   /* let : la section 7b fait une SECONDE passe dans la meme page */
 
 (async () => {
   if (!chromium) { console.log('playwright absent : essai ignore'); return; }
@@ -162,6 +162,24 @@ const ID = 'e'.repeat(24);
   ok(/^blob:/.test(await p.getAttribute('#tVideo', 'src')) && await p.isVisible('#tLien') && /^blob:/.test(await p.getAttribute('#tLien', 'href')) && (await p.getAttribute('#tLien', 'download')) === 'swoge_whole.mp4',
      'montree en blob:, et le lien de telechargement apparait maintenant');
   ok(!journal.some((x) => x.erreurPage), 'aucune erreur JavaScript ' + JSON.stringify(journal.filter((x) => x.erreurPage)));
+
+  /* 14/10/2026, vecu : apres la video de 94 s, une passe de 13 s finie dans la MEME page restait
+     « Done » sans video — le resultat deja montre suffisait a ne jamais demander le nouveau. */
+  console.log('\n-- 7b. une seconde passe dans la meme page --');
+  {
+    const premier = await p.getAttribute('#tVideo', 'src');
+    ID = 'f'.repeat(24);
+    await p.setInputFiles('#tClip', F.video);
+    S.suite = [etat('pret')];
+    await p.click('#tPlan');
+    await attend(p, () => !document.getElementById('tLancer').hidden && !document.getElementById('tLancer').disabled);
+    S.suite = [etat('fini', { resolution: '720p', morceaux: morceaux(durees.map(() => 'done')), video: '/studio/kling/entier/' + ID + '/video', dureeFinale: 13.1 })];
+    await p.click('#tLancer');
+    await attend(p, (av) => /^blob:/.test(document.getElementById('tVideo').src) && document.getElementById('tVideo').src !== av, premier, 20000);
+    ok(journal.some((x) => x.chemin === '/studio/kling/entier/' + ID + '/video' && x.auth === 'jOwner'), 'la video de la SECONDE passe est demandee au serveur');
+    const v = await p.getAttribute('#tVideo', 'src');
+    ok(/^blob:/.test(v) && v !== premier && await p.isVisible('#tVideo') && (await p.getAttribute('#tLien', 'href')) === v, 'et montree : un nouveau blob, visible, et le lien suit');
+  }
   await p.close();
 
   console.log('\n-- 8. rechargement, telephone --');

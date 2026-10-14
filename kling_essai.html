@@ -439,7 +439,7 @@ img.vign{ width:64px; height:64px; object-fit:cover; border-radius:10px; vertica
    * « swoge-face » (le visage), a leur place dans la liste, ou une data-URL
    * PNG/JPEG. Le resultat
    * ne sort qu'avec la session (lu en blob). */
-  var T = { vue: null, fichier: null, refs: [{ jeton: "swoge", nom: "SWOGE body (default)", src: REF_SWOGE }, { jeton: "swoge-face", nom: "SWOGE face (default)", src: REF_VISAGE }], id: null, etat: null, suivi: null, blob: null, occupe: false };
+  var T = { vue: null, fichier: null, refs: [{ jeton: "swoge", nom: "SWOGE body (default)", src: REF_SWOGE }, { jeton: "swoge-face", nom: "SWOGE face (default)", src: REF_VISAGE }], id: null, etat: null, suivi: null, blob: null, blobDe: null, occupe: false };
   function tStatut(t, g){ var s = $("tStatut"); s.textContent = t || ""; s.className = g || ""; }
   function dollars(x){ return "$" + Number(x).toFixed(3); }
   function mmss(s){ var m = Math.floor(s / 60), r = s - m * 60; return m + ":" + (r < 10 ? "0" : "") + r.toFixed(1); }
@@ -507,10 +507,12 @@ img.vign{ width:64px; height:64px; object-fit:cover; border-radius:10px; vertica
     $("tRecolle").hidden = !(e.statut === "incomplet" && tous);
     $("tAbandon").hidden = ["en_cours", "incomplet", "pret"].indexOf(e.statut) < 0;
   }
-  function tMontre(chemin){
+  /* 14/10/2026 : le resultat est rattache a SA passe (T.blobDe). Avant, un resultat deja montre
+     (la video de 94 s) suffisait a ne jamais demander celui de la passe suivante : « Done » sans video. */
+  function tMontre(chemin, id){
     return fetch(serveur() + chemin, { cache: "no-store", headers: { authorization: "Bearer " + jeton() } })
       .then(function(r){ if (!r.ok) throw new Error("error " + r.status); return r.blob(); })
-      .then(function(b){ if (T.blob) URL.revokeObjectURL(T.blob); T.blob = URL.createObjectURL(b);
+      .then(function(b){ if (T.blob) URL.revokeObjectURL(T.blob); T.blob = URL.createObjectURL(b); T.blobDe = id;
         var v = $("tVideo"); v.src = T.blob; v.hidden = false; $("tLien").href = T.blob; $("tLien").hidden = false; });
   }
   function tSuis(){
@@ -527,7 +529,7 @@ img.vign{ width:64px; height:64px; object-fit:cover; border-radius:10px; vertica
       else if (e.statut === "incomplet") { tStatut(e.message || "Some parts failed: retry them.", "err"); return; }
       else if (e.statut === "fini") {
         tStatut("Done: " + e.morceaux.length + " parts glued, original sound, " + (e.dureeFinale || e.source.duree).toFixed(1) + " s. Kept 48 h on the server.", "ok");
-        if (!T.blob) tMontre(e.video)["catch"](function(err){ tStatut("Result not loaded: " + err.message, "err"); });
+        if (T.blobDe !== e.id) tMontre(e.video, e.id)["catch"](function(err){ tStatut("Result not loaded: " + err.message, "err"); });
         charge(); return;
       }
       else if (e.statut === "abandon") { tStatut("Abandoned.", "err"); return; }

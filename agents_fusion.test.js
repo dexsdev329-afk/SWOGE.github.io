@@ -79,6 +79,10 @@ let chromium = null; try { chromium = require('playwright').chromium; } catch (e
   const tabs = await p.$$eval('.onglets [role="tab"]', (b) => b.map((x) => x.id).join(','));
   ok(tabs === 'ongletChat,ongletBrowse', 'deux onglets, Chat et Browse : plus d Agent, d OSINT, d eSIM ni de Store a part [' + tabs + ']');
   ok(await p.$eval('#modeChat', (s) => !!s.querySelector('.mode[data-mode="mission"]')), 'le chat porte le mode Mission, qui pose la tache a l agent (/studio/agent)');
+  /* 14/10/2026 : le proprietaire ne veut plus les boutons Mission / Chat / Image / Video ici (le Studio
+     fait les images et les videos) : ils sont caches et le chat est TOUJOURS en mode Mission. */
+  ok(await p.$eval('#modeChat .modes', (m) => getComputedStyle(m).display === 'none') && await p.getAttribute('#modeChat .mode[data-mode="mission"]', 'aria-pressed') === 'true',
+     'pas de boutons de mode : le chat de la page agents est en mode Mission');
   await p.click('#accueil .suggestion');
   ok((await p.$eval('#question', (t) => t.value)).length > 0 && (await p.$eval('#ag-question', (t) => t.value)) === '', 'une suggestion du chat remplit le chat, pas la zone de l agent');
   ok(await p.$eval('#ongletChat', (b) => b.getAttribute('aria-selected')) === 'true', 'l onglet actif le dit aux lecteurs d ecran (aria-selected)');

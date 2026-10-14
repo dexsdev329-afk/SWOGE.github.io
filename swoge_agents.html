@@ -1585,6 +1585,11 @@ body{background:radial-gradient(900px 420px at 50% -140px,#D9E6FF 0%,rgba(217,23
 /* Le titre et l intro Mission de l accueil redisent ce que dit le titre de la page : ils tombent ici
    (swolemind.html, seule, les garde). Reste ce qui sert : les suggestions et la facon de payer. */
 #modeChat .accueil > h1,#modeChat .accueil > .mission-intro{display:none}
+/* 14/10/2026, le proprietaire : « pas besoin de ces icones (Mission, Chat, Image, Video) sur la
+   page agents, il y a deja le Studio ». Le chat de cette page est toujours en mode Mission (la
+   route /studio/agent, ses outils) ; images et videos se font au Studio. swolemind.html, seule,
+   garde ses quatre modes. */
+#modeChat .modes{display:none}
 /* Le compte : ce que l onglet Agent avait en plus du chat (embauches, eSIM, x402, cles d API). Son
    cadre de tache ne s affiche plus : la tache part du chat, mode Mission, sur la meme route. */
 .ag-cadre{max-width:1040px;margin:0 auto;padding:0 16px}
@@ -1640,7 +1645,7 @@ body{background:radial-gradient(900px 420px at 50% -140px,#D9E6FF 0%,rgba(217,23
 <div class="hub">
   <span class="eyebrow"><span><svg class="ic"><use href="#hb-spark"/></svg></span>SWOGE Agents</span>
   <h1>One chat that <span class="hl">gets it done.</span></h1>
-  <p class="sub">Ask Claude, ChatGPT or Grok, make an image or a video, or give it a mission.<span class="s2"> It runs real tools &mdash; tokens, the colony, the web, domains, eSIMs &mdash; and shows each step&rsquo;s cost.</span></p>
+  <p class="sub">Ask a question or give it a mission.<span class="s2"> It runs real tools &mdash; tokens, the colony, the web, domains, eSIMs &mdash; and shows each step&rsquo;s cost. Images and videos are made in the <a href="studio.html">Studio</a>.</span></p>
   <ul class="checks" aria-label="How it works">
     <li><svg class="ic"><use href="#hb-check"/></svg>Claude, ChatGPT, Grok</li>
     <li><svg class="ic"><use href="#hb-check"/></svg>Every step shown</li>
@@ -2831,8 +2836,8 @@ body{background:radial-gradient(900px 420px at 50% -140px,#D9E6FF 0%,rgba(217,23
   }
   /* ?mode=agent (les liens d avant le 14/10) : le chat, en mode Mission — la meme route
      /studio/agent, les memes outils. ?mode=account : le compte. */
-  var depart = null, mission = false;
-  function lis(m){ if (m === "agent") { mission = true; return "chat"; } return m === "account" ? "compte" : m; }
+  var depart = null;
+  function lis(m){ if (m === "agent") return "chat"; return m === "account" ? "compte" : m; }
   /* Les liens des anciennes pages rouvrent leur vue : ?q= (enquete OSINT partagee), ?order= (le
      lien de commande eSIM, seul moyen de revoir son code d activation), ?tab=x402 (l ancien rayon
      « x402 services » de l Agent Store). */
@@ -2856,7 +2861,9 @@ body{background:radial-gradient(900px 420px at 50% -140px,#D9E6FF 0%,rgba(217,23
      est passee au-dessus, on remonte juste assez pour la montrer ; sinon rien ne bouge. */
   document.addEventListener("DOMContentLoaded", function(){
     montre(courant, false);
-    if (mission) { var b = document.querySelector('#modeChat .mode[data-mode="mission"]'); if (b) b.click(); }
+    /* toujours Mission : les boutons de mode sont caches (voir le style plus haut) */
+    var bm = document.querySelector('#modeChat .mode[data-mode="mission"]');
+    if (bm && bm.getAttribute("aria-pressed") !== "true") bm.click();
     var haut = document.querySelector(".onglets").getBoundingClientRect().top;
     if (!location.hash && haut < 0) window.scrollBy(0, haut - 8);
   });

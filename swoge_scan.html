@@ -619,8 +619,25 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 .sw-lat .salon:hover img,.sw-lat .salon:hover .film{transform:scale(1.03)}
 .sw-lat .salon img,.sw-lat .salon .film{transition:transform .2s}
 @media (max-width:1360px){
-  .sw-cote, .sw-lat{ display:none }
+  .sw-lat{ display:none }
   .sw-corps{ padding:0; display:block; max-width:none }
+  /* ---- SOUS 1360 px, LE MENU SE COUCHE EN RANGEE — IL NE DISPARAIT PLUS ----
+     Releve du 13/10 (revue du Studio) : 37 pages sur 43 cachaient ici toute la colonne, sans
+     burger ni rangee ; a 1024x768 et 1280x800, Studio n etait cliquable que sur 5 et 6 pages.
+     Meme rangee que l accueil sous 980 px (index.html) et que swoge_ai.html : les neuf entrees
+     defilent dans la rangee, la page ne defile pas en largeur (menu_rangee.test.js, 320 a 1360).
+     `aside.sw-cote` et non `.sw-cote` : la borne a 230 px de la grille a trois colonnes est
+     ecrite plus bas dans le fichier et gagnerait a specificite egale. Le film « SWOGE WORLD »
+     et `.sw-lat` restent caches : decoration de colonne, il n y a plus de colonne. */
+  aside.sw-cote{ position:static; inset:auto; width:100%; max-width:none; z-index:auto;
+            flex-direction:row; flex-wrap:wrap; align-items:center; gap:8px;
+            padding:10px 12px 0; box-sizing:border-box }
+  aside.sw-cote .sw-nav{ flex:1 1 100%; min-width:0; display:flex; overflow-x:auto;
+                         scrollbar-width:none }
+  aside.sw-cote .sw-nav::-webkit-scrollbar{ display:none }
+  aside.sw-cote .sw-nav a{ flex:0 0 auto; white-space:nowrap }
+  aside.sw-cote .uni{ display:none }
+  .sw-reseaux{ padding-top:0 }
 }
 /* ---- LA COLONNE DE GAUCHE NE GONFLE PLUS (memes deux colonnes de bord que
    `swoge_poker.html`) ----

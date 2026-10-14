@@ -701,7 +701,36 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 .sw-lat .salon:hover img,.sw-lat .salon:hover .film{transform:scale(1.03)}
 .sw-lat .salon img,.sw-lat .salon .film{transition:transform .2s}
 @media (max-width:1360px){
-  .sw-cote, .sw-lat{ display:none }
+  .sw-lat{ display:none }
+  .sw-corps{ padding:0; display:block; max-width:none }
+  /* ---- SOUS 1360 px, LE MENU SE COUCHE EN RANGEE — IL NE DISPARAIT PLUS ----
+     Releve du 13/10 (revue du Studio) : 37 pages sur 43 cachaient ici toute la colonne, sans
+     burger ni rangee ; a 1024x768 et 1280x800, Studio n etait cliquable que sur 5 et 6 pages.
+     Meme rangee que l accueil sous 980 px (index.html) et que swoge_ai.html : les neuf entrees
+     defilent dans la rangee, la page ne defile pas en largeur (menu_rangee.test.js, 320 a 1360).
+     `aside.sw-cote` et non `.sw-cote` : la borne a 230 px de la grille a trois colonnes est
+     ecrite plus bas dans le fichier et gagnerait a specificite egale. Le film « SWOGE WORLD »
+     et `.sw-lat` restent caches : decoration de colonne, il n y a plus de colonne. */
+  aside.sw-cote{ position:static; inset:auto; width:100%; max-width:none; z-index:auto;
+            flex-direction:row; flex-wrap:wrap; align-items:center; gap:8px;
+            padding:10px 12px 0; box-sizing:border-box }
+  aside.sw-cote .sw-nav{ flex:1 1 100%; min-width:0; display:flex; overflow-x:auto;
+                         scrollbar-width:none }
+  aside.sw-cote .sw-nav::-webkit-scrollbar{ display:none }
+  aside.sw-cote .sw-nav a{ flex:0 0 auto; white-space:nowrap }
+  aside.sw-cote .uni{ display:none }
+  .sw-reseaux{ padding-top:0 }
+  /* ---- ICI, LA PAGE NE DEFILE PAS ----
+     La machine (`#scene` / le HUD) est fixe et plein ecran : une rangee dans le fil de la page
+     passait DESSOUS (mesure du 14/10 : les neuf liens couverts par la barre et la machine, de 320
+     a 1360 px). La rangee se pose donc fixe sous la barre ; le script qui pousse la machine sous
+     la barre (plus bas) lui ajoute la hauteur de la rangee. Les reseaux n y sont pas : la
+     hauteur est prise au jeu, et ce ne sont pas des pages du site. */
+  aside.sw-cote{ position:fixed; top:var(--rangee-haut, 60px); left:0; right:0; z-index:45;
+                 padding:6px 12px; background:#F7F9FC; border-bottom:1px solid #E1E9F6 }
+  aside.sw-cote .sw-reseaux{ display:none }
+  aside.sw-cote .sw-nav{ padding:4px }
+  aside.sw-cote .sw-nav a{ padding-top:8px; padding-bottom:8px; text-decoration:none }
 }
 
 /* ---- LE HUD DU JEU NE PASSE PAS SOUS LES COLONNES ----
@@ -1042,7 +1071,11 @@ function ajusteJeu(){
     var b = e.getBoundingClientRect(); if(!(b.width > 0)) return 0;
     return Math.max(0, Math.round(droite ? (window.innerWidth - b.left + 14) : (b.right + 14)));
   }
-  var g = retrait(".sw-cote", false), d = retrait(".sw-lat", true);
+  /* Sous 1360 px, le menu est une rangee fixe sous la barre (voir la feuille de style) : il
+     prend de la HAUTEUR au jeu, pas de la largeur. */
+  var c = document.querySelector(".sw-cote"), rangee = !!c && getComputedStyle(c).flexDirection === "row";
+  if(rangee){ r.style.setProperty("--rangee-haut", haut + "px"); haut += Math.round(c.getBoundingClientRect().height); }
+  var g = rangee ? 0 : retrait(".sw-cote", false), d = retrait(".sw-lat", true);
   r.style.setProperty("--jh", haut + "px");
   r.style.setProperty("--jb", bas  + "px");
   r.style.setProperty("--jg", g    + "px");

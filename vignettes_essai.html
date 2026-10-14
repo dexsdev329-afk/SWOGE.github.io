@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Studio card clips — owner only</title>
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/img/site/icone-32.png">
+<link rel="apple-touch-icon" href="/img/site/icone-180.png">
+<!-- ==================================================================
+ * VIGNETTES ANIMEES DU STUDIO : LES LOTS, PROPRIETAIRE SEULEMENT (14/10/2026)
+ *
+ * Demande du proprietaire : « anime les images en video ». Les lots (un clip xAI
+ * grok-imagine-video-1.5-lite 480p par carte de studio.html) sont ecrits dans
+ * img/site/studio/vignettes.json, avec l'image d'entree de chaque carte
+ * (img/site/studio/vignettes/<carte>.jpg, cadree comme la carte) et son sha256.
+ * Cette page les liste avec leur pire cas et le budget restant (plafond 1,25 $,
+ * separe de celui des planches), et lance un lot par POST /studio/vignettes {lot}.
+ * Le serveur reste le SEUL juge (AI_OWNER, plafond avant chaque appel, un lot a
+ * la fois, adresse de la session) ; la page ne fait que montrer ou griser.
+ *
+ * Memes regles que planches_essai.html : sans session aucune requete au serveur ;
+ * le jeton ne part que vers la production ou un serveur LOCAL quand la page est
+ * locale ; les clips ne sont servis qu'au proprietaire qui a lance le lot, lus
+ * avec le jeton et donnes en blob, nommes comme dans media/studio/ ; tout texte
+ * venu du serveur ou du fichier passe par textContent. Hors moteurs (noindex).
+ * ================================================================== -->
+<style>
+:root{ --fond:#EEF3FB; --carte:#fff; --encre:#0B1B36; --pale:#5a6b85; --bleu:#1652f0; --ligne:#E1E9F6; --ok:#0a7d3e; --err:#b3261e; --att:#8a5a00; }
+@media (prefers-color-scheme: dark){ :root{ --fond:#0f141c; --carte:#18202b; --encre:#e8edf5; --pale:#9aa8bd; --bleu:#5b8cff; --ligne:#2a3442; --ok:#4cc38a; --err:#ff7b72; --att:#e3b341; } }
+*{ box-sizing:border-box; }
+body{ margin:0; background:var(--fond); color:var(--encre); font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
+main{ max-width:640px; margin:0 auto; padding:20px 16px 40px; }
+h1{ font-size:22px; margin:0 0 6px; }
+h2{ font-size:16px; margin:0 0 8px; }
+.carte{ background:var(--carte); border:1px solid var(--ligne); border-radius:14px; padding:14px 16px; margin:14px 0; }
+.pale{ color:var(--pale); font-size:13.5px; }
+.chiffres{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+.chiffres div{ border:1px solid var(--ligne); border-radius:10px; padding:8px; min-width:0; }
+.chiffres b{ display:block; font-size:18px; }
+.chiffres span{ font-size:12px; color:var(--pale); }
+.lot{ border-top:1px solid var(--ligne); padding:10px 0; }
+.lot:first-of-type{ border-top:0; }
+.tete{ display:flex; justify-content:space-between; align-items:baseline; gap:8px; flex-wrap:wrap; }
+.tete b{ font-size:16px; overflow-wrap:anywhere; }
+ul.clips{ margin:6px 0 0; padding-left:18px; font-size:13.5px; }
+ul.clips li{ overflow-wrap:anywhere; }
+button{ font:inherit; font-weight:700; border:0; border-radius:999px; padding:10px 18px; background:var(--bleu); color:#fff; cursor:pointer; min-height:44px; margin-top:8px; }
+button[disabled]{ opacity:.45; cursor:default; }
+button.pale2{ background:var(--ligne); color:var(--encre); min-height:36px; padding:6px 12px; font-weight:600; font-size:13px; }
+.pourquoi{ font-size:12.5px; color:var(--pale); margin-left:6px; }
+.statut{ min-height:20px; font-weight:600; margin-top:6px; overflow-wrap:anywhere; }
+.err{ color:var(--err); } .ok{ color:var(--ok); } .att{ color:var(--att); }
+.fichiers{ display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
+code{ font-size:12.5px; overflow-wrap:anywhere; }
+a{ color:var(--bleu); }
+.entrees{ display:grid; grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); gap:6px; margin-top:6px; }
+.entrees figure{ margin:0; min-width:0; }
+.entrees img{ width:100%; aspect-ratio:16/9; object-fit:cover; border-radius:6px; display:block; background:var(--ligne); }
+.entrees figcaption{ font-size:11.5px; color:var(--pale); overflow-wrap:anywhere; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Studio card clips</h1>
+  <p class="pale">Owner only. One short xAI clip (grok-imagine-video-1.5-lite, 480p, no sound) per model card of <a href="studio.html">Studio</a>, made from the picture shown below each batch. The server loops each clip forward then backward and gives you a <code>.webm</code> and an <code>.mp4</code> named for <code>media/studio/</code>. The server checks the owner, the pictures (sha256) and the cap again before every clip; this page only shows what it says.</p>
+
+  <div class="carte" id="porte"><p id="acces">Checking access…</p></div>
+
+  <div class="carte" id="budget" hidden>
+    <h2>Budget (xAI, on Railway)</h2>
+    <div class="chiffres">
+      <div><b id="depense">–</b><span>spent or reserved</span></div>
+      <div><b id="reste">–</b><span>left</span></div>
+      <div><b id="plafond">–</b><span>cap</span></div>
+    </div>
+    <p class="pale" id="tarif"></p>
+    <p class="statut" id="etatServeur"></p>
+  </div>
+
+  <div class="carte" id="demandes">
+    <h2>Published batches</h2>
+    <div id="listeDemandes"><p class="pale">Loading…</p></div>
+    <p class="statut" id="statut" role="status"></p>
+  </div>
+
+  <div class="carte" id="lots" hidden>
+    <h2>Your batches</h2>
+    <div id="listeLots"></div>
+  </div>
+</main>
+<script>
+(function(){
+  "use strict";
+  var $ = function(id){ return document.getElementById(id); };
+  var PROD = "https://web-production-220a3.up.railway.app";
+  var FICHIER = "img/site/studio/vignettes.json";
+  var EN_COURS = { attente:1, envoi:1, sent:1, fin:1 };
+
+  function local(h){ return h === "127.0.0.1" || h === "localhost" || h === "[::1]"; }
+  function serveur(){
+    try {
+      var q = new URLSearchParams(location.search).get("server");
+      if (q) {
+        var u = new URL(q);
+        if (u.origin === PROD) return PROD;
+        if (local(location.hostname) && local(u.hostname) && (u.protocol === "http:" || u.protocol === "https:")) return u.origin;
+      }
+    } catch (e) {}
+    return PROD;
+  }
+  function jeton(){ try { return localStorage.getItem("swogeSession"); } catch (e) { return null; } }
+  function elem(tag, cls, t){ var e = document.createElement(tag); if (cls) e.className = cls; if (t != null) e.textContent = String(t); return e; }
+  /* jusqu'au dix-millieme : une reserve de clip vaut 0,0625 ou 0,0875 $, et un arrondi a
+     0,087 dirait un pire cas plus petit que celui que le serveur compte */
+  function usd(x){ if (x == null || !isFinite(Number(x))) return "–"; var t = (Math.round(Number(x) * 1e4) / 1e4).toFixed(4).replace(/0{1,2}$/, ""); return "$" + t; }
+  function statut(t, cls){ var s = $("statut"); s.textContent = t || ""; s.className = "statut" + (cls ? " " + cls : ""); }
+  function api(chemin, methode, corps){
+    return fetch(serveur() + chemin, { method: methode || "GET", cache: "no-store",
+      headers: { "content-type": "application/json", authorization: "Bearer " + jeton() }, body: corps ? JSON.stringify(corps) : undefined })
+      .then(function(r){ return r.json()["catch"](function(){ return {}; }).then(function(o){ if (!r.ok || o.ok === false) { var e = new Error(o.raison || ("error " + r.status)); e.code = r.status; throw e; } return o; }); });
+  }
+  /* le nom du fichier dans media/studio/ (« : » devient « - », comme studio.html) */
+  function nomCarte(c){ return String(c || "").replace(/:/g, "-"); }
+
+  var V = null, PROPRIO = false, suivi = null, envoi = false;
+
+  /* ---------- les lots publies ---------- */
+  function depuisFichier(j){
+    var out = [];
+    if (!j || !j.lots || typeof j.lots !== "object") return out;
+    Object.keys(j.lots).forEach(function(nom){
+      var l = j.lots[nom]; if (!Array.isArray(l)) return;
+      out.push({ nom: nom, clips: l.length, secondes: l.reduce(function(s, d){ return s + (Number(d && d.duree) || 0); }, 0), reserveUsd: null, invalide: null,
+        detail: l.map(function(d){ d = d || {}; return { carte: d.carte, duree: d.duree, format: d.format, image: d.image }; }) });
+    });
+    return out;
+  }
+  function bloque(l){
+    if (!jeton()) return "sign in first";
+    if (!PROPRIO) return "owner only";
+    if (!V) return "server not reached";
+    if (!V.actif) return "video is not switched on (XAI_API_KEY)";
+    if (V.arret) return "stopped: read the journal first";
+    if (V.enCours) return "a batch is running";
+    if (l.invalide) return "invalid entry (" + l.invalide + ")";
+    if (l.reserveUsd == null) return "worst case unknown";
+    if (Number(l.reserveUsd) > Number(V.resteUsd) + 1e-9) return "worst case above what is left";
+    return null;
+  }
+  function peintDemandes(liste, raison){
+    var c = $("listeDemandes"); c.textContent = "";
+    if (raison) c.appendChild(elem("p", "err", raison));
+    if (!liste.length) { if (!raison) c.appendChild(elem("p", "pale", "No batch published yet in vignettes.json.")); return; }
+    liste.forEach(function(l){
+      var b = elem("div", "lot"); b.setAttribute("data-lot", l.nom);
+      var t = elem("div", "tete");
+      t.appendChild(elem("b", null, l.nom));
+      t.appendChild(elem("span", "pale", l.clips + " clip" + (l.clips > 1 ? "s" : "") + " · " + l.secondes + " s · worst case " + (l.reserveUsd == null ? (PROPRIO ? "–" : "(owner only)") : usd(l.reserveUsd))));
+      b.appendChild(t);
+      /* ce qui partira chez xAI, image par image */
+      var g = elem("div", "entrees");
+      (l.detail || []).forEach(function(d){
+        var f = elem("figure");
+        if (/^studio\/vignettes\/[a-z0-9-]{1,32}\.jpg$/.test(String(d.image || ""))) { var im = elem("img"); im.src = "img/site/" + d.image; im.alt = ""; im.loading = "lazy"; f.appendChild(im); }
+        f.appendChild(elem("figcaption", null, d.carte + " · " + d.duree + " s"));
+        g.appendChild(f);
+      });
+      b.appendChild(g);
+      var btn = elem("button", "run", "Run " + l.nom); btn.type = "button";
+      var pq = bloque(l);
+      btn.disabled = !!pq || envoi;
+      btn.addEventListener("click", function(){ lance(l); });
+      b.appendChild(btn);
+      if (pq) b.appendChild(elem("span", "pourquoi", pq));
+      c.appendChild(b);
+    });
+  }
+
+  /* ---------- le budget et les lots lances ---------- */
+  function peintBudget(){
+    $("budget").hidden = !V;
+    if (!V) return;
+    $("depense").textContent = usd(V.depenseUsd); $("reste").textContent = usd(V.resteUsd); $("plafond").textContent = usd(V.plafondUsd);
+    $("tarif").textContent = V.modele ? V.modele + " · " + V.resolution + " · " + usd(V.prixSeconde) + "/s + " + usd(V.imageUsd) + " per picture · worst case = list price × " + V.marge : "";
+    var e = $("etatServeur");
+    if (V.arret) { e.textContent = "STOPPED: " + String(V.arret).slice(0, 200) + " — read the journal on Railway, then delete the ARRET file."; e.className = "statut err"; }
+    else if (!V.actif) { e.textContent = "Video is not switched on: XAI_API_KEY is missing on Railway."; e.className = "statut err"; }
+    else if (V.enCours) { e.textContent = "A batch is running."; e.className = "statut att"; }
+    else { e.textContent = "Ready."; e.className = "statut ok"; }
+  }
+  function telecharge(lot, rel, nom, btn){
+    btn.disabled = true; var avant = btn.textContent; btn.textContent = "…";
+    return fetch(serveur() + "/studio/vignettes/fichier/" + encodeURIComponent(lot.id) + "/" + encodeURIComponent(rel),
+          { headers: { authorization: "Bearer " + jeton() }, cache: "no-store" })
+      .then(function(r){ if (!r.ok) throw new Error("error " + r.status); return r.blob(); })
+      .then(function(b){
+        var u = URL.createObjectURL(b), a = document.createElement("a");
+        a.href = u; a.download = nom; document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(function(){ URL.revokeObjectURL(u); }, 60000);
+        btn.textContent = avant; btn.disabled = false;
+      })["catch"](function(e){ btn.textContent = avant + " (" + e.message + ")"; btn.disabled = false; });
+  }
+  function boutonFichier(lot, rel, nom, libelle){
+    var b = elem("button", "pale2 fichier", libelle); b.type = "button"; b.setAttribute("data-rel", rel);
+    b.addEventListener("click", function(){ telecharge(lot, rel, nom, b); });
+    return b;
+  }
+  function peintLots(){
+    var lots = V && V.lots || [];
+    $("lots").hidden = !lots.length;
+    var c = $("listeLots"); c.textContent = "";
+    lots.forEach(function(l){
+      var b = elem("div", "lot"); b.setAttribute("data-id", l.id);
+      var t = elem("div", "tete");
+      t.appendChild(elem("b", null, l.lot));
+      t.appendChild(elem("span", l.statut === "fini" ? "ok" : "att", (l.statut === "fini" ? "finished" : "running") + " · " + usd(l.coutUsd) + " of " + usd(l.pireUsd) + " worst case"));
+      b.appendChild(t);
+      b.appendChild(elem("div", "pale", new Date(l.t).toISOString().slice(0, 16).replace("T", " ") + " UTC · batch " + l.id));
+      var ul = elem("ul", "clips"), boucles = [];
+      (l.clips || []).forEach(function(k){
+        var li = elem("li", null, k.carte + " · " + k.duree + " s — " + k.statut + (k.coutUsd != null ? " · " + usd(k.coutUsd) : "") + (k.secondes != null ? " · " + k.secondes + " s wait" : "") + (k.erreur ? " · " + k.erreur : "") + (k.erreurFinition ? " · finishing: " + k.erreurFinition : ""));
+        if (k.statut === "refuse" || k.statut === "inconnu" || k.statut === "failed" || k.statut === "timeout") li.className = "err";
+        var f = elem("span", "fichiers");
+        if (k.finiWebm) { f.appendChild(boutonFichier(l, k.finiWebm, k.finiWebm, "loop .webm")); boucles.push(k.finiWebm); }
+        if (k.fini) { f.appendChild(boutonFichier(l, k.fini, k.fini, "loop .mp4")); boucles.push(k.fini); }
+        if (k.fichier) f.appendChild(boutonFichier(l, k.fichier, "vignette_" + nomCarte(k.carte) + "_raw.mp4", "raw .mp4"));
+        if (f.childNodes.length) li.appendChild(f);
+        ul.appendChild(li);
+      });
+      b.appendChild(ul);
+      /* toutes les boucles d'un coup, nommees pour media/studio/ */
+      if (boucles.length) {
+        var tout = elem("button", "pale2", "Download all loops (" + boucles.length + " files)"); tout.type = "button"; tout.setAttribute("data-tout", l.id);
+        tout.addEventListener("click", function(){
+          var i = 0;
+          (function suivant(){ if (i >= boucles.length) return; var r = boucles[i++]; telecharge(l, r, r, tout).then(function(){ setTimeout(suivant, 400); }); })();
+        });
+        b.appendChild(tout);
+      }
+      c.appendChild(b);
+    });
+  }
+
+  /* ---------- chargement, suivi ---------- */
+  function litFichier(){
+    return fetch(FICHIER, { cache: "no-cache" }).then(function(r){ if (!r.ok) throw new Error("vignettes.json " + r.status); return r.json(); })
+      .then(depuisFichier);
+  }
+  function charge(){
+    if (suivi) { clearTimeout(suivi); suivi = null; }
+    if (!jeton()) {
+      $("acces").textContent = "Sign in with your wallet on SwoleMind first, then come back to this page. Batches are listed below; only the owner can run them.";
+      PROPRIO = false; V = null; peintBudget(); peintLots();
+      return litFichier().then(function(l){ peintDemandes(l); }, function(e){ peintDemandes([], "Could not read the published batches: " + e.message); });
+    }
+    return api("/studio/vignettes").then(function(o){
+      PROPRIO = !!o.proprietaire; V = PROPRIO ? o : null;
+      if (!PROPRIO) {
+        $("acces").textContent = "This page is for the owner only (AI_OWNER on the server).";
+        peintBudget(); peintLots();
+        return litFichier().then(function(l){ peintDemandes(l); }, function(e){ peintDemandes([], "Could not read the published batches: " + e.message); });
+      }
+      $("acces").textContent = "Signed in as the owner.";
+      peintBudget(); peintLots();
+      var d = o.vignettes || {};
+      peintDemandes(d.lots || [], d.ok === false ? (d.raison || "could not read vignettes.json") : null);
+      var vivant = o.enCours || (o.lots || []).some(function(l){ return l.statut !== "fini" || (l.clips || []).some(function(k){ return EN_COURS[k.statut]; }); });
+      if (vivant) suivi = setTimeout(charge, 5000);
+    })["catch"](function(e){
+      PROPRIO = false; V = null; peintBudget(); peintLots();
+      $("acces").textContent = e.code === 401 ? "Your session has expired: sign in again on SwoleMind." : "Access check failed: " + e.message;
+      return litFichier().then(function(l){ peintDemandes(l); }, function(){ peintDemandes([]); });
+    });
+  }
+  function lance(l){
+    if (bloque(l) || envoi) return;
+    if (!window.confirm("Run batch \"" + l.nom + "\"? " + l.clips + " clip(s), worst case " + usd(l.reserveUsd) + " on the xAI account (" + usd(V.resteUsd) + " left).")) return;
+    envoi = true;
+    Array.prototype.forEach.call(document.querySelectorAll("button.run"), function(b){ b.disabled = true; });
+    statut("Sending batch " + l.nom + "…", "att");
+    api("/studio/vignettes", "POST", { lot: l.nom }).then(function(r){
+      statut("Batch " + l.nom + " started: " + r.lances + "/" + r.total + " clip(s) sent" + (r.raison ? " — " + r.raison : "") + ".", r.raison ? "err" : "ok");
+    }, function(e){
+      statut("Not started: " + e.message, "err");
+    }).then(function(){ envoi = false; return charge(); });
+  }
+  charge();
+})();
+</script>
+</body>
+</html>

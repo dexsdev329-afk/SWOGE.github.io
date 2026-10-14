@@ -1,0 +1,154 @@
+{
+  "format": "swoge-vignettes-studio/1",
+  "note": "Owner-only xAI clips for the studio.html model cards (grok-imagine-video-1.5-lite, 480p). Inputs: node outils/vignettes/entrees.js --site <this repo> (server repo).",
+  "lots": {
+    "sonde": [
+      {
+        "carte": "video:qualite",
+        "source": "cinema/saga_ep6.webp",
+        "pos": "50% 30%",
+        "image": "studio/vignettes/video-qualite.jpg",
+        "sha256": "f37ccb0299483906c614e4b4c97cba704742c0623614be17c0f707ef7499ae64",
+        "format": "16:9",
+        "duree": 3
+      }
+    ],
+    "cartes": [
+      {
+        "carte": "grok:rapide",
+        "source": "accueil/ia.webp",
+        "pos": "50% 0%",
+        "image": "studio/vignettes/grok-rapide.jpg",
+        "sha256": "8a62611b5c03dc9d4d12aa67a4ffad73efd027a67bf5b124cb8c451b82517c39",
+        "format": "16:9",
+        "duree": 3
+      },
+      {
+        "carte": "grok:qualite",
+        "source": "accueil/hero.webp",
+        "pos": "50% 0%",
+        "image": "studio/vignettes/grok-qualite.jpg",
+        "sha256": "0c34965cc13edca75a9e48676f5cdfd775ef3c219b2d4ace07507cdf1558c2ca",
+        "format": "16:9",
+        "duree": 3
+      },
+      {
+        "carte": "openai:rapide",
+        "source": "accueil/economie.webp",
+        "pos": "50% 0%",
+        "image": "studio/vignettes/openai-rapide.jpg",
+        "sha256": "f116e904bd5010ef3abf4c9ef372d678e15ca88fc5a9c2bb1df9211d53f60c1e",
+        "format": "16:9",
+        "duree": 3
+      },
+      {
+        "carte": "openai:qualite",
+        "source": "accueil/cta.webp",
+        "pos": "50% 0%",
+        "image": "studio/vignettes/openai-qualite.jpg",
+        "sha256": "5632ce79fcdabfa2cfdc4a140d19b390e65a0f3680996d1b76f4d3ce5c1a0ec1",
+        "format": "16:9",
+        "duree": 3
+      },
+      {
+        "carte": "video:rapide",
+        "source": "cinema/s2_ep2.webp",
+        "pos": "50% 36%",
+        "image": "studio/vignettes/video-rapide.jpg",
+        "sha256": "22ef4388e11c18d24a513fd013ad0eff7958205dfee05fc9e175ce974eec0432",
+        "format": "16:9",
+        "duree": 3
+      },
+      {
+        "carte": "cvoices",
+        "source": "cinema/island_ep2.webp",
+        "pos": "50% 0%",
+        "image": "studio/vignettes/cvoices.jpg",
+        "sha256": "213967f715284fb0a28d8a221df43e417b9ae4545951f85a9ae04dacb470360a",
+        "format": "16:9",
+        "duree": 3
+      },
+      {
+        "carte": "kling-i",
+        "source": "studio_casino.webp",
+        "pos": "50% 23%",
+        "image": "studio/vignettes/kling-i.jpg",
+        "sha256": "6157cb2a048db259591943f86099c37b7c0b6dd33c6f2155c52bccb48a69488d",
+        "format": "16:9",
+        "duree": 2
+      },
+      {
+        "carte": "upscale",
+        "source": "studio_trophee.webp",
+        "pos": "50% 0%",
+        "image": "studio/vignettes/upscale.jpg",
+        "sha256": "3b3cc2a8a09751325a158925453a47b804e098775fe4b80095150b213490d726",
+        "format": "16:9",
+        "duree": 2
+      },
+      {
+        "carte": "kling3",
+        "source": "doge_sport.webp",
+        "pos": "50% 10%",
+        "image": "studio/vignettes/kling3.jpg",
+        "sha256": "bee06c7d394bb859b21c14040a0ee652ff63ccf8d6e1e9f60b2501137c13395c",
+        "format": "16:9",
+        "duree": 2
+      },
+      {
+        "carte": "kling26",
+        "source": "doge_roulette.webp",
+        "pos": "50% 0%",
+        "image": "studio/vignettes/kling26.jpg",
+        "sha256": "8e9a3d9aa0beafc6971824057d1ecc94a7abe3bba77e958f471b4c52df639631",
+        "format": "16:9",
+        "duree": 2
+      },
+      {
+        "carte": "veo",
+        "source": "monde.webp",
+        "pos": "50% 0%",
+        "image": "studio/vignettes/veo.jpg",
+        "sha256": "ebb096611f6c8ac94be67d391f5936988c4c12e069fa072c7e0863b091d67297",
+        "format": "16:9",
+        "duree": 2
+      },
+      {
+        "carte": "motion",
+        "source": "doge_arcade.webp",
+        "pos": "50% 24%",
+        "image": "studio/vignettes/motion.jpg",
+        "sha256": "0a2cb2690c5d0ed61c54b7faf863cd987b94363f63384c32f7398fb6a8c40eeb",
+        "format": "16:9",
+        "duree": 2
+      },
+      {
+        "carte": "vo",
+        "source": "accueil/agents.webp",
+        "pos": "50% 0%",
+        "image": "studio/vignettes/vo.jpg",
+        "sha256": "18cfd6f46b8c6659e0848d97ecd122d5c229c41d50e687fa70a0074288039e86",
+        "format": "16:9",
+        "duree": 2
+      },
+      {
+        "carte": "talk",
+        "source": "accueil/wallet.webp",
+        "pos": "50% 0%",
+        "image": "studio/vignettes/talk.jpg",
+        "sha256": "1d54e3e887276fe80087fa42667c9b6e6dad6b55a09deaca92d21253e3a998dd",
+        "format": "16:9",
+        "duree": 2
+      },
+      {
+        "carte": "lips",
+        "source": "accueil/jeux.webp",
+        "pos": "50% 0%",
+        "image": "studio/vignettes/lips.jpg",
+        "sha256": "949b0614c4d017823506792ac41791d864d3ddc17736fa1011fb4c81949ce207",
+        "format": "16:9",
+        "duree": 2
+      }
+    ]
+  }
+}

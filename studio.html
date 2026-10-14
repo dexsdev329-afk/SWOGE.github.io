@@ -321,6 +321,11 @@ h2{font:800 27px/1.12 var(--f);letter-spacing:-.7px;color:var(--navy);margin:6px
    une fiche peut donner son propre point (pos) */
 .thumb img{width:100%;height:100%;object-fit:cover;object-position:50% 0}
 .mcard.soon .thumb img,.mcard.paused .thumb img{filter:grayscale(1) contrast(.85) brightness(1.08);opacity:.55}
+/* la vignette animee (VIDEOS) : posee SUR l'image, meme cadrage, invisible tant qu'elle ne joue
+   pas — l'image reste dessous si le fichier manque ou ne se lit pas */
+.thumb video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 0;opacity:0;transition:opacity .45s;pointer-events:none}
+.thumb video.joue{opacity:1}
+.mcard.soon .thumb video.joue,.mcard.paused .thumb video.joue{filter:grayscale(1) contrast(.85) brightness(1.08);opacity:.55}
 .badge{position:absolute;left:10px;top:10px;display:inline-flex;align-items:center;gap:6px;padding:6px 9px;border-radius:999px;font:800 11px/1 var(--f);letter-spacing:.2px}
 .badge.lv{background:#fff;color:var(--green);box-shadow:0 2px 8px rgba(11,27,54,.12)}
 .badge.sn{background:rgba(10,31,68,.82);color:#fff}
@@ -1156,6 +1161,11 @@ footer b{color:var(--navy)}
     avatar: [{ id: "talk", nom: "Talking avatar", by: "SWOGE Studio", img: "accueil/wallet.webp", desc: "SWOGE or a character you invented reads your script." },
              { id: "lips", nom: "Lipsync", by: "SWOGE Studio", img: "accueil/jeux.webp", desc: "Sync your character's mouth to a voice track." }]
   };
+  /* Les vignettes animees : carte -> version des fichiers media/studio/<carte, « : » en « - »>.webm
+     et .mp4. Clips xAI lite 480p (lot proprietaire vignettes_essai.html), boucles aller-retour, muets.
+     Changer la version quand un fichier est remplace (le navigateur garde l'ancien sinon).
+     Une carte absente d'ici, un fichier qui manque ou ne se lit pas : l'image fixe reste. */
+  var VIDEOS = {};
   /* Ce qui n'est pas permis : une REGLE D'USAGE, rien de plus. SWOGE ne filtre rien lui-meme
      (studio_xai.js:24 documente un champ de moderation que le serveur ne lit pas), et rien dans
      les deux depots ne mesure ce que les fournisseurs refusent : la page ne le garantit pas en
@@ -1423,7 +1433,7 @@ footer b{color:var(--navy)}
     var badge = o.soon ? h("span", { class: "badge sn", text: "Coming soon" })
       : o.pause ? h("span", { class: "badge ps", text: "Paused" })
       : h("span", { class: "badge lv" }, [h("i", { class: "dot" }), o.serie ? "Live in Series & Ads" : "Live"]);
-    c.appendChild(h("div", { class: "thumb" }, [h("img", { src: "img/site/" + o.img, alt: "", loading: "lazy", style: o.pos ? "object-position:" + o.pos : null }), badge, h("span", { class: "tick" }, [ico("check")])]));
+    c.appendChild(h("div", { class: "thumb" }, [h("img", { src: "img/site/" + o.img, alt: "", loading: "lazy", style: o.pos ? "object-position:" + o.pos : null }), videoCarte(o), badge, h("span", { class: "tick" }, [ico("check")])]));
     var corps = h("div", { class: "mbody" }, [
       h("div", { class: "mname" }, [h("b", { text: o.nom }), o.v ? h("span", { class: "v", text: o.v }) : null]),
       o.by ? h("span", { class: "by", text: "by " + o.by }) : null,
@@ -1433,6 +1443,38 @@ footer b{color:var(--navy)}
     if (o.lien) corps.appendChild(o.lien);
     c.appendChild(corps);
     return c;
+  }
+  /* La video d'une carte, ou null. Jamais sous prefers-reduced-motion (l'image fixe reste) ;
+     preload none : rien ne se telecharge avant que la carte soit a l'ecran, et elle ne joue
+     QUE visible (IntersectionObserver). */
+  var MOINS = window.matchMedia ? window.matchMedia("(prefers-reduced-motion: reduce)") : null, VUES = null;
+  /* la preference qui change pendant la visite : les videos s'en vont, l'image reste */
+  if (MOINS && MOINS.addEventListener) MOINS.addEventListener("change", function(){
+    if (MOINS.matches) Array.prototype.forEach.call(document.querySelectorAll(".thumb video"), function(v){ if (VUES) VUES.unobserve(v); v.remove(); });
+  });
+  function videoCarte(o){
+    var ver = Object.prototype.hasOwnProperty.call(VIDEOS, o.id) ? VIDEOS[o.id] : null;
+    if (ver == null || (MOINS && MOINS.matches) || !("IntersectionObserver" in window)) return null;
+    /* VP9 d'abord (tout Chrome, Firefox, Edge — et le Chromium sans H.264), puis H.264 (Safari) ;
+       quand la DERNIERE source echoue (fichier absent, illisible), la video s'en va */
+    var f = "media/studio/" + String(o.id).replace(/:/g, "-"), q = "?v=" + encodeURIComponent(ver);
+    var mp4 = h("source", { src: f + ".mp4" + q, type: "video/mp4" });
+    var v = h("video", { muted: true, loop: true, playsinline: true, preload: "none", "aria-hidden": "true", disablepictureinpicture: true,
+      poster: "img/site/" + o.img, style: o.pos ? "object-position:" + o.pos : null }, [h("source", { src: f + ".webm" + q, type: "video/webm" }), mp4]);
+    v.muted = true;
+    var adieu = function(){ if (VUES) VUES.unobserve(v); v.remove(); };
+    v.addEventListener("playing", function(){ v.classList.add("joue"); });
+    v.addEventListener("error", adieu);
+    mp4.addEventListener("error", adieu);
+    if (!VUES) VUES = new IntersectionObserver(function(es){
+      es.forEach(function(e){
+        var x = e.target;
+        if (e.isIntersecting && !(MOINS && MOINS.matches)) { var p = x.play(); if (p && p["catch"]) p["catch"](function(){}); }
+        else x.pause();
+      });
+    }, { threshold: 0.25 });
+    VUES.observe(v);
+    return v;
   }
   function cartesOnglet(t){
     var l = [], sel = modeleChoisi(), durees = (etat.cat && etat.cat.video && etat.cat.video.durees) || [], res = (etat.cat && etat.cat.video && etat.cat.video.resolutions) || [];
@@ -1466,6 +1508,7 @@ footer b{color:var(--navy)}
   }
   function peintGrille(){
     var g = $("grid"); g.textContent = "";
+    if (VUES) VUES.disconnect();
     etat.grillePour = payeur();
     cartesOnglet(etat.onglet).forEach(function(o){ g.appendChild(carte(o)); });
     $("mLabel").textContent = ONGLETS[etat.onglet].label;

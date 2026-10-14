@@ -170,6 +170,35 @@
     "resolution": "720p",
     "sha256": "38816d68800f45e980952823a412b3272a889c6cc796db04f6740d129d721c67"
    }
+  ],
+  "course": [
+   {
+    "monstre": "pirate",
+    "action": "run",
+    "mode": "bande",
+    "modele": "grok-imagine-video-1.5",
+    "duree": 3,
+    "resolution": "720p",
+    "sha256": "0c58f8e9f99b8a85da5255bbd1017368050ddd60b13998226904fe60721b0bb9"
+   },
+   {
+    "monstre": "piratesse",
+    "action": "run",
+    "mode": "bande",
+    "modele": "grok-imagine-video-1.5",
+    "duree": 3,
+    "resolution": "720p",
+    "sha256": "dbd0991e12db2046029c40bd7cf15779aeff6d8c880e6811f35e2c02d71193a0"
+   },
+   {
+    "monstre": "lieutenant",
+    "action": "run",
+    "mode": "bande",
+    "modele": "grok-imagine-video-1.5",
+    "duree": 3,
+    "resolution": "720p",
+    "sha256": "38816d68800f45e980952823a412b3272a889c6cc796db04f6740d129d721c67"
+   }
   ]
  }
 }

@@ -218,7 +218,16 @@ a{ color:var(--bleu); }
       idl.appendChild(elem("code", null, l.id));
       var cp = elem("button", "pale2", "Copy"); cp.type = "button"; cp.style.marginLeft = "6px";
       cp.addEventListener("click", function(){ try { navigator.clipboard.writeText(l.id).then(function(){ cp.textContent = "Copied"; }, function(){}); } catch (e) {} });
-      idl.appendChild(cp); b.appendChild(idl);
+      idl.appendChild(cp);
+      /* refaire la finition sur les clips deja payes : aucun appel xAI, 0 $ (le serveur
+         revérifie le proprietaire du lot et prend un seul lot a la fois) */
+      if (l.statut === "fini" && (l.clips || []).some(function(k){ return k.statut === "done"; })) {
+        var rf = elem("button", "pale2", "Redo finishing (free, no new clip)"); rf.type = "button"; rf.style.marginLeft = "6px";
+        rf.disabled = !!(V && V.enCours);
+        rf.addEventListener("click", function(){ refais(l, rf); });
+        idl.appendChild(rf);
+      }
+      b.appendChild(idl);
       var ul = elem("ul", "clips");
       (l.clips || []).forEach(function(k){
         var li = elem("li", null, ligneClip(k) + " — " + k.statut + (k.coutUsd != null ? " · " + usd(k.coutUsd) : "") + (k.secondes != null ? " · " + k.secondes + " s wait" : "") + (k.erreur ? " · " + k.erreur : ""));
@@ -230,6 +239,7 @@ a{ color:var(--bleu); }
       (l.planches || []).forEach(function(p){
         var d = elem("div"); d.style.marginTop = "8px";
         if (p.erreur) { d.appendChild(elem("div", "err", p.monstre + ": finishing failed — " + p.erreur)); b.appendChild(d); return; }
+        if (p.prises && p.prises.length) d.appendChild(elem("div", "pale", p.monstre + " — clips used: " + p.prises.join(", ")));
         d.appendChild(elem("div", p.verdict === "ok" ? "ok" : "att", p.monstre + ": checks " + (p.verdict === "ok" ? "pass" : "to review") + (p.echecs && p.echecs.length ? " (" + p.echecs.length + " failed: " + p.echecs.slice(0, 6).map(function(x){ return typeof x === "string" ? x : (x && (x.id || x.controle)) || "?"; }).join(", ") + (p.echecs.length > 6 ? "…" : "") + ")" : "")));
         var f = elem("div", "fichiers");
         (p.fichiers || []).forEach(function(rel){ f.appendChild(boutonFichier(l, rel)); });
@@ -278,6 +288,16 @@ a{ color:var(--bleu); }
     statut("Sending batch " + l.nom + "…", "att");
     api("/studio/planches", "POST", { lot: l.nom }).then(function(r){
       statut("Batch " + l.nom + " started: " + r.lances + "/" + r.total + " clip(s) sent" + (r.raison ? " — " + r.raison : "") + ".", r.raison ? "err" : "ok");
+    }, function(e){
+      statut("Not started: " + e.message, "err");
+    }).then(function(){ envoi = false; return charge(); });
+  }
+  function refais(l, btn){
+    if (envoi) return;
+    envoi = true; btn.disabled = true;
+    statut("Finishing batch " + l.lot + " again (no new clip, $0)…", "att");
+    api("/studio/planches/refinition/" + encodeURIComponent(l.id), "POST").then(function(){
+      statut("Batch " + l.lot + ": finishing again. The sheets and checks below update when it is done (a few minutes).", "ok");
     }, function(e){
       statut("Not started: " + e.message, "err");
     }).then(function(){ envoi = false; return charge(); });

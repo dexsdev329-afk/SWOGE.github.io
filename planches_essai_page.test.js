@@ -74,7 +74,8 @@ const ID = 'ab'.repeat(12);
       if (S.tours >= 2) {
         l.statut = 'fini'; l.coutUsd = 0.3; S.enCours = null; S.depense = 0.3;
         l.clips[0] = Object.assign({}, l.clips[0], { statut: 'done', coutUsd: 0.3, secondes: 41.2, fichier: 'c'.repeat(48) + '.mp4' });
-        l.planches = [{ monstre: 'pirate', verdict: 'a_revoir', echecs: ['halo:idle:se', 'pieds:idle:nw'], fiche: 'pirate.json', fichiers: ['pirate.json', 'pirate/idle.webp', 'pirate/idle_hd.webp'] }];
+        l.planches = [{ monstre: 'pirate', verdict: 'a_revoir', echecs: ['halo:idle:se', 'pieds:idle:nw'], fiche: 'pirate.json', fichiers: ['pirate.json', 'pirate/idle.webp', 'pirate/idle_hd.webp'],
+                        prises: ['idle 1.5'].concat(l.refaite ? ['walk 1.5'] : []) }];
       }
     }
   }
@@ -88,6 +89,13 @@ const ID = 'ab'.repeat(12);
       return [403, { ok: false, raison: 'owner only (AI_OWNER on the server)' }];
     }
     if (url.pathname === '/studio/planches' && q.method() === 'GET') { avance(); return [200, vue()]; }
+    const rf = /^\/studio\/planches\/refinition\/([0-9a-f]{24})$/.exec(url.pathname);
+    if (rf && q.method() === 'POST') {
+      const l = S.lots.find((x) => x.id === rf[1]);
+      if (!l || l.statut !== 'fini' || S.enCours) return [409, { ok: false, raison: 'this batch is not finished yet' }];
+      l.statut = 'finition'; l.refaite = true; S.enCours = l.id; S.tours = 1;
+      return [200, { ok: true, id: l.id, statut: 'finition' }];
+    }
     if (url.pathname === '/studio/planches' && q.method() === 'POST') {
       if (S.refus) { const r = S.refus; S.refus = null; return r; }
       S.enCours = ID;
@@ -201,6 +209,18 @@ const ID = 'ab'.repeat(12);
     ok(dl && dl.suggestedFilename() === 'planches_sonde_pirate_idle.webp', 'telechargement nomme [' + (dl && dl.suggestedFilename()) + ']');
     ok(journal.some((x) => x.chemin === '/studio/planches/fichier/' + ID + '/pirate/idle.webp' && x.auth === 'jOwner'), 'le fichier lu avec le jeton');
     eq(await p.textContent('#depense'), '$0.30', 'la depense suit le serveur');
+    ok(/clips used: idle 1\.5/.test(await p.textContent('#listeLots')), 'les prises gardees par la finition sont dites');
+
+    /* refaire la finition : un POST sans corps sur le lot, aucun Run, 0 $ annonce */
+    journal.length = 0;
+    await p.click('#listeLots [data-id="' + ID + '"] >> text=Redo finishing');
+    await p.waitForFunction(() => /finishing again/.test(document.getElementById('statut').textContent), null, { timeout: 5000 }).catch(() => {});
+    const rq = journal.filter((x) => x.m === 'POST');
+    ok(rq.length === 1 && rq[0].chemin === '/studio/planches/refinition/' + ID && rq[0].auth === 'jOwner' && rq[0].corps == null,
+       'Redo finishing : un POST sur /studio/planches/refinition/<lot>, avec le jeton, sans corps [' + rq.map((x) => x.chemin).join(',') + ']');
+    await p.waitForFunction(() => /walk 1\.5/.test(document.getElementById('listeLots').textContent), null, { timeout: 12000 }).catch(() => {});
+    ok(/clips used: idle 1\.5, walk 1\.5/.test(await p.textContent('#listeLots')) && /finished/.test(await p.textContent('#listeLots')), 'le lot refait revient fini, avec ses nouvelles prises');
+    eq(await p.textContent('#depense'), '$0.30', 'refaire ne coute rien');
   }
 
   console.log('\n-- 5. un refus du serveur est montre, echappe --');

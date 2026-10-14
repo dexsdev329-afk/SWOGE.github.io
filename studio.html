@@ -202,7 +202,7 @@ textarea.prompt:disabled{cursor:not-allowed}
 .ctl select{field-sizing:content;appearance:none;-webkit-appearance:none;border:0;background:transparent;font:650 13px/1 var(--f);color:var(--ink);padding:0 16px 0 0;cursor:pointer;outline:0;max-width:150px}
 .ctl .chev{position:absolute;right:10px;width:12px;height:12px;pointer-events:none;color:var(--dim)}
 .mchip{padding-left:4px;background:#fff}
-.mchip img{width:30px;height:30px;border-radius:999px;object-fit:cover}
+.mchip img{width:30px;height:30px;border-radius:999px;object-fit:cover;object-position:50% 8%}
 .mchip b{font-weight:750}
 .mchip .chev{position:static}
 .seg{display:inline-flex;align-items:center;gap:2px;height:38px;padding:3px;border:1px solid var(--line);border-radius:999px;background:var(--field)}
@@ -316,7 +316,10 @@ h2{font:800 27px/1.12 var(--f);letter-spacing:-.7px;color:var(--navy);margin:6px
 .mcard.live:hover{border-color:rgba(27,95,224,.45)}
 .mcard.on{border-color:var(--blue);box-shadow:0 0 0 3px rgba(27,95,224,.16)}
 .thumb{position:relative;aspect-ratio:2/1;background:#DCE5F4;overflow:hidden}
-.thumb img{width:100%;height:100%;object-fit:cover}
+/* le recadrage part du HAUT : les sources sont en 3:2 ou 9:16, la tete du personnage dans
+   les 15 % du haut, et un recadrage centre en 2:1 la coupait (revue du 14/10/2026) ;
+   une fiche peut donner son propre point (pos) */
+.thumb img{width:100%;height:100%;object-fit:cover;object-position:50% 0}
 .mcard.soon .thumb img,.mcard.paused .thumb img{filter:grayscale(1) contrast(.85) brightness(1.08);opacity:.55}
 .badge{position:absolute;left:10px;top:10px;display:inline-flex;align-items:center;gap:6px;padding:6px 9px;border-radius:999px;font:800 11px/1 var(--f);letter-spacing:.2px}
 .badge.lv{background:#fff;color:var(--green);box-shadow:0 2px 8px rgba(11,27,54,.12)}
@@ -1136,19 +1139,19 @@ footer b{color:var(--navy)}
     "grok:qualite": { img: "accueil/hero.webp", desc: "Finer detail for the version you keep." },
     "openai:rapide": { img: "accueil/economie.webp", desc: "OpenAI's image model at medium quality. Billed on the tokens it really uses." },
     "openai:qualite": { img: "accueil/cta.webp", desc: "OpenAI's image model at high quality. Billed on the tokens it really uses." },
-    "video:rapide": { img: "cinema/s2_ep2.webp", desc: "Short clips from a prompt, or bring a picture to animate." },
-    "video:qualite": { img: "cinema/saga_ep6.webp", desc: "Powers Series & Ads: the same character pictures and voices go with every scene." }
+    "video:rapide": { img: "cinema/s2_ep2.webp", pos: "50% 36%", desc: "Short clips from a prompt, or bring a picture to animate." },
+    "video:qualite": { img: "cinema/saga_ep6.webp", pos: "50% 30%", desc: "Powers Series & Ads: the same character pictures and voices go with every scene." }
   };
   var PAR = { grok: "xAI", openai: "OpenAI" };
   /* Ce qui n'existe pas encore : AUCUN prix (aucun ne vient du serveur ; Kling 3.0 attend le choix
      fal.ai / cle directe). Ces cartes ne se choisissent pas et le bouton ne les envoie jamais. */
   var BIENTOT = {
-    image: [{ id: "kling-i", nom: "Kling Image 3.0", by: "Kuaishou", img: "doge_casino.webp", desc: "A third image model, in 1K or 2K." },
-            { id: "upscale", nom: "Upscale", by: "SWOGE Studio", img: "trophee.webp", desc: "Make a finished image larger and sharper." }],
-    video: [{ id: "kling3", nom: "Kling 3.0", by: "Kuaishou", img: "doge_sport.webp", desc: "Video with native audio." },
+    image: [{ id: "kling-i", nom: "Kling Image 3.0", by: "Kuaishou", img: "studio_casino.webp", pos: "50% 23%", desc: "A third image model, in 1K or 2K." },
+            { id: "upscale", nom: "Upscale", by: "SWOGE Studio", img: "studio_trophee.webp", desc: "Make a finished image larger and sharper." }],
+    video: [{ id: "kling3", nom: "Kling 3.0", by: "Kuaishou", img: "doge_sport.webp", pos: "50% 10%", desc: "Video with native audio." },
             { id: "kling26", nom: "Kling 2.6", by: "Kuaishou", img: "doge_roulette.webp", desc: "Video without sound." },
             { id: "veo", nom: "Veo 3.1", by: "Google", img: "monde.webp", desc: "Video with sound." },
-            { id: "motion", nom: "Motion control", by: "SWOGE Studio", img: "doge_arcade.webp", desc: "Your character moves the way a reference clip moves." }],
+            { id: "motion", nom: "Motion control", by: "SWOGE Studio", img: "doge_arcade.webp", pos: "50% 24%", desc: "Your character moves the way a reference clip moves." }],
     voice: [{ id: "vo", nom: "Voice-over", by: "SWOGE Studio", img: "accueil/agents.webp", desc: "Turn a script into narration." }],
     avatar: [{ id: "talk", nom: "Talking avatar", by: "SWOGE Studio", img: "accueil/wallet.webp", desc: "SWOGE or a character you invented reads your script." },
              { id: "lips", nom: "Lipsync", by: "SWOGE Studio", img: "accueil/jeux.webp", desc: "Sync your character's mouth to a voice track." }]
@@ -1398,6 +1401,7 @@ footer b{color:var(--navy)}
     if (mo) {
       var fi = FICHES[mo.cle] || {};
       $("mchipImg").src = "img/site/" + (fi.img || "doge_muscle.webp");
+      $("mchipImg").style.objectPosition = fi.pos || "";
       var nm = $("mchipName"); nm.textContent = "";
       nm.appendChild(h("span", { class: "mn", text: mo.chip || mo.fnom })); nm.appendChild(h("span", { class: "ms", text: " · " })); nm.appendChild(h("span", { class: "mv", text: mo.nom }));
       $("mchip").hidden = false;
@@ -1419,7 +1423,7 @@ footer b{color:var(--navy)}
     var badge = o.soon ? h("span", { class: "badge sn", text: "Coming soon" })
       : o.pause ? h("span", { class: "badge ps", text: "Paused" })
       : h("span", { class: "badge lv" }, [h("i", { class: "dot" }), o.serie ? "Live in Series & Ads" : "Live"]);
-    c.appendChild(h("div", { class: "thumb" }, [h("img", { src: "img/site/" + o.img, alt: "", loading: "lazy" }), badge, h("span", { class: "tick" }, [ico("check")])]));
+    c.appendChild(h("div", { class: "thumb" }, [h("img", { src: "img/site/" + o.img, alt: "", loading: "lazy", style: o.pos ? "object-position:" + o.pos : null }), badge, h("span", { class: "tick" }, [ico("check")])]));
     var corps = h("div", { class: "mbody" }, [
       h("div", { class: "mname" }, [h("b", { text: o.nom }), o.v ? h("span", { class: "v", text: o.v }) : null]),
       o.by ? h("span", { class: "by", text: "by " + o.by }) : null,
@@ -1447,7 +1451,7 @@ footer b{color:var(--navy)}
       }
       var f = fermeture(mo);
       l.push({ id: mo.cle, live: !f, pause: f, on: sel && sel.cle === mo.cle, nom: mo.fnom, v: mo.nom, by: PAR[mo.f] || (t === "video" ? "xAI" : null),
-        img: fi.img || "doge_muscle.webp", desc: fi.desc || "Priced by the server, like every model here.", prix: prix });
+        img: fi.img || "doge_muscle.webp", pos: fi.pos, desc: fi.desc || "Priced by the server, like every model here.", prix: prix });
     });
     if (t === "voice") {
       var noms = (PROD.cat && PROD.cat.voix || []).map(function(v){ return v.nom; });
@@ -1456,7 +1460,7 @@ footer b{color:var(--navy)}
         desc: (noms.length ? noms.join(", ") + " speak" : "The built-in voices speak") + " inside your Series & Ads scenes.",
         prix: { amt: "Included", unit: "in the scene price", alt: "Live in Series & Ads videos" }, lien: lien });
     }
-    (BIENTOT[t] || []).forEach(function(b){ l.push({ id: b.id, soon: true, nom: b.nom, by: b.by, img: b.img, desc: b.desc }); });
+    (BIENTOT[t] || []).forEach(function(b){ l.push({ id: b.id, soon: true, nom: b.nom, by: b.by, img: b.img, pos: b.pos, desc: b.desc }); });
     if (REFUS[t]) l.push({ refus: true, voix: t !== "image", nom: REFUS[t].nom, desc: REFUS[t].desc });
     return l;
   }

@@ -129,7 +129,7 @@ const FR = /[àâçéèêëîïôûùüÿœ]|\b(les|des|une|est|pour|avec|vous|v
   const pret = new Set();
   function remet() {
     Object.assign(S, { cat: catReel(), credit: 4.2, envois: [], lectures: [], imageDelai: 0, imageRep: null, polls: 0, pollsBloques: false, reprise: {}, corsImgen: true,
-      pollHtml: 0, poll401: false, imageHtml: 0, repriseAuto: null, video404: false, scene402: false, topupMontant: null, piege: [], catLectures: 0, solde: null, topupSigne: null, topups: [], histCredit: null, suiteSeule: false });
+      pollHtml: 0, poll401: false, imageHtml: 0, repriseAuto: null, video404: false, scene402: false, topupMontant: null, piege: [], catLectures: 0, solde: null, topupSigne: null, topups: [], histCredit: null, suiteSeule: false, videoRep: null, videoPayeur: null });
   }
   remet();
   function routeProd(q, u, auth) {
@@ -198,13 +198,20 @@ const FR = /[àâçéèêëîïôûùüÿœ]|\b(les|des|une|est|pour|avec|vous|v
         if (c.payeur === 'credit') S.credit = 4.14;   /* le credit du faux serveur suit, comme le vrai */
         return json(200, c.payeur === 'credit' ? Object.assign(base, { payeur: 'credit', factureUsd: 0.06, creditUsd: 4.14 }) : Object.assign(base, { factureSwoge: '1419.5', solde: '180981.0', factureUsd: 0.06 }));
       }
-      if (u.pathname === '/studio/media/video') return json(200, { ok: true, genre: 'video', id: 'v1', status: 'pending', duree: e.corps.duree, resolution: e.corps.resolution, modele: e.corps.modele });
+      /* Au credit (14/10, server.js : enCredit a la reponse, studio_media.etatVideo au suivi) : des dollars, jamais sous les noms $SWOGE. */
+      if (u.pathname === '/studio/media/video') {
+        if (S.videoRep) return json(S.videoRep.status, S.videoRep.body);
+        S.videoPayeur = e.corps.payeur === 'credit' ? 'credit' : 'swoge';
+        const v = { ok: true, genre: 'video', id: 'v1', status: 'pending', duree: e.corps.duree, resolution: e.corps.resolution, modele: e.corps.modele };
+        return json(200, S.videoPayeur === 'credit' ? Object.assign(v, { payeur: 'credit', creditUsd: 2.85 }) : v);
+      }
       if (u.pathname === '/studio/media/video/v1') {
         if (S.video404) return json(404, { ok: false, code: 404, raison: 'unknown video' });
         if (S.pollHtml > 0) { S.pollHtml--; return pageProxy(); }
         if (S.poll401) return json(401, { ok: false, raison: 'sign in with your wallet first' });
         S.polls++;
         if (S.pollsBloques || S.polls < 2) return json(200, { ok: true, genre: 'video', id: 'v1', status: 'pending', progress: 40 });
+        if (S.videoPayeur === 'credit') { S.credit = 3.75; return json(200, { ok: true, genre: 'video', id: 'v1', status: 'done', progress: 100, url: 'https://vidgen.x.ai/v1.mp4', duree: 6, resolution: '480p', payeur: 'credit', factureUsd: 0.45, creditUsd: 3.75 }); }
         return json(200, { ok: true, genre: 'video', id: 'v1', status: 'done', progress: 100, url: 'https://vidgen.x.ai/v1.mp4', duree: 6, resolution: '480p', factureSwoge: '10639', solde: '171761.5' });
       }
       if (u.pathname.startsWith('/studio/reprise/')) {
@@ -356,6 +363,14 @@ const FR = /[àâçéèêëîïôûùüÿœ]|\b(les|des|une|est|pour|avec|vous|v
     await p.click('#segN [data-n="1"]');
     await p.click('.tab[data-tab="video"]');
     const v = cat.video;
+    /* Au credit (le payeur par defaut quand il y a du credit) : le prix en dollars du catalogue (14/10). */
+    eq(await prixBouton(p), dollars(v.modeles[0].typiqueUsd), 'video Speed 6 s, au credit : typiqueUsd du catalogue');
+    if (Med) ok(Math.abs(v.modeles[0].typiqueUsd - Med.VIDEO[0].usdSeconde * 6 * cat.marge) < 1e-4, 'et c est la liste du serveur × marge, sans passer par le cours');
+    ok(/paid from your dollar credit/.test(await p.textContent('#priceNote')) && !/paid in \$SWOGE for now/.test(await p.textContent('#priceNote')), 'la note dit « paid from your dollar credit », plus « Video is paid in $SWOGE for now »');
+    await p.click('#segL [data-l="10"]');
+    eq(await prixBouton(p), dollars(Math.round(v.modeles[0].parSecondeUsd * 10 * 1e4) / 1e4), 'au credit, 10 s : parSecondeUsd × 10');
+    await p.click('#segL [data-l="6"]');
+    await p.click('[data-pay="swoge"]');
     eq(await prixBouton(p), nombre(v.modeles[0].typiqueSwoge) + ' $SWOGE', 'video Speed 6 s : typiqueSwoge du catalogue');
     /* Quality (1.5) se choisit dans la grille : son prix aussi vient du catalogue (un mutant qui gardait le prix Speed sortait vert). */
     await p.click('.mcard[data-id="video:qualite"]');
@@ -364,7 +379,9 @@ const FR = /[àâçéèêëîïôûùüÿœ]|\b(les|des|une|est|pour|avec|vous|v
     eq(await prixBouton(p), nombre(v.modeles[1].parSecondeSwoge * 10) + ' $SWOGE', 'Quality 10 s : parSecondeSwoge x 10');
     await p.click('#segL [data-l="6"]');
     await p.click('.mcard[data-id="video:rapide"]');
-    ok(await p.isDisabled('[data-pay="credit"]'), 'video : le credit est grise (server.js, route /studio/media : la video reste en $SWOGE)');
+    /* Intention d'avant (le credit grise en video) : la page n'offre QUE ce que le serveur accepte. Il
+       publie video.credit depuis le 14/10 : le credit s'offre ; sans ce champ, grise (essai plus bas). */
+    ok(!(await p.isDisabled('[data-pay="credit"]')), 'video : le credit s offre (catalogue video.credit)');
     await p.click('#segL [data-l="10"]');
     eq(await prixBouton(p), nombre(v.modeles[0].parSecondeSwoge * 10) + ' $SWOGE', '10 s : parSecondeSwoge × 10');
     await p.click('#segR [data-r="720p"]');
@@ -390,7 +407,9 @@ const FR = /[àâçéèêëîïôûùüÿœ]|\b(les|des|une|est|pour|avec|vous|v
     await p2.click('.mcard[data-id="grok:turbo"]');
     eq(await prixBouton(p2), '~$0.02', 'et se choisit, a son prix');
     await p2.click('.tab[data-tab="video"]');
+    await p2.click('[data-pay="swoge"]');
     eq(await prixBouton(p2), '9,999 $SWOGE', 'le prix video suit le catalogue');
+    await p2.click('[data-pay="credit"]');
     await ferme(p2);
 
     /* Ce que le serveur coupe se lit sur la page, avec SA phrase. */
@@ -543,6 +562,7 @@ const FR = /[àâçéèêëîïôûùüÿœ]|\b(les|des|une|est|pour|avec|vous|v
     const p = await ouvre({ session: true, suite: '#video' });
     await p.fill('#prompt', 'a chrome motorbike in a neon city');
     await p.click('#segL [data-l="10"]');
+    await p.click('[data-pay="swoge"]');
     await p.click('#gen');
     await p.waitForFunction(() => /Rendering · 40%/.test(document.getElementById('resStage').textContent), null, { timeout: 8000 });
     ok(true, 'la progression reelle du serveur : « Rendering · 40% », apres une page d erreur du proxy qui n a rien interrompu');
@@ -550,7 +570,7 @@ const FR = /[àâçéèêëîïôûùüÿœ]|\b(les|des|une|est|pour|avec|vous|v
     ok(await p.isDisabled('#gen'), 'pendant le rendu, le bouton est verrouille');
     await p.waitForSelector('#result.done video', { timeout: 15000 });
     const e = posts(/\/studio\/media\/video$/)[0];
-    ok(e && e.corps.duree === 10 && e.corps.resolution === '480p' && e.corps.modele === 'rapide' && !('payeur' in e.corps), 'la demande porte la duree, la resolution et le modele ; pas de payeur (toujours $SWOGE)');
+    ok(e && e.corps.duree === 10 && e.corps.resolution === '480p' && e.corps.modele === 'rapide' && e.corps.payeur === 'swoge', 'la demande porte la duree, la resolution, le modele et le payeur choisi ($SWOGE)');
     ok(S.polls >= 2 && /^https:\/\/vidgen\.x\.ai\/v1\.mp4/.test(await p.getAttribute('#resStage video', 'src')), 'sondee jusqu a la video, puis jouee');
     ok(/10,639 \$SWOGE/.test(await p.textContent('#resFoot')), 'avec ce qu elle a coute');
     ok(/171\.7k/.test(await p.textContent('#balSw')), 'le solde $SWOGE suit');
@@ -598,6 +618,72 @@ const FR = /[àâçéèêëîïôûùüÿœ]|\b(les|des|une|est|pour|avec|vous|v
     await r.waitForSelector('#result.done img', { timeout: 8000 });
     eq(await r.getAttribute('#resStage > img', 'src'), 'https://imgen.x.ai/r.png', 'une image partie avant le rechargement est reprise par son rid');
     eq(posts(/\/studio\/media\/image$/).length, 0, 'sans la redemander');
+    await ferme(r);
+  }
+
+  console.log('\n-- 8 bis. le credit en dollars : l affiche, sa recharge, et la video au credit (14/10) --');
+  {
+    /* Deconnecte : l affiche dit comment avoir un credit, et rien n est lu. */
+    remet();
+    const p0 = await ouvre();
+    ok(await p0.isVisible('#crCard') && /Sign in with your wallet to see your dollar credit and top it up with USDC/.test(await p0.textContent('#crTxt')) && !(await p0.isVisible('#crVal')),
+       'deconnecte : l affiche du credit est la, une ligne dit de se connecter, aucun solde invente');
+    eq((await p0.textContent('#crTopL')).trim(), 'Sign in', 'son bouton dit « Sign in »');
+    await p0.click('#crTop'); await p0.waitForTimeout(200);
+    ok(S.envois.length === 0 && await p0.isHidden('#rc'), 'le clic ne lit rien et n ouvre pas la recharge (il faut une session)');
+    await ferme(p0);
+    /* Connecte : le solde de la session, et la recharge EXISTANTE de la page (#rc, x402_paie.js). */
+    remet();
+    const portefeuille = () => { window.__signe = []; window.ethereum = { request: async (a) => {
+      if (a.method === 'eth_requestAccounts') return ['0x' + '11'.repeat(20)];
+      if (a.method === 'wallet_switchEthereumChain') return null;
+      if (a.method === 'eth_signTypedData_v4') { window.__signe.push(JSON.parse(a.params[1]).message); return '0x' + '22'.repeat(65); }
+      return null; } }; };
+    const p = await ouvre({ session: true, init: [portefeuille, null], attente: 800 });
+    ok(await p.isVisible('#crCard') && await p.isVisible('#crVal'), 'connecte : l affiche est visible avec le solde');
+    eq(await p.textContent('#crVal'), '$4.20', 'le credit de la session, lu sur /credit');
+    eq((await p.textContent('#crTopL')).trim(), 'Top up', 'et un bouton « Top up »');
+    await p.click('#crTop');
+    ok(await p.isVisible('#rc') && /Top up your dollar credit/.test(await p.textContent('#rcTitre')) && /images and videos/.test(await p.textContent('#rc')),
+       '« Top up » ouvre la recharge de la page (la meme que l en-tete), qui dit qu elle paie images et videos');
+    await p.click('#rcSign');
+    await p.waitForFunction(() => /Done:/.test(document.getElementById('rcStatut').textContent), null, { timeout: 8000 });
+    ok((await p.evaluate(() => window.__signe.length)) === 1 && S.topups.filter((t) => t.sig).length === 1, 'la recharge USDC existante : une signature, une requete signee a /credit/topup');
+    await p.click('#rcClose');
+    /* La video au credit : prix en dollars, payeur 'credit', facture et credit en dollars. */
+    await p.click('.tab[data-tab="video"]');
+    await p.fill('#prompt', 'a doge sprinting on a beach');
+    eq(await prixBouton(p), dollars(S.cat.video.modeles[0].typiqueUsd), 'video au credit : le prix du bouton en dollars');
+    ok(!/for now/.test(await p.textContent('#priceNote')), 'plus de « Video is paid in $SWOGE for now »');
+    await p.click('#gen');
+    await p.waitForSelector('#result.done video', { timeout: 15000 });
+    const e = posts(/\/studio\/media\/video$/)[0];
+    ok(e && e.corps.payeur === 'credit' && !('addr' in e.corps), 'la demande porte payeur « credit » (et aucune adresse)');
+    ok(/\$0\.45/.test(await p.textContent('#resFoot')) && !/SWOGE/.test(await p.textContent('#resFoot')), 'le resultat dit ce qu elle a coute, en dollars');
+    eq(await p.textContent('#crVal'), '$3.75', 'et l affiche suit le credit rendu par le serveur');
+    ok(await p.evaluate((a) => { const l = JSON.parse(localStorage.getItem('swogeStudioHisto:' + a) || '[]'); return l[0] && l[0].genre === 'video' && l[0].payeur === 'credit' && l[0].usd === 0.45; }, ADDR),
+       'l historique la range au credit, 0,45 $');
+    await ferme(p);
+    /* Credit insuffisant pour une video : la phrase du serveur, et la signature de ce qui manque. */
+    remet(); S.credit = 0.2;
+    S.videoRep = { status: 402, body: { ok: false, code: 402, payeur: 'credit', raison: 'your dollar credit is too low for this ($1.35 is reserved while it runs, you pay only what is used)', requisUsd: 1.35, creditUsd: 0.2 } };
+    const q = await ouvre({ session: true, suite: '#video' });
+    await q.click('[data-pay="credit"]');
+    await q.fill('#prompt', 'x'); await q.click('#gen');
+    await q.waitForFunction(() => /too low/.test(document.getElementById('resStage').textContent), null, { timeout: 8000 });
+    eq(await q.textContent('#resStage b'), 'Not enough credit', 'video, 402 au credit : « Not enough credit »');
+    ok((await q.textContent('#resStage')).includes('your dollar credit is too low for this ($1.35 is reserved'), 'la phrase du serveur, telle quelle');
+    ok(/Sign \$1\.15 and generate/.test(await q.textContent('#resStage')) && /Pay with \$SWOGE instead/.test(await q.textContent('#resStage')), 'la signature de ce qui manque (1,35 − 0,20), ou le $SWOGE');
+    eq(posts(/\/credit\/topup/).length, 0, 'aucune recharge sans le clic du joueur');
+    await ferme(q);
+    /* Un serveur qui ne publie pas video.credit : la page ne l offre pas (il le refuserait). */
+    remet(); delete S.cat.video.credit;
+    const r = await ouvre({ session: true, suite: '#video' });
+    ok(await r.isDisabled('[data-pay="credit"]') && /Video is paid in \$SWOGE for now/.test(await r.textContent('#priceNote')) && / \$SWOGE$/.test(await prixBouton(r)),
+       'sans video.credit au catalogue : credit grise, prix et note en $SWOGE');
+    await r.fill('#prompt', 'x'); await r.click('#gen');
+    await r.waitForSelector('#result.done video', { timeout: 15000 });
+    eq(posts(/\/studio\/media\/video$/)[0].corps.payeur, 'swoge', 'et la demande part en $SWOGE');
     await ferme(r);
   }
 

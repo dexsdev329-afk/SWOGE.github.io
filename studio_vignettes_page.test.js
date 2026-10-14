@@ -120,7 +120,10 @@ const RE_TABLE = /var VIDEOS = (\{[^;]*\});/;
     ok(k.video && k.pos === k.imgPos && k.pos === '50% 23%', 'une carte a point propre (kling-i) : la video prend la meme object-position (' + k.pos + ')');
     const sans = await thumb(page, 'openai:rapide');
     ok(sans && !sans.video, 'une carte hors de la table : l image seule');
-    /* le fondu d'entree dure 0,45 s : on lit l'opacite une fois qu'il est fini */
+    /* le fondu d'entree dure 0,45 s : on lit l'opacite une fois qu'il est fini. La carte est AMENEE a
+       l'ecran, comme les autres plus bas : depuis l'affiche du credit (14/10, 81 px sous le prix) elle
+       n'en depasse plus que 15 px a 1440 x 900 ; l'intention est « a l'ecran, elle joue », pas un pli fixe. */
+    await page.evaluate(() => document.querySelector('.mcard[data-id="grok:rapide"]').scrollIntoView({ block: 'center' }));
     const jg = await attends(async () => { const x = await thumb(page, 'grok:rapide'); return x.joue && !x.paused && Number(x.opacite) === 1 ? x : null; });
     ok(!!jg, 'a l ecran, elle joue et se montre (opacite 1 apres le fondu)');
     await page.evaluate(() => document.querySelector('.mcard[data-id="kling-i"]').scrollIntoView({ block: 'center' }));

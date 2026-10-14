@@ -229,6 +229,14 @@ textarea.prompt:disabled{cursor:not-allowed}
 .pay > small{font:700 11px/1 var(--f);letter-spacing:1.2px;text-transform:uppercase;color:var(--dim2)}
 .pay .seg{background:#fff}
 .pay .seg button b{font-weight:800;color:inherit}
+/* L'affiche du credit en dollars (demande du proprietaire, 14/10 : « une affiche » pour recharger) :
+   toujours a cote du prix, connecte ou non. La recharge est celle de la page (ouvreRecharge). */
+.crcard{flex-basis:100%;display:flex;align-items:center;gap:10px 14px;flex-wrap:wrap;margin:0;padding:10px 14px;border:1px solid var(--line);border-radius:16px;background:#fff}
+.crcard .crl{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1 1 220px}
+.crcard small{font:700 11px/1 var(--f);letter-spacing:1.2px;text-transform:uppercase;color:var(--dim2)}
+.crcard .crv{font:800 20px/1.1 var(--f);color:var(--navy)}
+.crcard .crs{font:500 12.5px/1.45 var(--f);color:var(--text2)}
+.crcard .gold{flex:0 0 auto}
 .refnote{flex-basis:100%;display:flex;align-items:center;gap:8px;margin:0;font:500 13px/1.45 var(--f);color:var(--text2)}
 .refnote img{width:24px;height:24px;border-radius:7px;object-fit:cover;box-shadow:0 0 0 1.5px var(--gold2);flex:0 0 auto}
 .refnote b{color:var(--navy)}
@@ -813,6 +821,15 @@ footer b{color:var(--navy)}
       </div>
     </div>
     <p class="refnote" id="refNote" hidden></p>
+    <!-- Le credit en dollars, en vue : son solde (session) et la recharge USDC de la page. -->
+    <div class="crcard" id="crCard" role="group" aria-label="Your dollar credit">
+      <div class="crl">
+        <small>Dollar credit</small>
+        <b class="crv num" id="crVal" hidden>&mdash;</b>
+        <span class="crs" id="crTxt">Sign in with your wallet to see your dollar credit and top it up with USDC on Base or Solana.</span>
+      </div>
+      <button class="gold" type="button" id="crTop"><svg class="ic"><use href="#i-plus"/></svg><span id="crTopL">Sign in</span></button>
+    </div>
   </div>
   </div>
   <!-- LE RESULTAT : vide, en cours (progression reelle pour une video), fini, ou refuse avec la raison du serveur. -->
@@ -981,7 +998,7 @@ footer b{color:var(--navy)}
   <div class="sheet-b">
     <button class="x" type="button" id="rcClose" aria-label="Close"><svg class="ic"><use href="#i-x"/></svg></button>
     <h3 id="rcTitre">Top up your dollar credit</h3>
-    <p>One signature in your wallet, in USDC. The credit pays images here: what the provider charges plus our margin, billed on what each one uses. It is not withdrawable.</p>
+    <p>One signature in your wallet, in USDC. The credit pays images and videos here: what the provider charges plus our margin, billed on what each one uses. It is not withdrawable.</p>
     <p id="rcSolde"></p>
     <span class="f-l">Amount</span>
     <div class="seg" role="group" aria-label="Amount" id="rcMontants"></div>
@@ -1114,7 +1131,10 @@ footer b{color:var(--navy)}
     garde: "If it was charged, your balance shows it.",
     voix: "Voice-over is coming soon — nothing to generate or pay yet. Character voices already speak inside Series & Ads scenes (Video tab), included in the scene price.",
     avatar: "Talking avatars and lipsync are coming soon — nothing to generate or pay yet. Only SWOGE and characters you invent, never a real person.",
-    videoSwoge: "Video is paid in $SWOGE for now."
+    /* Seulement face a un serveur qui ne publie pas encore video.credit (catalogue) : il refuserait le credit. */
+    videoSwoge: "Video is paid in $SWOGE for now.",
+    crSigne: "Pays images and videos here. Top up with USDC on Base or Solana, one wallet signature.",
+    crHors: "Sign in with your wallet to see your dollar credit and top it up with USDC on Base or Solana."
   };
   /* Les styles : la MEME table que Series & Ads (swolemind.html l.2920). Le serveur n'a pas de
      champ « style » pour une image ou une video (studio_media.js:234-302) : le choix est ajoute
@@ -1249,6 +1269,12 @@ footer b{color:var(--navy)}
     if (m.typiqueSwoge != null && Number(d) === Number(durees[0])) return Number(m.typiqueSwoge);
     return m.parSecondeSwoge != null ? Number(m.parSecondeSwoge) * Number(d) : null;
   }
+  /* Le meme prix en dollars : typiqueUsd pour la premiere duree, parSecondeUsd x duree sinon. */
+  function prixVideoUsd(m, d){
+    var durees = (etat.cat && etat.cat.video && etat.cat.video.durees) || [];
+    if (m.typiqueUsd != null && Number(d) === Number(durees[0])) return Number(m.typiqueUsd);
+    return m.parSecondeUsd != null ? r4(Number(m.parSecondeUsd) * Number(d)) : null;
+  }
   function modeleScene(){
     /* Une scene de serie ou de pub part TOUJOURS en Quality (1.5) : les references l'imposent
        (studio_media.js:308-310). C'est le modele `qualite` du catalogue video. */
@@ -1257,8 +1283,11 @@ footer b{color:var(--navy)}
   }
 
   /* ====================== LE PRIX, AVANT LE CLIC ====================== */
+  /* Le serveur accepte le credit pour une video quand son catalogue le dit (video.credit, 14/10 :
+     reserve durable, server.js route /studio/media). Sans ce champ (ancien serveur) : $SWOGE seul. */
+  function videoAuCredit(){ return !!(etat.cat && etat.cat.video && etat.cat.video.credit === true); }
   function payeur(){
-    if (etat.onglet === "video") return "swoge";           /* server.js, route /studio/media : payeurDe pour une image seulement, la video reste en $SWOGE */
+    if (etat.onglet === "video" && !videoAuCredit()) return "swoge";
     var p = etat.payeurChoisi;
     if (p === "credit" || p === "swoge") return p;
     return etat.credit > 0 ? "credit" : etat.swoge > 0 ? "swoge" : "credit";
@@ -1341,15 +1370,20 @@ footer b{color:var(--navy)}
       }
       return d;
     }
-    /* Video : en $SWOGE seulement ; le catalogue ne donne aucun prix en dollars. En 720p xAI facture
-       plus, et PUBLIE l'ecart (docs.x.ai, releve du 13/10 : 0,05 → 0,07 $/s en Speed, 0,08 → 0,14 $/s
-       en Quality 1.5) ; le catalogue du serveur ne le chiffre pas encore : « from », sans chiffre ici. */
+    /* Video : en $SWOGE, ou au credit quand le catalogue le dit (typiqueUsd / parSecondeUsd : la MEME
+       liste x marge, sans le cours). En 720p xAI facture plus, et PUBLIE l'ecart (docs.x.ai, releve
+       du 13/10 : 0,05 → 0,07 $/s en Speed, 0,08 → 0,14 $/s en Quality 1.5) ; le catalogue du serveur ne
+       le chiffre pas encore : « from », sans chiffre ici. */
     var sw = prixVideoSwoge(m, etat.duree), base = ((etat.cat.video || {}).resolutions || [])[0];
     var plus = etat.res && base && etat.res !== base;
-    d.sw = sw;
-    d.bouton = (plus ? "from " : "") + nombre(sw) + " $SWOGE";
-    d.note = [{ b: nombre(sw) + " $SWOGE", suite: " for " + etat.duree + " s at " + (base || "480p") + (plus ? " — " + etat.res + " is billed at xAI's higher " + etat.res + " rate, not shown here yet" : "") },
-      mo.fnom + " " + mo.nom, TXT.tenu, TXT.rien, { warn: TXT.videoSwoge }];
+    var usd = prixVideoUsd(m, etat.duree);
+    d.sw = sw; d.usd = usd;
+    var lu = pay === "credit" && usd != null ? dollars(usd) : nombre(sw) + " $SWOGE";
+    d.bouton = (plus ? "from " : "") + lu;
+    d.note = [{ b: lu, suite: " for " + etat.duree + " s at " + (base || "480p") + (plus ? " — " + etat.res + " is billed at xAI's higher " + etat.res + " rate, not shown here yet" : "") },
+      mo.fnom + " " + mo.nom, TXT.tenu, TXT.rien];
+    if (!videoAuCredit()) d.note.push({ warn: TXT.videoSwoge });
+    else d.note.push(pay === "credit" ? "paid from your dollar credit" + (sw != null ? " (≈ " + nombre(sw) + " $SWOGE)" : "") : "from your $SWOGE balance" + (usd != null ? " (≈ " + dollars(usd) + ")" : ""));
     return d;
   }
   function ecritNote(el, parts){
@@ -1401,7 +1435,7 @@ footer b{color:var(--navy)}
     if (etat.cat && etat.cat.ouvert === false && etat.grillePour !== p) peintGrille();
     [$("payCr"), $("paySw")].forEach(function(b){
       var x = b.getAttribute("data-pay");
-      b.disabled = vid && x === "credit";
+      b.disabled = vid && x === "credit" && !videoAuCredit();
       b.title = b.disabled ? TXT.videoSwoge : "";
       b.setAttribute("aria-pressed", String(p === x));
     });
@@ -1829,9 +1863,9 @@ footer b{color:var(--navy)}
     var corps = { modele: mo.id, prompt: avecStyle(q), format: t === "video" ? etat.formatV : etat.formatI };
     if (etat.jointe) corps.image = etat.jointe;
     if (t === "image") { corps.fournisseur = mo.f; corps.n = etat.n; corps.payeur = d.pay; }
-    else { corps.duree = etat.duree; corps.resolution = etat.res; }
+    else { corps.duree = etat.duree; corps.resolution = etat.res; corps.payeur = d.pay; }
     var info = { genre: t, prompt: avecStyle(q).slice(0, 300), nom: (mo.chip || mo.fnom) + " · " + mo.nom + (t === "image" ? " · ×" + etat.n : " · " + etat.duree + " s · " + etat.res),
-                 payeur: t === "image" ? d.pay : "swoge", n: etat.n, prix: d.bouton };
+                 payeur: d.pay, n: etat.n, prix: d.bouton };
     envoie(corps, info);
   }
   function envoie(corps, info){
@@ -1875,16 +1909,18 @@ footer b{color:var(--navy)}
         /* UNE signature de ce qui manque (0,10 $ au moins, credits.js, MIN_RECHARGE_USD), puis la
            MEME demande repart (un nouveau rid). */
         var min = (etat.limites && etat.limites.minUsd) || 0.1;
-        var manque = Math.max(min, Math.ceil((Number(e.requisUsd) - (Number(e.creditUsd) || 0)) * 100) / 100);
+        /* Au cent superieur, apres un arrondi au centieme de cent : (1,35 − 0,20) × 100 vaut
+           115,00000000000001 en flottant, et la page faisait signer 1,16 $ pour 1,15 $ manquants (14/10). */
+        var manque = Math.max(min, Math.ceil(Math.round((Number(e.requisUsd) - (Number(e.creditUsd) || 0)) * 1e4) / 100) / 100);
         R.relance = { corps: corps, info: info, manque: manque };
         b.push(h("button", { type: "button", class: "rbtn", "data-r-signe": "1", text: "Sign " + dollars(manque) + " and generate" }));
       } else b.push(h("button", { type: "button", class: "rbtn", "data-r-recharge": "1", text: "Top up" }));
-      if (info.genre === "image") b.push(h("button", { type: "button", class: "rbtn alt", "data-r-payeur": "swoge", text: "Pay with $SWOGE instead" }));
+      b.push(h("button", { type: "button", class: "rbtn alt", "data-r-payeur": "swoge", text: "Pay with $SWOGE instead" }));
     } else if (code === 402) {
       R.titre = "Not enough $SWOGE";
       if (e.requisSwoge) R.raison = raison + " — about " + nombre(e.requisSwoge) + " $SWOGE is held while it runs.";
       b.push(h("a", { class: "rbtn", href: "swoge_wallet.html", text: "Get $SWOGE" }));
-      if (info.genre === "image") b.push(h("button", { type: "button", class: "rbtn alt", "data-r-payeur": "credit", text: "Pay with dollar credit" }));
+      if (info.genre === "image" || videoAuCredit()) b.push(h("button", { type: "button", class: "rbtn alt", "data-r-payeur": "credit", text: "Pay with dollar credit" }));
     } else if (code === 429) R.titre = "Wait a moment";
     else if (code === 503) R.titre = "Paused";
     else if (code >= 500 || code == null) {
@@ -1928,9 +1964,11 @@ footer b{color:var(--navy)}
             libere();
             var u = enAdresse(v.url);
             if (!u) { R = { st: "err", genre: "video", info: info, titre: "Nothing came back", raison: "The server answered without a usable video. " + TXT.garde }; peintResultat(); return; }
-            R = { st: "done", genre: "video", info: info, url: u, cout: v.factureSwoge != null ? nombre(v.factureSwoge) + " $SWOGE" : "" };
+            /* Le payeur se lit dans la REPONSE (studio_media.js, etatVideo : payeur 'credit', factureUsd, creditUsd). */
+            R = { st: "done", genre: "video", info: info, url: u, cout: cout(v) };
             poseSoldes(v);
-            noteHisto({ genre: "video", prompt: info.prompt, nom: info.nom, url: u, statut: "done", payeur: "swoge", sw: Number(v.factureSwoge) || 0 }, info.adresse);
+            noteHisto({ genre: "video", prompt: info.prompt, nom: info.nom, url: u, statut: "done", payeur: v.payeur === "credit" ? "credit" : "swoge",
+                        usd: v.payeur === "credit" ? Number(v.factureUsd) || 0 : null, sw: v.payeur === "credit" ? null : Number(v.factureSwoge) || 0 }, info.adresse);
             peintResultat(); montreResultat(); return;
           }
           if (!v || v.illisible) return setTimeout(tour, 5000);
@@ -1940,7 +1978,8 @@ footer b{color:var(--navy)}
             libere();
             R = { st: "err", genre: "video", info: info, titre: "Not generated", raison: (v && v.raison) || "The video could not be generated." };
             noteHisto({ genre: "video", prompt: info.prompt, nom: info.nom, statut: "failed", raison: R.raison }, info.adresse);
-            if (v && v.solde != null) { etat.swoge = Number(v.solde); peintSoldes(); }
+            if (v && v.payeur === "credit") poseSoldes(v);
+            else if (v && v.solde != null) { etat.swoge = Number(v.solde); peintSoldes(); }
             peintResultat(); return;
           }
           R.pct = Number(v.progress) || R.pct || 0; peintResultat();
@@ -1996,6 +2035,11 @@ footer b{color:var(--navy)}
     var cr = etat.credit == null ? "—" : dollars(etat.credit), sw = etat.swoge == null ? "—" : compact(etat.swoge);
     $("balCr").textContent = cr; $("balSw").textContent = sw; $("drCr").textContent = cr; $("drSw").textContent = etat.swoge == null ? "—" : nombre(etat.swoge);
     $("rcSolde").textContent = etat.credit == null ? "" : "Your dollar credit: " + cr + ".";
+    /* L'affiche : le solde de la session, ou comment l'avoir. */
+    $("crVal").hidden = !j; $("crVal").textContent = cr;
+    $("crTxt").textContent = j ? TXT.crSigne : TXT.crHors;
+    $("crTopL").textContent = j ? "Top up" : "Sign in";
+    $("crTop").setAttribute("aria-label", j ? "Top up your dollar credit" : "Sign in with your wallet");
     peintPrix();
   }
   function chargeSoldes(){
@@ -2616,6 +2660,7 @@ footer b{color:var(--navy)}
     }
   });
   $("topUp").addEventListener("click", ouvreRecharge);
+  $("crTop").addEventListener("click", ouvreRecharge);   /* deconnecte : ouvreRecharge ouvre la connexion */
   $("drTop").addEventListener("click", ouvreRecharge);
   $("drSign").addEventListener("click", function(){ $("drawer").hidden = true; $("stMenu").setAttribute("aria-expanded", "false"); ouvreConnexion(); });
   $("rcClose").addEventListener("click", function(){ $("rc").hidden = true; });

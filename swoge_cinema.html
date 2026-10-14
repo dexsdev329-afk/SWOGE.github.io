@@ -548,6 +548,7 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
       </div>
       <h1 id="t-titre">SWOGE AI <em>Cinema</em></h1>
       <p>Our own pipeline writes, casts, voices, scores and edits a troupe of <b>original</b> cartoon characters &mdash; no stock footage, no licensed characters. Then <b>you</b> decide what happens next. Watch an episode, then drop your vote in the comments.</p>
+      <p><a class="cine-b" id="versSwap" href="#swap">&#10024; Put SWOGE in your own video &rarr;</a></p>
     </div>
   </section>
 
@@ -577,6 +578,147 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
 
   <section id="series" aria-label="All series"></section>
 
+  <!-- ==================== SWOGE SWAP (14/10/2026) ====================
+       « Mets SWOGE dans ta video » : le service PUBLIC du serveur (swap.js, routes /studio/swap*).
+       La page MONTRE et ENVOIE ; le serveur decide de tout (session, prix, credit, file, plafond du
+       jour, personnages). Aucune image ni aucun texte du joueur ne part : il choisit un personnage
+       maison et qui remplacer. Le resultat se lit avec la session (blob), jamais par une adresse. -->
+  <style>
+  /* tout prefixe .swq- : ne touche ni ds- ni sw- ni cine- */
+  .swq{ scroll-margin-top:12px; }
+  .swq-tete{ display:flex; flex-wrap:wrap; gap:8px 14px; align-items:center; justify-content:space-between; }
+  .swq h2{ font:800 22px/1.15 Inter,system-ui,sans-serif; letter-spacing:-.01em; margin:10px 0 6px; color:var(--ds-encre); }
+  .swq h2 em{ font-style:normal; background:linear-gradient(90deg,var(--ds-bleu),var(--ds-violet)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .swq-intro{ color:var(--ds-pale); margin:0 0 14px; max-width:720px; }
+  .swq .ds-etapes{ margin:0 0 14px; grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr)); }
+  .swq .ds-etapes li.on{ border-color:#BBD1FF; background:#F3F7FF; }
+  .swq-pas{ border:1px solid var(--ds-ligne); border-radius:16px; padding:14px; margin-top:12px; min-width:0; }
+  .swq-pas h3{ font:800 15px/1.3 Inter,system-ui,sans-serif; margin:0 0 8px; color:var(--ds-encre); }
+  .swq-fichier{ display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+  .swq-fichier input[type=file]{ max-width:100%; min-width:0; font-size:13px; }
+  .swq-case{ display:flex; gap:10px; align-items:flex-start; margin:12px 0 0; font-size:13.5px; color:var(--ds-encre); cursor:pointer; }
+  .swq-case input{ width:20px; height:20px; flex:0 0 auto; margin:1px 0 0; accent-color:var(--ds-bleu); }
+  .swq-perso{ display:flex; flex-wrap:wrap; gap:8px; }
+  .swq-perso button{ display:flex; align-items:center; gap:10px; border:2px solid var(--ds-ligne); background:var(--ds-blanc); border-radius:14px; padding:6px 12px 6px 6px;
+    font:800 14px/1 Inter,system-ui,sans-serif; color:var(--ds-encre); cursor:pointer; min-height:44px; }
+  .swq-perso button[aria-pressed="true"]{ border-color:var(--ds-violet); box-shadow:0 6px 16px rgba(124,58,237,.18); }
+  .swq-perso img{ width:40px; height:40px; border-radius:10px; object-fit:cover; background:var(--ds-fond); }
+  .swq .ds-seg{ margin-top:4px; }
+  .swq .ds-seg button{ min-height:40px; }
+  .swq-l{ display:block; font:700 11.5px/1.3 Inter,system-ui,sans-serif; letter-spacing:.06em; text-transform:uppercase; color:var(--ds-pale); margin:14px 0 6px; }
+  .swq-prix{ display:flex; flex-wrap:wrap; gap:6px 14px; align-items:baseline; margin-top:14px; padding:12px 14px; border-radius:14px; background:var(--ds-fond); border:1px solid var(--ds-ligne); }
+  .swq-prix b{ font:800 28px/1.1 Inter,system-ui,sans-serif; color:var(--ds-encre); font-variant-numeric:tabular-nums; }
+  .swq-prix span{ color:var(--ds-pale); font-size:13px; min-width:0; overflow-wrap:anywhere; }
+  .swq-actions{ display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
+  .swq-actions .ds-bouton{ flex:0 1 auto; }
+  .swq-actions a.ds-bouton{ display:inline-flex; align-items:center; text-decoration:none; }
+  .swq .ds-bouton.plein{ background:var(--ds-bleu); border-color:var(--ds-bleu); color:#fff; }
+  .swq-manque{ margin-top:12px; padding:12px 14px; border-radius:14px; border:1px solid #F2DCAE; background:#FFF6E5; color:var(--ds-encre); font-size:13.5px; }
+  .swq-grille{ display:grid; grid-template-columns:repeat(auto-fill,minmax(min(100%,150px),1fr)); gap:8px; margin-top:12px; }
+  .swq-part{ border:1px solid var(--ds-ligne); border-radius:12px; padding:9px 10px; font-size:12.5px; color:var(--ds-pale); background:var(--ds-blanc); min-width:0; overflow-wrap:anywhere; }
+  .swq-part b{ display:block; color:var(--ds-encre); font-size:13px; }
+  .swq-part.done{ border-color:#BFE5CF; background:#F2FAF5; }
+  .swq-part.failed{ border-color:#F3C9C5; background:#FFF5F4; }
+  .swq-part.original{ border-color:#F2DCAE; background:#FFFAF0; }
+  .swq-part button{ margin-top:6px; font:700 12px/1 Inter,system-ui,sans-serif; border:1px solid var(--ds-bleu); color:var(--ds-bleu); background:#fff; border-radius:9px; padding:7px 9px; cursor:pointer; }
+  .swq-ecran{ margin-top:12px; background:#05070D; border-radius:16px; overflow:hidden; max-width:420px; }
+  .swq-ecran video{ display:block; width:100%; max-height:70vh; background:#05070D; }
+  .swq-regles{ margin:14px 0 0; padding-left:18px; color:var(--ds-pale); font-size:12.5px; }
+  .swq-regles li{ margin:3px 0; }
+  /* la recharge : la feuille du studio, aux couleurs de la page */
+  .swq-feuille{ position:fixed; inset:0; z-index:100000; display:flex; align-items:center; justify-content:center; padding:16px; background:rgba(11,27,54,.34); }
+  .swq-feuille[hidden]{ display:none; }
+  .swq-feuille-b{ position:relative; width:min(420px,100%); max-height:calc(100dvh - 32px); overflow:auto; background:#fff; border:1px solid var(--ds-ligne); border-radius:22px; box-shadow:0 30px 70px rgba(11,27,54,.3); padding:20px; box-sizing:border-box; }
+  .swq-feuille-b h3{ margin:0 0 4px; padding-right:40px; font:800 19px/1.2 Inter,system-ui,sans-serif; color:var(--ds-encre); }
+  .swq-feuille-b p{ margin:0 0 12px; font-size:13.5px; color:var(--ds-pale); }
+  .swq-feuille-b .ds-seg{ display:flex; width:100%; box-sizing:border-box; }
+  .swq-feuille-b .ds-seg button{ flex:1; }
+  .swq-x{ position:absolute; top:12px; right:12px; width:36px; height:36px; border-radius:999px; border:1px solid var(--ds-ligne); background:#fff; color:var(--ds-encre); font-size:18px; line-height:1; cursor:pointer; }
+  .swq-feuille-b .ds-bouton.plein{ width:100%; margin-top:16px; min-height:46px; }
+  </style>
+  <section class="ds-carte swq" id="swap" aria-labelledby="swTitre">
+    <div class="swq-tete">
+      <div class="ds-badges"><span class="ds-badge papier">&#10024; New &middot; SWOGE Swap</span><span class="ds-badge" id="swPastille"><span class="pt"></span><span id="swPastilleTxt">Pay with your dollar credit</span></span></div>
+    </div>
+    <h2 id="swTitre">Put SWOGE in <em>any video</em></h2>
+    <p class="swq-intro">Upload a clip, pick who to replace, and our AI studio swaps them for SWOGE &mdash; same moves, lips synced to the words, your original sound. You see the exact price before you pay, and parts that fail are refunded.</p>
+    <ol class="ds-etapes" id="swEtapes">
+      <li data-etape="1"><b>Upload</b>An MP4 you own or have the right to use, <span id="swBornes">3 to 60 seconds, up to 60 MB</span>.</li>
+      <li data-etape="2"><b>Plan &amp; price</b>We cut it into parts and show the exact price. Pick SWOGE and who to replace.</li>
+      <li data-etape="3"><b>Run</b>Paid from your dollar credit. Watch it here and download it &mdash; kept 48 h, visible only to you.</li>
+    </ol>
+
+    <!-- 1. le televersement -->
+    <div class="swq-pas" id="swPas1">
+      <h3>1 &middot; Your video</h3>
+      <div class="swq-fichier">
+        <input type="file" id="swFichier" accept="video/mp4" aria-label="Choose an MP4 video">
+      </div>
+      <p class="ds-note"><span id="swFichierInfo">MP4 only.</span> About <span id="swParSec">&mdash;</span> per second of video (720p).</p>
+      <label class="swq-case"><input type="checkbox" id="swDroits"><span id="swDroitsTxt">I own this video or have the right to use it, and it shows no one who did not agree to it.</span></label>
+      <div class="swq-actions">
+        <button type="button" class="ds-bouton plein" id="swEnvoie" disabled>Upload and get the price</button>
+      </div>
+    </div>
+
+    <!-- 2. le plan, le prix, et 3. le lancement -->
+    <div class="swq-pas" id="swPas2" hidden>
+      <h3>2 &middot; Who becomes SWOGE</h3>
+      <span class="swq-l" id="swPersoL">Character</span>
+      <div class="swq-perso" id="swPersos" role="group" aria-labelledby="swPersoL"></div>
+      <span class="swq-l" id="swCibleL">Replace</span>
+      <div class="ds-seg" id="swCibles" role="group" aria-labelledby="swCibleL"></div>
+      <div class="swq-prix" aria-live="polite"><b id="swPrix">&mdash;</b><span id="swPrixInfo"></span></div>
+      <p class="ds-note" id="swCredit"></p>
+      <div class="swq-manque" id="swManque" hidden></div>
+      <div class="swq-actions">
+        <button type="button" class="ds-bouton plein" id="swLance" hidden>Run</button>
+        <button type="button" class="ds-bouton plein" id="swRecharge" hidden>Top up your credit</button>
+        <button type="button" class="ds-bouton" id="swAutre">Use another video</button>
+      </div>
+    </div>
+
+    <!-- le suivi et le resultat -->
+    <div class="swq-pas" id="swPas3" hidden>
+      <h3 id="swSuiviT">3 &middot; Your video</h3>
+      <div class="swq-grille" id="swGrille"></div>
+      <div class="swq-ecran" id="swEcran" hidden><video id="swVideo" controls playsinline preload="metadata" aria-label="Your SWOGE video"></video></div>
+      <div class="swq-actions">
+        <a class="ds-bouton plein" id="swTelecharge" download="swoge_swap.mp4" hidden>Download</a>
+        <button type="button" class="ds-bouton" id="swFinir" hidden>Finish now</button>
+        <button type="button" class="ds-bouton" id="swAnnule" hidden>Cancel and refund</button>
+        <button type="button" class="ds-bouton" id="swNouveau" hidden>Make another</button>
+      </div>
+    </div>
+    <p class="ds-statut" id="swStatut" role="status" aria-live="polite"></p>
+    <ul class="swq-regles">
+      <li>Only our own characters: no uploaded faces, no custom prompts.</li>
+      <li>Each failed part gets one free retry; if it fails again it keeps the original footage and is not charged.</li>
+      <li>The price counts every started second of each part. Your result is kept 48 h and only your signed-in wallet can open it.</li>
+    </ul>
+  </section>
+
+  <!-- La recharge : la signature USDC de studio.html (x402_paie.js), creditee a la SESSION par le serveur. -->
+  <div class="swq-feuille" id="swRc" role="dialog" aria-modal="true" aria-labelledby="swRcTitre" hidden>
+    <div class="swq-feuille-b">
+      <button class="swq-x" type="button" id="swRcClose" aria-label="Close">&times;</button>
+      <h3 id="swRcTitre">Top up your dollar credit</h3>
+      <p>One signature in your wallet, in USDC. The credit pays SWOGE Swap and the Studio. It is not withdrawable.</p>
+      <p id="swRcSolde"></p>
+      <span class="swq-l">Amount</span>
+      <div class="ds-seg" role="group" aria-label="Amount" id="swRcMontants"></div>
+      <span class="swq-l">Network</span>
+      <div class="ds-seg" role="group" aria-label="Network" id="swRcReseau">
+        <button type="button" data-net="base" aria-pressed="true">Base</button>
+        <button type="button" data-net="solana" aria-pressed="false">Solana</button>
+      </div>
+      <button class="ds-bouton plein" type="button" id="swRcSign">Sign a top-up</button>
+      <p class="ds-statut" id="swRcStatut" role="status"></p>
+      <!-- SOL ou USDT, sans signature : une adresse de depot a usage unique (credit_depot.js). -->
+      <div data-credit-depot></div>
+    </div>
+  </div>
+
   <section class="ds-carte cine-pied">
     <h2>Made by SWOGE&rsquo;s own AI studio</h2>
     <p>The cast, the voices, the music and the cut are all generated end-to-end by SWOGE&rsquo;s pipeline &mdash; every character is our own design, not a licensed one. Want to make your own series or ad with the same tools? <a href="swolemind.html">Open SwoleMind &rarr;</a></p>
@@ -601,6 +743,362 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
 
 </div>
 <script src="stakebubble.min.js?v=a481bde5"></script>
+<!-- La recharge du credit (SWOGE Swap) : les memes scripts que studio.html. -->
+<script src="x402_solana.js?v=1d86ed41"></script>
+<script src="x402_paie.js?v=da0c0ca4"></script>
+<script src="credit_depot.js?v=c4f65ad6"></script>
+<script>
+/* ==================== SWOGE SWAP (14/10/2026) ====================
+ * LA PAGE MONTRE ET ENVOIE ; LE SERVEUR DECIDE (swap.js du depot serveur).
+ * - Le jeton de session (localStorage.swogeSession, pose par stakebubble.js) part en
+ *   `Authorization: Bearer` ; aucune adresse n'est jamais envoyee.
+ * - La video part BRUTE (video/mp4) avec `x-swap-rights: yes` seulement si la case est cochee.
+ * - Le prix vient du plan du serveur ; « Run » renvoie CE prix (confirmeUsd) : un autre est refuse.
+ * - Le credit : GET /credit ; trop bas, la recharge de studio.html (x402_paie.js, credit_depot.js).
+ * - Le resultat se lit avec la session, en blob : aucune adresse publique.
+ * - Rien n'est demande au serveur avant que la section approche de l'ecran (ou un geste).
+ * Tout texte venu du serveur passe par textContent. */
+(function(){
+  "use strict";
+  var $ = function(id){ return document.getElementById(id); };
+  if (!$("swap")) return;
+  /* `?server=` ne vaut que pour un serveur LOCAL (les essais) : meme borne que studio.html. */
+  function serveur(){
+    try {
+      var q = new URLSearchParams(location.search).get("server");
+      if (q) { var u = new URL(String(q).replace(/^ws/, "http")); if (/^(127\.0\.0\.1|localhost|\[::1\])$/.test(u.hostname)) return u.origin; }
+    } catch (e) {}
+    return "https://web-production-220a3.up.railway.app";
+  }
+  function jeton(){ try { return localStorage.getItem("swogeSession"); } catch (e) { return null; } }
+  function dollars(x){ return "$" + Number(x).toFixed(2); }
+  function el(tag, attrs, kids){
+    var e = document.createElement(tag);
+    if (attrs) Object.keys(attrs).forEach(function(k){ if (k === "text") e.textContent = attrs[k]; else if (k === "cls") e.className = attrs[k]; else e.setAttribute(k, attrs[k]); });
+    (kids || []).forEach(function(c){ if (c) e.appendChild(c); });
+    return e;
+  }
+  function lis(r){ return r.json()["catch"](function(){ return {}; }).then(function(o){ o = o || {}; if (!r.ok || o.ok === false) { var e = new Error(o.raison || ("error " + r.status)); e.code = r.status; e.corps = o; throw e; } return o; }); }
+  function api(chemin, methode, corps){
+    var h = { authorization: "Bearer " + jeton() }; if (corps) h["content-type"] = "application/json";
+    return fetch(serveur() + chemin, { method: methode || "GET", cache: "no-store", headers: h, body: corps ? JSON.stringify(corps) : undefined }).then(lis);
+  }
+  function statut(t, err){ var s = $("swStatut"); s.textContent = t || ""; s.className = "ds-statut" + (err ? " err" : ""); }
+
+  var S = { vue: null, id: null, etat: null, fichier: null, dureeLocale: null, perso: null, cible: null, credit: null, limites: null, reseaux: null, hist: [],
+            suivi: null, blob: null, occupe: false, charge: false };
+  var ACTIFS = ["decoupe", "file", "en_cours", "assemblage"];
+  var ETIQ = { planned: "planned", waiting: "waiting", sending: "sending", processing: "being made", downloading: "downloading", done: "done", failed: "failed", original: "original kept (refunded)" };
+
+  /* ---- ce que le serveur offre : personnages, cibles, bornes ---- */
+  function chargeVue(){
+    var h = jeton() ? { authorization: "Bearer " + jeton() } : {};
+    return fetch(serveur() + "/studio/swap", { cache: "no-store", headers: h }).then(lis).then(function(v){
+      S.vue = v; S.charge = true;
+      if (!S.perso && v.personnages && v.personnages.length) S.perso = v.personnages[0].id;
+      if (!S.cible && v.cibles && v.cibles.length) S.cible = v.cibles[0].id;
+      if (v.passe && !S.id) { S.id = v.passe; suis(); }
+      peint();
+    })["catch"](function(e){ S.charge = true; statut("SWOGE Swap could not be reached: " + e.message + ". Try again in a moment.", true); peint(); });
+  }
+  function chargeCredit(){
+    if (!jeton()) { S.credit = null; return Promise.resolve(); }
+    return fetch(serveur() + "/credit", { cache: "no-store", headers: { authorization: "Bearer " + jeton() } }).then(lis).then(function(d){
+      S.credit = Number(d.balanceUsd) || 0; S.limites = d.limits || null; S.reseaux = d.networks || null; S.hist = d.history || []; peint();
+    })["catch"](function(){});
+  }
+
+  /* ---- le dessin, d'apres l'etat ---- */
+  function etape(n){ [].forEach.call($("swEtapes").querySelectorAll("li"), function(li){ li.classList.toggle("on", li.getAttribute("data-etape") === String(n)); }); }
+  function peint(){
+    var v = S.vue, e = S.etat, signe = !!jeton();
+    if (v) {
+      $("swBornes").textContent = Math.round(v.dureeMinS) + " to " + Math.round(v.dureeMaxS) + " seconds, up to " + Math.round(v.octetsMax / 1048576) + " MB";
+      $("swParSec").textContent = "$" + Number(v.prixParSecondeUsd).toFixed(3).replace(/0$/, "");
+      if (v.droitsTexte) $("swDroitsTxt").textContent = v.droitsTexte;
+      var ferme = v.actif === false || v.ouvertAujourdhui === false;
+      $("swPastille").className = "ds-badge " + (ferme ? "panne" : "vif");
+      $("swPastilleTxt").textContent = v.actif === false ? "Not open yet" : v.ouvertAujourdhui === false ? "Daily limit reached — back tomorrow" : (v.enFile ? v.enFile + " in the queue" : "Open");
+    }
+    var st = e ? e.statut : null;
+    var enPlan = st === "pret", suivi = st && st !== "pret";
+    /* 1 */
+    $("swPas1").hidden = !!(enPlan || (suivi && st !== "erreur" && st !== "abandon"));
+    var b = $("swEnvoie");
+    if (!signe) { b.textContent = "Sign in to start"; b.disabled = false; }
+    else { b.textContent = "Upload and get the price"; b.disabled = !S.fichier || !$("swDroits").checked || S.occupe || !v || v.actif === false; }
+    /* 2 */
+    $("swPas2").hidden = !enPlan;
+    if (enPlan && v) peintPlan(e, v);
+    /* 3 */
+    $("swPas3").hidden = !(suivi && st !== "erreur");
+    if (suivi) peintSuivi(e);
+    etape(!e || st === "erreur" || st === "abandon" ? 1 : enPlan ? 2 : 3);
+  }
+  function peintPlan(e, v){
+    var lp = $("swPersos"); lp.textContent = "";
+    (v.personnages || []).forEach(function(p){
+      var bt = el("button", { type: "button", "aria-pressed": String(p.id === S.perso), "data-perso": p.id });
+      /* une vignette du site seulement */
+      if (/^\/img\/site\/[a-z0-9_\-]+\.(jpg|jpeg|png|webp)$/.test(String(p.vignette || ""))) bt.appendChild(el("img", { src: String(p.vignette).slice(1), alt: "" }));
+      bt.appendChild(el("span", { text: p.nom }));
+      bt.addEventListener("click", function(){ S.perso = p.id; peint(); });
+      lp.appendChild(bt);
+    });
+    var lc = $("swCibles"); lc.textContent = "";
+    (v.cibles || []).forEach(function(c){
+      var bt = el("button", { type: "button", "aria-pressed": String(c.id === S.cible), "data-cible": c.id, text: c.nom });
+      bt.addEventListener("click", function(){ S.cible = c.id; peint(); });
+      lc.appendChild(bt);
+    });
+    var prix = Number(e.prixUsd);
+    $("swPrix").textContent = dollars(prix);
+    $("swPrixInfo").textContent = e.morceaux.length + (e.morceaux.length > 1 ? " parts" : " part") + " · " + Number(e.source && e.source.duree || 0).toFixed(1) + " s · 720p · every started second of each part counts";
+    var c = S.credit;
+    $("swCredit").textContent = c == null ? "Checking your dollar credit…" : "Your dollar credit: " + dollars(c) + ". Charged only for the parts you get.";
+    var assez = c != null && c + 1e-9 >= prix;
+    $("swLance").hidden = !assez; $("swLance").disabled = S.occupe || !S.perso || !S.cible;
+    $("swLance").textContent = "Run — " + dollars(prix);
+    $("swRecharge").hidden = c == null || assez;
+    $("swManque").hidden = c == null || assez;
+    if (c != null && !assez) $("swManque").textContent = "You need " + dollars(Math.ceil((prix - c) * 100 - 1e-9) / 100) + " more on your dollar credit to run this video.";
+  }
+  function peintSuivi(e){
+    var g = $("swGrille"); g.textContent = "";
+    (e.morceaux || []).forEach(function(m){
+      var c = el("div", { cls: "swq-part " + m.statut, "data-statut": m.statut });
+      c.appendChild(el("b", { text: "Part " + (m.i + 1) + " · " + (ETIQ[m.statut] || m.statut) }));
+      c.appendChild(el("div", { text: Number(m.debut).toFixed(1) + " s → " + (Number(m.debut) + Number(m.duree)).toFixed(1) + " s" }));
+      if (m.message) c.appendChild(el("div", { text: m.message }));
+      if (m.rejouable && e.statut === "incomplet") {
+        var b = el("button", { type: "button", text: m.relanceGratuite ? "Retry part " + (m.i + 1) + " (free)" : "Download part " + (m.i + 1) + " again" });
+        b.addEventListener("click", function(){
+          b.disabled = true;
+          api("/studio/swap/" + S.id + "/reessaie/" + m.i, "POST", {}).then(function(r){ S.etat = r; peint(); suis(); })["catch"](function(err){ statut("Not retried: " + err.message, true); b.disabled = false; });
+        });
+        c.appendChild(b);
+      }
+      g.appendChild(c);
+    });
+    var st = e.statut;
+    $("swFinir").hidden = st !== "incomplet";
+    $("swAnnule").hidden = st !== "file";
+    $("swNouveau").hidden = ["fini", "abandon"].indexOf(st) < 0;
+    $("swEcran").hidden = !(st === "fini" && S.blob);
+    $("swTelecharge").hidden = !(st === "fini" && S.blob);
+    var faits = (e.morceaux || []).filter(function(m){ return m.statut === "done"; }).length, n = (e.morceaux || []).length;
+    $("swSuiviT").textContent = st === "fini" ? "3 · Your SWOGE video" : "3 · Making your video";
+    if (st === "decoupe") statut("Cutting your video into parts…");
+    else if (st === "file") statut("In the queue: position " + (e.file || 1) + ". Your credit is reserved; it starts as soon as a slot frees up.");
+    else if (st === "en_cours") statut("Making your video: " + faits + " of " + n + " parts done. You can leave this page and come back.");
+    else if (st === "assemblage") statut("All parts done — gluing them and putting your original sound back…");
+    else if (st === "incomplet") statut(e.message || "Some parts failed.", true);
+    else if (st === "fini") {
+      var p = e.paiement || {};
+      statut("Done. Charged " + dollars(p.factureUsd || 0) + (p.renduUsd ? " (" + dollars(p.renduUsd) + " refunded)" : "") + ". Kept 48 h — only your wallet can open it.");
+    }
+    else if (st === "abandon") statut(e.message || "Cancelled — you were refunded.");
+  }
+
+  /* ---- le suivi ---- */
+  function suis(){
+    if (S.suivi) clearTimeout(S.suivi);
+    if (!S.id || !jeton()) return;
+    api("/studio/swap/" + S.id).then(function(e){
+      S.etat = e;
+      if (e.statut === "erreur") { statut((e.message || "Something went wrong") + (e.paiement && e.paiement.renduUsd ? " — " + dollars(e.paiement.renduUsd) + " refunded." : ""), true); S.occupe = false; S.id = null; chargeCredit(); }
+      if (e.statut === "pret") { S.occupe = false; statut("Plan ready: check the price, pick who to replace, then run.", false); chargeCredit(); }
+      if (e.statut === "fini") { if (!S.blob) montre(e.video); chargeCredit(); }
+      peint();
+      if (ACTIFS.indexOf(e.statut) >= 0) S.suivi = setTimeout(suis, e.statut === "decoupe" ? 2000 : 5000);
+    })["catch"](function(err){
+      if (err.code === 404) { S.id = null; S.etat = null; peint(); return; }
+      statut("Connection lost — retrying… (" + err.message + ")", true); S.suivi = setTimeout(suis, 15000);
+    });
+  }
+  function montre(chemin){
+    return fetch(serveur() + chemin, { cache: "no-store", headers: { authorization: "Bearer " + jeton() } })
+      .then(function(r){ if (!r.ok) throw new Error("error " + r.status); return r.blob(); })
+      .then(function(b){ if (S.blob) URL.revokeObjectURL(S.blob); S.blob = URL.createObjectURL(b); $("swVideo").src = S.blob; $("swTelecharge").href = S.blob; peint(); })
+      ["catch"](function(err){ statut("Your video is ready but could not be loaded: " + err.message, true); });
+  }
+
+  /* ---- les gestes ---- */
+  function connexion(){
+    if (window.swogeConnexion && typeof window.swogeConnexion.ouvre === "function") return window.swogeConnexion.ouvre();
+    var b = document.querySelector(".swcon"); if (b) { b.click(); return; }
+    statut("Use Sign in at the top of the page — your wallet signs once, nothing is charged.");
+  }
+  $("swFichier").addEventListener("change", function(){
+    var f = this.files && this.files[0];
+    S.fichier = null; S.dureeLocale = null; statut("");
+    var max = (S.vue && S.vue.octetsMax) || 60 * 1048576;
+    if (!f) { peint(); return; }
+    if (!/\.mp4$/i.test(f.name) && f.type !== "video/mp4") { statut("Choose an MP4 video.", true); peint(); return; }
+    if (f.size > max) { statut("This video is " + (f.size / 1048576).toFixed(1) + " MB — " + Math.round(max / 1048576) + " MB at most.", true); peint(); return; }
+    S.fichier = f; $("swFichierInfo").textContent = f.name + " · " + (f.size / 1048576).toFixed(1) + " MB."; peint();
+    /* la duree lue ici n'est qu'un avis : le serveur la remesure */
+    try {
+      var u = URL.createObjectURL(f), vid = document.createElement("video");
+      vid.preload = "metadata"; vid.muted = true;
+      vid.onloadedmetadata = function(){
+        var d = Number(vid.duration); URL.revokeObjectURL(u);
+        if (!(d > 0) || !S.vue || S.fichier !== f) return;
+        S.dureeLocale = d;
+        if (d < S.vue.dureeMinS - 0.05 || d > S.vue.dureeMaxS + 0.5) { statut("This video is " + d.toFixed(1) + " s long — it must last " + Math.round(S.vue.dureeMinS) + " to " + Math.round(S.vue.dureeMaxS) + " s.", true); S.fichier = null; }
+        else $("swFichierInfo").textContent = f.name + " · " + (f.size / 1048576).toFixed(1) + " MB · " + d.toFixed(1) + " s · from about " + dollars(Math.ceil(d) * Number(S.vue.prixParSecondeUsd)) + " (exact price after upload).";
+        peint();
+      };
+      vid.onerror = function(){ URL.revokeObjectURL(u); };
+      vid.src = u;
+    } catch (e) {}
+  });
+  $("swDroits").addEventListener("change", peint);
+  $("swEnvoie").addEventListener("click", function(){
+    if (!jeton()) return connexion();
+    if (!S.fichier || !$("swDroits").checked) return;
+    if (S.suivi) clearTimeout(S.suivi);
+    S.occupe = true; S.etat = null; S.id = null; if (S.blob) { URL.revokeObjectURL(S.blob); S.blob = null; } peint();
+    statut("Uploading your video (" + (S.fichier.size / 1048576).toFixed(1) + " MB)…");
+    fetch(serveur() + "/studio/swap", { method: "POST", cache: "no-store", headers: { "content-type": "video/mp4", authorization: "Bearer " + jeton(), "x-swap-rights": "yes" }, body: S.fichier })
+      .then(lis).then(function(o){ S.id = o.id; S.etat = { statut: "decoupe", morceaux: [] }; peint(); suis(); chargeCredit(); })
+      ["catch"](function(e){ S.occupe = false; statut("Not uploaded: " + e.message, true); peint(); });
+  });
+  $("swLance").addEventListener("click", function(){
+    var e = S.etat; if (!e || e.statut !== "pret") return;
+    S.occupe = true; peint(); statut("Reserving " + dollars(e.prixUsd) + " on your credit and sending the first parts…");
+    api("/studio/swap/" + S.id + "/lance", "POST", { personnage: S.perso, cible: S.cible, confirmeUsd: e.prixUsd })
+      .then(function(r){ S.occupe = false; S.etat = r; peint(); suis(); chargeCredit(); })
+      ["catch"](function(err){
+        S.occupe = false;
+        if (err.code === 402 && err.corps && err.corps.soldeUsd != null) S.credit = Number(err.corps.soldeUsd);
+        statut("Not started: " + err.message, true); peint(); chargeCredit();
+      });
+  });
+  $("swAutre").addEventListener("click", function(){
+    var id = S.id; S.id = null; S.etat = null; S.fichier = null; $("swFichier").value = ""; S.occupe = false; statut(""); peint();
+    if (id) api("/studio/swap/" + id + "/abandonne", "POST", {})["catch"](function(){});
+  });
+  $("swAnnule").addEventListener("click", function(){
+    api("/studio/swap/" + S.id + "/abandonne", "POST", {}).then(function(r){ S.etat = r; peint(); chargeCredit(); })["catch"](function(err){ statut("Not cancelled: " + err.message, true); });
+  });
+  $("swFinir").addEventListener("click", function(){
+    var b = this; b.disabled = true;
+    api("/studio/swap/" + S.id + "/termine", "POST", {}).then(function(r){ b.disabled = false; S.etat = r; peint(); suis(); })["catch"](function(err){ b.disabled = false; statut("Not finished: " + err.message, true); });
+  });
+  $("swNouveau").addEventListener("click", function(){
+    if (S.suivi) clearTimeout(S.suivi);
+    S.id = null; S.etat = null; S.fichier = null; $("swFichier").value = ""; $("swDroits").checked = false;
+    if (S.blob) { URL.revokeObjectURL(S.blob); S.blob = null; }
+    $("swFichierInfo").textContent = "MP4 only."; statut(""); peint();
+  });
+
+  /* ---- la recharge (le meme chemin que studio.html : x402_paie.js, puis /credit) ---- */
+  var RC = { usd: null, reseau: "base" };
+  function montants(){
+    var L = S.limites || {}, min = L.minUsd || 0.1, max = L.maxUsd || 50;
+    var manque = S.etat && S.etat.prixUsd != null && S.credit != null ? Math.max(0, S.etat.prixUsd - S.credit) : 0;
+    var l = [Math.max(1, Math.ceil(manque - 1e-9)), 5, 20].filter(function(x, i, a){ return x >= min && x <= max && a.indexOf(x) === i; }).sort(function(a, b){ return a - b; });
+    if (RC.usd == null || l.indexOf(RC.usd) < 0 || RC.usd < manque) RC.usd = l.filter(function(x){ return x >= manque; })[0] || l[l.length - 1];
+    var seg = $("swRcMontants"); seg.textContent = "";
+    l.forEach(function(x){
+      var b = el("button", { type: "button", "aria-pressed": String(x === RC.usd), text: "$" + x });
+      b.addEventListener("click", function(){ RC.usd = x; montants(); });
+      seg.appendChild(b);
+    });
+    $("swRcSign").textContent = "Sign a $" + RC.usd + " top-up";
+    [].forEach.call($("swRcReseau").querySelectorAll("[data-net]"), function(b){
+      var n = b.getAttribute("data-net");
+      b.disabled = !!(S.reseaux && S.reseaux[n] === false);
+      b.setAttribute("aria-pressed", String(n === RC.reseau));
+    });
+    $("swRcSolde").textContent = S.credit == null ? "" : "Your dollar credit: " + dollars(S.credit) + ".";
+  }
+  function ouvreRecharge(){
+    if (!jeton()) return connexion();
+    RC.usd = null;   /* a chaque ouverture : le plus petit montant qui couvre le manque */
+    montants(); $("swRcStatut").textContent = ""; $("swRcStatut").className = "ds-statut"; $("swRcSign").disabled = false;
+    $("swRc").hidden = false; chargeCredit().then(montants);
+  }
+  function cleLigne(x){ return [x.at, x.kind, x.usd, x.tx].join("|"); }
+  function relis(montant, avant, debut, dit, i){
+    var d = window.SWOGE_PAIE_DELAIS || [3000, 5000, 10000, 15000];
+    if (i >= 4) return Promise.resolve(null);
+    dit("Checking whether your payment went through - don't sign again…");
+    return new Promise(function(s){ setTimeout(s, d[Math.min(i, d.length - 1)]); }).then(function(){
+      return fetch(serveur() + "/credit", { headers: { authorization: "Bearer " + jeton() }, cache: "no-store" }).then(lis);
+    }).then(function(x){
+      var vu = (x.history || []).some(function(y){
+        if (y.kind !== "top-up" || Math.abs(Number(y.usd) - montant) > 0.005 || avant.indexOf(cleLigne(y)) >= 0) return false;
+        return avant.length || Date.parse(y.at) >= debut - 120000;
+      });
+      return vu ? x : relis(montant, avant, debut, dit, i + 1);
+    }, function(){ return relis(montant, avant, debut, dit, i + 1); });
+  }
+  function recharge(montant, dit){
+    if (!jeton()) return Promise.reject(new Error("Sign in first."));
+    if (!window.SwogePaie) return Promise.reject(new Error("wallet payments are still loading — try again in a second"));
+    var avant = (S.hist || []).map(cleLigne), debut = Date.now(), j = jeton();
+    return window.SwogePaie.paie({ reseau: RC.reseau, serveur: serveur(), statut: dit, montantUsd: montant, appel: function(hh){
+      return fetch(serveur() + "/credit/topup", { method: "POST", cache: "no-store", headers: Object.assign({ "content-type": "application/json", authorization: "Bearer " + j }, hh || {}),
+        body: JSON.stringify({ usd: montant }) });
+    } }).then(window.SwogePaie.lit).then(function(r){
+      if (!r.ok) throw new Error(r.raison);
+      return r;
+    }, function(e){
+      /* signe, puis la connexion coupee : le serveur a pu crediter ; on relit /credit avant de conclure */
+      if (!e || !(e.reseauCoupe || e.attente)) throw e;
+      return relis(montant, avant, debut, dit, 0).then(function(d){
+        if (!d) throw e;
+        return { ok: true, corps: { creditedUsd: montant, balanceUsd: d.balanceUsd, alreadyCredited: false } };
+      });
+    });
+  }
+  $("swRecharge").addEventListener("click", ouvreRecharge);
+  $("swRcClose").addEventListener("click", function(){ $("swRc").hidden = true; });
+  $("swRc").addEventListener("click", function(ev){ if (ev.target === $("swRc")) $("swRc").hidden = true; });
+  $("swRcReseau").addEventListener("click", function(ev){ var b = ev.target.closest && ev.target.closest("[data-net]"); if (b && !b.disabled) { RC.reseau = b.getAttribute("data-net"); montants(); } });
+  $("swRcSign").addEventListener("click", function(){
+    var b = this, st = $("swRcStatut"); b.disabled = true; st.className = "ds-statut";
+    recharge(RC.usd, function(t){ st.textContent = t; }).then(function(r){
+      b.disabled = false;
+      st.textContent = r.corps.alreadyCredited ? "This payment was already credited." : "Done: " + dollars(r.corps.creditedUsd) + " added. Your credit: " + dollars(r.corps.balanceUsd) + ".";
+      chargeCredit().then(function(){ montants(); if (S.credit != null && S.etat && S.credit + 1e-9 >= S.etat.prixUsd) $("swRc").hidden = true; });
+    })["catch"](function(e){
+      /* apres la signature, le bouton reste coupe : signer encore paierait deux fois */
+      b.disabled = !(e && e.avantSignature) && !!(e && (e.attente || e.reseauCoupe));
+      st.className = "ds-statut err";
+      st.textContent = window.SwogePaie ? window.SwogePaie.echec(e, "Not topped up") : "Not topped up, not charged: " + String(e && e.message || e).slice(0, 200);
+    });
+  });
+  /* un depot SOL/USDT credite (credit_depot.js) */
+  window.addEventListener("swoge:credit", function(){ chargeCredit().then(montants); });
+  document.addEventListener("keydown", function(ev){ if (ev.key === "Escape") $("swRc").hidden = true; });
+
+  /* ---- la session : posee ici (stakebubble) ou dans un autre onglet ---- */
+  var dernier = jeton();
+  setInterval(function(){
+    var j = jeton(); if (j === dernier) return; dernier = j;
+    S.id = null; S.etat = null; S.credit = null; if (S.blob) { URL.revokeObjectURL(S.blob); S.blob = null; }
+    if (S.charge) { chargeVue(); chargeCredit(); } else peint();
+  }, 2000);
+
+  /* ---- au depart : rien n'est demande au serveur avant que la section approche ---- */
+  function demarre(){ if (S.demarre) return; S.demarre = true; chargeVue(); chargeCredit(); }
+  peint();
+  if (location.hash === "#swap" || !("IntersectionObserver" in window)) demarre();
+  else {
+    /* observe apres le premier dessin COMPLET : avant que les rangees des series soient posees
+       (DOMContentLoaded), la section paraissait pres de l'ecran et partait pour rien */
+    var arme = function(){ requestAnimationFrame(function(){
+      var io = new IntersectionObserver(function(es){ if (es.some(function(x){ return x.isIntersecting; })) { io.disconnect(); demarre(); } }, { rootMargin: "300px 0px" });
+      io.observe($("swap"));
+    }); };
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", arme); else arme();
+  }
+  ["swFichier", "swDroits", "swEnvoie"].forEach(function(id){ $(id).addEventListener("focus", demarre); $(id).addEventListener("click", demarre); });
+})();
+</script>
 
 <script>
 /* ==================== SWOGE AI CINEMA (07/10/2026) ====================

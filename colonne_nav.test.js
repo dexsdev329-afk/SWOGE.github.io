@@ -76,19 +76,26 @@ const T = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css', '.w
       const m = await p.evaluate(() => {
         const nv = document.querySelector('.sw-nav');
         if (!nv) return null;
-        const colonne = nv.closest('aside') || nv.parentElement;
+        /* 14/10/2026 : la page v2 de SWOGE AI (maquette validee par le proprietaire) porte le
+           menu du site DANS LA BARRE DU HAUT, en rangee voulue, et non dans une colonne. Le
+           defaut que cet essai garde reste le meme — un lien qui sort de son conteneur et se
+           peint par-dessus la page — mais le conteneur est alors la barre : chaque lien doit
+           y tenir, sur une seule rangee. */
+        const enTete = !nv.closest('aside') && !!nv.closest('header');
+        const colonne = enTete ? nv : (nv.closest('aside') || nv.parentElement);
         const cr = colonne.getBoundingClientRect();
         /* Chaque LIEN, pas la boite : c'est le lien qui deborde. */
         const l = [...nv.querySelectorAll('a')].map((a) => a.getBoundingClientRect());
         if (!l.length) return null;
         return {
           debord: Math.round(Math.max(...l.map((r) => r.right)) - cr.right),
-          empiles: l.every((r, i) => i === 0 || r.top >= l[i - 1].bottom - 1),
+          empiles: enTete ? l.every((r) => Math.abs(r.top - l[0].top) < 2)
+                          : l.every((r, i) => i === 0 || r.top >= l[i - 1].bottom - 1),
         };
       });
       if (!m) continue;
       if (m.debord > 0 || !m.empiles) fautives.push(f + ' (debord ' + m.debord + ' px'
-        + (m.empiles ? '' : ', liens en rangee') + ')');
+        + (m.empiles ? '' : ', liens mal ranges') + ')');
     } catch (e) { fautives.push(f + ' (' + e.message.split('\n')[0].slice(0, 60) + ')'); }
   }
   await p.close();

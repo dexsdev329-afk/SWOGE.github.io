@@ -231,7 +231,11 @@
   function poseBilan() {
     if (boiteBilan) return boiteBilan;
     var papier = document.getElementById('bandeau');
-    if (!papier) return null;
+    /* La page v2 de SWOGE AI (14/10/2026) n'a plus de barre du papier sous
+       laquelle se poser : elle porte seulement `#tmMiroirBilan`, en tete de
+       « Your mirror ». L'un ou l'autre suffit. */
+    var hoteBilan = document.getElementById('tmMiroirBilan');
+    if (!papier && !hoteBilan) return null;
     boiteBilan = document.createElement('div');
     boiteBilan.className = 'bandeau mir-bandeau';
     boiteBilan.id = 'bandeauMiroir';
@@ -268,8 +272,7 @@
     /* « Ca doit etre affiche en haut, les stats de son miroir » (27/09) : une
        page qui porte `#tmMiroirBilan` (le terminal de SWOGE AI) la recoit la,
        en tete ; ailleurs elle reste sous la barre du papier. */
-    var hote = document.getElementById('tmMiroirBilan');
-    if (hote) { hote.appendChild(boiteBilan); hote.hidden = false; }
+    if (hoteBilan) { hoteBilan.appendChild(boiteBilan); hoteBilan.hidden = false; }
     else papier.parentNode.insertBefore(boiteBilan, papier.nextSibling);
     return boiteBilan;
   }

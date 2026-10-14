@@ -19,6 +19,16 @@
  *   - elle ne lit plus les services elle-meme : un seul echange, le serveur ;
  *   - et quand il ne repond pas, elle le DIT au lieu d'afficher $1,000, qui
  *     ressemble a une tresorerie intacte alors que c'est une ignorance.
+ *
+ * 14/10/2026 — PAGE v2 (maquette futuriste validee par le proprietaire). Le
+ * village, la tablette a panneaux replies et le terminal sont remplaces par une
+ * scene des agents et six onglets. Chaque essai ci-dessous garde son
+ * INTENTION et la mesure sur les nouveaux blocs ; ce qui a disparu avec
+ * l'ancienne page (les shibas du village, la molette au-dessus du village, la
+ * barre de navigation du bas) n'est plus mesure parce qu'il n'existe plus.
+ * Les compteurs de la vue fausse ont la forme que le serveur sert depuis
+ * (`scoutVu`/`scoutOk`...), et la vue porte un carnet et la ligne de reference
+ * de l'audit (« achete ou retenu »), comme le serveur.
  * ==========================================================================*/
 const fs = require('fs');
 const path = require('path');
@@ -145,8 +155,19 @@ function vueFausse(o) {
         /* Le noeud n'a pas repondu : « pas testable » n'est pas « propre ». */
         epreuve: { teste: false, raison: 'the node did not answer (rpc 429)' } },
     ],
-    compteurs: { scout: 240, wardenBloque: 31, wardenOk: 209, whaleBloque: 44, whaleOk: 165,
-                 whisper: 165, oracle: 165, closer: 11 },
+    /* La forme que le serveur sert : `<agent>Vu` / `<agent>Ok` par porte. */
+    compteurs: { scoutVu: 240, scoutOk: 240, whaleVu: 240, whaleOk: 50, wardenVu: 50, wardenOk: 47,
+                 whisperVu: 47, whisperOk: 41, oracleVu: 41, oracleOk: 29, cobayeVu: 29, cobayeOk: 25,
+                 closer: 11, banquier: 11 },
+    /* Le carnet des trades FERMES : une fermeture au terme, une coupe de la Sentinelle. */
+    carnet: { n: 2, tout: { n: 2, moyenne: 12.5, partGagnantes: 50, gagnantMoyen: 42, perdantMoyen: -17, gain: 12.5 },
+      parSortie: [{ par: 'closer', n: 1, moyenne: 42, partGagnantes: 100, gagnantMoyen: 42, perdantMoyen: null, gain: 21 },
+                  { par: 'sentinelle', n: 1, moyenne: -17, partGagnantes: 0, gagnantMoyen: null, perdantMoyen: -17, gain: -8.5 }],
+      parTenue: [{ de: 10, a: 20, n: 2, moyenne: 12.5, partGagnantes: 50, gagnantMoyen: 42, perdantMoyen: -17, gain: 12.5 }],
+      lignes: [
+        { sym: 'PEPO', adr: '0x' + 'e1'.repeat(20), t0: now - 1260000, t: now - 60000, tenue: 20, mise: 50, r: 42, gain: 21, par: 'closer', raison: null, score: 77 },
+        { sym: 'DUMP', adr: '0x' + 'e2'.repeat(20), t0: now - 900000, t: now - 300000, tenue: 10, mise: 50, r: -17, gain: -8.5, par: 'sentinelle',
+          raison: 'cut: the pool went from $40000 to $9000', score: 61 } ] },
     agents: {
       scout:   { obs: 9, lecons: [{ quoi: 'born <10 min ago', n: 9, moyenne: 4.1 }] },
       /* Le Warden porte le cas reel : sa meilleure case par le poids est une
@@ -290,13 +311,17 @@ function vueFausse(o) {
         pire: { quoi: 'volatility >12%', moyenne: 0.7, n: 34 } },
     ],
     audit: o.audit === undefined ? [
+      /* La reference : ce qu'on ACHETE. Une regle se juge contre elle. */
+      { cle: 'achete ou retenu', n: 278, moyenne: 6.1, montes: 56, effondres: 40, partMontes: 20 },
+      /* Trop peu pour juger : la ligne le dit, sans verdict. */
+      { cle: 'oracle · too volatile', n: 12, moyenne: 60, montes: 6, effondres: 1, partMontes: 50 },
       /* Un veto qui coute : un jeton ecarte sur trois est monte. */
       { cle: 'oracle · score too low', n: 96, moyenne: -4.2, montes: 31, effondres: 22, partMontes: 32 },
       /* Un veto qui protege. */
       { cle: 'whale · one holder holds 90% of the float', n: 140, moyenne: -38.5,
         montes: 7, effondres: 96, partMontes: 5 },
     ] : o.audit,
-    conseiller: o.conseiller || { actif: false, modele: 'claude-haiku-4-5-20251001',
+    conseiller: o.conseiller || { actif: false,
                                   poids: 8, parTour: 3, rendus: 0 },
     alertes: o.alertes === undefined ? [
       { gravite: 'haute', quoi: 'The chain nodes are refusing 34% of reads',
@@ -317,7 +342,6 @@ async function ouvre(nav, port, opts) {
   const boum = [];
   page.on('pageerror', (e) => boum.push(String(e).slice(0, 200)));
   const appels = { serveur: 0, autres: [] };
-
   /* Tout ce qui n'est pas notre serveur est NOTE puis coupe : si la page
      appelait encore GeckoTerminal ou la chaine, l'essai le verrait. */
   await page.route(/geckoterminal|gopluslabs|dexscreener|rpc\.mainnet|honeypot\.is|blockscout/, (r) => {
@@ -331,170 +355,113 @@ async function ouvre(nav, port, opts) {
     return r.fulfill({ contentType: 'application/json',
                        body: JSON.stringify(opts.vue || vueFausse(opts.vueOpts)) });
   });
-
   await page.goto('http://127.0.0.1:' + port + '/' + PAGE + (opts.urlSuffixe || ''),
                   { waitUntil: 'domcontentloaded' });
-  await page.waitForTimeout(600);
+  await page.waitForTimeout(opts.attente || 900);
+  /* Le chiffre du tresor defile a sa premiere apparition (1,5 s, decoration) :
+     on lit le chiffre qu'il affiche une fois pose, pas un chiffre en route. */
+  await page.waitForFunction(() => { const b = document.getElementById('aiBal'); return !b || !b._compte; }, null, { timeout: 4000 }).catch(() => {});
   return { page, ctx, boum, appels };
 }
 
-/* 01/10/2026 : « trop d information et mal organisee » — la page montre UN onglet a la fois
-   (data-onglet, swoge_terminal.js). Un bloc d un autre onglet n a pas de boite : un geste ou
-   une mesure dessus commence donc, comme pour le joueur, par ouvrir son onglet. Ce que chaque
-   essai verifie ne change pas. */
-const onglet = async (page, id) => {
-  await page.evaluate((i) => document.querySelector('.tm-nav a[data-s="' + i + '"]').click(), id);
+/* 14/10/2026 (page v2) : six onglets — Overview, Paper trades, Mirror results,
+   Learning, Market, Sources. Un bloc d'un onglet cache n'a pas de boite : un
+   geste ou une mesure dessus commence donc, comme pour le joueur, par ouvrir
+   son onglet. Ce que chaque essai verifie ne change pas. */
+const onglet = async (page, t) => {
+  await page.evaluate((x) => document.querySelector('#tabs button[data-tab="' + x + '"]').click(), t);
   await page.waitForTimeout(250);
 };
+const txt = (page, sel) => page.evaluate((s) => ((document.querySelector(s) || {}).textContent || '').replace(/\s+/g, ' ').trim(), sel);
 
-const lit = (page) => page.evaluate(() => ({
-  /* La tresorerie de la colonie, pas le solde $SWOGE de la barre
-     partagee : les deux vivaient sous le meme identifiant, et la barre du
-     site a ete posee sur cette page. */
-  bal: (document.getElementById('aiBal') || {}).textContent,
-  delta: (document.getElementById('delta') || {}).textContent,
-  stamp: (document.getElementById('stamp') || {}).textContent,
-  stampCls: (document.getElementById('stamp') || {}).className,
-  pouls: (document.getElementById('poulsTx') || {}).textContent,
-  tag: (document.getElementById('stagetag') || {}).textContent,
-  pos: (document.getElementById('poscount') || {}).textContent,
-  trades: (document.getElementById('s-trades') || {}).textContent,
-  profit: (document.getElementById('s-profit') || {}).textContent,
-  best: (document.getElementById('s-best') || {}).textContent,
-  wr: (document.getElementById('wr') || {}).textContent,
-  positions: [...document.querySelectorAll('#positions .pos')].map((p) => p.textContent.replace(/\s+/g, ' ').trim()),
-  positionsTxt: (document.getElementById('positions') || {}).textContent.replace(/\s+/g, ' ').trim(),
-  appris: (document.getElementById('appris') || {}).textContent.replace(/\s+/g, ' ').trim(),
-  apprisHtml: (document.getElementById('appris') || {}).innerHTML || '',
-  flow: (document.getElementById('flow') || {}).textContent.replace(/\s+/g, ' ').trim(),
-  agents: [...document.querySelectorAll('#agents .agent')].map((a) =>
-    [...a.querySelectorAll('.sc')].map((x) => x.textContent.trim())),
-  foot: (document.getElementById('foot') || {}).textContent.replace(/\s+/g, ' ').trim(),
-  feed: [...document.querySelectorAll('#feed .tr')].map((p) => p.textContent.replace(/\s+/g, ' ').trim()),
-  liens: [...document.querySelectorAll('#positions .liens a')].map((a) => a.textContent.trim() + '→' + a.href),
-  alertes: (document.getElementById('alertes') || {}).textContent.replace(/\s+/g, ' ').trim(),
-  alerteN: (document.getElementById('alerteN') || {}).textContent,
-  alerteCachee: !!(document.getElementById('carteAlertes') || {}).hidden,
-  fermN: (document.getElementById('fermN') || {}).textContent,
-  audit: (document.getElementById('audit') || {}).textContent.replace(/\s+/g, ' ').trim(),
-  traits: (document.getElementById('traits') || {}).textContent.replace(/\s+/g, ' ').trim(),
-  traitsN: (document.getElementById('traitsN') || {}).textContent,
-  auditN: (document.getElementById('auditN') || {}).textContent,
-  maisons: [...document.querySelectorAll('#agents .agent')].length,
-  adresses: [...document.querySelectorAll('#positions .adr code')].map((c) => c.textContent.trim()),
-  boutonsCopie: [...document.querySelectorAll('#positions .adr button')].length,
-  banque: (document.getElementById('banque') || {}).textContent.replace(/\s+/g, ' ').trim(),
-  banqMethode: (document.getElementById('banqMethode') || {}).textContent,
-  surveillance: (document.getElementById('surveillance') || {}).textContent.replace(/\s+/g, ' ').trim(),
-  survN: (document.getElementById('survN') || {}).textContent,
-  flowcount: (document.getElementById('flowcount') || {}).textContent,
-  structure: (document.getElementById('structure') || {}).textContent.replace(/\s+/g, ' ').trim(),
-  services: (document.getElementById('services') || {}).textContent.replace(/\s+/g, ' ').trim(),
-  soustitre: (document.getElementById('soustitre') || {}).textContent,
-}));
-
+const lit = (page) => page.evaluate(() => {
+  const t = (id) => ((document.getElementById(id) || {}).textContent || '').replace(/\s+/g, ' ').trim();
+  return {
+    bal: t('aiBal'), delta: t('delta'), stamp: t('stamp'),
+    stampCls: (document.getElementById('stamp') || {}).className, pouls: t('poulsTx'), tag: t('stagetag'),
+    pos: t('poscount'), kpis: t('kpis'), truth: t('truth'),
+    positions: [...document.querySelectorAll('#positions .pos')].map((p) => p.textContent.replace(/\s+/g, ' ').trim()),
+    positionsTxt: t('positions'),
+    blocs: [...document.querySelectorAll('#positions .posbloc')].map((x) => x.textContent.replace(/\s+/g, ' ').trim()),
+    liens: [...document.querySelectorAll('#positions .liens a')].map((a) => a.textContent.trim() + '→' + a.href),
+    adresses: [...document.querySelectorAll('#positions .adr code')].map((c) => c.textContent.trim()),
+    boutonsCopie: [...document.querySelectorAll('#positions .adr button')].length,
+    agents: [...document.querySelectorAll('#agents tr[data-agent]')].map((r) => r.textContent.replace(/\s+/g, ' ').trim()),
+    appris: t('appris'), apprisHtml: (document.getElementById('appris') || {}).innerHTML || '',
+    alertes: t('alertes'), alerteN: t('alerteN'), alerteCachee: !!(document.getElementById('cAl') || {}).hidden,
+    fermN: t('fermN'), closed: [...document.querySelectorAll('#closed tr')].map((r) => r.textContent.replace(/\s+/g, ' ').trim()),
+    audit: t('audit'), auditN: t('auditN'), traits: t('traits'), traitsN: t('traitsN'), traitsF: t('traitsF'),
+    banque: t('banque'), banqMethode: t('banqMethode'),
+    surveillance: t('surveillance') + ' ' + t('survAttente'), survN: t('survN'), bandes: t('bandes'),
+    structure: t('structure'), services: t('services') + ' ' + t('hors'), foot: t('foot'), lede: t('lede'),
+  };
+});
 
 /* ==========================================================================
- * 9. AUTANT DE MAISONS QU'IL Y A D'AGENTS
+ * 9. LA COLONIE SE DESSINE DEPUIS LE ROSTER
  *
  * « S'ils ont besoin de plus d'agents ils peuvent s'auto-développer, se
- *   multiplier, ou plus de maisons. »
- *
- * Il y avait six maisons a six coordonnees ecrites a la main. Un septieme
- * agent n'aurait eu nulle part ou habiter — et il ne serait pas apparu du
- * tout, sans que rien ne le signale : la page aurait continue a dessiner ses
- * six maisons pendant que le serveur en comptait huit.
+ *   multiplier. » Le nombre d'agents, leur ordre et leurs liens viennent du
+ * serveur : un agent ne a son noeud, un specialiste dit de qui il descend, et
+ * l'ordre du parcours est celui que le SERVEUR a mesure — pas une liste
+ * recopiee ici. (Le village de shibas est parti avec la page v2, validee par le
+ * proprietaire le 14/10 : la scene des agents le remplace, et ce qui se
+ * verifiait sur le village se verifie sur elle.)
  * ==========================================================================*/
 async function maisons() {
-  console.log('\n-- le village se construit depuis le roster --');
+  console.log('\n-- la colonie se dessine depuis le roster --');
   {
     const { page, boum } = await ouvre(nav, port, {});
     const v = await lit(page);
-    console.log('   maisons : ' + v.maisons + ' · sous-titre : « ' + v.soustitre + ' »');
     const N = vueFausse().roster.length;
-    ok(v.maisons === N, N + ' agents au serveur → ' + N + ' maisons a l ecran (' + v.maisons + ')');
-    ok(new RegExp('\\b' + N + ' agents').test(v.soustitre),
-       'et le nombre est ecrit depuis le roster, jamais en dur : « ' + v.soustitre + ' »');
-
-    /* Le specialiste ne de la colonie doit dire de qui il descend : sinon un
-       nom nouveau apparait un jour sans que personne sache d ou il sort. */
-    const noms = await page.evaluate(() =>
-      [...document.querySelectorAll('#agents .nm')].map((x) => x.textContent.replace(/\s+/g, ' ').trim()));
-    console.log('   ' + JSON.stringify(noms));
-    ok(noms.some((n) => /Whale · age/.test(n)), 'le specialiste ne de la colonie a sa maison');
-    ok(noms.some((n) => /from whale/.test(n)), 'et il dit de qui il descend');
-
-    /* Les maisons sont posees sur un anneau : aucune ne doit sortir du cadre,
-       quel que soit le nombre d agents. */
-    /* ---- LES BORNES SUIVENT LE MONDE, ELLES NE SONT PLUS RECOPIEES ----
-     * Elles etaient ecrites en dur pour un monde de 1000 x 760. La hauteur
-     * suit maintenant le nombre de rangees, et un essai qui garde les anciens
-     * chiffres mesure un cadre qui n'existe plus. On demande donc a la page sa
-     * taille, et on y ajoute l'encombrement REEL d'une maison : l'etiquette
-     * monte a 70 au-dessus du point, l'ombre descend a 50 en dessous, et le
-     * toit deborde de 52 de chaque cote. */
-    const dehors = await page.evaluate(() =>
-      AGENTS.filter((a) => a.house.x - 52 < 0 || a.house.x + 52 > W
-                        || a.house.y - 70 < 0 || a.house.y + 50 > H)
-            .map((a) => a.key + '@' + a.house.x + ',' + a.house.y));
-    ok(dehors.length === 0,
-       'aucune maison ne sort du cadre' + (dehors.length ? ' : ' + dehors.join(', ') : ''));
-
-    /* Et l ordre du parcours suit celui du serveur, pas un ordre invente ici. */
-    const parcours = await page.evaluate(() => AGENTS.map((a) => a.key));
-    console.log('   parcours : ' + parcours.join(' → '));
-    ok(parcours[0] === 'scout', 'le Scout ouvre le parcours');
-    ok(parcours.indexOf('whale') < parcours.indexOf('warden'),
+    const sc = await page.evaluate(() => ({ pipe: Scene.pipe(), sat: Scene.satellites() }));
+    console.log('   parcours : ' + sc.pipe.join(' → ') + ' · satellites : ' + sc.sat.join(', '));
+    ok(v.agents.length === N, N + ' agents au serveur → ' + N + ' lignes dans « Agents » (' + v.agents.length + ')');
+    ok(sc.pipe.length + sc.sat.length === N, 'et autant de noeuds dans la scene (' + (sc.pipe.length + sc.sat.length) + ')');
+    ok(new RegExp('\\b' + N + ' AI agents').test(v.lede), 'le nombre est ecrit depuis le roster, jamais en dur : « ' + v.lede.slice(0, 40) + ' »');
+    ok(v.agents.some((a) => /Whale · age/.test(a) && /from Whale-Watch/.test(a)), 'le specialiste ne de la colonie a sa ligne, et il dit de qui il descend');
+    ok(sc.sat.indexOf('whale-topage>whale') >= 0, 'et dans la scene il est relie a son parent');
+    ok(sc.pipe[0] === 'scout', 'le Scout ouvre le parcours');
+    ok(sc.pipe.indexOf('whale') < sc.pipe.indexOf('warden'),
        'les gardes suivent l ordre QUE LE SERVEUR a mesure (whale avant warden), pas celui du code');
-    ok(parcours[parcours.length - 1] === 'closer' && parcours[parcours.length - 2] === 'banquier',
+    ok(sc.pipe[sc.pipe.length - 1] === 'closer' && sc.pipe[sc.pipe.length - 2] === 'banquier',
        'et la fin est Banquier puis Closer : deux agents ouvrent une position, pas un');
-    /* ---- LE COBAYE EST ENTRE L ORACLE ET LE BANQUIER ----
-     * C est la que le serveur le joue : apres que tout le reste a dit oui, et
-     * avant qu un centime soit engage. La table des rangs de la page ne
-     * connaissait pas son role et le poussait en bout de file — donc APRES le
-     * Closer, c est-a-dire apres l achat. L ecran aurait montre l inverse de
-     * ce qui se passe, et « avant le gros achat » serait devenu « apres ». */
-    ok(parcours.indexOf('cobaye') > parcours.indexOf('oracle')
-       && parcours.indexOf('cobaye') < parcours.indexOf('banquier'),
-       'et le Cobaye tente la sortie apres l Oracle et AVANT le Banquier : c est la que le '
-       + 'serveur le joue (' + parcours.join(' → ') + ')');
+    ok(sc.pipe.indexOf('cobaye') > sc.pipe.indexOf('oracle') && sc.pipe.indexOf('cobaye') < sc.pipe.indexOf('banquier'),
+       'le Cobaye tente la sortie apres l Oracle et AVANT le Banquier : c est la que le serveur le joue');
+    /* Aucun noeud ne sort du cadre, sur ordinateur comme en serpentin. */
+    const pos = await page.evaluate(() => Scene.positions());
+    const dehors = Object.keys(pos).filter((k) => k !== 'in' && k !== 'out' && (pos[k][0] < 0 || pos[k][0] > 1 || pos[k][1] < 0 || pos[k][1] > 1));
+    ok(dehors.length === 0, 'aucun noeud ne sort du cadre' + (dehors.length ? ' : ' + dehors.join(', ') : ''));
+    ok(pos.hub[0] > Math.max(...sc.pipe.map((k) => pos[k][0])), 'le tresor est apres le dernier agent, pas au milieu');
+    ok(pos.in[0] < pos[sc.pipe[0]][0], 'et l entree est avant le premier : on sait par quel bout commencer');
+    ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
+
+    console.log('\n-- et elle se refait quand la colonie change de forme --');
+    const petit = vueFausse();
+    petit.roster = petit.roster.filter((a) => a.role !== 'specialiste');
+    await page.evaluate((v) => { VUE = v; peintTout(); }, petit);
+    await page.waitForTimeout(200);
+    const ap = await page.evaluate(() => ({ lignes: document.querySelectorAll('#agents tr[data-agent]').length, n: Scene.pipe().length + Scene.satellites().length }));
+    ok(ap.lignes === N - 1 && ap.n === N - 1, 'un specialiste retire : une ligne et un noeud de moins (' + ap.lignes + ' / ' + ap.n + ')');
     ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
     await page.context().close();
   }
-
-  console.log('\n-- et il se refait quand la colonie change de forme --');
+  console.log('\n-- sur telephone, le parcours se lit en serpentin --');
   {
-    /* Un roster reduit : le village doit suivre, sans laisser un bot orphelin
-       marcher vers une maison qui n existe plus. */
-    const petit = vueFausse();
-    petit.roster = petit.roster.filter((a) => a.role !== 'specialiste');
-    const { page, boum } = await ouvre(nav, port, {});
-    const av = (await lit(page)).maisons;
-    await page.evaluate((v) => { majVillage(v.roster); VUE = v; peintAgents(); }, petit);
-    await page.waitForTimeout(200);
-    const ap = (await lit(page)).maisons;
-    console.log('   ' + av + ' maisons → ' + ap);
-    const N = vueFausse().roster.length;
-    ok(av === N && ap === N - 1, 'un specialiste retire, et le village a une maison de moins ('
-       + av + ' → ' + ap + ')');
-    const bots = await page.evaluate(() => bots.length + '/' + AGENTS.length);
-    ok(bots === (N - 1) + '/' + (N - 1),
-       'les habitants suivent : ' + bots + ' — aucun bot ne reste sans maison');
-    ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
-    await page.context().close();
+    const ctx = await nav.newContext({ viewport: { width: 390, height: 844 } });
+    const { page } = await ouvre(nav, port, { ctx });
+    const v = await page.evaluate(() => ({ pipe: Scene.pipe(), pos: Scene.positions() }));
+    const r1 = v.pipe.slice(0, 4).map((k) => v.pos[k][0]), r2 = v.pipe.slice(4, 8).map((k) => v.pos[k][0]);
+    ok(r1.every((x, i) => i === 0 || x > r1[i - 1]), 'la premiere rangee va de gauche a droite');
+    ok(r2.length > 1 && r2.every((x, i) => i === 0 || x < r2[i - 1]), 'la deuxieme repart en sens inverse : un serpentin, pas un retour a la ligne');
+    ok(v.pos.hub[1] > Math.max(...v.pipe.map((k) => v.pos[k][1])), 'et le tresor est en bas, apres le dernier agent');
+    await ctx.close();
   }
 }
 
 /* ==========================================================================
  * 10. LE CONTRAT, EN ENTIER ET COPIABLE
- *
- * « Aussi faudrait qu'on voie le contrat, qu'on puisse le copier-coller, de la
- *   crypto en trade en cours. »
- *
- * Tronquee, une adresse ne sert a rien : on ne peut ni la coller dans un
- * explorateur, ni la comparer a celle qu'on a sous les yeux ailleurs — et
- * c'est justement en la comparant qu'on evite d'acheter le faux jeton qui
- * porte le meme nom que le vrai.
+ * « Faudrait qu'on voie le contrat, qu'on puisse le copier-coller. »
  * ==========================================================================*/
 async function contrat() {
   console.log('\n-- l adresse du contrat, sur les positions en cours --');
@@ -502,80 +469,37 @@ async function contrat() {
   const v = await lit(page);
   console.log('   ' + JSON.stringify(v.adresses));
   ok(v.adresses.length === 2, 'chaque position en cours porte son adresse de contrat');
-  ok(v.adresses[0] === ADR_NOVA,
-     'et elle est ENTIERE, pas tronquee : ' + v.adresses[0]);
+  ok(v.adresses[0] === ADR_NOVA, 'et elle est ENTIERE, pas tronquee : ' + v.adresses[0]);
   ok(v.adresses[0].length === 42, 'quarante-deux caracteres, donc collable telle quelle');
   ok(v.boutonsCopie === 2, 'avec un bouton pour la copier');
-
-  /* ---- LE PIEGE DEJA RENCONTRE DANS LE PORTEFEUILLE ----
-   * Dans la vue web de Telegram, `navigator.clipboard` est absent et son appel
-   * jette AVANT de rendre une promesse : un `.catch()` ne s execute jamais, et
-   * le bouton ne fait rien sans rien dire. On le retire pour de bon. */
+  /* Dans la vue web de Telegram, `navigator.clipboard` est absent et son appel
+     jette AVANT de rendre une promesse. On le retire pour de bon. */
   await page.evaluate(() => {
     try { delete navigator.clipboard; } catch (e) {}
-    Object.defineProperty(navigator, 'clipboard', { get() { throw new Error('absent'); },
-                                                    configurable: true });
+    Object.defineProperty(navigator, 'clipboard', { get() { throw new Error('absent'); }, configurable: true });
   });
-  /* ---- ET IL FAUT OUVRIR LE PANNEAU POUR L'ATTEINDRE ----
-   * Depuis que la colonne part entierement repliee, le contenu d'un panneau
-   * ferme est `display:none` : Playwright ne peut pas cliquer dessus, et un
-   * lecteur non plus. Ce n'est pas un defaut a contourner, c'est le
-   * comportement voulu — on l'ouvre donc comme le ferait quelqu'un, par son
-   * titre, ce qui verifie au passage que le geste marche. */
-  await page.evaluate(() => {
-    const c = document.querySelector('.card[data-pan="positions"]');
-    if (c && c.classList.contains('plie')) c.querySelector('h2').click();
-  });
-  await page.waitForTimeout(120);
-  /* ---- LE CLIC ET LA LECTURE DANS LE MEME SOUFFLE ----
-   * `#positions` est repeint chaque seconde. Cliquer, attendre, puis relire
-   * laissait un repaint passer entre les deux : le bouton avait bien repondu,
-   * mais on interrogeait ensuite un bouton NEUF, qui n'avait rien vu. L'essai
-   * echouait une fois sur trois selon la phase de l'horloge — et pour une
-   * raison qui n'avait rien a voir avec ce qu'il mesure. Tout dans un seul
-   * `evaluate` : le JavaScript est a un seul fil, aucun repaint ne s'y
-   * glisse. */
+  /* Le clic et la lecture dans le meme souffle : aucun repaint ne s'y glisse. */
   const [avant, apres] = await page.evaluate(() => {
     const b = document.querySelector('#positions .adr button');
-    const a = b.textContent;
-    b.click();
-    return [a, b.textContent];
+    const a = b.textContent; b.click(); return [a, b.textContent];
   });
   console.log('   sans presse-papier : « ' + avant + ' » → « ' + apres + ' »');
-  ok(apres !== avant,
-     'meme sans presse-papier, le bouton REPOND quelque chose (« ' + apres + ' »)');
+  ok(apres !== avant, 'meme sans presse-papier, le bouton REPOND quelque chose (« ' + apres + ' »)');
+  await page.waitForTimeout(1200);
+  ok(await page.evaluate(() => document.querySelector('#positions .adr button').textContent) === apres,
+     'et la reponse reste sous le doigt : le repaint de chaque seconde ne l efface pas aussitot');
   ok(boum.length === 0, 'et il ne jette pas' + (boum.length ? ' : ' + boum[0] : ''));
-
-  /* Et quoi qu il arrive, l adresse reste selectionnable a la main. */
-  const sel = await page.evaluate(() =>
-    getComputedStyle(document.querySelector('#positions .adr code')).webkitUserSelect
-    || getComputedStyle(document.querySelector('#positions .adr code')).userSelect);
+  const sel = await page.evaluate(() => { const c = getComputedStyle(document.querySelector('#positions .adr code')); return c.webkitUserSelect || c.userSelect; });
   ok(sel === 'all', 'et l adresse se selectionne d un seul geste (user-select: ' + sel + ')');
-
-  /* La mise du Banquier voyage avec la position : c est CE chiffre qui a ete
-     pose, pas une valeur plausible recalculee ici. */
-  const pos = await page.evaluate(() =>
-    [...document.querySelectorAll('#positions .posbloc')].map((x) => x.textContent.replace(/\s+/g, ' ').trim()));
-  console.log('   ' + pos[0]);
+  const pos = v.blocs;
+  console.log('   ' + pos[0].slice(0, 220));
   ok(/\$35\.00 staked/.test(pos[0]), 'la mise reellement engagee est affichee ($35.00)');
   ok(/part/.test(pos[0]), 'avec la methode qui l a decidee');
   ok(/spotted by profils/.test(pos[0]), 'et le flux qui a trouve le jeton');
-
-  /* ---- CE QUI A DEJA ETE PRIS, ET CE QUI COURT ENCORE ----
-   * La position ne sort plus d un bloc : elle vend par paliers et laisse le
-   * reste courir. Sans ces chiffres, une position a +6 % qui a deja encaisse
-   * 70 % de son gain se lit comme une petite affaire — et le latent affiche
-   * porterait sur une mise qu on n a plus en jeu. */
-  console.log('   ' + pos[0].slice(0, 200));
-  ok(/70% sold/.test(pos[0]),
-     'la part deja vendue en route est ecrite (70 %)');
-  ok(/\+\$12\.40 banked/.test(pos[0]),
-     'avec ce qu elle a rapporte, qui est deja dans la tresorerie');
-  ok(/30% still running/.test(pos[0]),
-     'et ce qui reste en jeu : c est cette part-la que le latent chiffre');
-  ok(/peak seen \+62\.5%/.test(pos[0]),
-     'le plus haut atteint est affiche : c est lui que l arret suiveur surveille, donc lui '
-     + 'qui expliquera une fermeture qu on n aurait pas comprise');
+  ok(/70% sold/.test(pos[0]), 'la part deja vendue en route est ecrite (70 %)');
+  ok(/\+\$12\.40 banked/.test(pos[0]), 'avec ce qu elle a rapporte, qui est deja dans la tresorerie');
+  ok(/30% still running/.test(pos[0]), 'et ce qui reste en jeu : c est cette part-la que le latent chiffre');
+  ok(/peak seen \+62\.5%/.test(pos[0]), 'le plus haut atteint est affiche : c est lui que l arret suiveur surveille');
   await page.context().close();
 }
 
@@ -588,39 +512,25 @@ async function banquierEcran() {
     const { page, boum } = await ouvre(nav, port, {});
     const v = await lit(page);
     console.log('   ' + v.banqMethode + ' · ' + v.banque.slice(0, 110));
-    ok(/part/.test(v.banqMethode) && /learned/.test(v.banqMethode),
-       'sa methode est affichee, et le fait qu il l ait APPRISE (« ' + v.banqMethode + ' »)');
+    ok(/part/.test(v.banqMethode) && /learned/.test(v.banqMethode), 'sa methode est affichee, et le fait qu il l ait APPRISE (« ' + v.banqMethode + ' »)');
     ok(/around the start/.test(v.banque), 'le regime de caisse aussi');
     ok(/2 wins in a row/.test(v.banque), 'et la serie en cours');
     ok(/\$65\.00/.test(v.banque), 'ce qui est engage maintenant');
     ok(/\$35\.60/.test(v.banque), 'et ce qu il poserait sur le prochain jeton');
-
-    /* ---- LES BORNES SONT AFFICHEES ----
-     * Une page qui montre une methode d apprentissage sans montrer ses
-     * garde-fous laisse croire qu il n y en a pas. */
-    ok(/8% per token/.test(v.banque.replace(/\s/g, ' ')) || /8%/.test(v.banque),
-       'les bornes qu il ne peut pas franchir sont ecrites : ' + (v.banque.match(/Bornes[^]{0,90}/) || [''])[0]);
-      ok(/floor/.test(v.banque), 'y compris le plancher sous lequel il arrete d ouvrir');
-    ok(/Presence required/.test(v.banque) && /telegram/.test(v.banque),
-       'et la presence exigee d un projet est affichee : « '
-       + (v.banque.match(/Presence exigee[^B]*/) || [''])[0].trim() + ' »');
-
-    /* Le releve de chaque methode, AVEC le nombre d observations. */
-    ok(/12 obs/.test(v.banque) && /9 obs/.test(v.banque),
-       'et le releve de chaque methode porte son nombre d observations');
+    ok(/8% per token/.test(v.banque), 'les bornes qu il ne peut pas franchir sont ecrites');
+    ok(/floor/.test(v.banque), 'y compris le plancher sous lequel il arrete d ouvrir');
+    ok(/Presence required/.test(v.banque) && /telegram/.test(v.banque), 'et la presence exigee d un projet est affichee');
+    ok(/12 obs/.test(v.banque) && /9 obs/.test(v.banque), 'et le releve de chaque methode porte son nombre d observations');
     ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
     await page.context().close();
   }
   console.log('\n-- et quand il arrete d ouvrir, il le dit --');
   {
-    const { page, boum } = await ouvre(nav, port,
-      { vue: vueFausse({ arret: 'treasury below the $100 floor: we stop opening' }) });
+    const { page, boum } = await ouvre(nav, port, { vue: vueFausse({ arret: 'treasury below the $100 floor: we stop opening' }) });
     const v = await lit(page);
-    console.log('   ' + (v.banque.match(/⛔[^]{0,70}/) || [''])[0]);
-    ok(/floor/.test(v.banque),
-       'l arret est affiche avec sa raison, pas comme une panne');
-    ok(!/Next stake/.test(v.banque),
-       'et aucune « prochaine mise » n est proposee : il n y en a pas');
+    ok(/below the \$100 floor/.test(v.banque), 'l arret est affiche avec sa raison, pas comme une panne');
+    ok(!/Next stake/.test(v.banque), 'et aucune « prochaine mise » n est proposee : il n y en a pas');
+    ok(/stopped opening/.test(await txt(page, '#eqStats')), 'et la case « Open now » le dit au lieu d une mise');
     ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
     await page.context().close();
   }
@@ -634,12 +544,9 @@ async function panneaux() {
   const { page, boum } = await ouvre(nav, port, {});
   const v = await lit(page);
   console.log('   ' + v.survN + ' · ' + v.surveillance.slice(0, 90));
-  ok(/PRESQUE/.test(v.surveillance) && /PATIENT/.test(v.surveillance),
-     'les jetons gardes a l oeil sont listes');
-  ok(/3 looks/.test(v.surveillance),
-     'avec le nombre de fois ou ils ont ete examines — c est le chiffre qui montre qu on ne les rejuge pas en boucle');
-  ok(/37 banned/.test(v.survN),
-     'et les bannis sont comptes a part : ils ne reviendront jamais (' + v.survN + ')');
+  ok(/PRESQUE/.test(v.surveillance) && /PATIENT/.test(v.surveillance), 'les jetons gardes a l oeil sont listes');
+  ok(/3 looks/.test(v.surveillance), 'avec le nombre de fois ou ils ont ete examines — c est le chiffre qui montre qu on ne les rejuge pas en boucle');
+  ok(/37 banned/.test(v.survN), 'et les bannis sont comptes a part : ils ne reviendront jamais (' + v.survN + ')');
 
   console.log('\n-- les canaux Telegram surveilles (26 septembre 2026) --');
   {
@@ -658,10 +565,10 @@ async function panneaux() {
     ok(t.liens.includes('https://t.me/Exceptionalmemes/4460') && !t.liens.some((h) => /^javascript/i.test(h)) && t.liens.includes('https://dexscreener.com/robinhood/0x39dbed3a2bd333467115de45665cc57f813c4571'),
        'le lien du message et le graphique Robinhood ; un lien de message piege n est pas rendu');
     await o.ctx.close();
-    /* les scores (tg_appels) et les canaux ajoutes par la decouverte (tg_decouverte) */
     const sc = await ouvre(nav, port, { vue: Object.assign(vueFausse(), { telegram: Object.assign({}, TG, {
       scores: [{ channel: 'XandersOGCALLS', calls: 14, freshMeasured: 12, medianChangePct: 18.5, upSharePct: 58 }, { channel: 'ChinaGamble', calls: 3, freshMeasured: 2, medianChangePct: null }],
       decouverte: { auto: [{ canal: 'NewCallsRH', robinhood: 3 }] } }) }) });
+    await sc.page.evaluate(() => { const b = document.getElementById('tgMore'); if (b) b.click(); });
     const ts = (await sc.page.textContent('#telegram')).replace(/\s+/g, ' ');
     ok(/@XandersOGCALLS · 12 fresh calls · median \+18.5 % since the call · 58 % up/.test(ts), 'un canal note : effectif, mediane depuis l appel, part en hausse');
     ok(/@ChinaGamble · 2 fresh call\(s\): not enough to judge \(10 needed\)/.test(ts), 'sous dix appels frais : pas de score, et la raison');
@@ -673,41 +580,30 @@ async function panneaux() {
   }
 
   console.log('\n-- ou elle a regarde, et ce qu elle n a pas encore juge --');
-  console.log('   ' + v.flowcount);
-  ok(/0-5 min ×3/.test(v.flowcount) && /20-60 min ×1/.test(v.flowcount),
-     'la repartition par age est affichee : sans ce compte, « elle regarde partout » est une phrase');
-  ok(!/1-6 h/.test(v.flowcount), 'et une bande ou elle n a rien vu n est pas listee comme si elle l avait vue');
-  console.log('   ' + (v.surveillance.match(/\d+ sortie[^—]*/) || ['(rien)'])[0]);
-  ok(/1 exit\(s\) awaiting/.test(v.surveillance) && /MONTE at \+42%/.test(v.surveillance),
-     'les gains pris mais pas encore juges sont montres : une question ouverte s affiche, sinon la '
-     + 'lecon a l air de sortir de nulle part quand elle arrive');
+  console.log('   ' + v.bandes);
+  ok(/0-5 min ×3/.test(v.bandes) && /20-60 min ×1/.test(v.bandes), 'la repartition par age est affichee : sans ce compte, « elle regarde partout » est une phrase');
+  ok(!/1-6 h/.test(v.bandes), 'et une bande ou elle n a rien vu n est pas listee comme si elle l avait vue');
+  ok(/1 exit\(s\) awaiting/.test(v.surveillance) && /MONTE at \+42%/.test(v.surveillance), 'les gains pris mais pas encore juges sont montres');
   ok(/what holding would have given/.test(v.surveillance), 'avec ce qu on attend pour trancher');
 
   console.log('\n-- ce que la colonie a change a elle-meme --');
   console.log('   ' + v.structure.slice(0, 150));
-  ok(/naissance/.test(v.structure) && /ordre/.test(v.structure),
-     'les deux gestes sont au journal : une naissance et un changement d ordre');
-  ok(/standard deviation of 42 points/.test(v.structure),
-     'la naissance porte la MESURE qui l a decidee, pas une formule');
-  ok(/refus 79%/.test(v.structure),
-     'et le changement d ordre porte les taux de refus mesures');
+  ok(/birth/.test(v.structure) && /order/.test(v.structure), 'les deux gestes sont au journal, nommes : une naissance et un changement d ordre');
+  ok(/standard deviation of 42 points/.test(v.structure), 'la naissance porte la MESURE qui l a decidee, pas une formule');
+  ok(/refus 79%/.test(v.structure), 'et le changement d ordre porte les taux de refus mesures');
 
   console.log('\n-- ce qui est lu, et ce qui ne peut pas l etre --');
-  ok(/GeckoTerminal · new pools/.test(v.services) && /trades one by one/.test(v.services),
-     'les services sont listes avec ce que chacun apporte');
+  ok(/GeckoTerminal · new pools/.test(v.services) && /trades one by one/.test(v.services), 'les services sont listes avec ce que chacun apporte');
   ok(/111\/120/.test(v.services), 'avec leur releve reel (111/120 pour la chaine)');
-  ok(/last failure: 429/.test(v.services),
-     'et le dernier echec en clair quand il y en a un');
+  ok(/last failure: 429/.test(v.services), 'et le dernier echec en clair quand il y en a un');
   ok(/Bridges the mirror can cross:\s*USDG · not measured yet\s*NVDA ✓ \$1\.2M of ETH liquidity \(Uniswap v3\)/.test(v.services),
-     'et les ponts du miroir, avec ce qui est mesure et ce qui ne l est pas encore : « ' + (v.services.match(/Bridges[^G]*/) || [''])[0].slice(0, 90) + ' »');
-  ok(/GMGN/.test(v.services) && /Cloudflare/.test(v.services),
-     'GMGN est NOMME avec la raison mesuree, plutot que passe sous silence');
-  ok(/on ethereum too/.test(v.services),
-     'et la raison distingue « protection anti-robot » de « ne connait pas la chaine 4663 »');
+     'et les ponts du miroir, avec ce qui est mesure et ce qui ne l est pas encore');
+  ok(/GMGN/.test(v.services) && /Cloudflare/.test(v.services), 'GMGN est NOMME avec la raison mesuree, plutot que passe sous silence');
+  ok(/on ethereum too/.test(v.services), 'et la raison distingue « protection anti-robot » de « ne connait pas la chaine 4663 »');
 
-  /* La licence de l'API GoPlus (relue le 26 septembre 2026) : les controles de
-     securite de la colonie en viennent, la page dit « Powered by Go+ Security »
-     avec un lien — a cote du service, et sous le pied, dans les deux langues. */
+  /* La licence de l'API GoPlus (relue le 26 septembre 2026) : la page dit
+     « Powered by Go+ Security » avec un lien, a cote du service et sous le pied,
+     dans les deux langues. */
   console.log('\n-- « Powered by Go+ Security », la ou la page montre ce que GoPlus a lu --');
   const gpl = await page.evaluate(() => {
     const l = (a) => (a ? { t: a.textContent, h: a.getAttribute('href'), rel: a.rel, c: a.target } : null);
@@ -715,16 +611,16 @@ async function panneaux() {
              pied: l(document.querySelector('#goplusAttrib a')), piedTxt: (document.getElementById('goplusAttrib') || {}).textContent || '' };
   });
   const bon = (a) => !!a && a.t === 'Powered by Go+ Security' && a.h === 'https://gopluslabs.io' && /noopener/.test(a.rel) && a.c === '_blank';
-  ok(gpl.ligne.length === 1 && bon(gpl.ligne[0]), 'le service GoPlus porte le lien « Powered by Go+ Security » (noopener, nouvel onglet) ' + JSON.stringify(gpl.ligne));
+  ok(gpl.ligne.length === 1 && bon(gpl.ligne[0]), 'le service GoPlus porte le lien « Powered by Go+ Security » (noopener, nouvel onglet)');
   ok(bon(gpl.pied) && /^Contract safety checks/.test(gpl.piedTxt), 'et la page le dit sous son pied : « ' + gpl.piedTxt + ' »');
   await page.evaluate(() => poseLangue('fr'));
   const fr = await page.evaluate(() => ({ t: document.getElementById('goplusAttrib').textContent, a: document.querySelector('#goplusAttrib a').getAttribute('href') }));
   ok(/^Contrôles de sécurité des contrats/.test(fr.t) && /Powered by Go\+ Security$/.test(fr.t) && fr.a === 'https://gopluslabs.io',
-     'en francais aussi, la clause restant la leur (« Powered by Go+ Security ») : « ' + fr.t + ' »');
+     'en francais aussi, la clause restant la leur : « ' + fr.t + ' »');
   await page.evaluate(() => poseLangue('en'));
   {
     /* Les phrases vivent dans PHRASES, en deux langues, jamais en dur dans le peintre. */
-    const src = require('fs').readFileSync(require('path').join(__dirname, 'swoge_ai.html'), 'utf8');
+    const src = fs.readFileSync(path.join(SITE, PAGE), 'utf8');
     const d0 = src.indexOf('const PHRASES = {'), d1 = src.indexOf('\n};', d0);
     const compte = (t) => t.split('Powered by Go+ Security').length - 1;
     ok(compte(src) >= 4 && compte(src) === compte(src.slice(d0, d1)), 'la mention n existe que dans la table ph() (' + compte(src) + ' fois, toutes dedans)');
@@ -733,100 +629,58 @@ async function panneaux() {
   await page.context().close();
 }
 
-
 /* ==========================================================================
  * 13. LA CAPITALISATION D'ACHAT, LE GRAPHIQUE, LES RESEAUX
- *
- * « Position ouverte, on doit voir le market cap d'achat. » « Affiche le lien
- *   DexScreener des positions ouvertes, le contrat, les réseaux s'il y en a. »
  * ==========================================================================*/
 async function ficheDeLaPosition() {
   console.log('\n-- ce qu on voit d une position en cours --');
   const { page, boum } = await ouvre(nav, port, {});
   const v = await lit(page);
-  const pos = await page.evaluate(() =>
-    [...document.querySelectorAll('#positions .posbloc')].map((x) => x.textContent.replace(/\s+/g, ' ').trim()));
-  console.log('   ' + pos[0]);
-  /* ---- POURQUOI LA CAPITALISATION COMPTE ----
-   * Un +40 % depuis une capitalisation de vingt mille et un +40 % depuis deux
-   * millions ne sont pas le meme evenement, et ne se reproduisent pas de la
-   * meme facon. Sans elle, le chiffre de gain ne se compare a rien. */
-  ok(/bought at \$310k cap/.test(pos[0]),
-     'la capitalisation AU MOMENT DE L ACHAT est affichee (310k)');
+  const pos = v.blocs;
+  ok(/bought at \$310k cap/.test(pos[0]), 'la capitalisation AU MOMENT DE L ACHAT est affichee (310k)');
   ok(/bought at \$45k cap/.test(pos[1]), 'sur chaque position, pas seulement la premiere');
-  /* ---- ET CELLE DU MOMENT, QUI VA AVEC LE LATENT ----
-   * « L affichage du market cap n est pas assez precis, le decalage. » Les
-   * deux capitalisations venaient de deux sources : leur ecart ne valait pas
-   * le pourcentage affiche a cote. Celle du moment se calcule desormais sur le
-   * meme prix que le latent — +6,4 % sur 310k font bien 330k. */
-  ok(/\$330k cap now/.test(pos[0]),
-     'la capitalisation du MOMENT est affichee, et elle vaut le latent : « ' + pos[0].slice(0, 120) + ' »');
-  ok(/the source says \$396k/.test(pos[0]),
-     'et quand la source annonce autre chose pour ce meme prix, son chiffre est rendu a cote, pas a la place');
-  ok(!/cap now/.test(pos[1]) && !/the source says/.test(pos[1]),
-     'une position sans lecture du moment n en invente pas une');
+  ok(/\$330k cap now/.test(pos[0]), 'la capitalisation du MOMENT est affichee, et elle vaut le latent');
+  ok(/the source says \$396k/.test(pos[0]), 'et quand la source annonce autre chose pour ce meme prix, son chiffre est rendu a cote, pas a la place');
+  ok(!/cap now/.test(pos[1]) && !/the source says/.test(pos[1]), 'une position sans lecture du moment n en invente pas une');
   ok(/extended 1×/.test(pos[0]), 'et le fait que le Promoteur l ait gardee une fois de plus');
-
-  console.log('   ' + JSON.stringify(v.liens));
-  /* ---- UN LIEN QU'ON SAIT MORT NE S'OFFRE PAS ----
-   * On pointait toujours vers DexScreener, qui ne connait qu'un jeton sur
-   * douze a deux minutes : le lien ouvrait une page vide et rien ne
-   * prevenait. GeckoTerminal est la source d'ou vient le pool — sa page
-   * existe forcement. */
   const chart = v.liens.filter((l) => /chart/.test(l));
   ok(chart.length === 2, 'chaque position porte un lien vers son graphique');
-  ok(/geckoterminal\.com\/robinhood\/pools\/0xpool3/.test(chart[0]),
-     'et il pointe vers la source d ou vient le pool, donc une page qui existe : '
-     + chart[0].split('→')[1]);
+  ok(/geckoterminal\.com\/robinhood\/pools\/0xpool3/.test(chart[0]), 'et il pointe vers la source d ou vient le pool, donc une page qui existe');
   const ds = v.liens.filter((l) => /dexscreener/.test(l));
-  ok(ds.length === 1 && /0xpool3/.test(ds[0]),
-     'DexScreener n est ajoute que pour la position dont on SAIT qu il connait la paire');
-  const muets = await page.evaluate(() =>
-    [...document.querySelectorAll('#positions .lienpetit.muet')].map((x) => x.textContent.trim()));
-  console.log('   ' + JSON.stringify(muets));
-  ok(muets.indexOf('not on DexScreener yet') >= 0,
-     'et pour l autre, on le DIT plutot que d offrir un lien mort — « token not found » au bout '
-     + 'd un lien qu on a soi-meme propose est pire qu une absence de lien');
-  ok(v.liens.some((l) => /twitter/.test(l) && /x\.com\/nova/.test(l)),
-     'les reseaux sont la quand il y en a');
-  /* Et quand il n'y en a pas, on l'ECRIT : un jeton sans aucune presence est
-     une information, pas un defaut d'affichage. */
-  const pas = await page.evaluate(() =>
-    [...document.querySelectorAll('#positions .lienpetit.muet')].map((x) => x.textContent.trim()));
-  console.log('   sans reseau : ' + JSON.stringify(pas));
-  ok(pas.indexOf('no socials') >= 0,
-     'et quand il n y en a pas, c est ecrit plutot que laisse vide');
+  ok(ds.length === 1 && /0xpool3/.test(ds[0]), 'DexScreener n est ajoute que pour la position dont on SAIT qu il connait la paire');
+  const muets = await page.evaluate(() => [...document.querySelectorAll('#positions .lienpetit.muet')].map((x) => x.textContent.trim()));
+  ok(muets.indexOf('not on DexScreener yet') >= 0, 'et pour l autre, on le DIT plutot que d offrir un lien mort');
+  ok(v.liens.some((l) => /twitter/.test(l) && /x\.com\/nova/.test(l)), 'les reseaux sont la quand il y en a');
+  ok(muets.indexOf('no socials') >= 0, 'et quand il n y en a pas, c est ecrit plutot que laisse vide');
   ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
   await page.context().close();
 }
 
 /* ==========================================================================
- * 14. LE FIL NE REPETE PLUS LES POSITIONS
- *
- * « Pourquoi il y a trades en direct et positions ? Retire trades en direct si
- *   c'est la même chose. »
+ * 14. LES TRADES FERMES, ET QUI LES A FERMES
+ * « Pourquoi il y a trades en direct et positions ? » Les ouvertures sont deja
+ * dans les positions en cours ; le carnet des trades ne montre que ce qui est
+ * FINI, et dit qui a ferme — sinon le travail de la Sentinelle est invisible.
  * ==========================================================================*/
 async function filSansDoublon() {
-  console.log('\n-- le fil ne redit pas ce qui est deja au-dessus --');
+  console.log('\n-- le carnet ne redit pas ce qui est deja au-dessus --');
   const { page, boum } = await ouvre(nav, port, {});
+  await onglet(page, 'tr');
   const v = await lit(page);
-  console.log('   ' + JSON.stringify(v.feed));
-  ok(v.feed.length === 2, 'seules les positions FERMEES y figurent (' + v.feed.length + ')');
-  ok(!v.feed.some((f) => /OPENED/.test(f)),
-     'l ouverture de $NOVA n y est plus : elle est deja listee juste au-dessus, avec plus de detail');
-  ok(v.feed.some((f) => /GAIN/.test(f)) && v.feed.some((f) => /LOSS/.test(f)),
-     'et les resultats, eux, ne sont visibles nulle part ailleurs');
-  /* Une coupe de la Sentinelle doit se distinguer d'une fermeture au terme,
-     sinon son travail est invisible — donc invérifiable. */
-  ok(v.feed.some((f) => /by sentinelle/.test(f)),
-     'une coupe precoce dit qui l a decidee : « ' + (v.feed.find((f) => /sentinelle/.test(f)) || '') + ' »');
-  ok(/threshold 55/.test(v.fermN), 'et l en-tete porte le seuil d entree du moment (' + v.fermN + ')');
+  console.log('   ' + JSON.stringify(v.closed));
+  ok(v.closed.length === vueFausse().carnet.lignes.length, 'seules les positions FERMEES y figurent (' + v.closed.length + ')');
+  ok(!v.closed.some((f) => /NOVA/.test(f)), 'la position ouverte $NOVA n y est pas : elle est deja listee, avec plus de detail');
+  ok(v.closed.some((f) => /Sentinel/.test(f)), 'une coupe precoce dit qui l a decidee : « ' + (v.closed.find((f) => /Sentinel/.test(f)) || '') + ' »');
+  ok(v.closed.some((f) => /Closer · duration reached/.test(f)), 'et une fermeture au terme le dit aussi');
+  ok(/entry threshold 55/.test(v.fermN), 'et l en-tete porte le seuil d entree du moment (' + v.fermN + ')');
+  const groupe = await txt(page, '#byHold');
+  ok(/under 20: shown, not judged/.test(groupe), 'un groupe de tenue sous 20 trades est montre, pas juge');
   ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
   await page.context().close();
 }
 
 /* ==========================================================================
- * 15. CE DONT LA COLONIE A BESOIN
+ * 15. CE DONT LA COLONIE A BESOIN, LA BARRE, LE MENU, LES ONGLETS
  * ==========================================================================*/
 async function panneauAlertes() {
   console.log('\n-- les alertes --');
@@ -836,333 +690,139 @@ async function panneauAlertes() {
     console.log('   ' + v.alerteN + ' · ' + v.alertes.slice(0, 120));
     ok(!v.alerteCachee, 'la carte apparait quand il y a quelque chose a demander');
     ok(v.alerteN === '2', 'les deux alertes sont comptees');
-    ok(/34% of reads/.test(v.alertes),
-       'chacune porte le CHIFFRE qui la justifie : une demande sans son chiffre ne peut pas '
-       + 'etre refusee intelligemment');
-    ok(/dedicated RPC/.test(v.alertes) && /ANTHROPIC_API_KEY/.test(v.alertes),
-       'et ce qu il faudrait faire, precisement');
+    ok(/34% of reads/.test(v.alertes), 'chacune porte le CHIFFRE qui la justifie');
+    ok(/dedicated RPC/.test(v.alertes) && /ANTHROPIC_API_KEY/.test(v.alertes), 'et ce qu il faudrait faire, precisement');
     ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
     await page.context().close();
   }
   {
     const { page } = await ouvre(nav, port, { vue: vueFausse({ alertes: [] }) });
-    const v = await lit(page);
-    ok(v.alerteCachee, 'et elle disparait quand la colonie n a besoin de rien');
+    ok((await lit(page)).alerteCachee, 'et elle disparait quand la colonie n a besoin de rien');
     await page.context().close();
   }
   {
-    /* 28/09 au soir : « haute » valait 0 et `rang[g]||9` la rangeait derniere ; et une alerte
+    /* 28/09 : « haute » valait 0 et `rang[g]||9` la rangeait derniere ; une alerte
        basse (un creux ordinaire) allumait la pastille de l'onglet comme une vraie demande. */
     const basse = { gravite: 'basse', quoi: 'Nothing bought for 228 turns (9.5 h)', pourquoi: 'At the pace of the last 7 days (18 buys, 2.6 a day), a silence this long happens 36% of the time: it is ordinary.', quoiFaire: 'Nothing.' };
     const haute = { gravite: 'haute', quoi: 'The chain nodes are refusing 34% of reads', pourquoi: 'x', quoiFaire: 'y' };
     const { page } = await ouvre(nav, port, { vue: vueFausse({ alertes: [basse, haute] }) });
-    const ordre = await page.$$eval('#alertes .alerte .pill', (l) => l.map((x) => x.textContent));
+    const ordre = await page.$$eval('#alertes .alerte', (l) => l.map((x) => x.dataset.gravite));
     ok(ordre.join() === 'haute,basse', 'la haute d abord, meme listee apres [' + ordre.join() + ']');
-    ok(await page.$eval('.onglet[data-grp="preuve"]', (b) => b.classList.contains('demande')), 'une haute allume la pastille de l onglet');
+    ok(await page.$eval('#tabs button[data-tab="ov"]', (b) => b.classList.contains('demande')), 'une haute allume la pastille de l onglet qui la porte');
     await page.context().close();
     const p2 = (await ouvre(nav, port, { vue: vueFausse({ alertes: [basse] }) })).page;
-    ok(!(await p2.$eval('.onglet[data-grp="preuve"]', (b) => b.classList.contains('demande'))) && /ordinary/.test(await p2.textContent('#alertes')),
+    ok(!(await p2.$eval('#tabs button[data-tab="ov"]', (b) => b.classList.contains('demande'))) && /ordinary/.test(await p2.textContent('#alertes')),
        'une basse seule se lit dans la carte, sans allumer la pastille');
     await p2.context().close();
   }
 
-  /* ---- LA COLONNE EST REPLIEE, ET « CE QU IL LUI FAUT » EST EN BAS ----
-   *
-   * « Met le tout en bas comme bloque et tous les blocs sont fermes de base,
-   *   faut cliquer sur le petit bouton pour les ouvrir. »
-   *
-   * Deux choses a tenir, et elles se defont facilement l'une sans l'autre :
-   * un panneau qu'on ajoute en oubliant qu'il part replie s'ouvre tout seul,
-   * et un panneau replie SANS bouton visible est un panneau perdu — c'est le
-   * risque exact de tout fermer par defaut. On verifie donc les deux, plus le
-   * fait que le choix d'ouvrir survit au rechargement : sinon chaque visite
-   * redemanderait le meme clic. */
   /* ---- LA BARRE DU HAUT EST CELLE DU SITE ----
-   *
-   * « Le menu de SWOGE AI et la barre en haut doivent etre pareils que Home ;
-   *   il manque des choses dans la barre en haut. »
-   *
-   * Deux manques, et les deux etaient invisibles a la lecture :
-   *
-   *   1. Le bloc des quatre chiffres etait dans le balisage, `hidden`, et RIEN
-   *      ne le remplissait. Sur les vingt-neuf pages qui portent cette barre,
-   *      celle-ci etait la SEULE sans son remplisseur — la barre s'ouvrait
-   *      donc avec un trou la ou les autres annoncent joueurs, volume,
-   *      manches et gains.
-   *
-   *   2. « CONNECT WALLET » et « SIGN UP — EMAIL » etaient peints et branches
-   *      sur rien : aucun gestionnaire ici, aucun dans les fichiers charges.
-   *      Un bouton inerte a exactement l'air d'un bouton qui marche, et c'est
-   *      la panne que ce depot documente comme la pire de toutes.
-   *
-   * On verifie donc ce que l'oeil ne peut pas verifier : que le remplisseur
-   * existe ET aboutit, et que le clic PRODUIT quelque chose. */
+   * Les quatre chiffres du site (rempli ET arrondi vers le bas — ils vivent au
+   * pied de la page v2, avec les reseaux), la marque, l'avatar, l'ancre de la
+   * bulle ; et « Connect wallet » PRODUIT quelque chose. */
   console.log('\n-- la barre du haut, comme sur les autres pages --');
   {
     const ctx = await nav.newContext({ viewport: { width: 1280, height: 900 } });
     const page = await ctx.newPage();
     const boum = [];
     page.on('pageerror', (e) => boum.push(String(e).slice(0, 160)));
-    await page.route(/geckoterminal|gopluslabs|dexscreener|rpc\.mainnet|honeypot\.is|blockscout/,
-                     (r) => r.abort());
-    await page.route(/\/ai\/colonie/, (r) => r.fulfill({
-      contentType: 'application/json', body: JSON.stringify(vueFausse()) }));
-    /* Le serveur de la vitrine rend quatre nombres ; on les choisit pour que
-       l'arrondi soit VERIFIABLE : 4 799 999 doit s'ecrire « 4.7M » et non
-       « 4.8M » — annoncer plus que la verite sur un volume est le defaut que
-       ce format existe pour eviter. */
-    await page.route(/vitrine\.json/, (r) => r.fulfill({
-      contentType: 'application/json',
+    await page.route(/geckoterminal|gopluslabs|dexscreener|rpc\.mainnet|honeypot\.is|blockscout/, (r) => r.abort());
+    await page.route(/\/ai\/colonie/, (r) => r.fulfill({ contentType: 'application/json', body: JSON.stringify(vueFausse()) }));
+    await page.route(/vitrine\.json/, (r) => r.fulfill({ contentType: 'application/json',
       body: JSON.stringify({ joueurs: 1284, volume: 4799999, manches: 98123, rendus: 3210000 }) }));
     await page.goto('http://127.0.0.1:' + port + '/' + PAGE, { waitUntil: 'domcontentloaded' });
     await page.waitForTimeout(2200);
-
     const b = await page.evaluate(() => {
       const bloc = document.getElementById('gxChiffres');
-      return {
-        vu: bloc ? !bloc.hidden : null,
+      return { vu: bloc ? !bloc.hidden : null,
         titres: [...document.querySelectorAll('#gxChiffres small')].map((x) => x.textContent),
         valeurs: [...document.querySelectorAll('#gxChiffres b[data-n]')].map((x) => x.textContent),
-        marque: !!document.querySelector('.sw-marque'),
-        avatar: !!document.getElementById('gxProfil'),
-        ancre: !!document.querySelector('.sb-ancre'),
-      };
+        marque: !!document.querySelector('.sw-marque'), avatar: !!document.getElementById('gxProfil'), ancre: !!document.querySelector('.sb-ancre') };
     });
     console.log('   ' + JSON.stringify(b));
-    ok(b.vu === true, 'les quatre chiffres apparaissent : le bloc n est plus un trou dans la barre');
-    ok(b.titres.join(',') === 'PLAYERS,CASINO VOLUME,ROUNDS PLAYED,WINNINGS PAID',
-       'et ce sont les memes quatre que sur les autres pages (' + b.titres.join(' · ') + ')');
-    ok(b.valeurs.join(',') === '1.2k,4.7M,98.1k,3.2M',
-       'ils portent les nombres du serveur, arrondis vers le BAS ('
-       + b.valeurs.join(' · ') + ') — « 4.8M » annoncerait de l argent qui n a pas ete joue');
-    ok(b.marque && b.avatar && b.ancre,
-       'la marque, l avatar et l ancre de la bulle sont la, comme ailleurs');
-
-    /* ---- ET LE BOUTON REPOND ----
-     * On ne juge pas ce qu'il ouvre : on verifie qu'il PRODUIT quelque chose.
-     * Avant, le clic ne changeait rien du tout, nulle part. */
-    const avant = await page.evaluate(() => ({
-      dit: document.getElementById('stagetag').textContent,
-      ouvert: document.querySelectorAll('.on').length,
-    }));
+    ok(b.vu === true, 'les quatre chiffres apparaissent : le bloc n est pas un trou');
+    ok(b.titres.join(',') === 'PLAYERS,CASINO VOLUME,ROUNDS PLAYED,WINNINGS PAID', 'et ce sont les memes quatre que sur les autres pages');
+    ok(b.valeurs.join(',') === '1.2k,4.7M,98.1k,3.2M', 'ils portent les nombres du serveur, arrondis vers le BAS (' + b.valeurs.join(' · ') + ')');
+    ok(b.marque && b.avatar && b.ancre, 'la marque, l avatar et l ancre de la bulle sont la, comme ailleurs');
+    /* Sans session, les boutons de connexion SE VOIENT : la socket de la bulle
+       s'ouvre pour tout visiteur, ce qui ne veut pas dire qu'il est entre. */
+    ok(await page.isVisible('#connectBtn') && await page.isVisible('#emailBtn'), 'sans session, « Connect wallet » et « Sign up — email » sont a l ecran');
+    const avant = await page.evaluate(() => ({ dit: document.getElementById('stagetag').textContent, ouvert: document.querySelectorAll('.on').length }));
     await page.click('#connectBtn');
     await page.waitForTimeout(500);
-    const apres = await page.evaluate(() => ({
-      dit: document.getElementById('stagetag').textContent,
-      ouvert: document.querySelectorAll('.on').length,
-    }));
-    console.log('   clic : ' + avant.ouvert + ' -> ' + apres.ouvert + ' element(s) ouvert(s)');
-    ok(apres.ouvert > avant.ouvert || apres.dit !== avant.dit,
-       'CONNECT WALLET fait quelque chose — il etait peint et branche sur rien');
+    const apres = await page.evaluate(() => ({ dit: document.getElementById('stagetag').textContent, ouvert: document.querySelectorAll('.on').length }));
+    ok(apres.ouvert > avant.ouvert || apres.dit !== avant.dit, 'CONNECT WALLET fait quelque chose — il etait peint et branche sur rien');
     ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
     await ctx.close();
   }
 
-  /* ---- ET LE MENU DE GAUCHE SE VOIT VRAIMENT ----
-   *
-   * Le balisage etait bon depuis le debut : six entrees, dans l'ordre de
-   * l'accueil. Il ne se DESSINAIT pas. Une regle `@media (max-width:1360px)`
-   * mettait `.sw-cote` a `display:none` — donc a 1280 px, une largeur
-   * d'ordinateur portable tout a fait ordinaire, l'accueil montrait sa
-   * colonne et cette page-ci n'en montrait aucune. On pouvait relire le HTML
-   * dix fois sans rien voir : c'est la feuille de style qui l'effacait.
-   *
-   * L'accueil ne cache jamais le sien, il le couche en rangee. On verifie
-   * donc la seule chose qui compte : a chaque largeur, les six entrees sont
-   * VISIBLES et une d'elles emmene vraiment quelque part. Compter les balises
-   * n'aurait rien vu — c'etait deja le cas quand le menu etait invisible. */
-  console.log('\n-- le menu de gauche se voit a toutes les largeurs --');
-  /* Le menu de l'accueil fait foi : c'est lui, le menu du site. */
-  const ATTENDU = [...fs.readFileSync(path.join(SITE, 'index.html'), 'utf8')
-                     .matchAll(/<a href="([^"]+)"[^>]*><span class="ic">/g)].map((m) => m[1]);
+  /* ---- LE MENU DU SITE SE VOIT A TOUTES LES LARGEURS ----
+   * Le menu de l'accueil fait foi. Sous 1400 px il passe sur sa propre rangee,
+   * qui defile de cote : il change de forme, il ne disparait pas. */
+  console.log('\n-- le menu du site se voit a toutes les largeurs --');
+  const ATTENDU = [...fs.readFileSync(path.join(SITE, 'index.html'), 'utf8').matchAll(/<a href="([^"]+)"[^>]*><span class="ic">/g)].map((m) => m[1]);
   ok(ATTENDU.length >= 6, `le menu de l accueil porte ${ATTENDU.length} entrees`);
   for (const large of [1920, 1280, 900, 390]) {
     const ctx = await nav.newContext({ viewport: { width: large, height: 900 } });
     const page = await ctx.newPage();
-    await page.route(/geckoterminal|gopluslabs|dexscreener|rpc\.mainnet|honeypot\.is|blockscout/,
-                     (r) => r.abort());
-    await page.route(/\/ai\/colonie/, (r) => r.fulfill({
-      contentType: 'application/json', body: JSON.stringify(vueFausse()) }));
-    await page.route(/vitrine\.json/, (r) => r.fulfill({
-      contentType: 'application/json', body: '{}' }));
+    await page.route(/geckoterminal|gopluslabs|dexscreener|rpc\.mainnet|honeypot\.is|blockscout/, (r) => r.abort());
+    await page.route(/\/ai\/colonie/, (r) => r.fulfill({ contentType: 'application/json', body: JSON.stringify(vueFausse()) }));
+    await page.route(/vitrine\.json/, (r) => r.fulfill({ contentType: 'application/json', body: '{}' }));
     await page.goto('http://127.0.0.1:' + port + '/' + PAGE, { waitUntil: 'domcontentloaded' });
     await page.waitForTimeout(1100);
-    const v = await page.evaluate(() => {
-      const a = [...document.querySelectorAll('.sw-nav a')];
-      return {
-        liens: a.map((x) => x.getAttribute('href')),
-        vus: a.filter((x) => x.getBoundingClientRect().width > 0).length,
-        deborde: document.documentElement.scrollWidth > window.innerWidth + 1,
-      };
-    });
-    /* ---- LA LISTE N'EST PLUS RECOPIEE ICI ----
-     * Elle l'etait, et le jour ou le site a gagne deux entrees — les deux
-     * colonies perpetuelles — cet essai a declare perime le menu de cette
-     * page alors que c'etait la LISTE ECRITE ICI qui l'etait. Son intention
-     * n'a jamais ete « six entrees, celles-la » : c'est « le menu de cette
-     * page est celui du site, pas une navigation qu'elle s'invente ». On le
-     * releve donc dans `index.html`, et il n'y a plus qu'un endroit ou une
-     * entree s'ajoute. */
-    ok(v.vus === ATTENDU.length,
-       large + 'px : les ' + ATTENDU.length + ' entrees se voient (' + v.vus + '/' + ATTENDU.length + ')');
-    ok(v.liens.join(',') === ATTENDU.join(','),
-       large + 'px : et ce sont celles de l accueil, dans le meme ordre');
+    const v = await page.evaluate(() => { const a = [...document.querySelectorAll('.sw-nav a')];
+      return { liens: a.map((x) => x.getAttribute('href')), vus: a.filter((x) => x.getBoundingClientRect().width > 0).length,
+               deborde: document.documentElement.scrollWidth > window.innerWidth + 1 }; });
+    ok(v.vus === ATTENDU.length, large + 'px : les ' + ATTENDU.length + ' entrees se voient (' + v.vus + '/' + ATTENDU.length + ')');
+    ok(v.liens.join(',') === ATTENDU.join(','), large + 'px : et ce sont celles de l accueil, dans le meme ordre');
     ok(!v.deborde, large + 'px : et rien ne deborde sur le cote');
-    /* Visible ne suffit pas : un lien qu'on ne peut pas atteindre est un lien
-       mort avec une belle apparence. */
     let arrive = 'rien';
-    try {
-      await page.click('.sw-nav a[href="swoge_wallet.html"]', { timeout: 5000 });
-      await page.waitForTimeout(700);
-      arrive = page.url().split('/').pop();
-    } catch (e) { arrive = 'clic impossible'; }
-    ok(arrive === 'swoge_wallet.html',
-       large + 'px : et un clic emmene vraiment sur la page (' + arrive + ')');
+    try { await page.click('.sw-nav a[href="swoge_wallet.html"]', { timeout: 5000 }); await page.waitForTimeout(700); arrive = page.url().split('/').pop(); }
+    catch (e) { arrive = 'clic impossible'; }
+    ok(arrive === 'swoge_wallet.html', large + 'px : et un clic emmene vraiment sur la page (' + arrive + ')');
     await ctx.close();
   }
 
-  console.log('\n-- les trois onglets, et la colonne repliee --');
+  /* ---- UN ONGLET A LA FOIS, ET LE CHOIX EST GARDE ----
+   * Le but : qu'on sache OU REGARDER. Un seul onglet montre, rien de PERDU
+   * (tous les blocs sont dans un onglet), et l'onglet choisi survit a la
+   * visite suivante — c'est une preference de lecture, rien d'autre. */
+  console.log('\n-- les six onglets --');
   {
-    /* ---- CE QUE CETTE SECTION MESURE MAINTENANT ----
-     * Elle mesurait « tout est replie ». Ce n'etait pas le but, c'etait le
-     * moyen : le but est qu'on sache OU REGARDER. Treize titres identiques a
-     * la file, tous fermes, ne le disent pas mieux que treize ouverts — ils
-     * demandent seulement treize decisions au lieu d'une.
-     *
-     * Les panneaux sont donc ranges en trois groupes, par la question a
-     * laquelle ils repondent, et un seul groupe est montre a la fois. Ce qui
-     * est mesure ici : qu'un groupe ne soit jamais vide, que rien ne soit
-     * PERDU en route, que le compteur d'un panneau replie reste lisible, et
-     * que les deux choix — l'onglet et le pli — soient gardes. */
     const { page, boum } = await ouvre(nav, port, {});
-    await onglet(page, 'tm-colony');
-    const p = await page.evaluate(() => {
-      const c = [...document.querySelectorAll('.card[data-pan]')];
-      const h = c[0].querySelector('h2');
-      const ap = getComputedStyle(h, '::after');
-      const grp = [...document.querySelectorAll('.grp[data-grp]')];
-      const visible = grp.filter((g) => !g.hidden);
-      const dedans = visible.length ? [...visible[0].querySelectorAll('.card[data-pan]')] : [];
-      return {
-        pans: c.map((x) => x.dataset.pan),
-        groupes: grp.map((g) => g.dataset.grp),
-        montres: visible.map((g) => g.dataset.grp),
-        onglets: [...document.querySelectorAll('.onglet[data-grp]')].map((b) => b.dataset.grp),
-        choisi: (document.querySelector('.onglet[aria-selected="true"]') || {}).dataset,
-        /* Par groupe : combien de panneaux y sont ouverts. Un onglet dont les
-           quatre titres sont replies se lit comme un onglet vide. */
-        ouvertsParGroupe: grp.map((g) => [...g.querySelectorAll('.card[data-pan]')]
-          .filter((x) => !x.classList.contains('plie')).length),
-        /* Le compteur reste lisible replie : c'est lui qui dit ce qu'il y a
-           dedans, donc s'il vaut la peine d'etre ouvert. On ne compte que le
-           groupe MONTRE — un panneau d'un autre onglet n'a pas de boite, et
-           « invisible » y voudrait dire « pas a l'ecran », pas « muet ». */
-        avecCompteur: dedans.filter((x) => x.querySelector('h2 .count')).length,
-        compteursVus: dedans.filter((x) => {
-          const n = x.querySelector('h2 .count');
-          return n && n.offsetParent !== null;
-        }).length,
-        bouton: { w: ap.width, fond: ap.backgroundColor, contenu: ap.content },
-        curseur: getComputedStyle(h).cursor,
-      };
-    });
-    console.log('   ' + JSON.stringify({ groupes: p.groupes, montre: p.montres,
-                                         ouvertsParGroupe: p.ouvertsParGroupe }));
-    ok(p.onglets.length === p.groupes.length && p.groupes.length === 3,
-       'trois onglets, trois groupes, et un bouton pour chacun');
-    ok(p.montres.length === 1 && p.choisi && p.choisi.grp === p.montres[0],
-       'un seul groupe est montre a la fois, et c est celui que l onglet marque comme choisi ('
-       + p.montres.join(', ') + ')');
-    /* ---- RIEN N'EST PERDU EN CHEMIN ----
-     * C'est la seule chose qui rendrait le rangement pire que la file : un
-     * panneau qui n'est dans aucun groupe n'est plus atteignable du tout. */
-    const dansUnGroupe = await page.evaluate(() =>
-      [...document.querySelectorAll('.card[data-pan]')].filter((x) => x.closest('.grp') || x.closest('#tm-mirror')).length);
-    /* Depuis le 27/09 les deux cartes du miroir vivent sous le hero, toujours
-       visibles, hors des onglets : elles restent atteignables, c est ce que
-       cette verification garde. */
-    ok(dansUnGroupe === p.pans.length,
-       'les ' + p.pans.length + ' panneaux sont tous atteignables — dans un onglet, ou dans « Your mirror » sous le hero');
-    /* ---- AU MOINS UN, ET NON EXACTEMENT UN ----
-     * La regle exigeait UN seul panneau deplie par groupe. Sa raison, ecrite
-     * ici, n a jamais porte que sur le zero : « un onglet dont tout est replie
-     * se lit comme un onglet vide ». Le groupe « Live » en porte deux depuis
-     * que le miroir existe — les positions, qui RACONTENT, et le miroir, qui
-     * PROPOSE quelque chose au lecteur. Une carte qui demande un geste et qui
-     * s ouvre repliee est une carte que personne ne voit ; deux cartes ouvertes
-     * ne sont pas le defaut que ce rangement a corrige, qui etait treize titres
-     * identiques a la file. */
-    ok(p.ouvertsParGroupe.every((n) => n >= 1),
-       'et chaque groupe s ouvre sur au moins un panneau deja deplie : un onglet dont tout est '
-       + 'replie se lit comme un onglet vide (' + p.ouvertsParGroupe.join('/') + ')');
-    ok(p.pans[p.pans.length - 1] === 'alertes',
-       'et « ce dont la colonie a besoin » est le dernier bloc de la colonne');
-    ok(p.avecCompteur >= 3 && p.compteursVus === p.avecCompteur,
-       'chaque titre qui a un compteur le garde sous les yeux : replie ne veut pas dire muet ('
-       + p.compteursVus + '/' + p.avecCompteur + ' dans l onglet montre)');
-    /* Le chevron n'est pas qu'un caractere : il porte une pastille, donc il a
-       une largeur et un fond. Sans ca il ne se lit pas comme un bouton. */
-    ok(parseFloat(p.bouton.w) >= 14 && !/^rgba\(0, 0, 0, 0\)$/.test(p.bouton.fond),
-       'le petit bouton se voit vraiment : une pastille, pas un caractere gris ('
-       + p.bouton.w + ', ' + p.bouton.fond + ')');
-    ok(p.curseur === 'pointer', 'et le titre entier se clique');
-
-    /* ---- ON OUVRE UN PANNEAU REPLIE, ET IL RESTE OUVERT ----
-     * On prend celui que la page a laisse ferme : cliquer sur celui qui est
-     * deja ouvert le FERMERAIT, et l'essai mesurerait alors le contraire de ce
-     * qu'il annonce. */
-    const cible = await page.evaluate(() => {
-      const g = [...document.querySelectorAll('.grp[data-grp]')].find((x) => !x.hidden);
-      const c = [...g.querySelectorAll('.card[data-pan]')].find((x) => x.classList.contains('plie'));
-      c.querySelector('h2').click();
-      return c.dataset.pan;
-    });
-    await page.waitForTimeout(120);
-    const ouvert = await page.evaluate((k) =>
-      !document.querySelector('.card[data-pan="' + k + '"]').classList.contains('plie'), cible);
-    ok(ouvert, 'un clic sur un titre replie ouvre le panneau (' + cible + ')');
-
-    /* ---- ET LES DEUX CHOIX SURVIVENT A LA VISITE SUIVANTE ----
-     * L'onglet aussi : quelqu'un qui vient pour l'audit des vetos ne veut pas
-     * le rechercher chaque fois. */
-    await page.evaluate(() => {
-      const b = [...document.querySelectorAll('.onglet[data-grp]')].pop();
-      b.click();
-    });
-    await page.waitForTimeout(80);
-    const vise = await page.evaluate(() =>
-      (document.querySelector('.onglet[aria-selected="true"]') || {}).dataset.grp);
+    const p = await page.evaluate(() => ({
+      onglets: [...document.querySelectorAll('#tabs button[data-tab]')].map((b) => b.dataset.tab),
+      sections: [...document.querySelectorAll('section[data-p]')].map((s) => s.dataset.p),
+      montres: [...document.querySelectorAll('section[data-p]')].filter((s) => !s.hidden).map((s) => s.dataset.p),
+      choisi: (document.querySelector('#tabs button[aria-selected="true"]') || {}).dataset,
+      perdus: [...document.querySelectorAll('.card[data-pan]')].filter((c) => !c.closest('section[data-p]')).map((c) => c.dataset.pan),
+      peints: ['closed', 'audit', 'tmLignes', 'services'].map((id) => (document.getElementById(id) || {}).textContent.length > 20),
+    }));
+    ok(p.onglets.join() === p.sections.join() && p.onglets.length === 6, 'six onglets, six sections, un bouton pour chacune');
+    ok(p.montres.length === 1 && p.choisi && p.choisi.tab === p.montres[0], 'une seule section est montree, celle que l onglet marque (' + p.montres.join() + ')');
+    ok(p.perdus.length === 0, 'aucun panneau n est hors d un onglet : rien n est perdu en chemin' + (p.perdus.length ? ' [' + p.perdus.join() + ']' : ''));
+    ok(p.peints.every(Boolean), 'les onglets caches sont peints quand meme : un onglet qu on ouvre est deja a jour');
+    await onglet(page, 'le');
     await page.reload({ waitUntil: 'domcontentloaded' });
-    await page.waitForTimeout(700);
-    const apres = await page.evaluate((k) => ({
-      pan: !document.querySelector('.card[data-pan="' + k + '"]').classList.contains('plie'),
-      onglet: (document.querySelector('.onglet[aria-selected="true"]') || {}).dataset.grp,
-    }), cible);
-    console.log('   apres rechargement : ' + JSON.stringify(apres));
-    ok(apres.pan, 'et il est toujours ouvert a la visite suivante : le choix est garde, pas devine');
-    ok(apres.onglet === vise,
-       'l onglet choisi aussi (' + apres.onglet + ') — sinon on rechoisit sa question a chaque visite');
+    await page.waitForTimeout(800);
+    ok(await page.evaluate(() => (document.querySelector('#tabs button[aria-selected="true"]') || {}).dataset.tab) === 'le',
+       'l onglet choisi est garde a la visite suivante — sinon on rechoisit sa question a chaque fois');
     ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
     await page.context().close();
+    for (const [h, t] of [['#market', 'ma'], ['#tm-market', 'ma'], ['#tm-proof', 'so']]) {
+      const b = await ouvre(nav, port, { urlSuffixe: h });
+      const m = await b.page.evaluate(() => [...document.querySelectorAll('section[data-p]')].filter((s) => !s.hidden).map((s) => s.dataset.p).join());
+      ok(m === t, 'une adresse en ' + h + ' ouvre son onglet (' + m + ') — les liens de l ancienne page menent encore quelque part');
+      await b.page.context().close();
+    }
   }
 }
 
-
-/* ==========================================================================
- * 16. CE QUE DEVIENNENT LES JETONS REFUSES
- *
- * C'est la seule partie de l'ecran qui juge les REGLES plutot que les jetons.
- * Les agents n'apprenaient que des jetons achetes — donc de ceux qui avaient
- * passe tous les vetos — et ne pouvaient donc pas savoir si ces vetos
- * protegeaient. Maintenant chaque jeton analyse est resuivi.
- * ==========================================================================*/
 /* ======================================================================
  * SOUMETTRE UN CONTRAT A LA COLONIE DEPUIS LE SCANNER (28 septembre 2026)
- *
- * « Quand on met un contrat a la main, ce serait cool de pouvoir le soumettre
- * a la colonie. » Une adresse dans la recherche montre le bouton ; le message
- * part par la session (le serveur compte par ws.addr, la page ne montre que) ;
- * la reponse et la liste des soumissions s affichent, echappees.
+ * Une adresse dans la recherche montre le bouton ; le message part par la
+ * session (le serveur compte par ws.addr, la page ne montre que) ; la reponse
+ * et la liste des soumissions s'affichent, echappees.
  * ====================================================================== */
 async function soumissionScanner() {
   console.log('\n-- soumettre un contrat a la colonie depuis le scanner --');
@@ -1191,7 +851,7 @@ async function soumissionScanner() {
   await ctx.addInitScript(() => { try { localStorage.setItem('swogeSession', 'j'); } catch (e) {} });
   const { page, boum } = await ouvre(nav, port, { ctx, urlSuffixe: '?server=ws://127.0.0.1:' + httpJeu.address().port });
   await page.waitForTimeout(3500);
-  await onglet(page, 'tm-market');
+  await onglet(page, 'ma');
   ok(recus.indexOf('liste') >= 0, 'a la connexion, la page demande ses soumissions (une fois la session ouverte)');
   ok(await page.isHidden('#tmSoumets'), 'sans adresse dans la recherche : pas de bouton');
   await page.fill('#tmCherche', 'miel'); await page.waitForTimeout(150);
@@ -1208,68 +868,49 @@ async function soumissionScanner() {
   ok(/5 submissions a day per wallet/.test(await page.textContent('#tmSoumis')), 'un refus du serveur est montre tel quel');
   ok(boum.length === 0, 'aucune erreur de page' + (boum.length ? ' — ' + boum[0] : ''));
   await page.close(); await ctx.close(); jeu.close(); httpJeu.close();
-  /* Sans fil (serveur injoignable) : le bouton le dit, rien ne part. */
-  const b2 = await ouvre(nav, port, {});
-  await onglet(b2.page, 'tm-market');
+  /* Sans session : le bouton le dit, rien ne part. (Le faux serveur de jeu est
+     ferme : la bulle n'a pas de fil pret.) */
+  const b2 = await ouvre(nav, port, { urlSuffixe: '?server=ws://127.0.0.1:9' });
+  await onglet(b2.page, 'ma');
   await b2.page.fill('#tmCherche', ADR); await b2.page.waitForTimeout(150);
   await b2.page.click('#tmSoumets'); await b2.page.waitForTimeout(300);
   ok(/Connect your wallet to submit a token to the colony/.test(await b2.page.textContent('#tmSoumis')), 'sans session : « connect your wallet », rien n est envoye');
   await b2.page.context().close();
 }
 
+/* ==========================================================================
+ * 16. CE QUE DEVIENNENT LES JETONS REFUSES, ET QUEL TRAIT SEPARE
+ * Le verdict d'une regle se rapporte a ce qu'on ACHETE (« achete ou retenu »),
+ * et sous 40 jetons une part est du bruit : la ligne le dit et ne conclut pas.
+ * ==========================================================================*/
 async function auditDesVetos() {
   console.log('\n-- l audit des refus --');
   const { page, boum } = await ouvre(nav, port, {});
   const v = await lit(page);
   console.log('   ' + v.auditN);
-  ok(/218 followed/.test(v.auditN) && /34 running/.test(v.auditN),
-     'le compte des jetons resuivis est affiche (' + v.auditN + ')');
-  ok(/one holder holds 90%/.test(v.audit) && /score too low/.test(v.audit),
-     'chaque raison de refus a sa ligne');
-  ok(/140 token\(s\) followed/.test(v.audit) && /96 collapsed/.test(v.audit),
-     'avec ce que les ecartes ont VRAIMENT fait : ' + (v.audit.match(/140[^·]*·[^·]*/) || [''])[0]);
-
-  /* ---- LE CHIFFRE QUI COMPTE ----
-   * Pas la moyenne : la part de ceux qui sont MONTES malgre le refus. Une
-   * moyenne negative peut cacher un sur cinq qui a fait dix fois. */
-  ok(/32% went up/.test(v.audit) && /5% went up/.test(v.audit),
-     'la part des ecartes qui sont montes est en tete de chaque ligne');
-  /* Et la phrase porte LA MESURE, pas un ordre de grandeur : elle disait
-     « un sur quatre » sur des lignes qui en mesuraient deux sur trois — donc
-     le contraire du chiffre juste au-dessus d'elle. */
-  ok(/32% of what this rule set aside went up/.test(v.audit)
-     && /costs more than it protects/.test(v.audit),
-     'un veto dont les ecartes montent est SIGNALE comme un cout, avec sa part reelle');
-  ok(!/5% of what this rule set aside went up/.test(v.audit),
-     'et celui qui protege ne porte pas la phrase : 5 % de montees n est pas un cout');
-  const cout = await page.evaluate(() =>
-    [...document.querySelectorAll('#audit .pill')].map((p) => p.textContent.trim() + ':' + p.className));
-  console.log('   ' + JSON.stringify(cout));
-  ok(/retrait/.test(cout[0]) && /naissance/.test(cout[1]),
-     'les deux se distinguent d un coup d oeil, sans avoir a lire les chiffres');
+  ok(/218 followed/.test(v.auditN) && /34 running/.test(v.auditN), 'le compte des jetons resuivis est affiche (' + v.auditN + ')');
+  ok(/one holder holds 90%/.test(v.audit) && /score too low/.test(v.audit), 'chaque raison de refus a sa ligne');
+  ok(/140 token\(s\) followed/.test(v.audit) && /96 collapsed/.test(v.audit), 'avec ce que les ecartes ont VRAIMENT fait');
+  ok(/32%/.test(v.audit) && /5%/.test(v.audit), 'la part des ecartes qui sont montes est sur chaque ligne');
+  ok(/32% of what this rule set aside went up: it costs more than it protects/.test(v.audit),
+     'un veto dont les ecartes montent plus que ce qu on achete est SIGNALE comme un cout, avec sa part reelle');
+  ok(!/5% of what this rule set aside went up/.test(v.audit) && /5% went up against 20% for what was bought: this rule protects/.test(v.audit),
+     'et celui qui protege porte la phrase inverse, rapportee a ce qu on achete');
+  const verdicts = await page.$$eval('#audit tr[data-verdict]', (l) => l.map((r) => r.dataset.verdict));
+  ok(verdicts.indexOf('cher') >= 0 && verdicts.indexOf('protege') >= 0 && verdicts[0] === 'vRef',
+     'les deux se distinguent d un coup d oeil, et la reference ouvre le tableau (' + verdicts.join(', ') + ')');
+  ok(/Too few 12\/40/.test(v.audit) && verdicts.indexOf('peu') >= 0, 'une regle a 12 jetons ne recoit aucun verdict : « trop peu », avec son compte');
   ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
-  await page.context().close();
-
   console.log('\n-- et quel trait separe vraiment --');
-  console.log('   ' + v.traitsN);
-  ok(/3 traits/.test(v.traitsN) && /914 readings/.test(v.traitsN),
-     'le nombre de traits classes et de relevés est affiche (' + v.traitsN + ')');
-  ok(/pool >\$100k \+21\.4%/.test(v.traits) && /pool <\$1k -29\.8%/.test(v.traits),
-     'chaque trait montre sa meilleure et sa pire valeur, avec leurs effectifs');
-  ok(v.traits.indexOf('liq') < v.traits.indexOf('vola'),
-     'et le classement met en tete celui qui separe : liq avant vola');
-  ok(/re-read at 5, 15, 30, 60, 120 minutes/.test(v.traits),
-     'la page dit a quelles echeances chaque jeton est relu');
-  ok(/separates nothing, and dilutes/.test(v.traits),
-     'et explique pourquoi le bas de liste compte : un trait qui ne separe rien dilue les autres');
-
+  ok(/3 traits/.test(v.traitsN) && /914 readings/.test(v.traitsN), 'le nombre de traits classes et de releves est affiche (' + v.traitsN + ')');
+  ok(/\+21\.4%/.test(v.traits) && /pool >\$100k/.test(v.traits) && /−29\.8%/.test(v.traits) && /pool <\$1k/.test(v.traits), 'chaque trait montre sa meilleure et sa pire valeur');
+  ok(/n=38/.test(v.traits) && /n=61/.test(v.traits), 'avec leurs effectifs');
+  ok(v.traits.indexOf('Liquidity') < v.traits.indexOf('Volatility'), 'et le classement met en tete celui qui separe : liq avant vola');
+  ok(/re-read at 5, 15, 30, 60, 120 minutes/.test(v.traitsF), 'la page dit a quelles echeances chaque jeton est relu');
+  ok(/separates nothing, and dilutes/.test(v.traitsF), 'et explique pourquoi le bas de liste compte');
+  await page.context().close();
   const b = await ouvre(nav, port, { vue: vueFausse({ audit: [] }) });
-  const w = await lit(b.page);
-  /* La page est en anglais par defaut depuis qu'elle a rejoint le site : on
-     cherche donc la phrase telle qu'elle est ECRITE dans le HTML, pas sa
-     traduction. Le francais vit dans une table et se verifie ailleurs. */
-  ok(/followed to its deadline/.test(w.audit),
-     'et sans releve, la carte explique ce qu on attend plutot que de rester vide');
+  ok(/followed to its deadline/.test((await lit(b.page)).audit), 'et sans releve, la carte explique ce qu on attend plutot que de rester vide');
   await b.page.context().close();
 }
 
@@ -1295,27 +936,19 @@ async function auditDesVetos() {
     const { page, boum, appels } = await ouvre(nav, port, { horsLigne: true });
     const v = await lit(page);
     console.log('   ' + JSON.stringify({ bal: v.bal, pouls: v.pouls, stamp: v.stamp, pos: v.pos }));
-    /* ---- LA FAUTE A NE PAS COMMETTRE ----
-     * « $1,000 » se lit comme une tresorerie a son point de depart : une
-     * colonie qui tourne et qui n'a rien gagne. Ce n'est pas ce qui se passe —
-     * on ne sait simplement rien. Les deux se ressemblent a l'ecran et ne
-     * veulent pas dire la meme chose. */
-    ok(v.bal === '—', 'la tresorerie n est pas affichee : « ' + v.bal +' », pas « $1,000 »');
+    /* « $1,000 » se lirait comme une tresorerie a son point de depart. On ne
+       sait simplement rien. */
+    ok(v.bal === '—', 'la tresorerie n est pas affichee : « ' + v.bal + ' », pas « $1,000 »');
     ok(!v.delta, 'ni la variation, qui n aurait aucun sens sans point de depart lu');
-    ok(v.trades === '—' && v.best === '—' && v.wr === 'win —',
-       'ni les trades, ni le meilleur, ni le taux de reussite');
-    /* La page ouvre en ANGLAIS : le pouls le dit donc en anglais. Il etait
-       ecrit en francais en dur, a cote de panneaux anglais, exactement la ou
-       l'oeil se pose quand quelque chose ne va pas. */
+    ok(!v.kpis && !v.truth, 'ni les chiffres cles, ni le trio d honnetete');
     ok(v.pouls === 'OFFLINE', 'le pouls le dit, dans la langue de la page (' + v.pouls + ')');
     ok(/mort/.test(v.stampCls), 'la pastille est en rouge et dit qu elle n a rien (« ' + v.stamp + ' »)');
     ok(/server/i.test(v.tag), 'et la page l ECRIT en toutes lettres : « ' + v.tag.slice(0, 90) + ' »');
     ok(/invented/i.test(v.tag), 'en disant qu elle n invente rien pour combler');
-    ok(v.positions.length === 0 && /waiting for the server/i.test(v.positionsTxt),
-       'aucune position n est affichee');
-    ok(!/\$/.test(v.appris) && /Nothing yet/.test(v.appris), 'et aucune lecon n est tiree de rien');
-    ok(appels.autres.length === 0,
-       'la page n a appele AUCUN service de donnees elle-meme : le serveur les lit pour tout le monde');
+    ok(v.positions.length === 0 && /waiting for the server/i.test(v.positionsTxt), 'aucune position n est affichee');
+    ok(!/\$/.test(v.appris) && /Waiting/.test(v.appris), 'et aucune lecon n est tiree de rien');
+    ok(/did not answer/.test(await txt(page, '#tmLignes')), 'le scanner aussi le dit, au lieu d un tableau vide');
+    ok(appels.autres.length === 0, 'la page n a appele AUCUN service de donnees elle-meme');
     ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
     await page.context().close();
   }
@@ -1325,168 +958,85 @@ async function auditDesVetos() {
    * ==================================================================== */
   console.log('\n-- ce que la page affiche vient du serveur --');
   {
-    const { page, boum, appels } = await ouvre(nav, port, {});
+    const { page, boum, appels } = await ouvre(nav, port, { attente: 2200 });
     const v = await lit(page);
-    console.log('   ' + JSON.stringify({ bal: v.bal, profit: v.profit, trades: v.trades, wr: v.wr, pos: v.pos }));
-    ok(appels.serveur >= 1, 'la page a demande /ai/colonie (' + appels.serveur + ')');
-    ok(appels.autres.length === 0,
-       'et rien d autre : plus de GeckoTerminal, plus de GoPlus, plus de RPC depuis le navigateur');
-    ok(/1,1[78]/.test(v.bal), 'la tresorerie affichee est celle du serveur ($1,187.50 → ' + v.bal + ')');
-    ok(v.profit === '+$188' || v.profit === '+$187', 'le profit en decoule (' + v.profit + ')');
-    ok(v.trades === '9' && v.wr === 'win 67%',
-       '9 trades, 6 gagnants → win 67 % (' + v.trades + ', ' + v.wr + ')');
-    ok(v.best === '1.42×', 'et le meilleur multiple (' + v.best + ')');
-    ok(v.pos === '2' && v.positions.length === 2, 'les deux positions ouvertes sont affichees');
-    ok(/NOVA/.test(v.positions[0]) && /\+6\.4%/.test(v.positions[0]),
-       'avec leur valeur latente calculee par le serveur (' + v.positions[0] + ')');
-    /* Le badge est dans la carte, pas dans la ligne de tete que `lit` releve. */
-    const carteNova = await page.evaluate(() => (document.getElementById('positions') || {}).textContent || '');
-    ok(/held by hand until \d\d:\d\d/.test(carteNova), 'une position tenue a la main le dit, avec l heure (' + (carteNova.match(/held by hand[^·]*/) || [''])[0] + ')');
-    /* Le serveur a envoye `latent: null` : il n'a pas relu de prix. La page ne
-       doit pas en faire un 0 %, qui se lirait comme « ca ne bouge pas ». */
-    /* ---- « PRIX NON RELU » NE DISAIT PAS ASSEZ ----
-     * Le mot etait juste, mais il ne disait pas DEPUIS QUAND — et sans ce
-     * chiffre, un tour manque et un jeton sorti des flux depuis une heure se
-     * ressemblent, alors qu'ils ne veulent pas dire la meme chose. */
-    console.log('   ' + v.positions[1]);
-    ok(/last price 40min ago/.test(v.positions[1]),
-       'celle dont le prix est perime dit depuis QUAND (' + v.positions[1] + ')');
-    ok(!/\+0\.0%/.test(v.positions[1]),
-       'et surtout pas « +0,0 % », qui ferait passer un prix d entree pour une cotation');
-    ok(v.feed.length === 2 && /PEPO/.test(v.feed[0]), 'le fil des trades vient du serveur aussi');
-    ok(/LIVE/.test(v.pouls), 'le pouls est vert : le serveur a fini un tour recemment');
-    ok(/server at \d\d:\d\d/.test(v.stamp), 'et la pastille porte l heure du SERVEUR (« ' + v.stamp + ' »)');
+    console.log('   ' + JSON.stringify({ bal: v.bal, pos: v.pos, pouls: v.pouls, stamp: v.stamp }));
+    ok(appels.serveur === 1, 'la page a demande /ai/colonie, une fois (' + appels.serveur + ')');
+    ok(appels.autres.length === 0, 'et rien d autre : plus de GeckoTerminal, plus de GoPlus, plus de RPC depuis le navigateur');
+    ok(v.bal === '$1,187.50', 'la tresorerie affichee est celle du serveur (' + v.bal + ')');
+    ok(/^\+\$187\.50 \(\+18\.8%\)/.test(v.delta), 'le profit en decoule (' + v.delta.slice(0, 30) + ')');
+    ok(/Paper win rate\s*—\s*needs 20 closed trades \(9 so far\)/.test(v.kpis), 'sous 20 trades, pas de taux de gain : la case dit combien il en faut');
+    ok(/Net after costs\s*—\s*not served by the server/.test(v.kpis), 'un chiffre que la vue ne porte pas s ecrit « non servi », jamais 0');
+    ok(/1\.42×/.test(await txt(page, '#eqStats')), 'et le meilleur multiple (1.42×)');
+    ok(v.pos === '2 open' && v.positions.length === 2, 'les deux positions ouvertes sont affichees');
+    ok(/NOVA/.test(v.positions[0]) && /\+6\.4%/.test(v.positions[0]), 'avec leur valeur latente calculee par le serveur (' + v.positions[0] + ')');
+    ok(/held by hand until \d\d:\d\d/.test(v.positionsTxt), 'une position tenue a la main le dit, avec l heure');
+    ok(/last price 40min ago/.test(v.positions[1]), 'celle dont le prix est perime dit depuis QUAND (' + v.positions[1] + ')');
+    ok(!/\+0\.0%/.test(v.positions[1]), 'et surtout pas « +0,0 % », qui ferait passer un prix d entree pour une cotation');
+    ok(/^LIVE · last turn/.test(v.pouls), 'le pouls est vert : le serveur a fini un tour recemment (' + v.pouls + ')');
+    ok(/server at \d\d:\d\d UTC/.test(v.stamp), 'et la pastille porte l heure du SERVEUR (« ' + v.stamp + ' »)');
+    ok(/PAPER|Paper trading at real prices/.test(await txt(page, '.note')) && /signs no transaction/.test(await txt(page, '.note')), 'l avertissement papier est ecrit en toutes lettres sous le tresor');
     ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
     await page.context().close();
   }
 
   /* ======================================================================
-   * 3. LES SIX AGENTS, ET CE QU ILS ONT APPRIS
+   * 3. LES AGENTS, ET CE QU ILS ONT APPRIS
    * ==================================================================== */
   console.log('\n-- les lecons viennent du serveur, avec leur nombre d observations --');
   {
     const { page, boum } = await ouvre(nav, port, {});
     const v = await lit(page);
-    /* ---- LE NOMBRE D'AGENTS N'EST PLUS UNE CONSTANTE ----
-     * Cet essai en attendait six. Il en attendait six parce que la page en
-     * dessinait six, et la page en dessinait six parce que quelqu'un les avait
-     * ecrits. Maintenant c'est le serveur qui le dit, et ca change : un
-     * specialiste nait, un autre est retire. On mesure donc l'ACCORD entre les
-     * deux, pas un chiffre. */
-    const attendus = vueFausse().roster.length;
-    ok(v.agents.length === attendus,
-       'la page dessine exactement autant d agents que le serveur en declare (' + v.agents.length + ')');
-    const compteurs = v.agents.map((a) => a[0]).join(' | ');
-    console.log('   ' + compteurs);
+    const compteurs = v.agents.join(' | ');
     ok(/240 tokens seen/.test(compteurs), 'le Scout porte le compte du SERVEUR (240 tokens vus)');
-    /* Un garde dit ce qu'il bloque ET ce que ses donnees coutent : c'est de ces
-       deux chiffres que sort son rang dans la file, donc ils doivent etre
-       lisibles par la personne qui regarde. */
-    ok(/190 blocked out of 240 seen \(79%\)/.test(compteurs),
-       'chaque garde porte son taux de refus mesure (190/240 = 79 % pour le Whale)');
-    ok(/1 call/.test(compteurs),
-       'et ce que ses donnees coutent en appels — les deux chiffres qui decident de son rang');
-    ok(/born 60min ago/.test(compteurs) && /never refuses/.test(compteurs),
-       'un specialiste dit son age et qu il ne refuse jamais : il affine, il ne garde pas');
-    ok(/stakes sized/.test(compteurs) && /method part \(learned\)/.test(compteurs),
-       'le Banquier dit combien de mises il a posees, et avec quelle methode');
-    ok(/hold 20 min \(learned\)/.test(compteurs),
-       'et le Closer dit que sa tenue est APPRISE, pas celle par defaut');
-
-    const lecons = v.agents.map((a) => a[1]);
-    console.log('   ' + lecons.join(' | '));
-    /* ---- CE QUI COMPTE ICI ----
-     * Pas que tout le monde ait appris — le Banquier et un agent ne il y a une
-     * heure n'ont rien pu apprendre encore, et le pretendre serait exactement
-     * la faute que ce fichier traque. Ce qui compte : qui a appris le DIT avec
-     * son nombre d'observations, et qui n'a rien appris le dit aussi. */
-    const avecLecon = lecons.filter((l) => /\(\d+ obs\)/.test(l));
-    const sansLecon = lecons.filter((l) => /learned nothing yet|no clear trend/.test(l));
-    ok(avecLecon.length >= 5,
-       avecLecon.length + ' agents publient leur meilleure lecon avec son nombre d observations');
-    ok(avecLecon.length + sansLecon.length === lecons.length,
-       'et les autres disent qu ils n ont rien appris — aucun n affiche une lecon sans compte');
-    ok(sansLecon.length > 0,
-       'un agent ne il y a une heure n a rien appris, et il l ecrit plutot que de faire semblant');
-    ok(/confidence/.test(v.appris), 'et le detail publie la confiance qui va avec le nombre d observations');
-
-    /* ---- UNE LECTURE RATEE N'EST PAS UNE LECON SUR LE JETON ----
-     * Le releve du serveur montrait, en tete du Warden : « code inconnu,
-     * 488 obs, +20,0 % », en vert, comme sa meilleure lecon. Ses trois traits
-     * sortent du meme appel a GoPlus, silencieux 3 114 fois sur 3 237 : quand
-     * il se tait, les trois disent « inconnu » ensemble, et la moyenne est
-     * positive parce que c'est celle de TOUT ce que la colonie regarde.
-     * Le serveur ne leur donne plus de points. L'ecran, lui, doit cesser de
-     * les presenter comme un bon signe — sinon la correction est invisible la
-     * ou elle se lit. */
-    const wardenDit = lecons.find((l) => /code unknown|no tax/.test(l)) || '';
-    console.log('   Warden : ' + wardenDit);
-    ok(/no tax/.test(wardenDit),
-       'la fiche du Warden met en titre sa lecon REELLE, pas sa lecture ratee — meme si celle-ci '
-       + 'est mieux observee et mieux notee (« ' + wardenDit + ' »)');
-    ok(/failed read/.test(v.appris),
-       'et dans le detail, la case non lue est NOMMEE comme telle : « lecture ratee, pas le jeton »');
-    ok(!/var\(--gain\)[^<]*code unknown/.test(v.apprisHtml || ''),
-       'elle n est pas peinte en vert : la couleur se lit avant le mot');
+    ok(/190 blocked out of 240 seen \(79%\)/.test(compteurs), 'chaque garde porte son taux de refus mesure (190/240 = 79 % pour le Whale)');
+    ok(/1 call/.test(compteurs), 'et ce que ses donnees coutent en appels — les deux chiffres qui decident de son rang');
+    ok(/born 60min ago/.test(compteurs) && /never refuses/.test(compteurs), 'un specialiste dit son age et qu il ne refuse jamais : il affine, il ne garde pas');
+    ok(/stakes sized/.test(compteurs) && /method part \(learned\)/.test(compteurs), 'le Banquier dit combien de mises il a posees, et avec quelle methode');
+    ok(/hold 20 min \(learned\)/.test(compteurs), 'et le Closer dit que sa tenue est APPRISE, pas celle par defaut');
+    /* Qui a appris le DIT avec son nombre d'observations et sa confiance ; qui
+       n'a rien appris le dit aussi. */
+    const lignes = await page.$$eval('#appris tr[data-agent]', (l) => l.map((r) => r.dataset.agent + ':' + r.textContent.replace(/\s+/g, ' ')));
+    const avec = new Set(lignes.filter((l) => /obs · confidence \d+%/.test(l)).map((l) => l.split(':')[0]));
+    const sans = new Set(lignes.filter((l) => /has learned nothing yet|no clear trend/.test(l)).map((l) => l.split(':')[0]));
+    ok(avec.size >= 5, avec.size + ' agents publient leurs lecons avec leur nombre d observations et la confiance qui va avec');
+    ok(avec.size + sans.size === vueFausse().roster.length, 'et les autres disent qu ils n ont rien appris — aucun n affiche une lecon sans compte');
+    ok(sans.has('whale-topage'), 'un agent ne il y a une heure n a rien appris, et il l ecrit plutot que de faire semblant');
+    /* Une lecture ratee (GoPlus muet) n'est pas une lecon sur le jeton : jamais
+       en titre quand une lecon reelle existe, jamais en vert, et nommee. */
+    const warden = lignes.filter((l) => /^warden:/.test(l));
+    ok(warden.length && /no tax/.test(warden[0]), 'la premiere lecon du Warden est sa lecon REELLE, pas sa lecture ratee (« ' + (warden[0] || '').slice(0, 80) + ' »)');
+    ok(/failed read, not the token/.test(v.appris), 'et la case non lue est NOMMEE comme telle');
+    const vert = await page.evaluate(() => [...document.querySelectorAll('#appris tr')].filter((r) => /code unknown/.test(r.textContent)).map((r) => r.querySelector('td.n:last-child').className));
+    ok(vert.length === 1 && !/up/.test(vert[0]), 'elle n est pas peinte en vert : la couleur se lit avant le mot (' + vert.join() + ')');
     ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
     await page.context().close();
   }
 
   /* ======================================================================
    * 4. TOUT LE MONDE VOIT LA MEME CHOSE
-   *
-   * C'est la demande elle-meme, et c'est ce que le stockage local rendait
-   * impossible. Deux navigateurs independants, deux stockages vierges,
-   * un seul serveur.
    * ==================================================================== */
   console.log('\n-- deux visiteurs, un seul etat --');
   {
-    const a = await ouvre(nav, port, {});
-    const b = await ouvre(nav, port, {});
+    const a = await ouvre(nav, port, { attente: 2200 });
+    const b = await ouvre(nav, port, { attente: 2200 });
     const va = await lit(a.page), vb = await lit(b.page);
-    console.log('   A : ' + va.bal + ' · ' + va.trades + ' trades   B : ' + vb.bal + ' · ' + vb.trades + ' trades');
-    ok(va.bal === vb.bal && va.trades === vb.trades && va.wr === vb.wr,
-       'meme tresorerie, memes trades, meme taux de reussite');
-    ok(JSON.stringify(va.positions) === JSON.stringify(vb.positions),
-       'memes positions ouvertes, au meme prix');
+    ok(va.bal === vb.bal && va.kpis === vb.kpis, 'meme tresorerie, memes chiffres cles');
+    ok(JSON.stringify(va.positions) === JSON.stringify(vb.positions), 'memes positions ouvertes, au meme prix');
     ok(va.appris === vb.appris, 'et les memes lecons — une seule colonie, pas deux');
-
-    /* ---- ET LE STOCKAGE LOCAL N EST PLUS UNE SOURCE ----
-     * Avant, tout etait la-dedans : la tresorerie, les positions, les lecons.
-     * Si quoi que ce soit d AFFICHE en venait encore, l effacer changerait
-     * l ecran.
-     *
-     * Ce qui a le droit d y etre, ce sont les PREFERENCES de celui qui
-     * regarde — sa langue, les panneaux qu il a replies. Elles ne sont l etat
-     * de personne d autre, elles ne voyagent pas d un visiteur a l autre, et
-     * les interdire obligerait a rechoisir sa langue a chaque visite. */
-    const stock = await a.page.evaluate(() => {
-      const out = {};
-      for (let i = 0; i < localStorage.length; i++) {
-        const k = localStorage.key(i);
-        if (/colonie|swogeAi/i.test(k)) out[k] = (localStorage.getItem(k) || '').slice(0, 40);
-      }
-      return out;
-    });
+    const stock = await a.page.evaluate(() => { const out = {};
+      for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (/colonie|swogeAi/i.test(k)) out[k] = (localStorage.getItem(k) || '').slice(0, 40); }
+      return out; });
     console.log('   stockage local : ' + JSON.stringify(stock));
-    /* L onglet ouvert et les panneaux replies sont des preferences de LECTURE,
-       au meme titre que la langue : elles ne sont l etat de personne d autre. */
-    const PREFS = ['swogeAiLangue', 'swogeAiPanneaux3', 'swogeAiOnglet'];
+    /* Ce qui a le droit d'y etre : les PREFERENCES de lecture (langue, onglet). */
+    const PREFS = ['swogeAiLangue', 'swogeAiOnglet'];
     const intrus = Object.keys(stock).filter((k) => PREFS.indexOf(k) < 0);
-    ok(intrus.length === 0,
-       intrus.length === 0
-         ? 'rien d autre que les preferences de lecture n est ecrit ici : l etat de la colonie '
-           + 'n est plus a la page'
-         : 'il reste : ' + intrus.join(', '));
-    /* Et l effacer ne change rien a ce qui est affiche : la page redemande
-       tout au serveur. On ne clique plus « Live » — ce bouton n existe plus,
-       il ne commandait que l animation — on attend le rafraichissement. */
+    ok(intrus.length === 0, intrus.length === 0 ? 'rien d autre que les preferences de lecture n est ecrit ici' : 'il reste : ' + intrus.join(', '));
     await a.page.evaluate(() => { try { localStorage.clear(); } catch (e) {} });
-    await a.page.evaluate(() => { if (typeof demande === 'function') demande(true); });
+    await a.page.evaluate(() => demande(true));
     await a.page.waitForTimeout(700);
     const apres = await lit(a.page);
-    ok(apres.bal === va.bal && apres.trades === va.trades,
-       'et effacer le stockage local ne change rien a ce qui est affiche');
+    ok(apres.bal === va.bal && apres.kpis === va.kpis, 'et effacer le stockage local ne change rien a ce qui est affiche');
     ok(a.boum.length === 0 && b.boum.length === 0, 'aucune exception');
     await a.page.context().close(); await b.page.context().close();
   }
@@ -1502,264 +1052,67 @@ async function auditDesVetos() {
   await soumissionScanner();
 
   /* ======================================================================
-   * 5. LES BOTS REJOUENT LA DECISION, ILS NE LA PRENNENT PAS
-   *
-   * L'animation est jolie et elle est publique : si un bot marchait jusqu'au
-   * Closer pour un jeton que le serveur a refuse, l'ecran raconterait un achat
-   * qui n'a pas eu lieu. Chaque refus appartient a un agent, et c'est LA que
-   * le bot doit s'arreter.
+   * 5. LA SCENE REJOUE LA DECISION, ELLE NE LA PREND PAS
+   * Si un jeton refuse marchait jusqu'au tresor, l'ecran raconterait un achat
+   * qui n'a pas eu lieu. Chaque refus appartient a un agent : c'est LA qu'il
+   * s'arrete. Le serveur dit qui (`quiRefuse`) ; la phrase n'est qu'un secours.
    * ==================================================================== */
-  console.log('\n-- le bot s arrete chez l agent a qui la raison appartient --');
+  console.log('\n-- le jeton s arrete chez l agent a qui la raison appartient --');
   {
     const { page, boum } = await ouvre(nav, port, {});
-    /* ---- LE SERVEUR DIT QUI A REFUSE ----
-     * La page relisait la PHRASE du refus pour deviner l'agent. Ca marchait, et
-     * ca serait devenu faux au premier libelle qui change, sans que rien ne le
-     * signale. Le serveur envoie desormais la cle. La lecture de la phrase ne
-     * sert plus que de secours, pour une reponse qui ne la porterait pas.
-     *
-     * Et l'index n'est PLUS une position fixe : l'ordre des agents vient du
-     * serveur et il bouge. On lit donc la cle a l'index rendu, jamais une
-     * liste recopiee ici — c'est precisement cette liste recopiee qui rendait
-     * l'ancien essai faux des que la colonie se reordonnait. */
     const m = await page.evaluate(() => {
       const cas = [
-        { r: 'honeypot', q: 'warden', attendu: 'warden' },
-        { r: 'sell tax 42%', q: 'warden', attendu: 'warden' },
+        { r: 'honeypot', q: 'warden', attendu: 'warden' }, { r: 'sell tax 42%', q: 'warden', attendu: 'warden' },
         { r: 'one holder holds 88% of the float', q: 'whale', attendu: 'whale' },
         { r: 'a single wallet makes 92% of the volume', q: 'whisper', attendu: 'whisper' },
         { r: 'score too low', q: 'oracle', attendu: 'oracle' },
-        /* Sans la cle — une reponse ancienne — la phrase doit encore suffire. */
         { r: 'honeypot', q: null, attendu: 'warden' },
         { r: '31 addresses touched the token, none of them holds it', q: null, attendu: 'whale' },
         { r: 'a single wallet makes 92% of the volume', q: null, attendu: 'whisper' },
         { r: 'score too low', q: null, attendu: 'oracle' },
         { r: null, q: null, attendu: null },
       ];
-      return cas.map((c) => {
-        const i = agentRefus({ refus: c.r, quiRefuse: c.q });
-        return { r: c.r, cle: c.q, obtenu: i < 0 ? null : AGENTS[i].key, attendu: c.attendu };
-      });
+      return cas.map((c) => ({ r: c.r, cle: c.q, obtenu: agentRefus({ refus: c.r, quiRefuse: c.q }), attendu: c.attendu }));
     });
-    for (const x of m) {
-      ok(x.obtenu === x.attendu,
-         (x.cle ? '[cle] ' : '[phrase] ') + '« ' + (x.r === null ? 'aucun refus' : x.r) + ' » → '
-         + (x.obtenu || 'le jeton va jusqu au Closer')
-         + (x.obtenu === x.attendu ? '' : ' (attendu ' + x.attendu + ')'));
-    }
-
-    /* Et de bout en bout : le jeton refuse porte une pastille de rejet a la
-       place de l'agent qui l'a refuse, pas ailleurs. */
-    /* Le multiplicateur de vitesse est parti — il ne pressait que l animation,
-       pas la colonie. Le banc attend donc le temps qu il faut. */
-    let pos = null;
-    for (let i = 0; i < 60 && pos === null; i++) {
-      await page.waitForTimeout(500);
-      pos = await page.evaluate(() => {
-        for (const t of document.querySelectorAll('#flow .tok')) {
-          if (!/PIEGE/.test(t.textContent)) continue;
-          const d = [...t.querySelectorAll('.sd')];
-          const i = d.findIndex((x) => x.classList.contains('rej'));
-          if (i >= 0) return i;
-        }
-        return null;
-      });
-    }
-    const iWarden = await page.evaluate(() => AGENTS.findIndex((a) => a.key === 'warden'));
-    console.log('   $PIEGE : pastille de rejet a la position ' + pos
-      + ' · le Warden est en ' + iWarden);
-    ok(pos === iWarden,
-       'le jeton piege est rejete CHEZ LE WARDEN, a la place que le serveur lui donne aujourd hui');
+    for (const x of m)
+      ok(x.obtenu === x.attendu, (x.cle ? '[cle] ' : '[phrase] ') + '« ' + (x.r === null ? 'aucun refus' : x.r) + ' » → ' + (x.obtenu || 'le jeton va jusqu au tresor') + (x.obtenu === x.attendu ? '' : ' (attendu ' + x.attendu + ')'));
+    const arrets = await page.evaluate(() => VUE.candidats.map((c) => c.sym + ':' + Scene.arret(c)));
+    console.log('   ' + arrets.join(' '));
+    ok(arrets.indexOf('PIEGE:warden') >= 0, 'dans la scene, le jeton piege s arrete CHEZ LE WARDEN');
+    ok(arrets.indexOf('MIEL:cobaye') >= 0, 'et celui dont la sortie est bloquee chez le Cobaye, apres que tous les autres l aient laisse passer');
+    ok(arrets.indexOf('NOVA:hub') >= 0, 'seul celui qui a tout passe va jusqu au tresor');
     ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
     await page.context().close();
   }
 
-  /* ======================================================================
-   * 4 ter. LE VILLAGE EST UNE CHAINE, ET SES HABITANTS SONT DES SHIBAS
-   *
-   * « Ça devrait pas être des robots mais des petits chiens, des shibas. Refais
-   *   le graphique aussi, ça devrait être plus simple à comprendre pour les
-   *   utilisateurs. »
-   *
-   * Neuf maisons en cercle autour du tresor, c'etait joli et ca ne disait
-   * rien. Un jeton traverse les agents DANS UN ORDRE, et cet ordre est tout ce
-   * qu'il y a a comprendre — sur un anneau il est invisible, rien ne dit par
-   * ou commencer ni ou l'on va. Deplie de gauche a droite, avec le numero de
-   * chaque etape et le tresor au bout, la page se lit comme une phrase.
-   * ==================================================================== */
-  console.log('\n-- le village se lit de gauche a droite --');
-  {
-    const { page, boum } = await ouvre(nav, port, {});
-    const v = await page.evaluate(() => ({
-      maisons: AGENTS.map((a) => ({ key: a.key, rang: a.rang, x: a.house.x, y: a.house.y })),
-      tresor: TREASURY, entree: ENTREE, H: H, W: W,
-    }));
-    console.log('   ' + JSON.stringify(v.maisons.map((m) => m.rang + ':' + m.key)));
-    ok(v.maisons.every((m, i) => m.rang === i + 1),
-       'chaque maison porte son NUMERO d etape, dans l ordre du parcours');
-    /* La premiere rangee va de gauche a droite. C'est le sens de lecture, et
-       c'est le seul qui n'ait pas besoin d'etre explique. */
-    const r1 = v.maisons.filter((m) => m.y === v.maisons[0].y);
-    ok(r1.length > 1 && r1.every((m, i) => i === 0 || m.x > r1[i-1].x),
-       'la premiere rangee va de gauche a droite (' + r1.map((m) => m.rang).join(' → ') + ')');
-    /* Et la suivante repart en sens inverse : un serpentin, pour que la route
-       ne traverse jamais le village en diagonale. */
-    const ys = [...new Set(v.maisons.map((m) => m.y))];
-    ok(ys.length > 1, 'et il y a plusieurs rangees (' + ys.length + ')');
-    const r2 = v.maisons.filter((m) => m.y === ys[1]);
-    ok(r2.length > 1 && r2.every((m, i) => i === 0 || m.x < r2[i-1].x),
-       'la deuxieme repart en sens inverse : un serpentin, pas un retour a la ligne qui '
-       + 'ferait traverser tout l ecran (' + r2.map((m) => m.rang).join(' → ') + ')');
-    /* Le tresor est A LA FIN, pas au centre : c'est la seule position qui
-       raconte quelque chose de vrai. */
-    const dernier = v.maisons[v.maisons.length - 1];
-    console.log('   tresor : ' + JSON.stringify(v.tresor) + ' · derniere maison : '
-      + JSON.stringify({ x: dernier.x, y: dernier.y }));
-    ok(v.tresor.y >= dernier.y,
-       'le tresor est apres la derniere maison, pas au milieu du village');
-    ok(v.entree.x < v.maisons[0].x,
-       'et l entree est avant la premiere : on sait par quel bout commencer');
-    /* Le monde suit le nombre de rangees : fige, il laissait un tiers d herbe
-       vide sous un village de deux rangees. */
-    ok(v.H < 900 && v.H > 300,
-       'la hauteur du monde suit le village (' + v.H + ') au lieu d etre figee');
-
-    /* ---- ET LES HABITANTS SONT DES CHIENS ----
-     * On ne peut pas lire un canvas ; on lit ce qui le dessine. La couleur de
-     * l agent n est plus la carrosserie, elle est le foulard — c est ce qu on
-     * repere le plus vite sur un animal, et ca laisse les chiens se ressembler
-     * entre eux, ce qu ils doivent faire pour se lire comme une meute. */
-    const src = require('fs').readFileSync(require('path').join(SITE, PAGE), 'utf8');
-    ok(/SHIBA_ROUX|SHIBA_CREME/.test(src), 'le pelage du shiba est nomme dans le code');
-    ok(/queue/i.test(src) && /oreille/i.test(src),
-       'avec la queue enroulee et les oreilles pointues : sans elles, un shiba de vingt '
-       + 'pixels est un renard');
-    ok(!/roundRect\(x-9,y-24,18,15,5\)/.test(src),
-       'et la tete carree du robot a disparu');
-    ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
-    await page.context().close();
-  }
-
-  /* ======================================================================
-   * 5 bis. LE VERDICT DE L EPREUVE DE SORTIE
-   *
-   * « Un bot dans le village avant le gros achat : il teste avec un centime
-   *   un achat et une vente pour pas se faire honeypot. »
-   *
-   * Le serveur ne signe rien — il DEMANDE au contrat, par eth_call, ce qu'il
-   * ferait si un vrai detenteur envoyait le jeton vers la piscine. Ce que la
-   * page doit montrer, c'est le resultat AVEC SES CHIFFRES, et surtout les
-   * trois etats distincts : passe, bloque, pas testable. Un « teste ✓ » nu se
-   * lirait comme une garantie de pouvoir vendre — ce que cette epreuve n'est
-   * pas, puisqu'elle simule le transfert et non l'echange entier.
-   * ==================================================================== */
-  /* ======================================================================
-   * LES JEUX DE REGLES QUI COURENT SANS TRADER
-   *
-   * « Faire mesurer par la colonie elle-meme ce que donneraient deux ou trois
-   * jeux de regles concurrents. » Seize trades mesures a la main ne decident
-   * de rien. La carte montre la comparaison, dit lequel trade aujourd hui, et
-   * se tait tant qu il y a trop peu de rejeux.
-   * ==================================================================== */
   /* ======================================================================
    * CE QUE LE MIROIR A VRAIMENT TOUCHE
-   *
    * « Le papier apprend sur des prix. Le miroir connait ce qu un achat a coute
-   * gaz compris et ce qu une vente a rendu net de gaz. C est tout l ecart
-   * entre +119 % affiches et -45 $. » L ecart des deux doit se LIRE.
+   * gaz compris. » L'ecart des deux doit se LIRE — et pas sous REEL_ASSEZ.
    * ==================================================================== */
-  /* ======================================================================
-   * LA MOLETTE AU-DESSUS DU VILLAGE
-   *
-   * « Je n arrive pas a descendre sur PC, sur Direct : quand je scrolle, ca se
-   * bloque. » Mesure au navigateur : souris posee sur le village, trente crans
-   * de molette ne bougeaient RIEN. Le village occupe un tiers de la largeur,
-   * et c est la qu on pose la souris.
-   * ==================================================================== */
-  console.log('\n-- la molette au-dessus du village descend le panneau --');
-  {
-    const ctx = await nav.newContext({ viewport: { width: 1440, height: 900 } });
-    const { page, boum } = await ouvre(nav, port, { ctx });
-    await page.waitForTimeout(1500);
-    await onglet(page, 'tm-colony');
-    const av = await page.evaluate(() => {
-      const p = document.querySelector('.panel'); p.scrollTop = 0;
-      const s = document.querySelector('.stage').getBoundingClientRect();
-      return { max: Math.round(p.scrollHeight - p.clientHeight),
-               x: Math.round(s.left + s.width / 2), y: Math.round(s.top + s.height / 2),
-               pageDefile: document.body.scrollHeight > window.innerHeight + 2 };
-    });
-    /* ---- DEPUIS LE TERMINAL (27/09/2026), LA PAGE DEFILE ----
-     * Elle tenait dans la fenetre ; elle porte maintenant le terminal au-dessus
-     * et au-dessous de la console, et c est la PAGE qui defile. L intention de
-     * cet essai n a jamais ete « la page ne defile pas » : c est « la molette
-     * posee sur le village n est pas morte ». Elle doit donc faire bouger
-     * quelque chose — la page quand elle defile, le panneau sinon. */
-    ok(av.max > 50, 'le panneau garde son propre ascenseur (' + av.max + ' px a parcourir)');
-    await page.evaluate(() => { const s = document.querySelector('.stage'); s.scrollIntoView({ block: 'center' }); });
-    await page.waitForTimeout(300);
-    const pos = await page.evaluate(() => { const s = document.querySelector('.stage').getBoundingClientRect();
-      return { x: Math.round(s.left + s.width / 2), y: Math.round(s.top + s.height / 2), y0: scrollY,
-               pageDefile: document.body.scrollHeight > window.innerHeight + 2 }; });
-    await page.mouse.move(pos.x, pos.y);
-    for (let i = 0; i < 30; i++) await page.mouse.wheel(0, 200);
-    await page.waitForTimeout(600);
-    const ap = await page.evaluate(() => ({ panneau: Math.round(document.querySelector('.panel').scrollTop), page: Math.round(scrollY),
-                                            fond: Math.round(scrollY) >= document.documentElement.scrollHeight - innerHeight - 2 }));
-    console.log('   souris sur le village · page descendue de ' + (ap.page - pos.y0) + ' px · panneau de ' + ap.panneau + ' px');
-    /* 01/10 : un onglet a la fois — la page n a plus 7 000 pixels a parcourir, et trente crans
-       peuvent l amener en bas avant 1 000. « Pas morte » veut dire : elle descend de plus de
-       1 000 pixels, OU jusqu a son pied. */
-    ok(pos.pageDefile ? (ap.page - pos.y0 > 1000 || (ap.fond && ap.page - pos.y0 > 200)) : ap.panneau >= av.max - 2,
-       'trente crans au-dessus du village font bouger quelque chose : ' + (pos.pageDefile ? 'la page descend (' + (ap.page - pos.y0) + ' px)' : 'le panneau (' + ap.panneau + '/' + av.max + ')'));
-    /* Et on ne vole pas le geste a ce qui peut encore defiler tout seul. */
-    const menuOk = await page.evaluate(() => {
-      const p = document.querySelector('.panel');
-      p.scrollTop = 0;
-      const avant = p.scrollTop;
-      /* un evenement au-dessus du panneau lui-meme : le navigateur s en charge,
-         notre relais ne doit pas s ajouter par-dessus */
-      const e = new WheelEvent('wheel', { deltaY: 200, bubbles: true, cancelable: true });
-      p.dispatchEvent(e);
-      return { defaultPrevented: e.defaultPrevented, scrollTop: p.scrollTop === avant };
-    });
-    ok(!menuOk.defaultPrevented, 'et une molette DANS le panneau n est pas interceptee : le navigateur la traite deja');
-    ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
-    await ctx.close();
-  }
-
   console.log('\n-- le cout reel, mesure sur un portefeuille, a cote du papier --');
   {
     const { page, boum } = await ouvre(nav, port, {});
-    await page.waitForTimeout(1200);
-    const r = await page.evaluate(() => {
-      const c = document.querySelector('.card[data-pan="reel"]');
-      return { existe: !!c, compte: (document.getElementById('reelN') || {}).textContent,
-               txt: c ? c.textContent.replace(/\s+/g, ' ').trim() : '' };
-    });
+    await onglet(page, 'mi');
+    const r = await page.evaluate(() => ({ compte: document.getElementById('reelN').textContent,
+      txt: document.querySelector('.card[data-pan="reel"]').textContent.replace(/\s+/g, ' '), rv: document.getElementById('rv').textContent.replace(/\s+/g, ' ') }));
     console.log('   ' + r.txt.slice(0, 230));
-    ok(r.existe && /9 real closes/.test(r.compte || ''), 'la carte existe et compte les fermetures reelles : ' + r.compte);
-    ok(/The paper counts 12\.8 points more than the wallet gets/.test(r.txt),
-       'elle dit l ecart entre ce que le papier compte et ce que le portefeuille touche');
-    ok(/That gap is the real cost of a round trip on this chain/.test(r.txt),
-       'et ce que cet ecart EST : le cout reel d un aller-retour, mesure au lieu d estime');
-    ok(/fill -1\.6% off the quote/.test(r.txt), 'avec le glissement moyen entre le devis et le prix obtenu');
-    ok(/\$JACOB/.test(r.txt) && /the paper counted \+39\.9%/.test(r.txt),
-       'et chaque fermeture porte les deux chiffres cote a cote : « ' + (r.txt.match(/\$JACOB[^$]*/) || [''])[0].slice(0, 70) + ' »');
+    ok(/9 real closes/.test(r.compte), 'la carte compte les fermetures reelles : ' + r.compte);
+    ok(/The paper counts 12\.8 points more than the wallet gets/.test(r.txt), 'elle dit l ecart entre ce que le papier compte et ce que le portefeuille touche');
+    ok(/That gap is the real cost of a round trip on this chain/.test(r.txt), 'et ce que cet ecart EST : le cout reel d un aller-retour');
+    ok(/fill −1\.6% off the quote/.test(r.txt) || /fill -1\.6% off the quote/.test(r.txt), 'avec le glissement moyen entre le devis et le prix obtenu');
+    ok(/\$JACOB/.test(r.rv) && /\+39\.9%/.test(r.rv) && /−4\.2%/.test(r.rv), 'et chaque fermeture porte les deux chiffres cote a cote : portefeuille et papier');
     ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
     await page.context().close();
   }
-
   console.log('\n-- trop peu de fermetures reelles : la carte ne moyenne pas une seule --');
   {
     const { page } = await ouvre(nav, port, { vueOpts: { reel: { n: 2, moyenne: -3, ecart: 40, nEcart: 2, glissement: null,
       lignes: [{ sym: 'A', adr: '0x1', r: -3, papier: 37, glissement: null, pont: false, t: Date.now() }] } } });
-    await page.waitForTimeout(1200);
-    const t = await page.evaluate(() => (document.querySelector('.card[data-pan="reel"]') || {}).textContent || '');
-    const plat = t.replace(/\s+/g, ' ');
-    ok(/Too few real closes to read the gap yet/.test(plat),
-       'sous cinq fermetures, l ecart n est pas annonce : « ' + plat.trim().slice(0, 80) + ' »');
-    ok(!/points more than the wallet gets/.test(plat), 'et la moyenne n est pas affichee');
+    await onglet(page, 'mi');
+    const plat = await txt(page, 'section[data-p="mi"]');
+    ok(/Too few real closes to read the gap yet/.test(plat), 'sous cinq fermetures appariees, l ecart n est pas annonce');
+    ok(!/points more than the wallet gets/.test(plat) && !/40 pts/.test(await txt(page, '#truth')), 'ni dans la carte, ni dans le trio du heros');
     ok(/\$A/.test(plat), 'mais les fermetures, elles, sont bien la : ce sont des faits');
     await page.context().close();
   }
@@ -1770,317 +1123,183 @@ async function auditDesVetos() {
     const NET = { n: 239, brut: 0.4, cout: 4.8, net: -4.4, t: -2.46, moitie1: -6.4, moitie2: -2.5, sansDevis: { n: 61, brut: 6.9 },
       cases: { min: 50, jugees: 51, positives: 2, barre: 3.1, prouvees: 0, meilleures: [{ cle: '<img src=x onerror=window.pirate=3>', n: 75, net: 2.7, t: 0.63 }] } };
     let { page } = await ouvre(nav, port, { vueOpts: { carnetNet: NET } });
-    await page.waitForTimeout(1200);
-    let plat = (await page.evaluate(() => (document.querySelector('.card[data-pan="net"]') || {}).textContent || '')).replace(/\s+/g, ' ');
-    ok(/Over 239 paper positions with a round-trip quote: \+0\.4% before costs, 4\.8% round trip, -4\.4% after costs, per position\./.test(plat),
-       'brut, cout, net, sur combien de positions : « ' + plat.trim().slice(0, 90) + ' »');
+    await onglet(page, 'le');
+    let plat = await txt(page, '.card[data-pan="net"]');
+    ok(/Over 239 paper positions with a round-trip quote: \+0\.4% before costs, 4\.8% round trip, −4\.4% after costs, per position\./.test(plat), 'brut, cout, net, sur combien de positions');
     ok(/It loses after costs, and it is not luck: t -2\.46, both halves of the period negative/.test(plat), 't ≤ −2 et les deux moities negatives : elle perd, et on le dit');
     ok(/51 kinds of tokens judged \(50\+ positions each\): 2 in profit after costs, 0 above the 3\.1 bar/.test(plat) && /Best kind: \+2\.7% after costs over 75 positions \(t 0\.63\)/.test(plat),
        'les sortes de jetons jugees, la barre, la meilleure — sans son nom interne');
     ok(/61 positions had no round-trip quote \(\+6\.9% before costs\): their cost is unknown, not zero/.test(plat), 'les positions sans devis restent a part');
     ok(await page.evaluate(() => !document.querySelector('.card[data-pan="net"] img') && window.pirate === undefined), 'rien du serveur n est lu comme du HTML');
+    ok(/−4\.4%/.test(await txt(page, '#truth')), 'et le trio du heros donne le net, au-dessus du seuil');
     await page.context().close();
     ({ page } = await ouvre(nav, port, { vueOpts: { carnetNet: Object.assign({}, NET, { n: 30, t: -3, cases: { jugees: 0 } }) } }));
-    await page.waitForTimeout(1200);
-    plat = (await page.evaluate(() => (document.querySelector('.card[data-pan="net"]') || {}).textContent || '')).replace(/\s+/g, ' ');
+    await onglet(page, 'le');
+    plat = await txt(page, '.card[data-pan="net"]');
     ok(/Too few positions to conclude \(30\/50\)/.test(plat) && !/not luck/.test(plat), 'sous 50 positions : les chiffres, et aucune conclusion');
+    const tr = await txt(page, '#truth');
+    ok(/After costs\s*—\s*needs 50 positions with a quote \(30 so far\)/.test(tr), 'et le heros ne conclut pas non plus : « ' + tr.slice(0, 70) + ' »');
     await page.context().close();
   }
 
   console.log('\n-- les jeux de regles, cote a cote, et aucun ne trade --');
   {
     const { page, boum } = await ouvre(nav, port, {});
-    await page.waitForTimeout(1200);
-    const b = await page.evaluate(() => {
-      const c = document.querySelector('.card[data-pan="bancs"]');
-      return { existe: !!c, compte: (document.getElementById('bancsN') || {}).textContent,
-               txt: c ? c.textContent.replace(/\s+/g, ' ').trim() : '' };
-    });
+    await onglet(page, 'le');
+    const b = await page.evaluate(() => ({ compte: document.getElementById('bancsN').textContent,
+      txt: document.querySelector('.card[data-pan="bancs"]').textContent.replace(/\s+/g, ' '),
+      gagne: [...document.querySelectorAll('#bancs tr[data-gagne]')].map((r) => r.dataset.cle) }));
     console.log('   ' + b.txt.slice(0, 240));
-    ok(b.existe && /240 tokens replayed/.test(b.compte || ''), 'la carte existe et compte les rejeux : ' + b.compte);
-    ok(/118 of them bought/.test(b.compte || ''),
-       'et dit combien, dans le lot, on aurait reellement achetes : ' + b.compte);
-    ok(/en vigueur/.test(b.txt) && /trading today/.test(b.txt),
-       'celui qui trade aujourd hui est NOMME comme tel : les autres ne decident rien');
-    /* La pastille porte le chiffre des ACHETES, pas celui du lot : +9.3 et non
-       -4.2 pour « en vigueur », +2.1 et non +12.6 pour « paliers hauts ». */
-    ok(/\+9\.3%/.test(b.txt) && /\+2\.1%/.test(b.txt) && /-3\.5%/.test(b.txt) && /\+6\.7%/.test(b.txt),
-       'chaque jeu porte en tete ce qu il aurait rendu SUR CE QU ON ACHETE');
-    ok(!/-4\.2%/.test(b.txt) && !/\+12\.6%/.test(b.txt),
-       'et jamais la moyenne du lot en tete : elle melange 39 refuses sur 40');
-    ok(/scalp \+ moon bag/.test(b.txt) && /20% of the position is never sold/.test(b.txt),
-       'et le moon bag est decrit pour ce qu il est : une part que rien ne vend');
-    ok(/on the 118 we would have bought: 44% ended up/.test(b.txt),
-       'le detail dit sur quoi porte le chiffre, et la part qui finit en hausse');
-    ok(/122 set aside: -17\.2%/.test(b.txt),
-       'les ecartes restent affiches, mais a part : ils repondent a une autre question');
-    ok(/✓/.test(b.txt), 'et le meilleur est marque, au-dela de cent rejeux sur les achetes');
-    /* Le coeur du scenario : le lot dit « paliers hauts » (+12.6 contre -4.2),
-       les achetes disent « en vigueur » (+9.3 contre +2.1). C'est le second qui
-       doit porter la marque. */
-    ok(/en vigueur[^]*?✓/.test(b.txt) && !/paliers hauts[^]*?✓[^]*?laisser courir/.test(b.txt),
-       'et c est le gagnant SUR LES ACHETES qui est marque, pas celui du lot');
-    ok(/The figure that decides is the one on what we would have BOUGHT/.test(b.txt),
-       'la carte dit laquelle des deux colonnes decide, et pourquoi l autre ne decide pas');
+    ok(/240 tokens replayed/.test(b.compte), 'la carte compte les rejeux : ' + b.compte);
+    ok(/118 of them bought/.test(b.compte), 'et dit combien, dans le lot, on aurait reellement achetes');
+    ok(/Current rules/.test(b.txt) && /trading today/.test(b.txt), 'celui qui trade aujourd hui est NOMME comme tel (en anglais : « Current rules »)');
+    ok(/\+9\.3%/.test(b.txt) && /\+2\.1%/.test(b.txt) && /−3\.5%/.test(b.txt) && /\+6\.7%/.test(b.txt), 'chaque jeu porte en tete ce qu il aurait rendu SUR CE QU ON ACHETE');
+    ok(!/−4\.2%/.test(b.txt) && !/\+12\.6%/.test(b.txt), 'et jamais la moyenne du lot en tete');
+    ok(/scalp \+ moon bag/.test(b.txt) && /20% of the position is never sold/.test(b.txt), 'et le moon bag est decrit pour ce qu il est');
+    ok(/on the 118 we would have bought: 44% ended up/.test(b.txt), 'le detail dit sur quoi porte le chiffre');
+    ok(/122 set aside: −17\.2%/.test(b.txt), 'les ecartes restent affiches, mais a part');
+    ok(b.gagne.join() === 'en vigueur', 'le meilleur est marque — et c est le gagnant SUR LES ACHETES, pas celui du lot (' + b.gagne.join() + ')');
+    ok(/The figure that decides is the one on what we would have BOUGHT/.test(b.txt), 'la carte dit laquelle des deux colonnes decide');
     ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
     await page.context().close();
   }
-
-  /* ---- LE BANC APPARIE (02/10/2026) ----
-     Releve du 2 octobre : « laisser courir » +13,1 % contre -4,9 % en vigueur
-     sur 195 achetes, mais sans t. Le serveur rend maintenant l ecart APPARIE
-     (memes jetons), son t, ses deux moities et le net de l aller-retour. */
   console.log('\n-- le banc apparie : ecart, t, moities, net — et rien sous le seuil --');
   {
     const sans = await ouvre(nav, port, {});
-    await sans.page.waitForTimeout(1000);
     ok(!(await sans.page.$('#bancsApparie')), 'sans mesure appariee servie : aucun bloc, aucun zero');
     await sans.page.context().close();
     const BM = { depuis: Date.parse('2026-10-02T08:00:00Z'), n: 31, cout: 4.7, min: 50, barre: 2.13, jeux: [
       { cle: 'en vigueur', n: 31, brut: -4.1, net: { n: 31, net: -8.8, t: -2.1 }, ecart: null, meilleur: false },
-      { cle: 'laisser courir', n: 31, brut: 9.2, net: { n: 31, net: 4.5, t: 0.6 },
-        ecart: { n: 31, net: 13.3, t: 1.4, moitie1: 22.1, moitie2: 4.9 }, meilleur: false } ] };
+      { cle: 'laisser courir', n: 31, brut: 9.2, net: { n: 31, net: 4.5, t: 0.6 }, ecart: { n: 31, net: 13.3, t: 1.4, moitie1: 22.1, moitie2: 4.9 }, meilleur: true } ] };
     const { page, boum } = await ouvre(nav, port, { vueOpts: { bancMesure: BM } });
-    await page.waitForTimeout(1000);
-    await onglet(page, 'tm-colony');
     const t = await page.evaluate(() => (document.getElementById('bancsApparie') || {}).textContent || '');
     console.log('   ' + t.replace(/\s+/g, ' ').slice(0, 260));
-    ok(/Paired test since Oct 2: 31 tokens we would have bought/.test(t) && /4\.7% round trip/.test(t),
-       'le bloc dit depuis quand, sur combien de jetons, et de quel aller-retour il est net');
-    ok(/laisser courir: \+13\.3 pts vs trading today \(t 1\.4, halves 22\.1 \/ 4\.9\) · net \+4\.5%/.test(t),
-       'l ecart apparie, son t, ses deux moities et le net sont ecrits tels que le serveur les sert');
-    ok(!/better, proven/.test(t) && /Nothing is decided below 50 tokens \(31 so far\)/.test(t),
-       'sous 50 jetons, aucun jeu n est designe — et la page dit pourquoi');
-    ok(/few checkpoints/.test(t), 'et elle rappelle la limite du rejeu : quelques jalons, pas ce qui se passe entre eux');
+    ok(/Paired test since Oct 2: 31 tokens we would have bought/.test(t) && /4\.7% round trip/.test(t), 'le bloc dit depuis quand, sur combien de jetons, et de quel aller-retour il est net');
+    ok(/Let it run: \+13\.3 pts vs trading today \(t 1\.4, halves 22\.1 \/ 4\.9\) · net \+4\.5%/.test(t), 'l ecart apparie, son t, ses deux moities et le net sont ecrits tels que le serveur les sert');
+    ok(!/better, proven/.test(t) && /Nothing is decided below 50 tokens \(31 so far\)/.test(t), 'sous 50 jetons, aucun jeu n est designe — meme si le serveur le marque — et la page dit pourquoi');
+    ok(/few checkpoints/.test(t), 'et elle rappelle la limite du rejeu');
     ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
     await page.context().close();
   }
-
   console.log('\n-- trop peu de rejeux : la carte le dit au lieu de classer --');
   {
     const { page } = await ouvre(nav, port, { vueOpts: { bancs: [
       { cle: 'en vigueur', quoi: 'x', n: 12, moyenne: -2, partGagnantes: 30, meilleur: 10 },
       { cle: 'paliers hauts', quoi: 'y', n: 12, moyenne: 40, partGagnantes: 25, meilleur: 90 }] } });
-    await page.waitForTimeout(1200);
-    const t = await page.evaluate(() => (document.querySelector('.card[data-pan="bancs"]') || {}).textContent || '');
-    const plat = t.replace(/\s+/g, ' ');
-    ok(/a difference on a handful of tokens is luck, not a result/.test(plat),
-       'sous cent rejeux, la carte refuse de designer un gagnant : « ' + plat.trim().slice(-95) + ' »');
-    ok(!/✓/.test(plat), 'et aucun n est marque gagnant');
+    const plat = await txt(page, '.card[data-pan="bancs"]');
+    ok(/a difference on a handful of tokens is luck, not a result/.test(plat), 'sous cent rejeux, la carte refuse de designer un gagnant');
+    ok(!(await page.$('#bancs tr[data-gagne]')), 'et aucun n est marque gagnant');
     await page.context().close();
   }
-
   console.log('\n-- le lot est gros, les achetes non : c est le second qui commande --');
   {
-    /* Huit cents rejeux au total suffiraient largement a designer un gagnant si
-       la carte comptait le lot. Elle ne le compte pas : neuf jetons achetes ne
-       decident de rien, et elle doit le dire au lieu de classer. */
     const { page } = await ouvre(nav, port, { vueOpts: { bancs: [
-      { cle: 'en vigueur', quoi: 'x', n: 800, moyenne: -9.7, partGagnantes: 20, meilleur: 114,
-        retenus: { n: 9, moyenne: 4, partGagnantes: 44 }, ecartes: { n: 791, moyenne: -9.9, partGagnantes: 19 } },
-      { cle: 'laisser courir', quoi: 'y', n: 800, moyenne: -2.9, partGagnantes: 17, meilleur: 790,
-        retenus: { n: 9, moyenne: 31, partGagnantes: 33 }, ecartes: { n: 791, moyenne: -3.3, partGagnantes: 17 } }] } });
-    await page.waitForTimeout(1200);
-    const t = await page.evaluate(() => (document.querySelector('.card[data-pan="bancs"]') || {}).textContent || '');
-    const plat = t.replace(/\s+/g, ' ');
-    ok(/9 of them bought/.test(plat), 'la carte compte les achetes a part du lot : « ' + plat.trim().slice(0, 70) + ' »');
-    ok(/on what we would have bought to separate them yet/.test(plat),
-       'et sous cent ACHETES elle refuse de classer, meme avec huit cents rejeux au total');
-    ok(!/✓/.test(plat), 'aucun gagnant marque : le lot ne rachete pas le manque d achetes');
-    ok(/\+31%/.test(plat) && !/-2\.9%/.test(plat),
-       'la tete reste le chiffre des achetes, meme quand il ne decide pas encore');
+      { cle: 'en vigueur', quoi: 'x', n: 800, moyenne: -9.7, partGagnantes: 20, meilleur: 114, retenus: { n: 9, moyenne: 4, partGagnantes: 44 }, ecartes: { n: 791, moyenne: -9.9, partGagnantes: 19 } },
+      { cle: 'laisser courir', quoi: 'y', n: 800, moyenne: -2.9, partGagnantes: 17, meilleur: 790, retenus: { n: 9, moyenne: 31, partGagnantes: 33 }, ecartes: { n: 791, moyenne: -3.3, partGagnantes: 17 } }] } });
+    const plat = await txt(page, '.card[data-pan="bancs"]');
+    ok(/9 of them bought/.test(await txt(page, '#bancsN')), 'la carte compte les achetes a part du lot');
+    ok(/on what we would have bought to separate them yet \(9\/100\)/.test(plat), 'et sous cent ACHETES elle refuse de classer, meme avec huit cents rejeux au total');
+    ok(!(await page.$('#bancs tr[data-gagne]')), 'aucun gagnant marque : le lot ne rachete pas le manque d achetes');
+    ok(/\+31\.0%/.test(plat) && !/−2\.9%/.test(plat.replace(/set aside[^·]*/g, '')), 'la tete reste le chiffre des achetes, meme quand il ne decide pas encore');
     await page.context().close();
   }
 
+  /* ======================================================================
+   * L'EPREUVE DE SORTIE, ET « NON LU » NE S'ECRIT PAS « ZERO »
+   * Trois etats distincts : passe (avec ses chiffres), bloque, pas testable.
+   * ==================================================================== */
   console.log('\n-- l epreuve de sortie, a l ecran --');
   {
     const { page, boum } = await ouvre(nav, port, {});
-
-    /* ---- ON CUMULE AU LIEU DE PHOTOGRAPHIER ----
-     * Le panneau ne montre que ce qui est EN VOL : un jeton y entre, traverse,
-     * puis sort. Une seule photo n en attrape donc qu une partie, et laquelle
-     * depend de l instant — un essai qui se lit differemment a chaque passage
-     * ne mesure plus la page, il mesure sa propre chance. On releve donc a
-     * repetition et on garde ce qu on a vu. */
-    const l = {};
-    let miel = null, titre = null;
-    for (let i = 0; i < 160; i++) {
-      await page.waitForTimeout(300);
-      const r = await page.evaluate(() => {
-        const out = { metas: {}, miel: null, titre: null };
-        for (const t of document.querySelectorAll('#flow .tok')) {
-          const m = t.querySelector('.meta');
-          const s = t.querySelector('.sym');
-          if (s && m) out.metas[s.textContent.replace('$', '')] = m.textContent.trim();
-          if (/MIEL/.test(t.textContent)) {
-            const d = [...t.querySelectorAll('.sd')];
-            const k = d.findIndex((x) => x.classList.contains('rej'));
-            if (k >= 0) out.miel = { i: k, txt: t.textContent.replace(/\s+/g, ' ').trim() };
-          }
-        }
-        for (const x of document.querySelectorAll('#flow .meta .ok'))
-          if (/exit/.test(x.textContent)) out.titre = x.getAttribute('title');
-        return out;
-      });
-      Object.assign(l, r.metas);
-      if (r.miel) miel = r.miel;
-      if (r.titre) titre = r.titre;
-      if (l.NOVA && l.INCONNU && miel && titre) break;
-    }
-    console.log('   ' + JSON.stringify(l));
-    ok(/exit 3\/3/.test(l.NOVA || ''),
-       'un jeton dont la sortie a ete testee porte ses CHIFFRES, pas une coche : « '
-       + (l.NOVA || '') + ' »');
-    ok(/exit 3\/3 · round trip 98\.2%/.test(l.NOVA || ''),
-       'et l aller-retour chiffre par le quoteur du miroir est ecrit a cote, en pourcentage : « ' + (l.NOVA || '') + ' »');
-    ok(/exit not testable/.test(l.INCONNU || ''),
-       'et quand le noeud n a pas repondu, c est ecrit — une epreuve qu on n a pas pu jouer '
-       + 'n est pas une epreuve reussie : « ' + (l.INCONNU || '') + ' »');
-
-    /* La limite de l'epreuve est portee par la page elle-meme, au survol : ce
-       qui est simule, c'est le transfert, pas l'echange complet. */
-    console.log('   au survol : ' + titre);
-    ok(!!titre && /not the full swap/.test(titre),
-       'et ce que l epreuve NE prouve pas est ecrit la ou on la lit');
-    ok(!!titre && /full round trip: selling straight back would return 98\.2% of the stake on Uniswap v4 \(60% needed\)/.test(titre),
-       'et l aller-retour, lui, EST l echange entier : le survol le dit, avec le seuil');
-
-    /* Et le piege s'arrete CHEZ LE COBAYE : c'est le seul agent qui pouvait le
-       voir, puisque tous les autres l'avaient laisse passer. */
-    const iCob = await page.evaluate(() => AGENTS.findIndex((a) => a.key === 'cobaye'));
-    console.log('   $MIEL : ' + JSON.stringify(miel) + ' · le Cobaye est en ' + iCob);
-    ok(miel && miel.i === iCob,
-       'le jeton dont la sortie est bloquee est rejete CHEZ LE COBAYE, apres que tous les '
-       + 'autres gardes l aient laisse passer');
-    ok(miel && /the exit is blocked/.test(miel.txt),
-       'et la raison exacte est affichee, avec ses chiffres : « ' + (miel && miel.txt) + ' »');
-    const iOr = await page.evaluate(() => AGENTS.findIndex((a) => a.key === 'oracle'));
-    ok(iCob > iOr,
-       'le Cobaye est place apres l Oracle (' + iCob + ' contre ' + iOr + ') : son epreuve coute '
-       + 'des appels et ne sert que sur un jeton qu on s apprete a acheter');
+    await onglet(page, 'ma');
+    const l = await page.evaluate(() => { const o = {};
+      for (const r of document.querySelectorAll('#tmLignes tr[data-adr]')) { const s = r.querySelector('.sym').textContent.replace('$', ''); const e = r.querySelector('.sortie');
+        o[s] = { sortie: e.textContent.trim(), titre: (e.querySelector('[title]') || {}).title || '', porteurs: r.children[4].textContent.trim(), ligne: r.textContent.replace(/\s+/g, ' ') }; }
+      return o; });
+    console.log('   ' + JSON.stringify({ NOVA: l.NOVA && l.NOVA.sortie, INCONNU: l.INCONNU && l.INCONNU.sortie, MIEL: l.MIEL && l.MIEL.sortie }));
+    ok(/exit 3\/3 · round trip 98\.2%/.test(l.NOVA.sortie), 'une sortie testee porte ses CHIFFRES, et l aller-retour chiffre par le quoteur : « ' + l.NOVA.sortie + ' »');
+    ok(/exit not testable/.test(l.INCONNU.sortie), 'quand le noeud n a pas repondu, c est ecrit — une epreuve pas jouee n est pas reussie');
+    ok(/not the full swap/.test(l.NOVA.titre), 'ce que l epreuve NE prouve pas est ecrit la ou on la lit');
+    ok(/full round trip: selling straight back would return 98\.2% of the stake on Uniswap v4 \(60% needed\)/.test(l.NOVA.titre), 'et l aller-retour, lui, EST l echange entier : le survol le dit, avec le seuil');
+    ok(/exit blocked 3\/3/.test(l.MIEL.sortie) && /Rejected · Test Subject/.test(l.MIEL.ligne) && /the exit is blocked/.test(l.MIEL.ligne),
+       'le jeton dont la sortie est bloquee est rejete PAR LE COBAYE, avec la raison exacte');
+    ok(/chain not read/.test(l.INCONNU.porteurs), 'un jeton dont la chaine n a pas repondu porte « chaine non lue »');
+    ok(!Object.keys(l).some((k) => k !== 'VIDE' && /^0$/.test(l[k].porteurs)), 'et « 0 porteurs » n est ecrit que quand c est ce que la chaine a dit');
+    /* Le scanner : les candidats du tour et les surveilles, filtres et recherche. */
+    const lignes = async () => page.evaluate(() => [...document.querySelectorAll('#tmLignes tr[data-adr]')].map((r) => r.querySelector('.sym').textContent));
+    ok((await lignes()).length === 9, 'le scanner porte les 7 candidats du tour et les 2 surveilles');
+    ok((await page.$$eval('#tmFiltres [data-f]', (l) => l.map((b) => b.dataset.f))).join() === 'tout,achat,veille,refus', 'quatre filtres de decision');
+    const filtre = async (f) => { await page.click('#tmFiltres [data-f="' + f + '"]'); await page.waitForTimeout(150); return lignes(); };
+    const refus = await filtre('refus'), veille = await filtre('veille');
+    ok(refus.length === 6 && refus.indexOf('$NOVA') < 0, 'Reject : les 6 refuses, pas NOVA (' + refus.join(' ') + ')');
+    ok(veille.sort().join() === '$PATIENT,$PRESQUE', 'Watch : la liste de surveillance');
+    await filtre('tout');
+    await page.fill('#tmCherche', 'miel'); await page.waitForTimeout(150);
+    ok((await lignes()).join() === '$MIEL', 'la recherche trouve par symbole');
+    await page.fill('#tmCherche', ''); await page.waitForTimeout(150);
+    await page.click('#tmLignes tr[data-adr="0xa7"]'); await page.waitForTimeout(250);
+    const an = await page.evaluate(() => document.getElementById('tmAnalyse').innerText.replace(/\s+/g, ' '));
+    ok(/Vetoed by Test Subject: the exit is blocked/.test(an), 'l analyse de MIEL dit QUI l a refuse et pourquoi, mot pour mot');
+    ok(/74\/100/.test(an) && /≥ 55/.test(an), 'la note est celle de la vue, avec le seuil de la vue');
+    ok(/Exit test: the transfer returns false/.test(an), 'et le resultat de l epreuve de sortie');
     ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
     await page.context().close();
   }
 
   /* ======================================================================
-   * 6. CE QUI EST LU ET CE QUI NE L EST PAS
-   * ==================================================================== */
-  console.log('\n-- « non lu » ne s ecrit pas « zero » --');
-  {
-    const { page, boum } = await ouvre(nav, port, {});
-
-    let vu = null;
-    for (let i = 0; i < 40 && !vu; i++) {
-      await page.waitForTimeout(400);
-      vu = await page.evaluate(() => {
-        const out = {};
-        for (const t of document.querySelectorAll('#flow .tok')) {
-          const s = (t.querySelector('.sym') || {}).textContent || '';
-          out[s.replace('$', '')] = (t.querySelector('.meta') || {}).textContent.replace(/\s+/g, ' ').trim();
-        }
-        return Object.keys(out).length ? out : null;
-      });
-    }
-    console.log('   ' + JSON.stringify(vu));
-    const tous = Object.values(vu || {}).join(' | ');
-    ok(/chain not read/.test(tous) || Object.keys(vu || {}).length < 6,
-       'un jeton dont la chaine n a pas repondu porte « chaine non lue »');
-    /* Le zero doit etre un nombre entier, pas la fin d un autre : « 210
-       porteurs » contient « 0 porteurs », et l essai passait ou ratait selon
-       les chiffres du banc plutot que selon ce que la page ecrit. */
-    ok(!/(?:^|\D)0 holders/.test(tous) || /VIDE/.test(Object.keys(vu || {}).join()),
-       'et « 0 porteurs » n est ecrit que quand c est ce que la chaine a dit');
-    ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
-    await page.context().close();
-  }
-
-  /* ======================================================================
-   * 7. CE QUE LA PAGE PROMET, ET CE QU ELLE NE PEUT PLUS FAIRE
+   * 7. CE QUE LA PAGE PROMET, ET LA SESSION QUI LA CONNECTE VRAIMENT
    * ==================================================================== */
   console.log('\n-- une session valable connecte VRAIMENT la page --');
   {
-    /* ---- LE DEFAUT, FILME : « je me connecte et ca ne se connecte pas » ----
-     * Le code e-mail etait accepte, le dialogue affichait « Signed in.
-     * Reloading… », la page se rechargeait — et revenait sur « CONNECT
-     * WALLET », solde a « — ». La session etait bonne : remise a la main, elle
-     * ne changeait rien. Trois causes, toutes ici :
-     *   1. `stakebubble.js` tenait cette page pour proprietaire de sa socket
-     *      parce qu'elle porte un `#bal` ; il s'abstenait donc de se connecter,
-     *      et le jeton restait range sans servir ;
-     *   2. une fois connecte, il fabriquait un SECOND element `#bal` — deux
-     *      elements pour un identifiant — si bien que la carte de la page
-     *      restait a « — » pendant que sa pastille affichait le vrai chiffre ;
-     *   3. `swogeConnecte()` n'existait pas sur cette page (il vit dans
-     *      `swogecx.js`, qu'elle ne charge pas), donc les deux boutons de
-     *      connexion ne se cachaient jamais.
-     * On mesure les trois d'un coup, avec un faux serveur de jeu. */
     const WSS = require('ws').Server;
     const jeu = new WSS({ port: 0 });
     await new Promise((r) => jeu.on('listening', r));
     const recus = [];
     jeu.on('connection', (c) => {
       c.send(JSON.stringify({ type: 'hello', loginNonce: 'abc', chainId: 4663 }));
-      c.on('message', (d) => {
-        let m; try { m = JSON.parse(d); } catch (e) { return; }
+      c.on('message', (d) => { let m; try { m = JSON.parse(d); } catch (e) { return; }
         recus.push(m.type);
-        if (m.type === 'resume')
-          c.send(JSON.stringify({ type: 'auth', address: '0x' + '11'.repeat(20),
-                                  balance: '4242', session: 'jeton', resumed: true }));
-      });
+        if (m.type === 'resume') c.send(JSON.stringify({ type: 'auth', address: '0x' + '11'.repeat(20), balance: '4242', session: 'jeton', resumed: true })); });
     });
     const ctx = await nav.newContext({ viewport: { width: 1280, height: 900 } });
-    await ctx.addInitScript(() => {
-      try { localStorage.setItem('swogeSession', 'jeton-valable'); } catch (e) {}
-    });
-    const { page, boum } = await ouvre(nav, port, { ctx,
-      urlSuffixe: '?server=ws://127.0.0.1:' + jeu.address().port });
+    await ctx.addInitScript(() => { try { localStorage.setItem('swogeSession', 'jeton-valable'); } catch (e) {} });
+    const { page, boum } = await ouvre(nav, port, { ctx, urlSuffixe: '?server=ws://127.0.0.1:' + jeu.address().port });
     await page.waitForTimeout(3500);
     const v = await page.evaluate(() => ({
-      boutons: ['connectBtn', 'emailBtn'].map((id) => {
-        const b = document.getElementById(id); return b ? b.offsetParent !== null : null; }),
+      boutons: ['connectBtn', 'emailBtn'].map((id) => { const b = document.getElementById(id); return b ? b.offsetParent !== null : null; }),
       bals: [...document.querySelectorAll('[id=bal]')].map((e) => (e.textContent || '').trim()),
-      connecte: typeof window.swogeConnecte === 'function' ? window.swogeConnecte() : 'absent',
-    }));
-    ok(recus.indexOf('resume') >= 0,
-       'la page REPREND sa session au chargement — sans ca, un jeton valable ne sert a rien');
-    ok(v.bals.length === 1,
-       'un seul element porte l identifiant `bal` (' + v.bals.length + ') : deux, et la carte de la page reste a « — »');
+      connecte: typeof window.swogeConnecte === 'function' ? window.swogeConnecte() : 'absent' }));
+    ok(recus.indexOf('resume') >= 0, 'la page REPREND sa session au chargement');
+    ok(v.bals.length === 1, 'un seul element porte l identifiant `bal` (' + v.bals.length + ')');
     ok(v.bals[0] === '4.2k', 'et il porte le solde rendu par le serveur (' + v.bals[0] + ')');
-    ok(v.connecte === true, '`swogeConnecte()` existe et repond oui (' + v.connecte + ')');
-    ok(v.boutons[0] === false && v.boutons[1] === false,
-       'donc « CONNECT WALLET » et « SIGN UP — EMAIL » s effacent : les laisser a cote de son'
-       + ' propre solde se lit comme une connexion ratee');
+    ok(v.connecte === true, '`swogeConnecte()` existe et repond oui');
+    ok(v.boutons[0] === false && v.boutons[1] === false, 'donc « Connect wallet » et « Sign up — email » s effacent');
     ok(boum.length === 0, 'aucune erreur de page' + (boum.length ? ' — ' + boum[0] : ''));
     await page.close(); await ctx.close(); jeu.close();
   }
 
-  console.log('\n-- le miroir vaut quelque chose, et c est ecrit a cote du papier --');
+  /* ---- LE MIROIR : ARGENT REEL ----
+   * Ce qui se mesure ici est ce que `swogemiroir.js` remplit dans les boites de
+   * la page : la barre personnelle en tete de « Your mirror », le plancher en
+   * dollars, Clear log / Reset stats, la carte des positions avec Sell now et
+   * Buy now, et la main du proprietaire sur les positions de papier. Chaque
+   * geste part au serveur, qui n'agit que sur ws.addr. */
+  console.log('\n-- le miroir vaut quelque chose, et c est ecrit dans sa carte --');
   {
-    /* « En haut a gauche il y a le solde de la demo ; a droite ca serait bien
-       d avoir le nombre en DOLLARS de mon miroir. » Les deux chiffres ne
-       mesurent pas la meme chose — une caisse de papier partie de 1 000, et de
-       l ETH reel — donc ils portent des mots differents, pas seulement des
-       places differentes. */
     const WSS = require('ws').Server;
     const httpJeu = require('http').createServer((q, r) => {
-      if (q.url.split('?')[0] === '/relay/prix') {
-        r.writeHead(200, { 'content-type': 'application/json', 'access-control-allow-origin': '*' });
-        return r.end(JSON.stringify({ dollarsEnvoi: '2455.73' }));
-      }
+      if (q.url.split('?')[0] === '/relay/prix') { r.writeHead(200, { 'content-type': 'application/json', 'access-control-allow-origin': '*' }); return r.end(JSON.stringify({ dollarsEnvoi: '2455.73' })); }
       r.writeHead(404); r.end();
     });
     await new Promise((r) => httpJeu.listen(0, r));
     const jeu = new WSS({ server: httpJeu });
     const recus = [];
-    /* Le faux serveur tient deux etats : le miroir tourne apres Play, et la
-       position part apres « Sell now ». */
     let actifFaux = false, venduFaux = false, remisFaux = false;
     jeu.on('connection', (c) => {
       c.send(JSON.stringify({ type: 'hello', loginNonce: 'a', chainId: 4663 }));
       c.on('message', (d) => {
         let m; try { m = JSON.parse(d); } catch (e) { return; }
-        if (m.type === 'resume')
-          c.send(JSON.stringify({ type: 'auth', address: '0x' + '11'.repeat(20), balance: '0', session: 'j' }));
+        if (m.type === 'resume') c.send(JSON.stringify({ type: 'auth', address: '0x' + '11'.repeat(20), balance: '0', session: 'j' }));
         if (m.type === 'miroirEffaceJournal') recus.push(m.type);
         if (m.type === 'miroirPlay') actifFaux = true;
         if (m.type === 'miroirRemetStats') { recus.push(m.type); remisFaux = true; c.send(JSON.stringify({ type: 'miroirRemetStats', effaces: 12 })); }
@@ -2088,280 +1307,143 @@ async function auditDesVetos() {
         if (m.type === 'colonieFerme') { recus.push('colonieFerme:' + m.adr); c.send(JSON.stringify({ type: 'colonieAction', geste: 'colonieFerme', ok: true, adr: m.adr, sym: 'NOVA', prix: 0.0042 })); }
         if (m.type === 'miroirVends') { recus.push('miroirVends:' + m.adr); venduFaux = true; c.send(JSON.stringify({ type: 'miroirVends', adr: m.adr, sym: 'T', sortie: '0.0041' })); }
         if (m.type === 'miroirOuvre') { recus.push('miroirOuvre:' + m.adr); c.send(JSON.stringify({ type: 'miroirOuvre', adr: m.adr, sym: 'NEW' })); }
-        if (m.type === 'miroirEtat' || m.type === 'miroirEffaceJournal' || m.type === 'miroirPlay' || m.type === 'miroirVends' || m.type === 'miroirOuvre' || m.type === 'miroirRemetStats')
+        if (['miroirEtat', 'miroirEffaceJournal', 'miroirPlay', 'miroirVends', 'miroirOuvre', 'miroirRemetStats'].indexOf(m.type) >= 0)
           c.send(JSON.stringify({ type: 'miroirEtat', pret: true, execute: false, existe: true, actif: actifFaux, proprietaire: true,
             adresse: '0x' + 'ab'.repeat(20), solde: '0.05', min: '0.002', max: '0.5', part: 0.1,
             ordreMax: '0.05', gaz: '0.0015', places: 25, ordreMin: '0.006', ordreMinUsd: 15, coursEth: 2500,
-            ouvertes: venduFaux ? [] : [{ adr: ADR_NOVA, sym: 'T', entree: '0.004', t: Date.now(), simule: true, via: 'NVDA',
-              /* Ce que le quoteur donnerait pour tout ce qu on tient, et depuis quand. */
-              cout: '0.004', valeur: '0.0052', gain: '0.0012', gainPct: 30, valeurT: Date.now() }],
+            ouvertes: venduFaux ? [] : [{ adr: ADR_NOVA, sym: 'T', entree: '0.004', t: Date.now(), simule: true, via: 'NVDA', cout: '0.004', valeur: '0.0052', gain: '0.0012', gainPct: 30, valeurT: Date.now() }],
             transit: venduFaux ? [] : [{ sym: 'NVDA', adr: '0x' + 'd0'.repeat(20), montant: '0.02', t: Date.now() }],
             bilan: remisFaux ? { trades: 0, gagnantes: 0, profitEth: '0.000000', meilleur: 0, ouvertes: 1, simule: false }
                             : { trades: 12, gagnantes: 7, profitEth: '0.0031', meilleur: 2.4, ouvertes: 1, simule: true },
-            journal: m.type === 'miroirEffaceJournal'
-              ? [{ t: Date.now(), txt: 'Log cleared (3 lines). Positions, trades and the balance are untouched.' }]
+            journal: m.type === 'miroirEffaceJournal' ? [{ t: Date.now(), txt: 'Log cleared (3 lines). Positions, trades and the balance are untouched.' }]
               : [{ t: Date.now(), txt: 'Bought T' }, { t: Date.now(), txt: 'Sold T' }, { t: Date.now(), txt: 'Play' }] }));
       });
     });
     const ctx = await nav.newContext({ viewport: { width: 1280, height: 900 } });
     await ctx.addInitScript(() => { try { localStorage.setItem('swogeSession', 'j'); } catch (e) {} });
-    const { page, boum } = await ouvre(nav, port, { ctx,
-      urlSuffixe: '?server=ws://127.0.0.1:' + httpJeu.address().port });
+    const { page, boum } = await ouvre(nav, port, { ctx, urlSuffixe: '?server=ws://127.0.0.1:' + httpJeu.address().port });
     await page.waitForTimeout(4000);
-    await onglet(page, 'tm-colony');
-    const v = await page.evaluate(() => {
-      const b = document.querySelector('.mir-val');
-      const p = document.querySelector('header.bar .treasury:not(.mir-val)');
-      return { visible: b ? !b.hidden : null,
-               usd: b ? (b.querySelector('#mirUsd') || {}).textContent : null,
-               eth: b ? (b.querySelector('#mirEth') || {}).textContent : null,
-               mot: b ? (b.querySelector('.lbl') || {}).textContent : null,
-               motPapier: p ? (p.querySelector('.lbl') || {}).textContent : null,
-               aDroite: (b && p) ? b.getBoundingClientRect().left > p.getBoundingClientRect().left : null };
-    });
-    ok(v.visible, 'la valeur du miroir s affiche dans la tablette');
-    ok(v.usd === '$122.79', '0,05 ETH a 2 455,73 $ font ' + v.usd + ' — le chiffre, pas une approximation vague');
-    ok(v.aDroite, 'a DROITE du papier, qui reste ou il est');
-    ok(/mirror/i.test(v.mot) && /paper/i.test(v.motPapier || ''),
-       'et les deux portent des mots differents (« ' + v.mot + ' » contre « ' + v.motPapier + ' ») :'
-       + ' une caisse de papier et de l argent reel ne doivent pas se ressembler');
-    ok(/not counted/i.test(v.eth || ''),
-       'la ligne dit ce qu elle NE compte PAS : « ' + v.eth + ' »');
-    /* « Une deuxieme barre en plus, pour lui : profit, taux de gain, trades,
-       meilleur, ouvert. » Sous celle du papier, dans le meme habit, et chaque
-       etiquette dit « mirror ». */
     const bar = await page.evaluate(() => {
       const b = document.getElementById('bandeauMiroir');
-      const p = document.getElementById('bandeau');
       if (!b) return null;
       const t = (id) => (document.getElementById(id) || {}).textContent || '';
-      /* « Ca doit etre affiche en haut, les stats de son miroir » (27/09) : elle
-         etait sous la barre du papier, au fond de la console. Elle est
-         maintenant EN TETE de « Your mirror », au-dessus de la console. */
-      const m = document.getElementById('tm-mirror');
-      /* « au-dessus de la console » : depuis les onglets (01/10), la console est dans
-         « Colony » et le miroir dans « Live » — jamais a l ecran ensemble. On verifie
-         donc l ORDRE du document, qui est ce que « au-dessus » voulait dire. */
-      return { visible: !b.hidden, sous: !!(m && m.contains(b)) && !!(b.compareDocumentPosition(p) & Node.DOCUMENT_POSITION_FOLLOWING),
+      return { visible: !b.hidden, dans: !!document.getElementById('cMi').contains(b), avant: !!(b.compareDocumentPosition(document.getElementById('gxMiroir')) & Node.DOCUMENT_POSITION_FOLLOWING),
                solde: t('mir-solde'), profit: t('mir-profit'), wr: t('mir-wr'), trades: t('mir-trades'), best: t('mir-best'), open: t('mir-open'),
-               etiquettes: [...b.querySelectorAll('i')].map((x) => x.textContent) };
+               etiquettes: [...b.querySelectorAll('i')].map((x) => x.textContent), motPapier: document.querySelector('[data-t="tresorPapier"]').textContent };
     });
     console.log('   barre : ' + JSON.stringify(bar));
-    ok(!!bar && bar.visible && bar.sous, 'la barre personnelle est la, en tete de « Your mirror », au-dessus de la console');
-    ok(bar.profit.indexOf('+$7.61') === 0 && /0\.0031 ETH/.test(bar.profit),
-       '0,0031 ETH a 2 455,73 $ font +$7.61, avec l ETH en dessous (« ' + bar.profit + ' »)');
-    ok(bar.wr === '58%' && bar.trades === '12' && bar.best === '2.40×' && bar.open === '1',
-       'taux 58 % · 12 trades · meilleur 2.40× · 1 ouvert');
-    /* « Rajoute le solde du miroir aussi » (27/09) : six cases, le solde en tete. */
-    ok(/mirror/i.test(bar.etiquettes[0]) && bar.etiquettes.length === 6 && /balance/i.test(bar.etiquettes[0]), 'six cases, et la premiere dit « Mirror balance »');
-    ok(/^\$/.test(bar.solde) && /0\.05 ETH/.test(bar.solde), 'le solde du miroir en dollars, avec l ETH dessous (« ' + bar.solde + ' »)');
-    /* « La ligne des stats du miroir déborde. » Sur un telephone, aucune case
-       ne doit laisser sortir son chiffre ni son etiquette, et le profit
-       negatif ne doit pas se couper apres le signe. */
+    ok(!!bar && bar.visible && bar.dans && bar.avant, 'la barre personnelle est la, en tete de « Your mirror », avant les gestes');
+    ok(/^\$122\.79/.test(bar.solde) && /0\.05 ETH/.test(bar.solde), '0,05 ETH a 2 455,73 $ font $122.79, avec l ETH dessous (« ' + bar.solde + ' »)');
+    ok(/mirror/i.test(bar.etiquettes[0]) && /balance/i.test(bar.etiquettes[0]) && /paper/i.test(bar.motPapier) && bar.etiquettes.length === 6,
+       'six cases, la premiere dit « Mirror balance » — un mot different de « Paper treasury » : une caisse de papier et de l argent reel ne se ressemblent pas');
+    ok(bar.profit.indexOf('+$7.61') === 0 && /0\.0031 ETH/.test(bar.profit), '0,0031 ETH font +$7.61, avec l ETH en dessous');
+    ok(bar.wr === '58%' && bar.trades === '12' && bar.best === '2.40×' && bar.open === '1', 'taux 58 % · 12 trades · meilleur 2.40× · 1 ouvert');
     await page.setViewportSize({ width: 390, height: 800 });
-    await page.evaluate(() => { const b = document.getElementById('mir-profit'); if (b) { b.className = 'dn'; } });
+    await page.evaluate(() => { const b = document.getElementById('mir-profit'); if (b) b.className = 'dn'; });
     await page.waitForTimeout(300);
-    const tel = await page.evaluate(() => {
-      const out = [];
-      for (const bar of [document.getElementById('bandeau'), document.getElementById('bandeauMiroir')]) {
-        for (const it of bar.querySelectorAll('.b-item')) {
-          const b = it.querySelector('b'), i = it.querySelector('i');
-          out.push({ bar: bar.id, lbl: i.textContent, deborde: (b.scrollWidth > it.clientWidth + 1) || (i.scrollWidth > it.clientWidth + 1),
-                     lignesValeur: Math.round((b.querySelector('.v') || b).getBoundingClientRect().height / parseFloat(getComputedStyle(b).fontSize) * 10) / 10 });
-        }
-      }
-      return out;
-    });
-    console.log('   390px : ' + JSON.stringify(tel));
-    ok(tel.every((x) => !x.deborde), 'a 390 px, aucune case des deux barres ne deborde');
-    ok(tel.filter((x) => x.bar === 'bandeauMiroir').every((x) => x.lignesValeur < 1.6), 'et chaque chiffre du miroir tient sur une ligne (le profit ne se coupe pas apres le signe)');
+    const tel = await page.evaluate(() => [...document.querySelectorAll('#bandeauMiroir .b-item')].map((it) => { const b = it.querySelector('b'), i = it.querySelector('i');
+      return { deborde: (b.scrollWidth > it.clientWidth + 1) || (i.scrollWidth > it.clientWidth + 1), lignes: Math.round((b.querySelector('.v') || b).getBoundingClientRect().height / parseFloat(getComputedStyle(b).fontSize) * 10) / 10 }; }));
+    ok(tel.length === 6 && tel.every((x) => !x.deborde), 'a 390 px, aucune case de la barre du miroir ne deborde');
+    ok(tel.every((x) => x.lignes < 1.6), 'et chaque chiffre tient sur une ligne (le profit ne se coupe pas apres le signe)');
+    ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), 'et la page ne deborde pas sur le cote');
     await page.setViewportSize({ width: 1280, height: 900 });
-    /* « Rajoute un bouton reset log. » A cote de Stop et de la cle ; il
-       demande confirmation, envoie au serveur, et le journal revient vide. */
-    page.once('dialog', (d) => d.accept());
-    /* ---- LE PLANCHER D UN ORDRE, EN DOLLARS ----
-     * « Il y a des personnes qui n ont pas les moyens de mettre 1000 $, donc
-     * elles tradent trop petit. La mise minimum, ce serait 15 $. » Le gaz se
-     * paie en dollars : une mise de deux dollars ne survit pas a un
-     * aller-retour. La carte doit le dire, et dire ce que ca coute. */
     const reglages = await page.evaluate(() => (document.querySelector('#gxMiroir') || {}).textContent || '');
-    ok(/at least \$15 \(0\.006 ETH\)/.test(reglages),
-       'la carte annonce le plancher en dollars, avec sa valeur en ETH a cote');
-    ok(/A small wallet plays the \$15 floor/.test(reglages) && /holds fewer positions at once/.test(reglages)
-       && /A large wallet never meets this floor/.test(reglages),
-       'et elle dit a qui ca s applique, et ce que ca coute : moins de positions a la fois');
+    ok(/at least \$15 \(0\.006 ETH\)/.test(reglages), 'la carte annonce le plancher en dollars, avec sa valeur en ETH a cote');
+    ok(/A small wallet plays the \$15 floor/.test(reglages) && /holds fewer positions at once/.test(reglages) && /A large wallet never meets this floor/.test(reglages), 'et elle dit a qui ca s applique, et ce que ca coute');
     const boutons = await page.evaluate(() => [...document.querySelectorAll('#gxMiroir .mir-row .mir-b')].map((b) => b.textContent.trim()));
-    ok(boutons.indexOf('Clear log') >= 0 && boutons.indexOf('Show my private key') >= 0,
-       'un bouton « Clear log » a cote de la cle : ' + JSON.stringify(boutons));
+    ok(boutons.indexOf('Clear log') >= 0 && boutons.indexOf('Show my private key') >= 0, 'un bouton « Clear log » a cote de la cle : ' + JSON.stringify(boutons));
+    page.once('dialog', (d) => d.accept());
     await page.evaluate(() => document.querySelector('#gxMiroir .mir-b[data-m="efface"]').click());
     await page.waitForTimeout(800);
     ok(recus.indexOf('miroirEffaceJournal') >= 0, 'le clic, confirme, envoie miroirEffaceJournal au serveur');
     const journal = await page.evaluate(() => [...document.querySelectorAll('#gxMiroir .mir-j')].map((j) => j.textContent));
-    ok(journal.length === 1 && /Log cleared/.test(journal[0]), 'et le journal ne montre plus que la ligne qui le dit : ' + JSON.stringify(journal));
-    /* « Rajoute un bouton sell maintenant, et une colonne apres Direct pour
-       voir les positions ouvertes du miroir et pouvoir les fermer et les
-       ouvrir. » Une carte a cote des positions de papier, un bouton par
-       position, un champ pour en ouvrir une. */
+    ok(journal.length === 1 && /Log cleared/.test(journal[0]), 'et le journal ne montre plus que la ligne qui le dit');
     console.log('\n-- les positions du miroir ont leur carte, avec Sell now et Buy now --');
     const carte = await page.evaluate(() => {
       const c = document.querySelector('.card[data-pan="miroirPositions"]');
-      const p = document.querySelector('.card[data-pan="positions"]');
-      const miroir = document.getElementById('tm-mirror'), colonie = document.getElementById('tm-colony');
-      const b = c && c.querySelector('[data-m="vends"]');
-      const achete = c && c.querySelector('[data-m="ouvre"]');
-      return { existe: !!c, dansLive: !!(c && miroir && miroir.contains(c)),
-               apres: !!(c && colonie && (c.compareDocumentPosition(colonie) & Node.DOCUMENT_POSITION_FOLLOWING)
-                         && document.querySelector('.card[data-pan="miroir"]').compareDocumentPosition(c) & Node.DOCUMENT_POSITION_FOLLOWING),
-               titre: c ? c.querySelector('h2 span').textContent : null, compte: (document.getElementById('mirPosN') || {}).textContent,
-               vends: b ? { texte: b.textContent.trim(), adr: b.getAttribute('data-adr') } : null,
-               acheteDesactive: achete ? achete.disabled : null,
-               note: c ? (c.querySelector('.mir-note') || {}).textContent : null,
-               renvoi: (document.querySelector('#gxMiroir .mir-note') || {}).textContent,
-               ligne: c && c.querySelector('.mir-pos') ? c.querySelector('.mir-pos').textContent : null,
+      const b = c && c.querySelector('[data-m="vends"]'), achete = c && c.querySelector('[data-m="ouvre"]');
+      return { existe: !!c, apres: !!(c && document.getElementById('cMi').compareDocumentPosition(c) & Node.DOCUMENT_POSITION_FOLLOWING), dansOv: !!(c && c.closest('section[data-p="ov"]')),
+               titre: c ? c.querySelector('h2').textContent : null, compte: (document.getElementById('mirPosN') || {}).textContent,
+               vends: b ? { texte: b.textContent.trim(), adr: b.getAttribute('data-adr') } : null, acheteDesactive: achete ? achete.disabled : null,
+               note: c ? (c.querySelector('.mir-note') || {}).textContent : null, ligne: c && c.querySelector('.mir-pos') ? c.querySelector('.mir-pos').textContent : null,
                transit: [...document.querySelectorAll('#gxMiroir .mir-note')].map((x) => x.textContent).find((x) => /In transit/.test(x)) || null };
     });
-    ok(/via NVDA/.test(carte.ligne || ''), 'une position prise par un pont le dit sur sa ligne : « ' + (carte.ligne || '').replace(/\s+/g, ' ').trim().slice(0, 80) + ' »');
-    ok(/In transit: 0\.02 NVDA/.test(carte.transit || '') && /every turn/.test(carte.transit || ''), 'et ce qui est reste entre deux jambes est dit, avec le montant : « ' + (carte.transit || '').slice(0, 90) + '… »');
-    console.log('   ' + JSON.stringify(carte).slice(0, 400));
-    /* « L utilisateur veut voir son miroir dans les premiers, faut descendre
-       bas la » (27/09) : la carte etait dans « Live », a cote des positions de
-       papier, sous tout le terminal. Elle est maintenant juste sous le hero,
-       dans « Your mirror », apres la carte du miroir, AVANT la colonie. */
-    ok(carte.existe && carte.dansLive && carte.apres, 'la carte est dans « Your mirror », sous le hero, apres la carte du miroir et avant la colonie');
+    ok(carte.existe && carte.apres && carte.dansOv, 'la carte est dans la vue d ensemble, juste apres celle du miroir');
     ok(/mirror/i.test(carte.titre || '') && carte.compte === '1', 'elle dit « mirror » dans son titre et compte la position ouverte (' + carte.compte + ')');
-    ok(!!carte.vends && carte.vends.texte === 'Sell now' && carte.vends.adr === ADR_NOVA,
-       'chaque position porte un bouton « Sell now » qui connait son jeton');
-    /* ---- LE BENEFICE ET LA CAPITALISATION, EN DIRECT ----
-     * « Sur les positions du miroir, il faudrait voir le market cap et le
-     * benefice en direct. » Le benefice vient du QUOTEUR — ce que « Sell now »
-     * rendrait — et la capitalisation est celle que la colonie a deja lue pour
-     * ce meme jeton, pour que les deux cartes ne se contredisent pas. */
-    ok(/\+30\.0%/.test(carte.ligne || '') && /\+0\.0012 ETH/.test(carte.ligne || ''),
-       'la ligne porte le benefice en direct, en pourcentage et en ETH : « ' + (carte.ligne || '').replace(/\s+/g, ' ').trim().slice(0, 130) + ' »');
-    ok(/\$330k cap \(bought at \$310k\)/.test(carte.ligne || ''),
-       'et la capitalisation du moment, prise chez la colonie, la meme que sur la carte du papier');
-    ok(carte.acheteDesactive === true && /Press Play/.test(carte.note || ''),
-       'miroir arrete : « Buy now » est eteint, et la note dit d appuyer sur Play d abord');
-    /* Vendre maintenant : confirmation, message au serveur, et la carte se vide. */
+    ok(/via NVDA/.test(carte.ligne || ''), 'une position prise par un pont le dit sur sa ligne');
+    ok(/In transit: 0\.02 NVDA/.test(carte.transit || '') && /every turn/.test(carte.transit || ''), 'et ce qui est reste entre deux jambes est dit, avec le montant');
+    ok(!!carte.vends && carte.vends.texte === 'Sell now' && carte.vends.adr === ADR_NOVA, 'chaque position porte un bouton « Sell now » qui connait son jeton');
+    ok(/\+30\.0%/.test(carte.ligne || '') && /\+0\.0012 ETH/.test(carte.ligne || ''), 'la ligne porte le benefice en direct, en pourcentage et en ETH');
+    ok(/\$330k cap \(bought at \$310k\)/.test(carte.ligne || ''), 'et la capitalisation du moment, prise chez la colonie, la meme que sur la carte du papier');
+    ok(carte.acheteDesactive === true && /Press Play/.test(carte.note || ''), 'miroir arrete : « Buy now » est eteint, et la note dit d appuyer sur Play d abord');
     page.once('dialog', (d) => d.accept());
     await page.evaluate(() => document.querySelector('.card[data-pan="miroirPositions"] [data-m="vends"]').click());
     await page.waitForTimeout(800);
     ok(recus.indexOf('miroirVends:' + ADR_NOVA) >= 0, 'le clic, confirme, envoie miroirVends avec l adresse du jeton');
-    const apresVente = await page.evaluate(() => ({
-      compte: (document.getElementById('mirPosN') || {}).textContent,
-      boutons: document.querySelectorAll('.card[data-pan="miroirPositions"] [data-m="vends"]').length,
-      dit: [...document.querySelectorAll('.mir-dit')].map((x) => x.textContent) }));
+    const apresVente = await page.evaluate(() => ({ compte: (document.getElementById('mirPosN') || {}).textContent,
+      boutons: document.querySelectorAll('.card[data-pan="miroirPositions"] [data-m="vends"]').length, dit: [...document.querySelectorAll('.mir-dit')].map((x) => x.textContent) }));
     ok(apresVente.compte === '0' && apresVente.boutons === 0, 'la position vendue disparait de la carte, le compte passe a 0');
-    ok(apresVente.dit.some((x) => /Sold \$T for 0\.0041 ETH/.test(x)), 'et la reponse du serveur se lit sous la carte : ' + JSON.stringify(apresVente.dit));
-    /* Ouvrir a la main : Play d abord, puis une adresse, puis « Buy now ». */
+    ok(apresVente.dit.some((x) => /Sold \$T for 0\.0041 ETH/.test(x)), 'et la reponse du serveur se lit sous la carte');
     await page.evaluate(() => document.querySelector('#gxMiroir [data-m="play"]').click());
     await page.waitForTimeout(800);
-    const enMarche = await page.evaluate(() => ({ actif: !document.querySelector('.card[data-pan="miroirPositions"] [data-m="ouvre"]').disabled,
-                                                  champ: !!document.getElementById('mirAdr') }));
+    const enMarche = await page.evaluate(() => ({ actif: !document.querySelector('.card[data-pan="miroirPositions"] [data-m="ouvre"]').disabled, champ: !!document.getElementById('mirAdr') }));
     ok(enMarche.actif && enMarche.champ, 'apres Play, « Buy now » et le champ d adresse s allument');
     await page.evaluate(() => { document.getElementById('mirAdr').value = 'pas une adresse'; document.querySelector('.card[data-pan="miroirPositions"] [data-m="ouvre"]').click(); });
     await page.waitForTimeout(300);
-    const refus = await page.evaluate(() => [...document.querySelectorAll('.mir-dit')].map((x) => x.textContent));
-    ok(refus.some((x) => /contract address/.test(x)) && !recus.some((x) => /miroirOuvre/.test(x)), 'une adresse mal formee est refusee sur place, sans rien envoyer');
+    ok((await page.evaluate(() => [...document.querySelectorAll('.mir-dit')].map((x) => x.textContent))).some((x) => /contract address/.test(x)) && !recus.some((x) => /miroirOuvre/.test(x)),
+       'une adresse mal formee est refusee sur place, sans rien envoyer');
     page.once('dialog', (d) => d.accept());
     await page.evaluate(() => { document.getElementById('mirAdr').value = '0x' + 'bb'.repeat(20); document.querySelector('.card[data-pan="miroirPositions"] [data-m="ouvre"]').click(); });
     await page.waitForTimeout(800);
-    ok(recus.indexOf('miroirOuvre:' + '0x' + 'bb'.repeat(20)) >= 0, 'une bonne adresse, confirmee, envoie miroirOuvre au serveur');
-    const apresAchat = await page.evaluate(() => [...document.querySelectorAll('.mir-dit')].map((x) => x.textContent));
-    ok(apresAchat.some((x) => /Bought \$NEW/.test(x)), 'et la reponse se lit : ' + JSON.stringify(apresAchat));
-    /* « Un bouton pour remettre les stats du miroir a zero. » A cote de Clear
-       log ; il demande confirmation, et la barre repart de zero. */
+    ok(recus.indexOf('miroirOuvre:0x' + 'bb'.repeat(20)) >= 0, 'une bonne adresse, confirmee, envoie miroirOuvre au serveur');
+    ok((await page.evaluate(() => [...document.querySelectorAll('.mir-dit')].map((x) => x.textContent))).some((x) => /Bought \$NEW/.test(x)), 'et la reponse se lit');
     console.log('\n-- la barre du miroir se remet a zero sur un bouton --');
-    const b2 = await page.evaluate(() => [...document.querySelectorAll('#gxMiroir .mir-row .mir-b')].map((b) => b.textContent.trim()));
-    ok(b2.indexOf('Reset stats') >= 0, 'un bouton « Reset stats » a cote de « Clear log » : ' + JSON.stringify(b2));
+    ok((await page.evaluate(() => [...document.querySelectorAll('#gxMiroir .mir-row .mir-b')].map((b) => b.textContent.trim()))).indexOf('Reset stats') >= 0, 'un bouton « Reset stats » a cote de « Clear log »');
     page.once('dialog', (d) => d.accept());
     await page.evaluate(() => document.querySelector('#gxMiroir .mir-b[data-m="remet"]').click());
     await page.waitForTimeout(800);
     ok(recus.indexOf('miroirRemetStats') >= 0, 'le clic, confirme, envoie miroirRemetStats au serveur');
     const barre0 = await page.evaluate(() => { const t = (id) => (document.getElementById(id) || {}).textContent || ''; return { trades: t('mir-trades'), wr: t('mir-wr'), best: t('mir-best'), open: t('mir-open'), dit: [...document.querySelectorAll('.mir-dit')].map((x) => x.textContent) }; });
-    ok(barre0.trades === '0' && barre0.wr === '\u2014' && barre0.best === '\u2014' && barre0.open === '1',
-       'la barre repart de zero — et la position ouverte y est toujours (' + JSON.stringify(barre0) + ')');
+    ok(barre0.trades === '0' && barre0.wr === '\u2014' && barre0.best === '\u2014' && barre0.open === '1', 'la barre repart de zero — et la position ouverte y est toujours');
     ok(barre0.dit.some((x) => /12 trade/.test(x)), 'et la reponse dit combien de trades ont ete effaces');
-    /* « Prolonger la position papier pour qu'elle ne se ferme pas ; et si on
-       ferme avec le miroir, que le papier ferme aussi. » Le serveur a dit que
-       ce portefeuille a la main : la carte des positions de la colonie porte
-       les gestes, et ils partent au serveur. */
     console.log('\n-- la main du proprietaire sur les positions de papier --');
-    const gestes = await page.evaluate(() => {
-      const pos = document.querySelector('#positions .pos');
-      return { proprietaire: window.__swogeProprietaire === true,
-               tiens: [...document.querySelectorAll('#positions [data-tiens]')].map((b) => b.textContent.trim() + '/' + b.getAttribute('data-min')),
-               ferme: [...document.querySelectorAll('#positions [data-ferme-papier]')].map((b) => b.getAttribute('data-ferme-papier')),
-               texte: pos ? pos.textContent.replace(/\s+/g, ' ') : '' };
-    });
-    console.log('   ' + JSON.stringify(gestes).slice(0, 300));
-    ok(gestes.proprietaire && gestes.tiens.length === 4 && gestes.tiens[0] === 'Hold 30 min/30' && gestes.tiens[1] === 'Hold 2 h/120',
-       'chaque position porte « Hold 30 min » et « Hold 2 h » quand le serveur a donne la main');
+    const gestes = await page.evaluate(() => ({ proprietaire: window.__swogeProprietaire === true,
+      tiens: [...document.querySelectorAll('#positions [data-tiens]')].map((b) => b.textContent.trim() + '/' + b.getAttribute('data-min')),
+      ferme: [...document.querySelectorAll('#positions [data-ferme-papier]')].map((b) => b.getAttribute('data-ferme-papier')) }));
+    ok(gestes.proprietaire && gestes.tiens.length === 4 && gestes.tiens[0] === 'Hold 30 min/30' && gestes.tiens[1] === 'Hold 2 h/120', 'chaque position porte « Hold 30 min » et « Hold 2 h » quand le serveur a donne la main');
     ok(gestes.ferme.length === 2 && gestes.ferme[0] === ADR_NOVA, 'et « Close now », qui connait son jeton');
     await page.evaluate(() => document.querySelector('#positions [data-tiens][data-min="30"]').click());
     await page.waitForTimeout(800);
     ok(recus.indexOf('colonieTiens:' + ADR_NOVA + ':30') >= 0, 'le clic envoie colonieTiens avec le jeton et la duree');
-    const ditTenu = await page.evaluate(() => [...document.querySelectorAll('.mir-dit')].map((x) => x.textContent));
-    ok(ditTenu.some((x) => /Held \$NOVA for 30 min/.test(x)), 'et la reponse se lit : ' + JSON.stringify(ditTenu));
+    ok((await page.evaluate(() => [...document.querySelectorAll('.mir-dit')].map((x) => x.textContent))).some((x) => /Held \$NOVA for 30 min/.test(x)), 'et la reponse se lit');
     page.once('dialog', (d) => d.accept());
     await page.evaluate(() => document.querySelector('#positions [data-ferme-papier]').click());
     await page.waitForTimeout(800);
     ok(recus.indexOf('colonieFerme:' + ADR_NOVA) >= 0, 'fermer, confirme, envoie colonieFerme');
-    const ditFerme = await page.evaluate(() => [...document.querySelectorAll('.mir-dit')].map((x) => x.textContent));
-    ok(ditFerme.some((x) => /Closed \$NOVA on the paper book/.test(x) && /every mirror/.test(x)), 'et la reponse dit que les miroirs suivent');
-    /* « Les maisons et les chiens, plus gros. » Sur un telephone : deux
-       colonnes dans un monde de 600, la scene a la hauteur du village. */
-    await page.setViewportSize({ width: 390, height: 800 });
-    await page.waitForTimeout(500);
-    const vil = await page.evaluate(() => ({ W, RANGEE, H, hauteur: document.getElementById('village').getBoundingClientRect().height,
-                                             largeur: document.getElementById('village').getBoundingClientRect().width }));
-    console.log('   390px : ' + JSON.stringify(vil));
-    ok(vil.RANGEE === 2 && vil.W === 600, 'a 390 px le village se replie en deux colonnes dans un monde de 600 (echelle ' + Math.round(vil.largeur / vil.W * 100) / 100 + ' au lieu de 0.39)');
-    ok(Math.abs(vil.hauteur - vil.largeur / vil.W * vil.H) < 3, 'et la scene a exactement la hauteur du village a cette echelle (' + Math.round(vil.hauteur) + ' px)');
-    await page.setViewportSize({ width: 1280, height: 900 });
-    await page.waitForTimeout(400);
-    const large = await page.evaluate(() => ({ W, RANGEE }));
-    ok(large.RANGEE === 3 && large.W === 1000, 'et revient a trois colonnes sur un ecran large');
+    ok((await page.evaluate(() => [...document.querySelectorAll('.mir-dit')].map((x) => x.textContent))).some((x) => /Closed \$NOVA on the paper book/.test(x) && /every mirror/.test(x)), 'et la reponse dit que les miroirs suivent');
     ok(boum.length === 0, 'aucune erreur de page' + (boum.length ? ' — ' + boum[0] : ''));
     await page.close(); await ctx.close(); jeu.close(); httpJeu.close();
   }
 
   console.log('\n-- la porte de connexion s ouvre DEVANT, pas sous le pied de page --');
   {
-    /* ---- LE DEFAUT : ELLE S OUVRAIT SANS SES STYLES ----
-     * « Connect wallet et sign up email ne fonctionnent pas en haut a droite. »
-     * Ils fonctionnaient : la porte se construisait et recevait sa classe
-     * `on`. Mais sa feuille de style n etait posee que par la fonction qui
-     * FABRIQUE le bouton « Sign in » de la barre, laquelle sort tout de suite
-     * quand la page a deja sa propre rangee de connexion — le cas ici. Sans
-     * feuille, `.swcon-ov` n est plus ni fixe ni au-dessus, et `.on` ne veut
-     * plus dire `display:flex` : mesure, un bloc de 1280x138 tout en bas du
-     * document. Elle s ouvrait donc pour de vrai, hors de l ecran.
-     * On mesure ce qui a manque : la position, la hauteur et le plan. */
     const { page, boum } = await ouvre(nav, port, {});
     await page.click('#emailBtn');
     await page.waitForTimeout(400);
     const d = await page.evaluate(() => {
       const o = document.querySelector('.swcon-ov');
       if (!o) return null;
-      const cs = getComputedStyle(o), r = o.getBoundingClientRect();
-      const m = o.querySelector('.mail'), e = o.querySelector('.em');
-      return { display: cs.display, position: cs.position, z: cs.zIndex,
-               haut: Math.round(r.height), large: Math.round(r.width),
-               ecran: [innerWidth, innerHeight],
-               champDeplie: m ? getComputedStyle(m).display !== 'none' : null,
-               foyer: document.activeElement === e };
+      const cs = getComputedStyle(o), r = o.getBoundingClientRect(), m = o.querySelector('.mail'), e = o.querySelector('.em');
+      return { display: cs.display, position: cs.position, z: cs.zIndex, haut: Math.round(r.height), large: Math.round(r.width), ecran: [innerWidth, innerHeight],
+               champDeplie: m ? getComputedStyle(m).display !== 'none' : null, foyer: document.activeElement === e };
     });
     ok(d, 'la porte existe dans la page');
-    ok(d.display === 'flex', 'elle s ouvre en `flex` — donc sa feuille de style est bien posee ('
-       + d.display + ')');
-    ok(d.position === 'fixed', 'et elle est FIXE : sans ca elle se range en bas du document ('
-       + d.position + ')');
-    ok(Number(d.z) > 1000000, 'au-dessus de tout ce que la page empile (z-index ' + d.z + ')');
-    ok(d.haut >= d.ecran[1] - 2 && d.large >= d.ecran[0] - 2,
-       'et elle couvre l ecran (' + d.large + 'x' + d.haut + ' pour ' + d.ecran.join('x') + ')');
-    ok(d.champDeplie, 'le bouton « SIGN UP — EMAIL » deplie le champ e-mail, sans second clic');
-    ok(d.foyer, 'et y pose le curseur : le bouton fait ce que son nom promet');
+    ok(d && d.display === 'flex', 'elle s ouvre en `flex` — donc sa feuille de style est bien posee');
+    ok(d && d.position === 'fixed', 'et elle est FIXE : sans ca elle se range en bas du document');
+    ok(d && Number(d.z) > 1000000, 'au-dessus de tout ce que la page empile (z-index ' + (d && d.z) + ')');
+    ok(d && d.haut >= d.ecran[1] - 2 && d.large >= d.ecran[0] - 2, 'et elle couvre l ecran');
+    ok(d && d.champDeplie, 'le bouton « Sign up — email » deplie le champ e-mail, sans second clic');
+    ok(d && d.foyer, 'et y pose le curseur : le bouton fait ce que son nom promet');
     ok(boum.length === 0, 'aucune erreur de page' + (boum.length ? ' — ' + boum[0] : ''));
     await page.close();
   }
@@ -2370,129 +1452,64 @@ async function auditDesVetos() {
   {
     const { page, boum } = await ouvre(nav, port, {});
     const v = await lit(page);
-    /* ---- LES DEUX LANGUES DISENT LA MEME CHOSE ----
-     * La page s'ouvre en anglais ; le francais est une table. Un aveu qui ne
-     * survivrait qu'a une seule des deux serait pire qu'aucun aveu : on
-     * verifie donc les MEMES quatre phrases dans les deux, en basculant la
-     * langue comme le ferait le drapeau. */
-    const promesses = [
-      [/no transaction is signed/i, /paper/i, 'nothing is signed, and the treasury is paper'],
+    const promesses = [[/no transaction is signed/i, /paper/i, 'nothing is signed, and the treasury is paper'],
       [/runs on the server/i, /same state/i, 'it runs on the server and everyone sees the same state'],
-      [/gas and slippage/i, /gas and slippage/i, 'a real buy would also pay gas and slippage'],
-    ];
-    for (const [a1, a2, quoi] of promesses)
-      ok(a1.test(v.foot) && a2.test(v.foot), 'en anglais, elle dit que ' + quoi);
-    ok(!/stops when you close the tab/i.test(v.foot) && !/kept on (?:the|this) device/i.test(v.foot),
-       'et elle ne promet plus le contraire, qui etait vrai de l ancienne version');
-
-    const fr = await page.evaluate(() => {
-      poseLangue('fr');
-      return (document.getElementById('foot') || {}).textContent || '';
-    });
-    const fPromesses = [
-      [/aucune transaction n'est sign/i, 'rien n est signe'],
-      [/tourne sur le serveur/i, 'ca tourne sur le serveur'],
-      [/m[eê]me [eé]tat/i, 'tout le monde voit le meme etat'],
-      [/gaz et le glissement/i, 'un vrai achat paierait le gaz et le glissement'],
-    ];
-    for (const [rx, quoi] of fPromesses)
+      [/gas and slippage/i, /gas and slippage/i, 'a real buy would also pay gas and slippage']];
+    for (const [a1, a2, quoi] of promesses) ok(a1.test(v.foot) && a2.test(v.foot), 'en anglais, elle dit que ' + quoi);
+    ok(!/stops when you close the tab/i.test(v.foot) && !/kept on (?:the|this) device/i.test(v.foot), 'et elle ne promet plus le contraire, qui etait vrai de l ancienne version');
+    const fr = await page.evaluate(() => { poseLangue('fr'); return (document.getElementById('foot') || {}).textContent || ''; });
+    for (const [rx, quoi] of [[/aucune transaction n'est sign/i, 'rien n est signe'], [/tourne sur le serveur/i, 'ca tourne sur le serveur'],
+      [/m[eê]me [eé]tat/i, 'tout le monde voit le meme etat'], [/gaz et le glissement/i, 'un vrai achat paierait le gaz et le glissement']])
       ok(rx.test(fr), 'et en francais aussi : ' + quoi);
     await page.evaluate(() => poseLangue('en'));
-
-    /* ---- LE BOUTON QUI DEVAIT PARTIR ----
-     * Il effacait le stockage local. Sur un etat PARTAGE, le meme geste
-     * effacerait la colonie de tout le monde — depuis une page publique, sans
-     * authentification, et sans retour possible. */
-    const reset = await page.evaluate(() => !!document.getElementById('oublier'));
-    ok(!reset, 'le bouton « Reset » n existe plus : sur un etat partage, il effacerait celui de tout le monde');
-
-    /* ---- ET LES TROIS QUI ONT SUIVI ----
-     * « Live », « Pause » et le multiplicateur de vitesse ne commandaient plus
-     * rien depuis que le moteur est sur le serveur : le premier redemandait un
-     * etat que la page redemande deja seule, le deuxieme arretait l animation
-     * pendant que la colonie continuait de trader, le troisieme changeait la
-     * vitesse des chiens. Un bouton qui a l air de commander une machine et
-     * qui ne commande qu un dessin anime est pire que pas de bouton : on croit
-     * avoir mis la colonie en pause. */
-    const morts = await page.evaluate(() => ['refresh', 'pause', 'speed']
-      .filter((id) => !!document.getElementById(id)));
-    ok(morts.length === 0,
-       morts.length === 0
-         ? 'les trois commandes qui ne commandaient que l animation ont disparu'
-         : 'il en reste : ' + morts.join(', '));
+    ok(!(await page.evaluate(() => !!document.getElementById('oublier'))), 'le bouton « Reset » n existe plus : sur un etat partage, il effacerait celui de tout le monde');
+    const morts = await page.evaluate(() => ['refresh', 'pause', 'speed'].filter((id) => !!document.getElementById(id)));
+    ok(morts.length === 0, 'les trois commandes qui ne commandaient que l animation ont disparu');
     ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
     await page.context().close();
   }
 
-  /* ======================================================================
-   * RAPPORT DU 27 SEPTEMBRE 2026 : LE MIROIR QUI NE SUIT PAS, ET L AUDIT
-   * SUR 7 JOURS
-   *
-   * « 12 achats envoyes, 1 suivi » n etait ecrit nulle part. La carte du reel
-   * le dit maintenant, avec les raisons comptees par le serveur. Et chaque
-   * ligne d audit dit ses 7 derniers jours — le pourcentage seulement a
-   * partir de 40 cas, le minimum ou les decisions du serveur les lisent —
-   * et combien de ses jetons sont partis sans lecture a 30 minutes.
-   * ==================================================================== */
+  /* RAPPORT DU 27 SEPTEMBRE 2026 : LE MIROIR QUI NE SUIT PAS, ET L AUDIT SUR 7 JOURS */
   console.log('\n-- le miroir : N achats envoyes en 24 h, M suivis, et pourquoi --');
   {
-    const SM = { envois: 12, suivis: 1, jour: { envois: 5, suivis: 1, sansDevis: 4, sansDevisSuivis: 0,
-                 raisons: { echecAchat: 4, suivi: 1 }, echecs: { aucunePlace: 4 } } };
+    const SM = { envois: 12, suivis: 1, jour: { envois: 5, suivis: 1, sansDevis: 4, sansDevisSuivis: 0, raisons: { echecAchat: 4, suivi: 1 }, echecs: { aucunePlace: 4 } } };
     let { page, boum } = await ouvre(nav, port, { vueOpts: { suiviMiroir: SM } });
-    await page.waitForTimeout(1200);
-    let t = await page.evaluate(() => ((document.querySelector('.card[data-pan="reel"]') || {}).textContent || '').replace(/\s+/g, ' '));
-    console.log('   ' + t.trim().slice(0, 200));
+    let t = await page.evaluate(() => document.getElementById('reel').textContent.replace(/\s+/g, ' '));
     ok(/5 buys sent to the mirror in 24 h, 1 followed/.test(t), 'la carte du reel dit « 5 envoyes, 1 suivi »');
     ok(/why not, per wallet: buy failed ×4 · no venue found ×4/.test(t), 'avec les raisons comptees par le serveur, par portefeuille');
     ok(/4 of the 5 had no round-trip quote from the colony/.test(t), 'et combien n avaient pas de devis de la colonie');
     ok(/The paper counts 12\.8 points more/.test(t), 'le reste de la carte est intact');
+    ok(/5 sent · 1 followed/.test(await txt(page, '#mirSuivi')), 'et la carte « Your mirror » le dit aussi, sous les gestes');
     ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
     await page.context().close();
-    /* Sans fermeture reelle, la ligne passe devant le texte d attente. */
     ({ page, boum } = await ouvre(nav, port, { vueOpts: { suiviMiroir: SM, reel: { n: 0, lignes: [] } } }));
-    await page.waitForTimeout(1200);
-    t = await page.evaluate(() => ((document.querySelector('.card[data-pan="reel"]') || {}).textContent || '').replace(/\s+/g, ' '));
-    ok(/5 buys sent to the mirror in 24 h, 1 followed/.test(t) && /Nothing yet/.test(t),
-       'sans fermeture reelle, la ligne est la, et le texte d attente aussi');
-    const lignes = await page.evaluate(() => document.querySelectorAll('#reel [data-suivi]').length);
-    await page.waitForTimeout(1500);
-    ok(lignes === 1 && await page.evaluate(() => document.querySelectorAll('#reel [data-suivi]').length) === 1,
-       'et elle n est jamais ecrite deux fois, d un rafraichissement a l autre');
+    t = await page.evaluate(() => document.getElementById('reel').textContent.replace(/\s+/g, ' '));
+    ok(/5 buys sent to the mirror in 24 h, 1 followed/.test(t) && /Nothing yet/.test(t), 'sans fermeture reelle, la ligne est la, et le texte d attente aussi');
+    await page.evaluate(() => demande(false)); await page.waitForTimeout(600);
+    ok(await page.evaluate(() => document.querySelectorAll('#reel [data-suivi]').length) === 1, 'et elle n est jamais ecrite deux fois, d un rafraichissement a l autre');
     await page.context().close();
-    /* Sans envoi en 24 h, rien. */
     ({ page } = await ouvre(nav, port, {}));
-    await page.waitForTimeout(1200);
-    t = await page.evaluate(() => ((document.querySelector('.card[data-pan="reel"]') || {}).textContent || ''));
-    ok(!/buys sent to the mirror/.test(t), 'sans envoi mesure, la carte n invente pas de ligne');
+    ok(!/buys sent to the mirror/.test(await txt(page, '#reel')), 'sans envoi mesure, la carte n invente pas de ligne');
     await page.context().close();
   }
-
   console.log('\n-- l audit : 7 derniers jours a cote du cumul, et les jetons sans lecture --');
   {
     const AUD = [
-      { cle: 'scout · pool below the buy floor', n: 27603, moyenne: 0, montes: 828, effondres: 2484, partMontes: 3,
-        n7: 1890, montes7: 57, partMontes7: 3, sansLecture: 17581, sansLecture7: 4100 },
-      { cle: 'oracle · too volatile', n: 12, moyenne: 60, montes: 4, effondres: 1, partMontes: 33,
-        n7: 12, montes7: 4, partMontes7: 33, sansLecture: 0 },
+      { cle: 'scout · pool below the buy floor', n: 27603, moyenne: 0, montes: 828, effondres: 2484, partMontes: 3, n7: 1890, montes7: 57, partMontes7: 3, sansLecture: 17581, sansLecture7: 4100 },
+      { cle: 'oracle · too volatile', n: 12, moyenne: 60, montes: 4, effondres: 1, partMontes: 33, n7: 12, montes7: 4, partMontes7: 33, sansLecture: 0 },
       { cle: 'achete ou retenu', n: 278, moyenne: 19.9, montes: 73, effondres: 56, partMontes: 26, n7: 15, montes7: 9, partMontes7: 60 },
     ];
     const { page, boum } = await ouvre(nav, port, { vueOpts: { audit: AUD } });
-    await page.waitForTimeout(1200);
-    const t = await page.evaluate(() => ((document.querySelector('.card[data-pan="audit"]') || {}).textContent || '').replace(/\s+/g, ' '));
+    const t = await txt(page, '.card[data-pan="audit"]');
     ok(/last 7 days: 1890 followed, 3% went up/.test(t), 'une ligne a 1 890 cas sur 7 jours dit son pourcentage');
-    ok(/last 7 days: 12 followed — under 40, too few to read; decisions keep the cumulative/.test(t),
-       'une ligne a 12 cas ne le dit pas, et dit pourquoi');
-    ok(/last 7 days: 15 followed — under 40/.test(t) && !/60% went up/.test(t),
-       'la reference a 15 cas sur 7 jours non plus : ses 60 % ne sont pas affiches');
-    ok(/17581 left before their 30-min reading, not counted in the share above/.test(t),
-       'et les jetons partis sans lecture a 30 min sont dits, par ligne');
+    ok(/last 7 days: 12 followed — under 40, too few to read; decisions keep the cumulative/.test(t), 'une ligne a 12 cas ne le dit pas, et dit pourquoi');
+    ok(/last 7 days: 15 followed — under 40/.test(t) && !/60% went up/.test(t), 'la reference a 15 cas sur 7 jours non plus : ses 60 % ne sont pas affiches');
+    ok(/17581 left before their 30-min reading, not counted in the share above/.test(t), 'et les jetons partis sans lecture a 30 min sont dits, par ligne');
     ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
     await page.context().close();
   }
 
-  /* ======================================================================
-   * 8. LE SERVEUR REPOND MAL, OU DIT QU IL A ECHOUE
-   * ==================================================================== */
+  /* 8. LE SERVEUR REPOND MAL, OU DIT QU IL A ECHOUE */
   console.log('\n-- le serveur repond mal --');
   {
     const { page, boum } = await ouvre(nav, port, { casse: true });
@@ -2500,173 +1517,33 @@ async function auditDesVetos() {
     ok(v.bal === '—', 'un 502 ne devient pas une tresorerie (' + v.bal + ')');
     ok(/OFFLINE/.test(v.pouls), 'le pouls le dit (' + v.pouls + ')');
     ok(/502/.test(v.tag), 'et le code de l erreur est ecrit, pas masque (« ' + v.tag.slice(0, 70) + ' »)');
+    ok(!v.kpis, 'aucun des chiffres cles n est invente');
     ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
     await page.context().close();
   }
   console.log('\n-- le serveur tourne mais sa lecture a echoue --');
   {
-    /* Cas different, et il compte : le serveur repond parfaitement, avec un
-       etat complet — mais SA derniere lecture de la chaine a echoue. Sans
-       cela, l'ecran montrerait des chiffres immobiles avec un pouls vert. */
-    const { page, boum } = await ouvre(nav, port,
-      { vue: vueFausse({ erreur: 'no new token liquid enough' }) });
+    const { page, boum } = await ouvre(nav, port, { vue: vueFausse({ erreur: 'no new token liquid enough' }) });
     const v = await lit(page);
     console.log('   ' + JSON.stringify({ stamp: v.stamp, tag: v.tag.slice(0, 70) }));
     ok(/read failed/.test(v.stamp), 'la pastille porte l echec du serveur');
     ok(/stale/.test(v.stampCls), 'et passe en perime');
-    ok(/no new token liquid enough/.test(v.tag),
-       'la raison du serveur est reprise mot pour mot, pas resumee en « erreur »');
-    ok(/1,1[78]/.test(v.bal),
-       'la tresorerie deja lue reste affichee : elle est vraie, elle est juste datee (' + v.bal + ')');
+    ok(/no new token liquid enough/.test(v.tag), 'la raison du serveur est reprise mot pour mot, pas resumee en « erreur »');
+    ok(v.bal === '$1,187.50', 'la tresorerie deja lue reste affichee : elle est vraie, elle est juste datee (' + v.bal + ')');
     ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
     await page.context().close();
   }
-
-  /* ======================================================================
-   * 9. LE TERMINAL (27/09/2026)
-   *
-   * « Transformer SWOGE AI en un AI Trading Colony Terminal… NE PAS FAKE les
-   * trades, profits, win rate, agents, tokens, statuts d API. » Il lit la
-   * MEME vue que la console : on verifie qu il n invente rien, que ses
-   * filtres filtrent, qu il dit ce qui manque, et qu il tient sur telephone.
-   * ==================================================================== */
-  console.log('\n-- le terminal : ce qu il montre vient de la vue, rien d autre --');
+  console.log('\n-- un dernier tour trop vieux : « Live » ne se montre plus --');
   {
-    const { page, boum, appels } = await ouvre(nav, port, {});
-    await page.waitForTimeout(900);
-    const h = await page.evaluate(() => ({
-      etat: document.getElementById('tmEtatTx').textContent,
-      trades: document.getElementById('tmTr').textContent, win: document.getElementById('tmWin').textContent,
-      winS: document.getElementById('tmWinS').textContent, pnl: document.getElementById('tmPnl').textContent,
-      scan: document.getElementById('tmScan').textContent, agents: document.getElementById('tmAg').textContent,
-      papier: document.querySelector('.tm-papier').textContent }));
-    console.log('   ' + JSON.stringify(h));
-    ok(h.etat === 'COLONY ONLINE', 'la colonie est dite en ligne parce que son dernier tour est recent (' + h.etat + ')');
-    ok(h.trades === '9' && h.agents === '9', 'trades et agents sont ceux de la vue (9 trades, 9 agents au roster)');
-    ok(h.pnl === '+$188', 'le P&L papier est tresor − depart de la vue (' + h.pnl + ')');
-    ok(h.win === '—' && /needs 20 closed trades \(9 so far\)/.test(h.winS), 'sous 20 trades, pas de taux de gain : il dit combien il en faut (' + h.winS + ')');
-    ok(h.scan === 'N/A', 'un compteur que la vue ne porte pas s ecrit N/A, jamais 0 (' + h.scan + ')');
-    ok(/PAPER TRADING — No real transactions are signed by this interface/.test(h.papier), 'l avertissement papier est ecrit en toutes lettres');
-    ok(appels.serveur === 1, 'le terminal ne fait aucun appel de plus : une seule lecture de /ai/colonie (' + appels.serveur + ')');
-
-    const lignes = async () => page.evaluate(() => [...document.querySelectorAll('#tmLignes tr[data-adr]')].map((r) => r.querySelector('.sym').textContent));
-    const tout = await lignes();
-    ok(tout.length === 9, 'le scanner porte les 7 candidats du tour et les 2 surveilles (' + tout.length + ')');
-    await onglet(page, 'tm-market');
-    /* Les filtres du scanner, reduits le 06/10 a l'axe des DECISIONS (All / Buy /
-       Watch / Reject) a la demande du proprietaire : « High Risk » et « New Tokens »
-       etaient deux vues en trop (le risque reste dans la colonne Risk, l'age dans
-       la colonne Age). On verifie donc que ces deux puces ont disparu, et que les
-       filtres restants narrent toujours la bonne population. */
-    const puces = async () => page.evaluate(() => [...document.querySelectorAll('#tmFiltres [data-f]')].map((b) => b.getAttribute('data-f')));
-    ok((await puces()).join() === 'tout,achat,veille,refus', 'le scanner ne garde que les 4 filtres de decision (' + (await puces()).join(' ') + ')');
-    const filtre = async (f) => { await page.click('#tmFiltres [data-f="' + f + '"]'); await page.waitForTimeout(150); return lignes(); };
-    const refus = await filtre('refus'), veille = await filtre('veille');
-    ok(refus.length === 6 && refus.indexOf('$NOVA') < 0, 'Reject : les 6 refuses, pas NOVA (' + refus.join(' ') + ')');
-    ok(veille.sort().join() === '$PATIENT,$PRESQUE', 'Watch : la liste de surveillance (' + veille.join(' ') + ')');
-    await filtre('tout');
-    await page.fill('#tmCherche', 'miel'); await page.waitForTimeout(150);
-    ok((await lignes()).join() === '$MIEL', 'la recherche trouve par symbole');
-    await page.fill('#tmCherche', ''); await page.waitForTimeout(150);
-    await page.click('#tmLignes tr[data-adr="0xa7"]'); await page.waitForTimeout(250);
-    const an = await page.evaluate(() => document.getElementById('tmAnalyse').innerText.replace(/\s+/g, ' '));
-    console.log('   ' + an.slice(0, 200));
-    ok(/REJECT/.test(an) && /Vetoed by Test Subject: the exit is blocked/.test(an), 'l analyse de MIEL dit QUI l a refuse et pourquoi, mot pour mot');
-    ok(/74\/100/.test(an) && /≥ 55/.test(an), 'la confiance est le score de la vue, avec le seuil de la vue');
-    ok(/Exit test: the transfer returns false/.test(an), 'et le resultat de l epreuve de sortie');
-
-    const bt = await page.evaluate(() => document.getElementById('tmBtCorps').textContent);
-    ok(/Collecting historical data/.test(bt), 'sans carnet servi, le backtest dit qu il collecte — il ne simule rien');
-    await onglet(page, 'tm-proof');
-    await page.click('#tmPrF [data-p="appris"]'); await page.waitForTimeout(150);
-    const pr = await page.evaluate(() => [...document.querySelectorAll('#tmPreuve tr')].map((r) => r.textContent));
-    ok(pr.length === 2 && pr.every((x) => /LEARNING/.test(x)), 'la preuve filtree sur LEARNING ne montre que les 2 evenements du journal');
-    const fiches = await page.evaluate(() => document.querySelectorAll('#tmFiches .tm-fiche').length);
-    ok(fiches === 9, 'une fiche par agent du roster, ni plus ni moins (' + fiches + ')');
-    await onglet(page, 'tm-colony');
-    await page.click('#langue'); await page.waitForTimeout(250);
-    const fr = await page.evaluate(() => [document.querySelector('.tm-kicker').textContent, document.getElementById('tmEtatTx').textContent]);
-    ok(fr[0] === 'LA COLONIE DE TRADING AUTONOME' && fr[1] === 'COLONIE EN LIGNE', 'le drapeau bascule aussi le terminal (' + fr.join(' · ') + ')');
-    await page.click('#langue');
-    ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
+    const vieille = vueFausse(); vieille.dernierTour = vieille.t - 20 * 60000; vieille.maj = vieille.dernierTour;
+    const { page } = await ouvre(nav, port, { vue: vieille });
+    const v = await lit(page);
+    ok(/^STALE · last turn 20 min ago/.test(v.pouls), 'vingt minutes sans tour, sur l horloge du SERVEUR : le pouls dit « STALE » (' + v.pouls + ')');
     await page.context().close();
-  }
-  console.log('\n-- le terminal hors ligne : il le dit, il n affiche rien a la place --');
-  {
-    const { page, boum } = await ouvre(nav, port, { casse: true });
-    await page.waitForTimeout(500);
-    const h = await page.evaluate(() => ({ etat: document.getElementById('tmEtatTx').textContent,
-      val: ['tmScan','tmSig','tmTr','tmAg','tmWin','tmPnl'].map((id) => document.getElementById(id).textContent),
-      dit: document.getElementById('tmScanS').textContent, marche: document.getElementById('tmLignes').textContent }));
-    ok(h.etat === 'OFFLINE', 'la pastille dit OFFLINE (' + h.etat + ')');
-    ok(h.val.every((x) => x === '—'), 'aucun des six chiffres n est invente (' + h.val.join(' ') + ')');
-    ok(/502/.test(h.dit) && /Nothing is shown in its place/.test(h.dit), 'et la raison est ecrite (« ' + h.dit.slice(0, 60) + ' »)');
-    ok(/502/.test(h.marche), 'le scanner aussi le dit, au lieu d un tableau vide');
-    ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
-    await page.context().close();
-  }
-  console.log('\n-- le terminal sur telephone --');
-  {
-    const ctx = await nav.newContext({ viewport: { width: 390, height: 844 } });
-    const { page, boum } = await ouvre(nav, port, { ctx });
-    await page.waitForTimeout(800);
-    const m = await page.evaluate(() => {
-      const b = document.getElementById('tmBnav').getBoundingClientRect();
-      return { bas: getComputedStyle(document.getElementById('tmBnav')).display !== 'none' && Math.round(b.bottom) === innerHeight,
-               deborde: document.documentElement.scrollWidth > innerWidth + 1,
-               swbb: parseInt(getComputedStyle(document.documentElement).getPropertyValue('--swbb-h')) || 0, h: Math.round(b.height) };
-    });
-    ok(m.bas, 'la navigation des sections est au pouce, en bas de l ecran');
-    ok(!m.deborde, 'rien ne deborde sur le cote (le scanner defile dans sa boite)');
-    ok(m.swbb === m.h && m.h > 0, 'les bulles du site se posent au-dessus d elle (--swbb-h = ' + m.swbb + ' px)');
-    await page.click('.tm-bnav a[data-s="tm-trades"]'); await page.waitForTimeout(1200);
-    const vu = await page.evaluate(() => { const r = document.getElementById('tm-trades').getBoundingClientRect(); return r.top < innerHeight && r.bottom > 0; });
-    ok(vu, 'TRADES emmene vraiment a la section');
-    ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
-    await ctx.close();
-  }
-
-  /* ---- UN ONGLET A LA FOIS (01/10/2026) ----
-   * « Trop d information et mal organisee » : quarante blocs empiles, 7 124 px de haut sur
-   * ordinateur, 12 506 sur telephone (mesure avant). Ce qui se verifie : un seul onglet a
-   * l ecran, le hero toujours la, rien de PERDU (les onglets caches sont peints quand meme),
-   * et chaque lien mene a son onglet au lieu d un bloc invisible. */
-  console.log('\n-- un onglet a la fois --');
-  {
-    const { page, boum } = await ouvre(nav, port, {});
-    await page.waitForTimeout(1500);
-    const vus = () => page.evaluate(() => [...document.querySelectorAll('[data-onglet]')]
-      .filter((e) => e.getBoundingClientRect().height > 0).map((e) => e.id || e.className.split(' ')[0]));
-    const a = await page.evaluate(() => ({
-      hero: document.getElementById('tm-live').getBoundingClientRect().height > 0,
-      h: document.documentElement.scrollHeight,
-      peints: ['tmLignes', 'tmPreuve', 'tmFiches'].map((id) => (document.getElementById(id) || {}).textContent.length > 20),
-      on: (document.querySelector('.tm-nav a.on') || {}).dataset.s }));
-    const v0 = await vus();
-    console.log('   ' + JSON.stringify({ vus: v0, hauteur: a.h }));
-    ok(a.hero && a.on === 'tm-live' && v0.join() === 'tm-mirror,tm-fil',
-       'a l arrivee : le hero, puis « Live » seul — le miroir et le fil (' + v0.join(', ') + ')');
-    ok(a.h < 3000, 'la page ne fait plus 7 124 pixels de haut (' + a.h + ')');
-    ok(a.peints.every(Boolean), 'le scanner, la preuve et les fiches sont peints quand meme : un onglet qu on ouvre est deja a jour');
-    await page.click('.tm-hero a[href="#tm-proof"]'); await page.waitForTimeout(900);
-    const v1 = await vus();
-    const vu = await page.evaluate(() => { const r = document.getElementById('tm-proof').getBoundingClientRect(); return r.top < innerHeight && r.bottom > 0; });
-    ok(v1.join() === 'tm-proof' && vu, '« VIEW PROOF » ouvre l onglet de la preuve et y emmene (' + v1.join(', ') + ')');
-    await page.click('.tm-hero a[href="#tm-colony"]'); await page.waitForTimeout(900);
-    const v2 = await vus();
-    ok(v2.join() === 'tm-colony,tablette', '« ENTER THE COLONY » ouvre les fiches ET la console d origine (' + v2.join(', ') + ')');
-    ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
-    await page.context().close();
-    const b = await ouvre(nav, port, { urlSuffixe: '#tm-market' });
-    await b.page.waitForTimeout(1200);
-    const v3 = await b.page.evaluate(() => [...document.querySelectorAll('[data-onglet]')]
-      .filter((e) => e.getBoundingClientRect().height > 0).map((e) => e.id));
-    ok(v3.join() === 'tm-market', 'une adresse en #tm-market ouvre le scanner (' + v3.join(', ') + ')');
-    await b.page.context().close();
   }
 
   await nav.close();
   srv.close();
   console.log('\n' + (rates ? 'RATES : ' + rates + '/' + n : 'tout passe : ' + n + ' verifications'));
   process.exitCode = rates ? 1 : 0;
-})().catch((e) => { console.log('EXCEPTION : ' + (e && e.stack || e)); process.exitCode = 1; });
+})().catch((e) => { console.log('EXCEPTION : ' + (e && e.stack || e)); process.exit(1); });

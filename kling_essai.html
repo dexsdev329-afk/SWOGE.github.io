@@ -18,6 +18,17 @@
  * /studio/kling) et n'agit que pour la session. Aucun debit : c'est le compte
  * Kling du proprietaire qui paie. L'estimation vient de la grille officielle
  * (kling.js). Hors moteurs (noindex).
+ *
+ * EDITER UN CLIP (14 octobre 2026) : Kling O1 remplace une personne d'un clip
+ * court par SWOGE (ou une autre image), son d'origine garde. La page lit la
+ * duree dans la boite mvhd du MP4 (meme lecture que le serveur, copiee de
+ * swolemind.html) pour refuser un clip hors 3-10 s avant d'envoyer 25 Mo pour
+ * rien ; le serveur relit tout (taille, duree, cotes) et n'agit que pour la
+ * session. Bornes et grille viennent du serveur (`edition`, kling.js).
+ * Second moteur sur le meme clip, pour comparer : Wan 2.2 Animate Replace
+ * (fal, wan_remplace.js) — sans texte, reechantillonne a 16 i/s par le
+ * serveur, son d'origine remis par ffmpeg ; son resultat ne sort qu'avec la
+ * session (lu en blob, jamais par une adresse publique).
  * ================================================================== -->
 <style>
 :root{ --fond:#EEF3FB; --carte:#fff; --encre:#0B1B36; --pale:#5a6b85; --bleu:#1652f0; --ligne:#E1E9F6; --ok:#0a7d3e; --err:#b3261e; }
@@ -38,6 +49,15 @@ button.pale2{ background:var(--ligne); color:var(--encre); width:auto; }
 #statut.err{ color:var(--err); } #statut.ok{ color:var(--ok); }
 video{ width:100%; border-radius:12px; margin-top:10px; background:#000; }
 .essai{ border-top:1px solid var(--ligne); padding:8px 0; font-size:13px; }
+input[type=file]{ width:100%; font:inherit; font-size:14px; }
+h3{ font-size:15px; margin:16px 0 0; padding-top:12px; border-top:1px solid var(--ligne); }
+#wStatut{ min-height:22px; font-weight:600; margin-top:10px; overflow-wrap:anywhere; }
+#wStatut.err{ color:var(--err); } #wStatut.ok{ color:var(--ok); }
+.coche{ display:flex; align-items:center; gap:8px; font-weight:600; font-size:14px; margin-top:12px; }
+.coche input{ width:18px; height:18px; }
+#eStatut{ min-height:22px; font-weight:600; margin-top:10px; overflow-wrap:anywhere; }
+#eStatut.err{ color:var(--err); } #eStatut.ok{ color:var(--ok); }
+a.telecharge{ display:inline-block; margin-top:8px; font-weight:700; color:var(--bleu); }
 img.vign{ width:64px; height:64px; object-fit:cover; border-radius:10px; vertical-align:middle; margin-right:8px; }
 </style>
 </head>
@@ -65,6 +85,41 @@ img.vign{ width:64px; height:64px; object-fit:cover; border-radius:10px; vertica
     <button id="lancer" type="button">Make the video</button>
     <p id="statut" role="status"></p>
     <video id="video" controls playsinline hidden></video>
+  </div>
+
+  <div class="carte" id="edition" hidden>
+    <h2 style="font-size:18px;margin:0 0 4px">Edit a clip (replace a person)</h2>
+    <p class="pale">Kling O1 redraws one person in a short clip from a reference picture. MP4, 3 to 10 s, 700 to 2160 px per side.</p>
+    <label for="eClip">Clip (MP4, 3–10 s)</label>
+    <input id="eClip" type="file" accept="video/mp4">
+    <p class="pale" id="eClipInfo"></p>
+    <label>Reference picture</label>
+    <div><img class="vign" id="eVign" src="/img/site/swoge_reference.jpg" alt="Reference"><span id="eRefNom">SWOGE (default)</span>
+      <button class="pale2" id="eImage" type="button">Choose another</button> <button class="pale2" id="eSansImage" type="button" hidden>Back to SWOGE</button></div>
+    <label class="coche"><input id="eSon" type="checkbox" checked> Keep the original sound</label>
+
+    <h3>Kling O1</h3>
+    <label for="ePrompt">What to change</label>
+    <textarea id="ePrompt" maxlength="2500" style="min-height:150px">Replace only the young man in the black beanie and grey hoodie who is singing with the character from @image_1: SWOGE, a muscular anthropomorphic shiba inu dog, wearing the same black beanie and grey hoodie, singing with the same mouth movements, gestures and timing. Keep the blond man holding the phone and the speaker exactly as he is. Keep exactly the same shots, framing, camera motion, timing, lighting, background, captions and logo in @video_1.</textarea>
+    <div class="rang">
+      <div><label for="eResolution">Resolution</label><select id="eResolution"><option value="720p">720p</option><option value="1080p">1080p</option></select></div>
+    </div>
+    <p class="pale" id="ePrix"></p>
+    <button id="eLancer" type="button" disabled>Edit with Kling O1</button>
+    <p id="eStatut" role="status"></p>
+    <video id="eVideo" controls playsinline hidden></video>
+    <a id="eLien" class="telecharge" href="#" target="_blank" rel="noopener" download hidden>Download the result</a>
+
+    <h3>Wan 2.2 Animate Replace (fal)</h3>
+    <p class="pale">Same clip and picture. Wan takes no text: it swaps the main moving person for the picture. The server sends the clip at 16 fps (fal bills 16 frames as one second) and puts the original sound back on the result.</p>
+    <div class="rang">
+      <div><label for="wResolution">Resolution</label><select id="wResolution"><option value="480p">480p</option><option value="580p">580p</option><option value="720p" selected>720p</option></select></div>
+    </div>
+    <p class="pale" id="wPrix"></p>
+    <button id="wLancer" type="button" disabled>Edit with Wan 2.2 (fal)</button>
+    <p id="wStatut" role="status"></p>
+    <video id="wVideo" controls playsinline hidden></video>
+    <a id="wLien" class="telecharge" href="#" download="swoge_wan.mp4" hidden>Download the result</a>
   </div>
 
   <div class="carte" id="historique" hidden><b>Recent tests</b><div id="liste"></div></div>
@@ -107,7 +162,7 @@ img.vign{ width:64px; height:64px; object-fit:cover; border-radius:10px; vertica
     var l = $("liste"); l.innerHTML = "";
     (essais || []).forEach(function(e){
       var d = document.createElement("div"); d.className = "essai";
-      d.textContent = new Date(e.t).toISOString().slice(0, 16).replace("T", " ") + " · " + (e.modele ? e.modele + " · " + e.duree + " s · " + e.resolution + " · ~$" + e.estimationUsd : (e.statut + (e.duree ? " · " + e.duree + " s" : "") + (e.message ? " · " + e.message : "")));
+      d.textContent = new Date(e.t).toISOString().slice(0, 16).replace("T", " ") + " · " + (e.modele ? e.modele + (e.edition ? " edit · " + e.dureeS : " · " + e.duree) + " s · " + e.resolution + " · ~$" + e.estimationUsd : (e.statut + (e.duree ? " · " + e.duree + " s" : "") + (e.message ? " · " + e.message : "")));
       l.appendChild(d);
     });
     $("historique").hidden = !(essais && essais.length);
@@ -119,7 +174,9 @@ img.vign{ width:64px; height:64px; object-fit:cover; border-radius:10px; vertica
       M = o.modeles;
       $("acces").textContent = o.actif ? "Kling is connected." : "Kling is not set up yet: add KLING_API_KEY on Railway.";
       $("formulaire").hidden = !o.actif;
-      peintReglages(); peintHistorique(o.essais);
+      E.vue = o.edition || null; E.wan = o.wan || null;
+      $("edition").hidden = !((o.actif && E.vue) || (E.wan && E.wan.actif));
+      peintReglages(); peintEdition(); peintHistorique(o.essais);
     })["catch"](function(e){ $("acces").textContent = "Access check failed: " + e.message; });
   }
   function suis(id, depart){
@@ -151,6 +208,174 @@ img.vign{ width:64px; height:64px; object-fit:cover; border-radius:10px; vertica
     api("/studio/kling", "POST", { prompt: t, image: image, modele: $("modele").value, duree: Number($("duree").value), resolution: $("resolution").value, audio: $("audio").value })
       .then(function(r){ suis(r.id, Date.now()); })
       ["catch"](function(e){ statut("Not sent: " + e.message, "err"); $("lancer").disabled = false; });
+  });
+
+  /* ---- EDITER UN CLIP (Kling O1) ----
+   * Le clip part en data-URL ; le serveur le sert a Kling le temps de la tache
+   * puis l'efface. Sans image choisie, aucune image n'est envoyee : le serveur
+   * prend la reference SWOGE du site. */
+  var E = { vue: null, clip: null, dureeS: null, image: null, suivi: null };
+  function eStatut(t, g){ var s = $("eStatut"); s.textContent = t || ""; s.className = g || ""; }
+  /* La duree d'un MP4 (copie de swolemind.html, meme lecture que le serveur) :
+     ftyp en premier, moov > mvhd v0/v1 ; un MP4 fragmente (mvex) ne se lit
+     que par mehd. null quand on ne sait pas. */
+  function dureeMp4(tampon){
+    var v = new DataView(tampon), n = v.byteLength;
+    function boite(pos, fin){
+      if (pos + 8 > fin) return null;
+      var taille = v.getUint32(pos), entete = 8, type = "";
+      for (var i = 4; i < 8; i++) type += String.fromCharCode(v.getUint8(pos + i));
+      if (taille === 1) { if (pos + 16 > fin) return null; taille = v.getUint32(pos + 8) * 4294967296 + v.getUint32(pos + 12); entete = 16; }
+      else if (taille === 0) taille = fin - pos;
+      if (taille < entete || pos + taille > fin) return null;
+      return { type: type, debut: pos + entete, fin: pos + taille };
+    }
+    function cherche(debut, fin, type){
+      for (var p = debut; p < fin;) { var b = boite(p, fin); if (!b) return null; if (b.type === type) return b; p = b.fin; }
+      return null;
+    }
+    var premiere = boite(0, n);
+    if (!premiere || premiere.type !== "ftyp") return null;
+    var moov = cherche(0, n, "moov"); if (!moov) return null;
+    var mvhd = cherche(moov.debut, moov.fin, "mvhd"); if (!mvhd) return null;
+    var d = mvhd.debut, echelle, duree, inconnue;
+    if (d + 1 > mvhd.fin) return null;
+    if (v.getUint8(d) === 1) {
+      if (d + 32 > mvhd.fin) return null;
+      echelle = v.getUint32(d + 20); duree = v.getUint32(d + 24) * 4294967296 + v.getUint32(d + 28);
+      inconnue = v.getUint32(d + 24) === 4294967295 && v.getUint32(d + 28) === 4294967295;
+    } else {
+      if (d + 20 > mvhd.fin) return null;
+      echelle = v.getUint32(d + 12); duree = v.getUint32(d + 16); inconnue = duree === 4294967295;
+    }
+    if (!echelle) return null;
+    var mvex = cherche(moov.debut, moov.fin, "mvex");
+    if (mvex) {
+      var mehd = cherche(mvex.debut, mvex.fin, "mehd"), m = mehd && mehd.debut;
+      duree = 0; inconnue = false;
+      if (mehd && m + 1 <= mehd.fin) {
+        if (v.getUint8(m) === 1 && m + 12 <= mehd.fin) {
+          duree = v.getUint32(m + 4) * 4294967296 + v.getUint32(m + 8);
+          inconnue = v.getUint32(m + 4) === 4294967295 && v.getUint32(m + 8) === 4294967295;
+        } else if (v.getUint8(m) === 0 && m + 8 <= mehd.fin) { duree = v.getUint32(m + 4); inconnue = duree === 4294967295; }
+      }
+    }
+    return !duree || inconnue ? null : duree / echelle;
+  }
+  /* Le prix d'apres la grille du serveur : la seconde entamee compte (kling.js prixEdition). */
+  function prixEdition(){
+    if (!E.vue || !E.dureeS) return null;
+    var p = E.vue.prixParSeconde && E.vue.prixParSeconde[$("eResolution").value];
+    return p ? Math.round(p * Math.ceil(E.dureeS - 1e-9) * 1000) / 1000 : null;
+  }
+  /* Wan (fal) : images a 16 i/s ÷ 16 × prix de la seconde video (grille de fal). */
+  function prixWan(){
+    if (!E.wan || !E.dureeS) return null;
+    var p = E.wan.prixParSeconde && E.wan.prixParSeconde[$("wResolution").value];
+    var images = Math.ceil(E.dureeS * (E.wan.fps || 16) - 1e-9);
+    return p ? Math.round(p * images / (E.wan.imagesParSecondeFacturee || 16) * 1000) / 1000 : null;
+  }
+  function peintEdition(){
+    if (E.vue) {
+      var p = prixEdition();
+      $("ePrix").textContent = p === null ? "Pick a clip to see the price (" + E.vue.dureeMinS + " to " + E.vue.dureeMaxS + " s)."
+        : "About $" + p.toFixed(3) + " on your Kling account (official price list, every started second counts).";
+      $("eLancer").disabled = !(E.clip && p !== null && !E.occupeK);
+    } else { $("ePrix").textContent = "Kling is not set up."; $("eLancer").disabled = true; }
+    if (E.wan && E.wan.actif) {
+      var w = prixWan();
+      $("wPrix").textContent = w === null ? "Pick a clip to see the price." : "About $" + w.toFixed(3) + " on your fal account (fal price list, 16 frames = 1 billed second).";
+      $("wLancer").disabled = !(E.clip && w !== null && !E.occupeW);
+    } else { $("wPrix").textContent = "fal is not set up yet: add FAL_KEY on Railway."; $("wLancer").disabled = true; }
+  }
+  $("eResolution").addEventListener("change", peintEdition);
+  $("wResolution").addEventListener("change", peintEdition);
+  $("eClip").addEventListener("change", function(){
+    var f = $("eClip").files && $("eClip").files[0];
+    E.clip = null; E.dureeS = null; $("eClipInfo").textContent = ""; eStatut("");
+    if (!f) { peintEdition(); return; }
+    var max = (E.vue && E.vue.octetsMax) || 20 * 1024 * 1024;
+    if (f.size > max) { eStatut("Clip too large: " + (f.size / 1048576).toFixed(1) + " MB (" + Math.round(max / 1048576) + " MB at most).", "err"); peintEdition(); return; }
+    var r = new FileReader();
+    r.onload = function(){
+      var d = null; try { d = dureeMp4(r.result); } catch (e) { d = null; }
+      var mn = (E.vue && E.vue.dureeMinS) || 3, mx = (E.vue && E.vue.dureeMaxS) || 10;
+      if (d === null) { eStatut("This is not an MP4 video (or its length could not be read).", "err"); peintEdition(); return; }
+      if (d < mn || d > mx) { eStatut("The clip lasts " + d.toFixed(2) + " s — Kling edits " + mn + " to " + mx + " s.", "err"); peintEdition(); return; }
+      var u = new FileReader();
+      u.onload = function(){ E.clip = String(u.result).replace(/^data:[^;,]*;base64,/, "data:video/mp4;base64,"); E.dureeS = d;
+        $("eClipInfo").textContent = f.name + " · " + d.toFixed(2) + " s · " + (f.size / 1048576).toFixed(1) + " MB"; peintEdition(); };
+      u.readAsDataURL(f);
+    };
+    r.readAsArrayBuffer(f);
+  });
+  $("eImage").addEventListener("click", function(){
+    var i = document.createElement("input"); i.type = "file"; i.accept = "image/png,image/jpeg";
+    i.addEventListener("change", function(){
+      var f = i.files && i.files[0]; if (!f) return;
+      if (!/^image\/(png|jpeg)$/.test(f.type)) { eStatut("The reference must be a PNG or JPEG picture.", "err"); return; }
+      var max = (E.vue && E.vue.imageOctetsMax) || 6 * 1024 * 1024;
+      if (f.size > max) { eStatut("Picture too large (" + Math.round(max / 1048576) + " MB at most).", "err"); return; }
+      var r = new FileReader(); r.onload = function(){ E.image = String(r.result); $("eVign").src = E.image; $("eRefNom").textContent = f.name; $("eSansImage").hidden = false; }; r.readAsDataURL(f);
+    });
+    i.click();
+  });
+  $("eSansImage").addEventListener("click", function(){ E.image = null; $("eVign").src = "/img/site/swoge_reference.jpg"; $("eRefNom").textContent = "SWOGE (default)"; $("eSansImage").hidden = true; });
+  function eSuis(id, depart){
+    api("/studio/kling/" + encodeURIComponent(id)).then(function(r){
+      var s = Math.round((Date.now() - depart) / 1000);
+      if (r.statut === "succeeded" && r.url && /^https:\/\//.test(r.url)) {
+        eStatut("Done in " + s + " s.", "ok"); var v = $("eVideo"); v.src = r.url; v.hidden = false;
+        $("eLien").href = r.url; $("eLien").hidden = false; E.occupeK = false; peintEdition(); charge(); return;
+      }
+      if (r.statut === "failed") { eStatut("Kling failed: " + (r.message || "no reason given"), "err"); E.occupeK = false; peintEdition(); charge(); return; }
+      eStatut("Editing… " + s + " s (" + r.statut + ")");
+      E.suivi = setTimeout(function(){ eSuis(id, depart); }, 5000);
+    })["catch"](function(e){ eStatut("Follow-up failed: " + e.message, "err"); E.occupeK = false; peintEdition(); });
+  }
+  $("eLancer").addEventListener("click", function(){
+    var t = $("ePrompt").value.trim(); if (!t) { eStatut("Write what to change first.", "err"); return; }
+    if (!E.clip) { eStatut("Pick a clip first.", "err"); return; }
+    if (E.suivi) clearTimeout(E.suivi);
+    E.occupeK = true; $("eLancer").disabled = true; $("eVideo").hidden = true; $("eLien").hidden = true; eStatut("Uploading the clip…");
+    var corps = { video: E.clip, prompt: t, resolution: $("eResolution").value, audio: $("eSon").checked ? "original" : "off" };
+    if (E.image) corps.image = E.image;
+    api("/studio/kling/edition", "POST", corps)
+      .then(function(r){ eStatut("Sent to Kling (~$" + Number(r.estimationUsd).toFixed(3) + ")."); eSuis(r.id, Date.now()); })
+      ["catch"](function(e){ eStatut("Not sent: " + e.message, "err"); E.occupeK = false; peintEdition(); });
+  });
+
+  /* ---- Wan 2.2 Animate Replace (fal), sur le meme clip ---- */
+  function wStatut(t, g){ var s = $("wStatut"); s.textContent = t || ""; s.className = g || ""; }
+  /* Le resultat ne sort qu'avec la session : lu en blob, montre et telechargeable. */
+  function wMontre(chemin){
+    return fetch(serveur() + chemin, { cache: "no-store", headers: { authorization: "Bearer " + jeton() } })
+      .then(function(r){ if (!r.ok) throw new Error("error " + r.status); return r.blob(); })
+      .then(function(b){ if (E.wBlob) URL.revokeObjectURL(E.wBlob); E.wBlob = URL.createObjectURL(b);
+        var v = $("wVideo"); v.src = E.wBlob; v.hidden = false; $("wLien").href = E.wBlob; $("wLien").hidden = false; });
+  }
+  function wSuis(id, depart){
+    api("/studio/kling/wan/" + encodeURIComponent(id)).then(function(r){
+      var s = Math.round((Date.now() - depart) / 1000);
+      if (r.statut === "succeeded" && r.video) {
+        wStatut("Done in " + s + " s" + (r.son ? ", original sound put back." : r.son === false ? (r.message ? " (" + r.message + ")." : ", no sound.") : "."), "ok");
+        wMontre(r.video)["catch"](function(e){ wStatut("Result not loaded: " + e.message, "err"); });
+        E.occupeW = false; peintEdition(); charge(); return;
+      }
+      if (r.statut === "failed" || r.statut === "timeout") { wStatut("Wan failed: " + (r.message || "no reason given"), "err"); E.occupeW = false; peintEdition(); charge(); return; }
+      wStatut("Editing… " + s + " s (" + r.statut + ")");
+      E.wSuivi = setTimeout(function(){ wSuis(id, depart); }, 5000);
+    })["catch"](function(e){ wStatut("Follow-up failed: " + e.message, "err"); E.occupeW = false; peintEdition(); });
+  }
+  $("wLancer").addEventListener("click", function(){
+    if (!E.clip) { wStatut("Pick a clip first.", "err"); return; }
+    if (E.wSuivi) clearTimeout(E.wSuivi);
+    E.occupeW = true; $("wLancer").disabled = true; $("wVideo").hidden = true; $("wLien").hidden = true; wStatut("Uploading the clip…");
+    var corps = { video: E.clip, resolution: $("wResolution").value, audio: $("eSon").checked ? "original" : "off" };
+    if (E.image) corps.image = E.image;
+    api("/studio/kling/wan", "POST", corps)
+      .then(function(r){ wStatut("Sent to fal (~$" + Number(r.estimationUsd).toFixed(3) + ", " + r.images + " frames at 16 fps)."); wSuis(r.id, Date.now()); })
+      ["catch"](function(e){ wStatut("Not sent: " + e.message, "err"); E.occupeW = false; peintEdition(); });
   });
   charge();
 })();

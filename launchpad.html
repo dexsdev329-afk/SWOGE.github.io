@@ -140,6 +140,10 @@ video{ max-width:100%; }
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
 <script src="lance_v4.js?v=6f7f9ced"></script>
+<!-- 14/10/2026 : le paquet UMD de WalletConnect 2.13.3 lit « process » (une variable de Node,
+     absente d'un navigateur) et plante au chargement : « process is not defined », mesure sur une
+     page vide, disparu avec ce shim. -->
+<script>window.process = window.process || { env: {} };</script>
 <script src="https://cdn.jsdelivr.net/npm/@walletconnect/ethereum-provider@2.13.3/dist/index.umd.js"></script>
 <style>
 /* ==================== LA PALETTE PASSE AU CLAIR ====================
@@ -2044,6 +2048,9 @@ function construitAgentForm(box, ctx){
   /* L etat de la liaison X (handle public, jamais les secrets). */
   function montreX(hasX, handle){
     var st=q(".agXstatus");
+    /* la reponse du serveur peut arriver apres que le panneau a ete redessine (essai
+       launchpad_v4_page, 14/10/2026 : « Cannot set properties of null ») : rien a peindre */
+    if(!st) return;
     if(hasX){ st.className="note ok"; st.innerHTML="𝕏 Linked"+(handle?(" as <b>@"+esc(handle)+"</b>"):"")+" — it can post on X once autonomous posting is enabled.";
       q(".agXconnect").hidden=true; q(".agXunlink").hidden=false; }
     else{ st.className="note"; st.textContent="No X account linked. Posts go to its wall until you link one.";
@@ -2054,6 +2061,7 @@ function construitAgentForm(box, ctx){
   var agActif=null;
   function montreStatut(){
     var st=q(".agStatus"), pb=q(".agPause");
+    if(!st||!pb) return;
     if(agActif===null){ st.className="note"; st.textContent="No agent yet — fill the fields and press Save below."; pb.hidden=true; return; }
     pb.hidden=false;
     if(agActif){ st.className="note ok"; st.textContent="● Agent is ACTIVE — it thinks and acts on its schedule."; pb.textContent="⏸ Pause agent"; }
@@ -2063,6 +2071,7 @@ function construitAgentForm(box, ctx){
   /* L etat de la liaison Telegram (groupe public, jamais le jeton du bot). */
   function montreTg(hasTg, tg){
     var st=q(".agTgstatus");
+    if(!st) return;
     if(hasTg){ st.className="note ok"; st.innerHTML="💬 Linked to <b>"+esc((tg&&(tg.titre||tg.chatId))||"your group")+"</b> — it posts updates there and pins its X posts.";
       q(".agTgform").hidden=true; q(".agTgUnlink").hidden=false; }
     else{ st.className="note"; st.textContent="No Telegram group linked. Connect a bot to let your agent post & pin in your group.";
@@ -2199,6 +2208,7 @@ function construitAgentForm(box, ctx){
   /* PAUSE / REPRISE : met l agent en pause (ou le relance) — signe « pause ». */
   q(".agPause").addEventListener("click",async function(){
     var st=q(".agStatus"), pb=q(".agPause");
+    if(!st||!pb) return;
     if(!signer){ openWalletPicker(); return; }
     if(agActif===null) return;
     st.className="note"; st.textContent="Sign to "+(agActif?"pause":"resume")+" the agent…"; pb.disabled=true;

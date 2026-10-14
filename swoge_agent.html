@@ -115,6 +115,10 @@ canvas{ touch-action:none; }
 <script src="swogecompte.js?v=2e1921ce"></script>
 <script src="swogebuy.js?v=9d7c39e5"></script>
 <script src="swogeprofil.js?v=aa21d613" defer></script>
+<!-- 14/10/2026 : le paquet UMD de WalletConnect 2.13.3 lit « process » (une variable de Node,
+     absente d'un navigateur) et plante au chargement : « process is not defined », mesure sur une
+     page vide, disparu avec ce shim. -->
+<script>window.process = window.process || { env: {} };</script>
 <script src="https://cdn.jsdelivr.net/npm/@walletconnect/ethereum-provider@2.13.3/dist/index.umd.js"></script>
 <style>
 /* ---- LA PAGE PASSE AU CLAIR ----

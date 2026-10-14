@@ -38,7 +38,7 @@
  * une fois par session pour savoir si le serveur en a une plus recente.
  * Sans ca, un joueur garde des semaines une version corrigee depuis
  * longtemps. `node cache_marqueur.test.js` donne la valeur a ecrire. */
-var MARQUE_PAGE = 'f5575e05';
+var MARQUE_PAGE = 'bc185170';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -133,6 +133,10 @@ button{cursor:pointer}
 nav.sb-ancre{display:flex;align-items:center;gap:8px;margin-left:auto;min-width:0}
 .sb-ancre .chip{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 12px;border-radius:999px;border:1px solid var(--line2);background:rgba(8,16,40,.6);font:700 12px/1 var(--f);color:var(--text2);white-space:nowrap}
 .sb-ancre .chip b{color:#fff}
+/* la pastille « en ligne » de stakebubble est ecrite en bleu nuit pour les pages claires :
+   illisible sur ce fond sombre (capture du 14/10/2026) */
+.sb-ancre .swppl{color:var(--text2)!important;background:rgba(8,16,40,.6)!important;border-color:var(--line2)!important}
+.sb-ancre .swppl b{color:#fff!important}
 .statusdot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green)}
 .statusdot.off{background:var(--dim2);box-shadow:none}
 .connrow{display:flex;gap:8px;flex:0 0 auto}
@@ -226,12 +230,14 @@ nav.sb-ancre{display:flex;align-items:center;gap:8px;margin-left:auto;min-width:
 #sky{position:absolute;inset:0;width:100%;height:100%;display:block}
 .stage .cap{position:absolute;left:12px;right:12px;bottom:14px;display:flex;justify-content:space-between;align-items:flex-end;gap:14px;pointer-events:none}
 .log{font:500 11.5px/1.45 var(--mono);color:var(--text2);min-width:0;max-width:430px;flex:1}
-.log div{display:flex;gap:8px;padding:5px 9px;margin-top:4px;border-radius:8px;background:rgba(6,12,32,.78);border:1px solid var(--line);white-space:nowrap;overflow:hidden;animation:logIn .45s ease-out both}
-.log div:nth-child(2){opacity:.7}.log div:nth-child(3){opacity:.45}
+.log div{display:flex;gap:8px;padding:5px 9px;margin-top:4px;border-radius:8px;background:rgba(6,12,32,.9);border:1px solid var(--line);overflow:hidden;animation:logIn .45s ease-out both}
+.log div:nth-child(2){opacity:.88}.log div:nth-child(3){opacity:.72}
 .log em{font-style:normal;font-weight:700}
-.log span{overflow:hidden;text-overflow:ellipsis}
+.log em{white-space:nowrap}
+.log span{overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 @keyframes logIn{from{transform:translateY(8px);opacity:0}}
-.legend{font:500 10.5px/1.5 var(--mono);color:var(--dim2);text-align:right;max-width:290px}
+.legend{font:500 12px/1.5 var(--mono);color:var(--text2);text-align:right;max-width:300px;padding:6px 9px;border-radius:8px;background:rgba(6,12,32,.82)}
+@media (min-width:900px){ .legend{margin-right:120px} }
 .legend b{color:var(--text2);font-weight:700}
 .ntip{position:absolute;z-index:5;width:250px;padding:11px 13px;border-radius:12px;background:rgba(6,12,32,.94);border:1px solid rgba(106,156,255,.45);box-shadow:0 0 30px rgba(27,95,224,.35);font-size:12px;color:var(--text2);pointer-events:none;transform:translate(-50%,calc(-100% - 22px))}
 .ntip b{display:block;color:#fff;font-size:13.5px}
@@ -316,7 +322,9 @@ th:last-child,td:last-child{padding-right:18px}
 .why+.why{margin-top:2px}
 .wbar{min-width:180px}
 .mo{display:none}
-.why.one{font-size:11.5px;color:var(--dim2);display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden;max-width:220px}
+/* 14/10/2026 (capture du proprietaire : « certains textes compliques a lire ») : la mission
+   coupee a une ligne (« Sweeps three feeds, and drops… ») ne disait rien ; trois lignes, plus claire */
+.why.one{font-size:12px;color:var(--dim);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;max-width:300px}
 .bar{position:relative;height:6px;border-radius:3px;background:rgba(120,160,255,.12);min-width:70px}
 .bar i{position:absolute;left:0;top:0;bottom:0;border-radius:3px;background:linear-gradient(90deg,#1B5FE0,var(--cyan));box-shadow:0 0 10px rgba(63,224,255,.45)}
 .bar em{position:absolute;top:-4px;bottom:-4px;width:2px;background:#fff;border-radius:1px;box-shadow:0 0 6px #fff}
@@ -1550,7 +1558,8 @@ function lib(txt){
   let x = String(txt == null ? "" : txt);
   if(LANGUE === "fr") return x;
   for(const [re, par] of VERS_ANGLAIS) x = x.replace(re, par);
-  return x;
+  /* les guillemets francais du serveur (« ne <10 min ») se lisent mal en anglais */
+  return x.replace(/«\s*/g, '"').replace(/\s*»/g, '"');
 }
 const role = r => PHRASES["role_" + r] ? ph("role_" + r) : (r || "—");
 const parQui = p => PHRASES["par_" + p] ? ph("par_" + p) : (p || "—");
@@ -2763,10 +2772,6 @@ const Scene = (function(){
       if(!sat){ cx.lineWidth = 2.6*SC; cx.strokeStyle = "rgba(120,160,255,.18)"; cx.beginPath(); cx.arc(x, y, r + 6*SC, 0, 6.283); cx.stroke();
         cx.strokeStyle = PASS[k] < .2 ? "#A27BFF" : "#3FE0FF"; cx.beginPath(); cx.arc(x, y, r + 6*SC, -1.5708, -1.5708 + 6.283*Math.max(.02, PASS[k] == null ? 1 : PASS[k])); cx.stroke();
         cx.lineWidth = 1; cx.strokeStyle = "rgba(63,224,255,.5)"; cx.beginPath(); const a0 = t*(1.2 + (n.ph % 1)) + n.ph; cx.arc(x, y, r + 11*SC, a0, a0 + .9); cx.stroke(); }
-      cx.font = (sat ? "600 " : "700 ") + Math.round((sat ? 10.5 : 12)*SC) + "px Archivo, sans-serif"; cx.fillStyle = sat ? "#B7C4E6" : "#fff";
-      cx.fillText(agName(k), x, y + r + (sat ? 15 : 24)*SC);
-      if(!sat){ cx.font = "500 " + Math.round(10*SC) + "px 'JetBrains Mono', monospace"; cx.fillStyle = PASS[k] < .2 ? "#C2A9FF" : "#7FE9FF";
-        cx.fillText(a.role === "execution" ? ph("cvOuvertes", int(C().closer)) : a.role === "banque" ? ph("cvMises", int(C().banquier)) : ph("cvPasse", pctPass(PASS[k])), x, y + r + 37*SC); }
     }
     cx.globalCompositeOperation = "lighter";
     for(const p of parts){ if(!p.lbl) continue; const dead = p.st === 1, c = p.lbl.sell ? (p.lbl.s.r >= 0 ? SP.green : SP.red) : dead ? SP.red : SP.white;
@@ -2774,9 +2779,21 @@ const Scene = (function(){
     cx.globalCompositeOperation = "source-over";
     cx.font = "700 " + Math.round(10.5*SC) + "px 'JetBrains Mono', monospace";
     for(const p of parts){ if(!p.lbl || p.st === 1) continue; const tw = cx.measureText(p.lbl.txt).width + 12, y = p.y - 16*SC;
-      cx.globalAlpha = .92; cx.fillStyle = "rgba(6,12,32,.9)"; cx.beginPath(); cx.roundRect ? cx.roundRect(p.x - tw/2, y - 10*SC, tw, 15*SC, 4) : cx.rect(p.x - tw/2, y - 10*SC, tw, 15*SC); cx.fill();
+      /* l'etiquette reste DANS la scene (« $OP » coupe au bord gauche, capture du 14/10/2026) */
+      const px = Math.min(W - tw/2 - 4, Math.max((lay === "wide" ? W*.08 : 0) + tw/2 + 4, p.x));
+      cx.globalAlpha = .92; cx.fillStyle = "rgba(6,12,32,.9)"; cx.beginPath(); cx.roundRect ? cx.roundRect(px - tw/2, y - 10*SC, tw, 15*SC, 4) : cx.rect(px - tw/2, y - 10*SC, tw, 15*SC); cx.fill();
       cx.strokeStyle = p.lbl.sell ? (p.lbl.s.r >= 0 ? "#34E3A0" : "#FF5C7A") : "rgba(63,224,255,.7)"; cx.lineWidth = 1; cx.stroke();
-      cx.globalAlpha = 1; cx.fillStyle = "#fff"; cx.fillText(p.lbl.txt, p.x, y + 1*SC); }
+      cx.globalAlpha = 1; cx.fillStyle = "#fff"; cx.fillText(p.lbl.txt, px, y + 1*SC); }
+    /* les noms et les taux des agents, APRES les etiquettes des jetons et les particules, avec un
+       contour sombre : ils passaient sous « $FLOW » et sous les traits (capture du 14/10/2026) */
+    const ecrit = (txt, x, y) => { cx.lineJoin = "round"; cx.lineWidth = 3.5*SC; cx.strokeStyle = "rgba(5,10,28,.95)"; cx.strokeText(txt, x, y); cx.fillText(txt, x, y); };
+    for(const k in nodes){ const n = nodes[k]; if(n.kind === "anchor" || k === "hub" || !P[k]) continue; const x = P[k].x, y = P[k].y, r = RAD(k);
+      const sat = n.kind === "sat", a = AG()[k] || {};
+      cx.font = (sat ? "600 " : "700 ") + Math.round((sat ? 11.5 : 12.5)*SC) + "px Archivo, sans-serif"; cx.fillStyle = sat ? "#D3DCF5" : "#fff";
+      ecrit(agName(k), x, y + r + (sat ? 16 : 24)*SC);
+      if(!sat){ cx.font = "600 " + Math.round(11*SC) + "px 'JetBrains Mono', monospace"; cx.fillStyle = PASS[k] < .2 ? "#CDB8FF" : "#8FEFFF";
+        ecrit(a.role === "execution" ? ph("cvOuvertes", int(C().closer)) : a.role === "banque" ? ph("cvMises", int(C().banquier)) : ph("cvPasse", pctPass(PASS[k])), x, y + r + 38*SC); }
+    }
     for(const f of floats){ cx.globalAlpha = Math.max(0, Math.min(1, f.life*1.6)); cx.fillStyle = f.c; cx.fillText(f.txt, f.x, f.y); }
     cx.globalAlpha = 1;
     /* fondu du bord d'entree, dans le canvas (un mask CSS couterait un rendu hors ecran) */

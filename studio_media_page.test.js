@@ -129,7 +129,7 @@ const FR = /[àâçéèêëîïôûùüÿœ]|\b(les|des|une|est|pour|avec|vous|v
   const pret = new Set();
   function remet() {
     Object.assign(S, { cat: catReel(), credit: 4.2, envois: [], lectures: [], imageDelai: 0, imageRep: null, polls: 0, pollsBloques: false, reprise: {}, corsImgen: true,
-      pollHtml: 0, poll401: false, imageHtml: 0, repriseAuto: null, video404: false, scene402: false, topupMontant: null, piege: [], catLectures: 0, solde: null });
+      pollHtml: 0, poll401: false, imageHtml: 0, repriseAuto: null, video404: false, scene402: false, topupMontant: null, piege: [], catLectures: 0, solde: null, topupSigne: null, topups: [], histCredit: null, suiteSeule: false });
   }
   remet();
   function routeProd(q, u, auth) {
@@ -155,9 +155,10 @@ const FR = /[àâçéèêëîïôûùüÿœ]|\b(les|des|une|est|pour|avec|vous|v
     if (S.scene402) return [402, { ok: false, code: 402, raison: 'balance too low for this generation', requisSwoge: '85106.4' }];
     const sc = Prod.scene(prod, corps.texte, corps.duree, { camera: corps.camera });
     if (sc.erreur) return [400, { ok: false, raison: sc.erreur }];
-    const video = 'v' + S.envois.length + 'x';
-    PS.noteScene(ADDR, prod.id, { id: 's' + S.envois.length, texte: sc.texte, video, statut: 'pending', duree: corps.duree });
-    return [200, { ok: true, genre: 'video', id: video, status: 'pending' }];
+    const video = 'v' + S.envois.length + 'x', idScene = 's' + S.envois.length;
+    PS.noteScene(ADDR, prod.id, { id: idScene, texte: sc.texte, video, statut: 'pending', duree: corps.duree, t: Date.now() });
+    /* `suiteSeule` : xAI a refuse la derniere image avec les references, le serveur a relance depuis la derniere image seule (studio_media.js, lanceVideo). */
+    return [200, { ok: true, genre: 'video', id: video, status: 'pending', scene: idScene, production: prod.id, suiteSeule: !!S.suiteSeule }];
   }
   async function route(r) {
     const q = r.request(), u = new URL(q.url());
@@ -173,9 +174,12 @@ const FR = /[àâçéèêëîïôûùüÿœ]|\b(les|des|une|est|pour|avec|vous|v
       S.envois.push(e);
       if (auth !== SESSION) return json(401, { ok: false, raison: 'sign in with your wallet first' });
       if (u.pathname === '/studio/chat/solde') return json(200, { ok: true, adresse: ADDR, solde: S.solde || '182400.52' });
-      if (u.pathname === '/credit') return json(200, { ok: true, balanceUsd: S.credit, history: [{ at: '2026-10-12T10:00:00.000Z', kind: 'top-up', usd: 5, what: null }], limits: { minUsd: 0.1, maxUsd: 50, maxSoldeUsd: 100 }, networks: { base: true, solana: true } });
+      if (u.pathname === '/credit') return json(200, { ok: true, balanceUsd: S.credit, history: S.histCredit || [{ at: '2026-10-12T10:00:00.000Z', kind: 'top-up', usd: 5, what: null }], limits: { minUsd: 0.1, maxUsd: 50, maxSoldeUsd: 100 }, networks: { base: true, solana: true } });
       /* La recharge x402 : le 402 annonce `topupMontant` unites d'USDC (le vrai serveur : le montant + ses frais de reglement, x402.js). */
       if (u.pathname === '/credit/topup') {
+        S.topups.push({ sig: q.headers()['payment-signature'] || null });
+        /* `topupSigne` : l issue d une requete SIGNEE (attente, regle non lu, reseau coupe) — celles du vrai serveur. */
+        if (q.headers()['payment-signature'] && S.topupSigne) { const x = S.topupSigne(q, e); if (x) return x(r); }
         if (q.headers()['payment-signature']) return json(200, { ok: true, creditedUsd: e.corps.usd, balanceUsd: S.credit + e.corps.usd });
         const req = { x402Version: 2, resource: { url: 'https://' + HOTE + '/credit/topup' }, accepts: [{ scheme: 'exact', network: 'eip155:8453', asset: USDC_BASE, payTo: '0x' + '1'.repeat(40),
           amount: String(S.topupMontant != null ? S.topupMontant : Math.round(e.corps.usd * 1e6) + 1000), maxTimeoutSeconds: 120, extra: { name: 'USD Coin', version: '2' } }] };
@@ -211,10 +215,12 @@ const FR = /[àâçéèêëîïôûùüÿœ]|\b(les|des|une|est|pour|avec|vous|v
       return json(404, { ok: false, raison: 'unknown route' });
     }
     /* Un hote nomme dans `?server=` : il ne doit rien recevoir (ou rien qui porte le jeton). */
-    if (u.hostname === PIEGE) { S.piege.push({ m: q.method(), chemin: u.pathname, auth: q.headers().authorization || null }); return r.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify(S.cat) }); }
+    if (u.hostname === PIEGE || u.hostname.endsWith('.' + PIEGE)) { S.piege.push({ m: q.method(), chemin: u.pathname, auth: q.headers().authorization || null }); return r.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify(S.cat) }); }
     /* Le CORS d'imgen.x.ai n'est pas verifie (releve du 12/10) : refuse, la lecture en script echoue
        (Playwright ajoute de lui-meme l'en-tete CORS a un fulfill : on coupe donc la lecture « fetch »). */
     if (u.hostname === 'imgen.x.ai' && !S.corsImgen && q.resourceType() === 'fetch') return r.abort('accessdenied');
+    /* Un lien expire (xAI ne publie pas la duree de ses liens ; nos fichiers ChatGPT vivent 7 jours) : 404. */
+    if (/^\/expire/.test(u.pathname)) return r.fulfill({ status: 404, contentType: 'text/plain', body: 'gone' });
     if (u.hostname === 'imgen.x.ai') return r.fulfill({ status: 200, contentType: 'image/png', headers: S.corsImgen ? { 'access-control-allow-origin': '*' } : {}, body: PNG });
     if (u.hostname === 'vidgen.x.ai') return r.fulfill({ status: 200, contentType: 'video/mp4', body: '' });
     return r.abort();
@@ -273,11 +279,21 @@ const FR = /[àâçéèêëîïôûùüÿœ]|\b(les|des|une|est|pour|avec|vous|v
     const cat = S.cat;
     const usd = (fid, mid, nb, ref) => { const l = listeServeurUsd(cat, fid, mid, nb, ref); return l == null ? null : dollars(l); };
     const g1 = cat.image.fournisseurs[0].modeles[0];
-    eq(await prixBouton(p), dollars(g1.parImageUsd), 'Grok Speed ×1 : le prix du catalogue');
-    if (Med) eq(await prixBouton(p), usd('grok', 'rapide', 1, false), 'et c est le prix de liste du serveur (coutsImage × marge)');
+    /* Grok : le serveur facture le cout RENDU par xAI x marge, jamais la liste (studio_media.js, regle),
+       et aucune image Grok n est mesuree contre sa liste (revue du 14/10 : « $0.06 » ferme pour
+       Quality, servie au palier Medium que xAI liste 50 % au-dessus). Le prix est celui du
+       catalogue, dit estime : « ~ ». */
+    eq(await prixBouton(p), '~' + dollars(g1.parImageUsd), 'Grok Speed ×1 : le prix du catalogue, dit estime');
+    if (Med) eq(await prixBouton(p), '~' + usd('grok', 'rapide', 1, false), 'et c est le prix de liste du serveur (coutsImage × marge)');
+    ok(/billed on what xAI reports/.test(await p.textContent('#priceNote')) && /not yet checked against a real bill/.test(await p.textContent('#priceNote')),
+      'la note dit d ou vient le chiffre, et qu aucune facture ne l a encore verifie (catalogue sans mesure)');
+    await p.click('.mcard[data-id="grok:qualite"]');
+    ok(/default quality for this model is listed higher/.test(await p.textContent('#priceNote')) && /^~/.test(await prixBouton(p)) && /^~/.test(await p.textContent('.mcard[data-id="grok:qualite"] .amt')),
+      'Grok Quality (2.0) : « ~ » sur le bouton et la carte, et la note dit que le palier servi par defaut est liste plus haut');
+    await p.click('.mcard[data-id="grok:rapide"]');
     await p.click('#segN [data-n="4"]');
-    eq(await prixBouton(p), dollars(g1.parImageUsd * 4), '×4');
-    if (Med) eq(await prixBouton(p), usd('grok', 'rapide', 4, false), '×4 : celui du serveur');
+    eq(await prixBouton(p), '~' + dollars(g1.parImageUsd * 4), '×4');
+    if (Med) eq(await prixBouton(p), '~' + usd('grok', 'rapide', 4, false), '×4 : celui du serveur');
     await p.click('#segN [data-n="1"]');
     /* La marge : le catalogue la donne (marge), la page la dit (« plus our margin of 50% »). */
     const pct = Math.round((cat.marge - 1) * 100) + '%';
@@ -293,7 +309,7 @@ const FR = /[àâçéèêëîïôûùüÿœ]|\b(les|des|une|est|pour|avec|vous|v
     ok(await p.isVisible('#refNote') && /SWOGE reference added/.test(await p.textContent('#refNote')), 'la phrase le dit');
     ok(await p.$eval('#refBtn', (b) => b.classList.contains('auto')), 'la case le montre');
     await p.fill('#prompt', 'swogeland at night');
-    eq(await prixBouton(p), dollars(g1.parImageUsd), '« swogeland » ne nomme pas SWOGE (meme \\b que le serveur)');
+    eq(await prixBouton(p), '~' + dollars(g1.parImageUsd), '« swogeland » ne nomme pas SWOGE (meme \\b que le serveur)');
     await p.fill('#prompt', 'SWOGE at the gym');
     await p.setInputFiles('#fichier', { name: 'p.png', mimeType: 'image/png', buffer: PNG });
     await p.waitForSelector('#refBtn.has');
@@ -303,11 +319,22 @@ const FR = /[àâçéèêëîïôûùüÿœ]|\b(les|des|une|est|pour|avec|vous|v
     await p.click('[data-pay="swoge"]');
     eq(await prixBouton(p), '~' + nombre(g1.parImageSwoge * 2) + ' $SWOGE', 'paye en $SWOGE : le prix $SWOGE du catalogue');
     await p.fill('#prompt', 'a golden barbell');
-    eq(await prixBouton(p), nombre(g1.parImageSwoge) + ' $SWOGE', 'sans image envoyee, le prix de liste exact, sans « ~ »');
+    eq(await prixBouton(p), '~' + nombre(g1.parImageSwoge) + ' $SWOGE', 'sans image envoyee : le prix de liste, une image de moins, toujours estime');
     await p.fill('#prompt', 'SWOGE lifting a golden barbell on a rooftop');
     await p.click('[data-pay="credit"]');
+    /* ChatGPT Image Speed (medium) : le chiffre du catalogue vient d UNE image mesuree en « high »
+       (studio_media.js, OPENAI_MESURE_SORTIE) ; rien n est mesure en medium : aucun chiffre (revue du 14/10). */
     await p.click('.mcard[data-id="openai:rapide"]');
-    const o1 = cat.image.fournisseurs[1].modeles[0];
+    {
+      const carte = await p.textContent('.mcard[data-id="openai:rapide"] .pr');
+      ok(!/\$|\d/.test(carte) && /not measured yet/.test(carte), 'ChatGPT Image Speed : la carte ne porte aucun chiffre [' + carte + ']');
+      eq(await prixBouton(p), 'priced on use', 'et le bouton le dit, sans chiffre');
+      ok(/no medium-quality image has been measured yet/.test(await p.textContent('#priceNote')), 'la note dit pourquoi');
+    }
+    await p.click('.mcard[data-id="openai:qualite"]');
+    ok(/from 1 measured image \(high quality\)/.test(await p.textContent('.mcard[data-id="openai:qualite"] .pr')) && /an estimate from 1 measured image/.test(await p.textContent('#priceNote')),
+      'ChatGPT Image Quality : la carte et la note disent sur combien d images porte l estimation');
+    const o1 = cat.image.fournisseurs[1].modeles[1];
     eq(await prixBouton(p), '~' + dollars(o1.parImageUsd) + ' + ref', 'ChatGPT Image + SWOGE : l estimation du catalogue, et la reference dite sans chiffre invente');
     ok(/estimate/.test(await p.textContent('#priceNote')), 'dite estimation');
     await p.fill('#prompt', 'a golden barbell');
@@ -322,7 +349,7 @@ const FR = /[àâçéèêëîïôûùüÿœ]|\b(les|des|une|est|pour|avec|vous|v
        publie pas : la page le DIT, et l ecart est le meme pour 1 et pour 4 images (une fois par demande). */
     ok(/plus the input tokens of your prompt \(not priced in advance\)/.test(await p.textContent('#priceNote')), 'la note dit que le texte du prompt n est pas compte dans l estimation');
     if (Med) {
-      const ecart = (nb) => listeServeurUsd(cat, 'openai', 'rapide', nb, false) - o1.parImageUsd * nb;
+      const ecart = (nb) => listeServeurUsd(cat, 'openai', 'qualite', nb, false) - o1.parImageUsd * nb;
       ok(Math.abs(ecart(1) - ecart(4)) < 1e-3 && ecart(1) > 0 && ecart(1) < o1.parImageUsd / 10,
         'l ecart avec la liste du serveur est le texte du prompt seul : ' + ecart(1).toFixed(4) + ' $ a x1, ' + ecart(4).toFixed(4) + ' $ a x4 (une fois par demande, moins d un dixieme d image)');
     }
@@ -341,7 +368,12 @@ const FR = /[àâçéèêëîïôûùüÿœ]|\b(les|des|une|est|pour|avec|vous|v
     await p.click('#segL [data-l="10"]');
     eq(await prixBouton(p), nombre(v.modeles[0].parSecondeSwoge * 10) + ' $SWOGE', '10 s : parSecondeSwoge × 10');
     await p.click('#segR [data-r="720p"]');
-    eq(await prixBouton(p), 'from ' + nombre(v.modeles[0].parSecondeSwoge * 10) + ' $SWOGE', '720p : « from », l ecart n est pas publie');
+    eq(await prixBouton(p), 'from ' + nombre(v.modeles[0].parSecondeSwoge * 10) + ' $SWOGE', '720p : « from » (le catalogue ne chiffre pas l ecart)');
+    /* xAI PUBLIE l ecart 480p / 720p (docs.x.ai, releve du 13/10) : la page ne dit plus le contraire (revue du 14/10). */
+    {
+      const note = await p.textContent('#priceNote');
+      ok(/720p is billed at xAI's higher 720p rate, not shown here yet/.test(note) && !/doesn't publish/.test(note), '720p : la note dit que xAI facture plus, sans pretendre que l ecart n est pas publie');
+    }
     const visible = await p.innerText('body');
     ok(!/\$0\.84|\$0\.63|\$3\.00|\$0\.32|\$0\.042|\$0\.02 \/|Planned/.test(visible), 'aucun prix « planned » de la maquette');
     await ferme(p);
@@ -352,11 +384,11 @@ const FR = /[àâçéèêëîïôûùüÿœ]|\b(les|des|une|est|pour|avec|vous|v
     S.cat.image.fournisseurs[0].modeles.push({ id: 'turbo', nom: 'Turbo', parImageSwoge: 473, parImageUsd: 0.02 });
     S.cat.video.modeles[0].typiqueSwoge = 9999;
     const p2 = await ouvre({ session: true });
-    eq(await prixBouton(p2), '$0.05', 'le serveur change le prix : le bouton suit');
+    eq(await prixBouton(p2), '~$0.05', 'le serveur change le prix : le bouton suit');
     ok(/\$0\.05/.test(await p2.textContent('.mcard[data-id="grok:rapide"]')), 'et la carte aussi');
     ok(await p2.isVisible('.mcard[data-id="grok:turbo"]'), 'un modele ajoute au catalogue apparait');
     await p2.click('.mcard[data-id="grok:turbo"]');
-    eq(await prixBouton(p2), '$0.02', 'et se choisit, a son prix');
+    eq(await prixBouton(p2), '~$0.02', 'et se choisit, a son prix');
     await p2.click('.tab[data-tab="video"]');
     eq(await prixBouton(p2), '9,999 $SWOGE', 'le prix video suit le catalogue');
     await ferme(p2);
@@ -367,7 +399,7 @@ const FR = /[àâçéèêëîïôûùüÿœ]|\b(les|des|une|est|pour|avec|vous|v
     const p3 = await ouvre({ session: true });
     ok(await p3.$eval('.mcard[data-id="openai:rapide"]', (c) => c.classList.contains('paused') && c.getAttribute('aria-disabled') === 'true'), 'un fournisseur coupe : sa carte dit Paused et ne se choisit pas');
     await p3.click('.mcard[data-id="openai:rapide"]');
-    eq(await prixBouton(p3), dollars(S.cat.image.fournisseurs[0].modeles[0].parImageUsd), 'le choix reste sur le modele ouvert');
+    eq(await prixBouton(p3), '~' + dollars(S.cat.image.fournisseurs[0].modeles[0].parImageUsd), 'le choix reste sur le modele ouvert');
     await ferme(p3);
     /* Le cours $SWOGE manque : le catalogue dit ouvert:false (studio_media.js, catalogue). Le serveur
        refuse alors le paiement en $SWOGE, mais une image au CREDIT est facturee au cours 1 (payeurDe)
@@ -377,7 +409,7 @@ const FR = /[àâçéèêëîïôûùüÿœ]|\b(les|des|une|est|pour|avec|vous|v
     S.cat.image.fournisseurs.forEach((f) => f.modeles.forEach((m) => { m.parImageSwoge = null; }));
     const p4 = await ouvre({ session: true });
     await p4.fill('#prompt', 'a doge');
-    ok(!(await p4.isDisabled('#gen')) && (await prixBouton(p4)) === dollars(S.cat.image.fournisseurs[0].modeles[0].parImageUsd) && await p4.$('.mcard.live[data-id="grok:rapide"]'),
+    ok(!(await p4.isDisabled('#gen')) && (await prixBouton(p4)) === '~' + dollars(S.cat.image.fournisseurs[0].modeles[0].parImageUsd) && await p4.$('.mcard.live[data-id="grok:rapide"]'),
       'cours indisponible, paye au credit : le bouton reste ouvert, a son prix en dollars, et la carte se choisit');
     await p4.click('[data-pay="swoge"]');
     ok(await p4.isDisabled('#gen') && (await libBouton(p4)) === 'Paused' && (await p4.textContent('#priceNote')) === S.cat.note && await p4.$('.mcard.paused[data-id="grok:rapide"]'),
@@ -412,7 +444,8 @@ const FR = /[àâçéèêëîïôûùüÿœ]|\b(les|des|une|est|pour|avec|vous|v
     remet();
     const p = await ouvre({ session: true });
     for (const t of ['voice', 'avatar']) {
-      await p.click('.tab[data-tab="' + t + '"]');
+      /* aria-disabled (annonce « pas en service ») : l onglet s ouvre quand meme pour le dire. */
+      await p.click('.tab[data-tab="' + t + '"]', { force: true });
       ok(await p.isDisabled('#gen') && (await libBouton(p)) === 'Coming soon', t + ' : le bouton dit Coming soon, desactive');
       ok(await p.isDisabled('#prompt'), t + ' : rien a ecrire');
       await p.click('#gen', { force: true }).catch(() => {});
@@ -421,7 +454,7 @@ const FR = /[àâçéèêëîïôûùüÿœ]|\b(les|des|une|est|pour|avec|vous|v
     }
     await p.waitForTimeout(200);
     eq(posts().length, 0, 'aucune requete d argent depuis Voice ou Avatar');
-    await p.click('.tab[data-tab="voice"]');
+    await p.click('.tab[data-tab="voice"]', { force: true });
     await p.click('.mcard.serie [data-vers-serie]');
     ok(await p.isVisible('#prod') && (await p.getAttribute('.tab[data-tab="video"]', 'aria-selected')) === 'true', 'les voix des personnages menent vers Series & Ads, ou elles vivent');
     await ferme(p);
@@ -634,6 +667,19 @@ const FR = /[àâçéèêëîïôûùüÿœ]|\b(les|des|une|est|pour|avec|vous|v
     await p.waitForSelector('#scenes a.scene video', { timeout: 9000 });
     ok(/^https:\/\/vidgen\.x\.ai\//.test(await p.getAttribute('#scenes a.scene video', 'src')), 'la scene finie arrive sur le tableau (https seulement)');
     ok(await p.isVisible('#contBox'), 'et la suite de la scene finie est proposee');
+    /* Revue du 14/10 (sonde s8) : une scene facturee n entrait ni dans l historique ni dans « Last 7 days ». */
+    await p.waitForFunction(() => /28,370 \$SWOGE/.test(document.getElementById('hist').textContent), null, { timeout: 5000 }).catch(() => {});
+    ok(/28,370 \$SWOGE/.test(await p.textContent('#hist')) && /Series · Gym Wars · scene 1/.test(await p.textContent('#hist')) && !(await p.$eval('#hsum', (e) => e.hidden)) && /28,370/.test(await p.textContent('#weekSw')),
+      'la scene facturee 28 370 $SWOGE entre dans l historique et dans « Last 7 days »');
+    {
+      await p.evaluate(() => { location.hash = 'image'; });
+      await p.reload({ waitUntil: 'domcontentloaded' }); await p.waitForTimeout(800);
+      ok((await p.getAttribute('.tab[data-tab="image"]', 'aria-selected')) === 'true', 'rechargee sur l onglet Image');
+      const n = await p.evaluate(() => [...document.querySelectorAll('#hist li')].filter((l) => /Gym Wars · scene 1/.test(l.textContent)).length);
+      eq(n, 1, 'rechargee sur l onglet Image : elle y est, une seule fois');
+      await p.click('.tab[data-tab="video"]');
+      await p.waitForSelector('#scenes a.scene video', { timeout: 9000 });
+    }
     /* Une scene ratee (le serveur a tout rendu, et le dit) et une scene « unknown » (le serveur l a
        perdue : un redemarrage garde la reserve, une scene finie et facturee peut aussi y tomber). */
     {
@@ -653,6 +699,17 @@ const FR = /[àâçéèêëîïôûùüÿœ]|\b(les|des|une|est|pour|avec|vous|v
       await p.waitForFunction(() => /balance too low/.test(document.getElementById('pErr').textContent), null, { timeout: 8000 });
       eq(await p.textContent('#pErr'), 'balance too low for this generation — about 85,106 $SWOGE is held while it films.', 'un refus 402 dit ce que le serveur tient (requisSwoge)');
       S.scene402 = false;
+      /* Revue du 14/10 : xAI refuse la derniere image avec les references, le serveur relance depuis la
+         derniere image SEULE (ni images ni voix des personnages, meme prix) et rend `suiteSeule` ; la
+         page n en disait rien. */
+      S.suiteSeule = true;
+      await p.fill('#sceneTxt', 'SWOGE lifts once more'); await p.click('#film');
+      await p.waitForFunction(() => /last frame only/.test(document.getElementById('pErr').textContent), null, { timeout: 8000 }).catch(() => {});
+      ok(/faces and voices may change/.test(await p.textContent('#pErr')), 'suiteSeule : la page dit que visages et voix peuvent changer [' + (await p.textContent('#pErr')) + ']');
+      await p.click('.tab[data-tab="image"]'); await p.click('.tab[data-tab="video"]');
+      await p.waitForFunction(() => /last frame only/.test(document.getElementById('scenes').textContent), null, { timeout: 8000 }).catch(() => {});
+      ok(/from the last frame only — faces and voices may differ/.test(await p.textContent('#scenes')), 'et le tableau le garde sur la scene, relu');
+      S.suiteSeule = false;
     }
     await p.click('#imagine'); await p.waitForFunction(() => /shake hands/.test(document.getElementById('sceneTxt').value));
     ok(/39 left today/.test(await p.textContent('#imagine')), 'Imagine : gratuit, et il dit combien il en reste');
@@ -818,7 +875,7 @@ const FR = /[àâçéèêëîïôûùüÿœ]|\b(les|des|une|est|pour|avec|vous|v
     remet();
     const p = await ouvre({ session: true, suite: '?addr=' + AUTRE + '&adresse=' + AUTRE, init: [(a) => { try { localStorage.setItem('swogeAdresse', a); localStorage.setItem('walletAddress', a); } catch (e) {} }, AUTRE] });
     for (const t of ['image', 'video', 'voice', 'avatar']) {
-      await p.click('.tab[data-tab="' + t + '"]'); await p.waitForTimeout(150);
+      await p.click('.tab[data-tab="' + t + '"]', { force: true }); await p.waitForTimeout(150);
       const txt = await p.innerText('body');
       const m = txt.match(FR);
       ok(!m, 'onglet ' + t + ' : aucun texte francais visible' + (m ? ' [« ' + m[0] + ' »]' : ''));
@@ -844,7 +901,7 @@ const FR = /[àâçéèêëîïôûùüÿœ]|\b(les|des|une|est|pour|avec|vous|v
        rien ne mesure la moderation des fournisseurs ; une photo jointe peut montrer n importe qui ;
        l historique n est que celui de l appareil ; l image envoyee a Grok n est pas chiffree d avance. */
     const montre = html.replace(/<!--[\s\S]*?-->/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
-    const promesses = montre.match(/never charged|nothing if it fails|real cost|always shows the current|nothing else charged|moderation refuses|no tool here puts|already in the price/gi) || [];
+    const promesses = montre.match(/never charged|nothing if it fails|real cost|always shows the current|nothing else charged|moderation refuses|no tool here puts|already in the price|keeps? (their|his) face|same faces|same characters scene after scene|doesn't publish the difference/gi) || [];
     ok(promesses.length === 0, 'aucune promesse que le serveur ne tient pas' + (promesses.length ? ' [' + [...new Set(promesses)].join(', ') + ']' : ''));
     /* Les quatre affiches du haut viennent toutes de generations : etiquetees toutes, ou aucune (avant :
        deux sur quatre, et s2_ep2, du meme commit que saga_ep6, passait pour faite a la main). */
@@ -861,6 +918,18 @@ const FR = /[àâçéèêëîïôûùüÿœ]|\b(les|des|une|est|pour|avec|vous|v
       if (a.method === 'wallet_switchEthereumChain') return null;
       if (a.method === 'eth_signTypedData_v4') { window.__signe.push(JSON.parse(a.params[1]).message); return '0x' + '22'.repeat(65); }
       return null; } }; };
+    /* Revue du 14/10 : avec le seul `autre-hote.example`, une borne affaiblie (regex sans ^…$, test sur
+       le parametre brut) passait verte alors que le jeton fuyait. Les formes qui CONTIENNENT les mots
+       de la borne : aucune ne recoit rien. */
+    for (const forme of ['https://localhost.' + PIEGE, 'https://127.0.0.1.' + PIEGE, 'https://' + PIEGE + '/?localhost', 'https://' + PIEGE + '#127.0.0.1']) {
+      remet();
+      const x = await ouvre({ session: true, suite: '?server=' + encodeURIComponent(forme), attente: 1200 });
+      await x.fill('#prompt', 'a doge'); await x.click('#gen'); await x.waitForSelector('#result.done', { timeout: 8000 }).catch(() => {});
+      ok(S.piege.length === 0 && S.envois.length > 2 && S.envois.every((e) => e.auth === 'Bearer ' + SESSION),
+        '?server=' + forme + ' : cet hote ne recoit rien (' + S.piege.length + ' requete), le jeton ne va qu au serveur (' + S.envois.length + ' requetes)');
+      await ferme(x);
+    }
+    remet();
     const p = await ouvre({ session: true, suite: '?server=' + encodeURIComponent('https://' + PIEGE), init: [portefeuille, null], attente: 1500 });
     await p.fill('#prompt', 'a doge'); await p.click('#gen'); await p.waitForSelector('#result.done', { timeout: 8000 }).catch(() => {});
     ok(S.piege.length === 0 && S.envois.length > 2 && S.envois.every((e) => e.auth === 'Bearer ' + SESSION),
@@ -879,7 +948,102 @@ const FR = /[àâçéèêëîïôûùüÿœ]|\b(les|des|une|est|pour|avec|vous|v
     await p.waitForFunction(() => /Done:/.test(document.getElementById('rcStatut').textContent), null, { timeout: 8000 });
     const sig = await p.evaluate(() => window.__signe);
     ok(sig.length === 1 && sig[0].value === '5001000', 'le montant choisi plus les frais du serveur (5,001 USDC) : signe une fois [' + (sig[0] && sig[0].value) + ']');
+    /* Un clic = UNE recharge (l intention 5, pour le bouton qui fait signer de l USDC — revue du 14/10 :
+       sans `b.disabled`, un double clic signait et reglait deux recharges, essai vert). */
+    {
+      const t0 = S.topups.length;
+      await p.dblclick('#rcSign');
+      await p.evaluate(() => { const b = document.getElementById('rcSign'); b.click(); b.click(); });
+      await p.waitForFunction(() => /Done:/.test(document.getElementById('rcStatut').textContent) && !document.getElementById('rcSign').disabled, null, { timeout: 8000 }).catch(() => {});
+      await p.waitForTimeout(400);
+      const l = S.topups.slice(t0);
+      ok((await p.evaluate(() => window.__signe.length)) === 2 && l.filter((x) => x.sig).length === 1 && l.length === 2,
+        'double clic et deux clics en script sur « Sign a $5 top-up » : UNE signature de plus, une demande et UN envoi signe [' + l.map((x) => (x.sig ? 'signe' : 'demande')).join(', ') + ']');
+    }
     await ferme(p);
+
+    /* ---- APRES LA SIGNATURE, JAMAIS « NOT CHARGED » SANS LE SAVOIR ----
+       Revue du 14/10 (sonde s1, 5 cas sur 5) : toute issue autre qu un 200 apres la signature disait
+       « Not topped up, not charged ». Les trois issues reelles du serveur : */
+    const PENDANTE = (tx) => (r) => r.fulfill({ status: 402, contentType: 'application/json',
+      headers: { 'access-control-allow-origin': '*', 'access-control-expose-headers': 'payment-required, payment-response',
+        'payment-response': Buffer.from(JSON.stringify({ success: false, errorReason: 'settlement_pending', transaction: tx, network: 'eip155:8453' })).toString('base64') },
+      body: JSON.stringify({ ok: false, error: 'payment pending - retry the same request with the same PAYMENT-SIGNATURE' }) });
+    const suitStatut = () => { window.__st = []; new MutationObserver(() => { const t = document.getElementById('rcStatut').textContent; if (t && window.__st[window.__st.length - 1] !== t) window.__st.push(t); })
+      .observe(document.getElementById('rcStatut'), { childList: true, characterData: true, subtree: true }); window.SWOGE_PAIE_DELAIS = [150]; };
+    const recharge5 = async (attendu) => {
+      const q = await ouvre({ session: true, init: [portefeuille, null] });
+      await q.evaluate(suitStatut);
+      await q.click('#topUp'); await q.click('#rcSign');
+      await q.waitForFunction((re) => new RegExp(re).test(document.getElementById('rcStatut').textContent), attendu.source, { timeout: 15000 }).catch(() => {});
+      return q;
+    };
+    /* (1) Reglement en attente : x402.js rend 402 + PAYMENT-RESPONSE, SANS PAYMENT-REQUIRED ; il ne
+       credite qu au 200 et ne reconcilie que la MEME signature representee. */
+    {
+      remet(); let tour = 0;
+      S.topupSigne = () => (++tour === 1 ? PENDANTE('0x' + 'ab'.repeat(32)) : null);
+      const q = await recharge5(/Done:|charged|Payment sent - /);
+      const sigs = S.topups.filter((x) => x.sig).map((x) => x.sig);
+      const st = await q.evaluate(() => window.__st);
+      ok((await q.evaluate(() => window.__signe.length)) === 1 && sigs.length === 2 && sigs[0] === sigs[1],
+        'reglement en attente : la MEME PAYMENT-SIGNATURE est representee (' + sigs.length + ' envois signes, 1 signature du portefeuille)');
+      ok(st.some((t) => /waiting for the chain - don't sign again/.test(t)) && /^Done: \$5\.00 added/.test(await q.textContent('#rcStatut')) && !st.some((t) => /not charged/i.test(t)),
+        'la page dit « waiting for the chain - don\'t sign again », puis « Done » ; jamais « not charged » [' + st.join(' | ') + ']');
+      await ferme(q);
+    }
+    /* (2) Regle mais non credite (502 de credits.js) : la phrase du serveur, sans « not charged » devant. */
+    {
+      remet();
+      const raison = 'the payment settled but its credit could not be read - contact support with transaction 0x' + 'cd'.repeat(32);
+      S.topupSigne = () => (r) => r.fulfill({ status: 502, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ ok: false, raison }) });
+      const q = await recharge5(/settled|charged/);
+      const t = await q.textContent('#rcStatut');
+      ok(t.includes(raison) && !/not charged/i.test(t), 'regle, credit illisible : « ' + t.slice(0, 90) + '… », sans « not charged »');
+      await ferme(q);
+    }
+    /* (3) Reseau coupe apres l envoi signe : le serveur a pu regler. La page relit /credit avant de
+       conclure — credite : « Done » ; rien : elle ne conclut pas, et ne fait pas signer une seconde fois. */
+    {
+      remet();
+      S.topupSigne = () => { S.histCredit = [{ at: new Date().toISOString(), kind: 'top-up', usd: 5, what: null, tx: '0x' + 'ef'.repeat(32) }, { at: '2026-10-12T10:00:00.000Z', kind: 'top-up', usd: 5, what: null }]; S.credit = 9.2; return (r) => r.abort('connectionreset'); };
+      const q = await recharge5(/Done:|charged|Payment sent - /);
+      ok(/^Done: \$5\.00 added/.test(await q.textContent('#rcStatut')), 'reseau coupe, mais /credit montre la recharge : « ' + (await q.textContent('#rcStatut')) + ' »');
+      await ferme(q);
+      remet();
+      S.topupSigne = () => (r) => r.abort('connectionreset');
+      const q2 = await recharge5(/Payment sent - |charged|Done:/);
+      const t = await q2.textContent('#rcStatut');
+      ok(/^Payment sent/.test(t) && /don't sign again/.test(t) && !/not charged/i.test(t) && await q2.isDisabled('#rcSign'),
+        'reseau coupe, /credit muet : « ' + t + ' », et le bouton reste coupe (signer encore paierait deux fois)');
+      eq(S.envois.filter((e) => e.chemin === '/credit').length >= 2, true, 'la page a relu /credit avant de conclure');
+      await ferme(q2);
+    }
+    /* (4) La meme regle sur « Sign $X and generate » (un 402 au credit). */
+    {
+      remet();
+      S.imageRep = { status: 402, body: { ok: false, code: 402, raison: 'your dollar credit is too low for this ($0.18 is reserved while it runs, you pay only what is used)', requisUsd: 0.18, creditUsd: 0.05, payeur: 'credit' } };
+      S.topupSigne = () => (r) => r.fulfill({ status: 502, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ ok: false, raison: 'the payment settled but its credit could not be read - contact support with transaction 0x12' }) });
+      const q = await ouvre({ session: true, init: [portefeuille, null] });
+      await q.fill('#prompt', 'a doge'); await q.click('#gen');
+      await q.waitForSelector('[data-r-signe]'); await q.click('[data-r-signe]');
+      await q.waitForFunction(() => /settled/.test(document.getElementById('resStage').textContent), null, { timeout: 10000 }).catch(() => {});
+      const t = await q.textContent('#resStage .rstat').catch(() => '');
+      ok(/the payment settled/.test(t) && !/not charged/i.test(t), '« Sign $0.13 and generate », regle non lu : « ' + t.slice(0, 80) + '… », sans « not charged »');
+      eq(posts(/\/studio\/media\/image$/).length, 1, 'et la generation ne repart pas sans credit confirme');
+      await ferme(q);
+    }
+    /* Avant la signature (le portefeuille refuse) : la, et la seulement, « not charged ». */
+    {
+      remet();
+      const refuse = () => { window.ethereum = { request: async (a) => { if (a.method === 'eth_requestAccounts') return ['0x' + '11'.repeat(20)]; if (a.method === 'eth_signTypedData_v4') { const e = new Error('User rejected the request.'); e.code = 4001; throw e; } return null; } }; };
+      const q = await ouvre({ session: true, init: [refuse, null] });
+      await q.click('#topUp'); await q.click('#rcSign');
+      await q.waitForFunction(() => /charged/.test(document.getElementById('rcStatut').textContent), null, { timeout: 8000 }).catch(() => {});
+      const t = await q.textContent('#rcStatut');
+      ok(/^Not topped up, not charged: User rejected/.test(t) && !(await q.isDisabled('#rcSign')), 'signature refusee : « ' + t + ' », et le bouton revient');
+      await ferme(q);
+    }
   }
 
   console.log('\n-- 14. le prix suit le serveur : relu chaque minute, et juste avant un envoi --');
@@ -889,11 +1053,11 @@ const FR = /[àâçéèêëîïôûùüÿœ]|\b(les|des|une|est|pour|avec|vous|v
     const cours0 = COURS, cours1 = 0.03 / 1073, cours2 = cours1 / 2;
     const p = await ouvre({ session: true, horloge: true });
     await p.click('[data-pay="swoge"]');
-    eq(await prixBouton(p), nombre(catAu(cours0).image.fournisseurs[0].modeles[0].parImageSwoge) + ' $SWOGE', 'au chargement : le prix $SWOGE du cours du moment');
+    eq(await prixBouton(p), '~' + nombre(catAu(cours0).image.fournisseurs[0].modeles[0].parImageSwoge) + ' $SWOGE', 'au chargement : le prix $SWOGE du cours du moment');
     /* Le cours du soir du 12/10 (1 073 $SWOGE l image Speed contre 710 le matin). */
     S.cat = catAu(cours1);
     await p.clock.fastForward(61000); await p.waitForTimeout(400);
-    eq(await prixBouton(p), nombre(S.cat.image.fournisseurs[0].modeles[0].parImageSwoge) + ' $SWOGE', 'le cours change, une minute passe : le bouton suit, page inchangee');
+    eq(await prixBouton(p), '~' + nombre(S.cat.image.fournisseurs[0].modeles[0].parImageSwoge) + ' $SWOGE', 'le cours change, une minute passe : le bouton suit, page inchangee');
     /* Le cours change encore, et l horloge saute sans que la minute ait sonne (onglet en veille) : le clic relit d abord. */
     S.cat = catAu(cours2);
     const t = await p.evaluate(() => Date.now());
@@ -902,7 +1066,7 @@ const FR = /[àâçéèêëîïôûùüÿœ]|\b(les|des|une|est|pour|avec|vous|v
     await p.fill('#prompt', 'a doge'); await p.click('#gen');
     await p.waitForFunction(() => /price just changed/.test(document.getElementById('toast').textContent), null, { timeout: 5000 }).catch(() => {});
     ok(S.catLectures > lu && posts(/\/studio\/media\/image$/).length === 0, 'catalogue de plus de 60 s au clic, prix change : le catalogue est relu et RIEN ne part');
-    eq(await prixBouton(p), nombre(S.cat.image.fournisseurs[0].modeles[0].parImageSwoge) + ' $SWOGE', 'le bouton montre le nouveau prix');
+    eq(await prixBouton(p), '~' + nombre(S.cat.image.fournisseurs[0].modeles[0].parImageSwoge) + ' $SWOGE', 'le bouton montre le nouveau prix');
     await p.click('#gen'); await p.waitForSelector('#result.done', { timeout: 8000 });
     eq(posts(/\/studio\/media\/image$/).length, 1, 'le second clic, au prix affiche, part');
     ok(/reads them again every minute and just before each generation/.test(await p.textContent('footer')), 'le pied de page dit ce que la page fait, sans « always »');
@@ -977,6 +1141,55 @@ const FR = /[àâçéèêëîïôûùüÿœ]|\b(les|des|une|est|pour|avec|vous|v
     await r.click('[data-r-recharge]');
     ok(await r.isVisible('#rc'), '« Top up » ouvre la recharge');
     await ferme(r);
+  }
+
+  console.log('\n-- 17. ce qui se voit dit vrai : « Soon » au telephone, l image choisie, un lien expire --');
+  {
+    /* Un pixel de l ECRAN (pas une classe) : la capture d un point, lue dans un canevas. */
+    const pixel = async (p, x, y) => {
+      const b = await p.screenshot({ clip: { x: Math.round(x), y: Math.round(y), width: 1, height: 1 } });
+      return p.evaluate((u) => new Promise((ok) => { const i = new Image(); i.onload = () => { const c = document.createElement('canvas'); c.width = c.height = 1; const g = c.getContext('2d'); g.drawImage(i, 0, 0); ok([...g.getImageData(0, 0, 1, 1).data].slice(0, 3)); }; i.src = u; }), 'data:image/png;base64,' + b.toString('base64'));
+    };
+    const bleu = (c) => Math.abs(c[0] - 0x1B) < 30 && Math.abs(c[1] - 0x5F) < 30 && Math.abs(c[2] - 0xE0) < 30;
+    for (const w of [390, 1440]) {
+      remet();
+      const p = await ouvre({ session: true, largeur: w, hauteur: w > 900 ? 900 : 760, mobile: w < 900 });
+      /* Revue du 14/10 : sous 720 px, « Soon » etait cache, les quatre onglets se lisaient comme quatre outils en service. */
+      const t = await p.$$eval('.tab[data-tab="voice"], .tab[data-tab="avatar"]', (l) => l.map((b) => { const s = b.querySelector('.soon'), r = s.getBoundingClientRect();
+        return { txt: b.innerText.replace(/\s+/g, ' '), vu: getComputedStyle(s).display !== 'none' && r.width > 0 && r.height > 0, dis: b.getAttribute('aria-disabled') }; }));
+      ok(t.every((x) => /Soon/i.test(x.txt) && x.vu && x.dis === 'true'), 'a ' + w + ' px : Voice et Avatar portent « Soon », visible, et aria-disabled [' + t.map((x) => x.txt).join(' / ') + ']');
+      /* Revue du 14/10 : l anneau du choix, en box-shadow du bouton, etait couvert par l image : aucun pixel ne changeait. */
+      await p.click('#segN [data-n="4"]'); await p.fill('#prompt', 'four doges'); await p.click('#gen');
+      await p.waitForSelector('#result.done .rgrid button', { timeout: 8000 });
+      await p.evaluate(() => document.getElementById('result').scrollIntoView({ block: 'center' })); await p.waitForTimeout(250);
+      const bord = (k) => p.$$eval('.rgrid button', (l, i) => { const r = l[i].getBoundingClientRect(); return { x: r.left + 1.5, y: r.top + r.height / 2 }; }, k);
+      const b0 = await bord(0), b2 = await bord(2);
+      const avant = [await pixel(p, b0.x, b0.y), await pixel(p, b2.x, b2.y)];
+      const c2 = await p.$$eval('.rgrid button', (l) => { const r = l[2].getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; });
+      await p.mouse.click(c2.x, c2.y); await p.waitForTimeout(200);
+      const apres = [await pixel(p, b0.x, b0.y), await pixel(p, b2.x, b2.y)];
+      const tick = await p.$$eval('.rgrid button', (l) => l.map((b) => { const t = b.querySelector('.tick'); return !!t && getComputedStyle(t).display !== 'none'; }));
+      ok(bleu(avant[0]) && !bleu(avant[1]) && !bleu(apres[0]) && bleu(apres[1]) && tick[2] && !tick[0],
+        'a ' + w + ' px, x4 : l anneau bleu se voit a l ecran sur l image choisie, et suit l appui (bord de l image 1 : ' + avant[0] + ' -> ' + apres[0] + ' ; image 3 : ' + avant[1] + ' -> ' + apres[1] + '), avec sa coche');
+      await ferme(p);
+    }
+    /* Revue du 14/10 (sonde s13) : un lien expire montrait l icone d image cassee et le prompt brut sous
+       les pastilles 1/2, et la tuile restait un lien mort. */
+    for (const w of [390, 1440]) {
+      remet();
+      const vieux = Date.now() - 4 * 86400000;
+      const histo = [{ genre: 'image', prompt: 'SWOGE flexing on a golden barbell in a neon gym at midnight', nom: 'Grok Imagine · Speed · ×2', urls: ['https://imgen.x.ai/expire1.png', 'https://imgen.x.ai/expire2.png'], statut: 'done', payeur: 'credit', usd: 0.06, t: vieux }];
+      const p = await ouvre({ session: true, largeur: w, hauteur: w > 900 ? 900 : 760, mobile: w < 900, attente: 1200,
+        init: [(o) => { try { localStorage.setItem(o.k, JSON.stringify(o.l)); } catch (e) {} }, { k: 'swogeStudioHisto:' + ADDR, l: histo }] });
+      await p.waitForFunction(() => document.querySelectorAll('#gal .perime').length === 2, null, { timeout: 5000 }).catch(() => {});
+      const r = await p.evaluate(() => ({ perimes: [...document.querySelectorAll('#gal .tile')].map((a) => ({ lien: a.getAttribute('href'), txt: a.innerText.replace(/\s+/g, ' '), mort: a.classList.contains('mort') })),
+        cassees: [...document.querySelectorAll('#gal img, #hist img')].filter((i) => i.complete && i.naturalWidth === 0).length,
+        histo: !!document.querySelector('#hist .hth.perime-h') }));
+      /* (les scenes de Series & Ads deja filmees par l essai 10 y entrent aussi : le faux hote video rend un corps vide) */
+      ok(r.perimes.length >= 2 && r.perimes.every((x) => x.mort && !x.lien && /^Link expired/.test(x.txt) && !/golden barbell/.test(x.txt)) && r.cassees === 0 && r.histo,
+        'a ' + w + ' px, lien expire : « Link expired » avec sa date, plus de lien mort ni d image cassee, le prompt ne deborde plus [' + r.perimes.map((x) => x.txt).join(' / ') + ']');
+      await ferme(p);
+    }
   }
 
   ok(erreurs.length === 0, 'aucune erreur dans la console' + (erreurs.length ? ' : ' + [...new Set(erreurs)].slice(0, 5).join(' | ') : ''));

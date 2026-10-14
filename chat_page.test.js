@@ -235,13 +235,19 @@ const sse = (evs) => evs.map(([t, d]) => 'event: ' + t + '\ndata: ' + JSON.strin
     /* `?server=` d un autre hote (un lien piege sur le vrai domaine) : il ne recoit RIEN, et le jeton ne
        va qu au serveur. Releve du 13/10 sur studio.html : sans borne, le jeton de session (30 jours)
        partait en Authorization vers l hote de l URL, et la recharge lui laissait choisir le montant. */
-    const x = await ouvre({ session:'jeton-de-test', rep, requete: '?server=' + encodeURIComponent('https://autre-hote.example') });
-    await pose(x.page, 'What is new today?');
-    await x.page.waitForSelector('.msg.ia .meta');
-    const vers = x.hotes.filter((v) => v.auth);
-    ok(x.envois.length === 1 && !x.hotes.some((v) => v.h === 'autre-hote.example') && vers.length > 0 && vers.every((v) => v.h === 'web-production-220a3.up.railway.app'),
-       '?server=https://autre-hote.example : cet hote ne recoit rien, le jeton ne va qu au serveur [' + [...new Set(vers.map((v) => v.h))].join(', ') + ']');
-    await x.ctx.close();
+    /* Revue du 14/10 : un seul hote piege, sans « localhost » ni « 127.0.0.1 » dedans, laissait passer
+       une borne affaiblie (regex sans ^…$, test sur le parametre brut) : 3 requetes avec le jeton,
+       essai vert. Les formes qui contiennent les mots de la borne sont essayees aussi. */
+    for (const forme of ['https://autre-hote.example', 'https://localhost.autre-hote.example', 'https://127.0.0.1.autre-hote.example',
+                         'https://autre-hote.example/?localhost', 'https://autre-hote.example#127.0.0.1']) {
+      const x = await ouvre({ session:'jeton-de-test', rep, requete: '?server=' + encodeURIComponent(forme) });
+      await pose(x.page, 'What is new today?');
+      await x.page.waitForSelector('.msg.ia .meta');
+      const vers = x.hotes.filter((v) => v.auth);
+      ok(x.envois.length === 1 && !x.hotes.some((v) => v.h.endsWith('autre-hote.example')) && vers.length > 0 && vers.every((v) => v.h === 'web-production-220a3.up.railway.app'),
+         '?server=' + forme + ' : cet hote ne recoit rien, le jeton ne va qu au serveur [' + [...new Set(vers.map((v) => v.h))].join(', ') + ']');
+      await x.ctx.close();
+    }
   }
 
   console.log('\n-- 5. un refus le dit, et la question non servie ne repart pas --');

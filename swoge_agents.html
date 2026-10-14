@@ -3623,7 +3623,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     recharge(etat.rcUsd || 5, rcStatut).then(function(r){
       b.disabled = false;
       rcStatut(r.corps.alreadyCredited ? "This payment was already credited." : "Done: " + dollars(r.corps.creditedUsd) + " added. Your credit: " + dollars(r.corps.balanceUsd) + ".");
-    })["catch"](function(e){ b.disabled = false; rcStatut("Not topped up, not charged: " + String(e && (e.message || e.code) || e).slice(0, 200), true); });
+    })["catch"](function(e){ b.disabled = false; rcStatut(window.SwogePaie ? window.SwogePaie.echec(e, "Not topped up") : "Not topped up: " + String(e && (e.message || e.code) || e).slice(0, 200), true); });
   });
   $("payeur").addEventListener("change", function(){ etat.payeurChoisi = payeur(); ecrisLocal("swogeChatPayeur", etat.payeurChoisi); if (etat.cat) { peintPrix(); if (typeof peintFeuille === "function") peintFeuille(); } });
   /* Le credit ne suffit pas : UNE signature du montant qui manque (0,10 $ au moins), puis la
@@ -5949,7 +5949,7 @@ function qrMatrice(txt){
     recharge(etat.rcUsd || 5, rcStatut).then(function(r){
       b.disabled = false;
       rcStatut(r.corps.alreadyCredited ? "This payment was already credited." : "Done: " + usd(r.corps.creditedUsd) + " added. Your credit: " + usd(r.corps.balanceUsd) + ".");
-    })["catch"](function(e){ b.disabled = false; rcStatut("Not topped up, not charged: " + String(e && (e.message || e.code) || e).slice(0, 200), true); });
+    })["catch"](function(e){ b.disabled = false; rcStatut(window.SwogePaie ? window.SwogePaie.echec(e, "Not topped up") : "Not topped up: " + String(e && (e.message || e.code) || e).slice(0, 200), true); });
   });
   $("payeur").addEventListener("change", function(){ etat.payeurChoisi = payeur(); ecrisLocal("swogeAgentPayeur", etat.payeurChoisi); if (etat.cat) peintPrix(); });
 
@@ -7240,7 +7240,7 @@ function qrMatrice(txt){
 <script>window.SWOGE_SOCKET = 'aucune';</script>
 <script src="stakebubble.min.js?v=f4d2b2d2"></script>
 <script src="x402_solana.js?v=1d86ed41"></script>
-<script src="x402_paie.js?v=8a30147a"></script>
+<script src="x402_paie.js?v=e05ad150"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
 <script src="lance_v4.js?v=6f7f9ced"></script>
 

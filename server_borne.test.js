@@ -21,6 +21,13 @@
  * wss : aucune socket ne s ouvre vers cet hote, et aucune requete n y porte
  * d en-tete Authorization. Une lecture publique (les chiffres de la barre,
  * sans jeton) peut encore y aller : elle ne livre rien.
+ *
+ * Revue du 14/10 : avec le seul hote `autre-hote.example` (ni « localhost » ni
+ * « 127.0.0.1 » dedans), une borne affaiblie passait verte — une regex sans
+ * ^…$, ou un test sur le parametre brut au lieu du hostname (mutant sur
+ * swolemind.html : 3 requetes avec le jeton, essai vert). L hote piege prend
+ * donc aussi les formes qui CONTIENNENT les mots de la borne, et tout hote qui
+ * finit par `autre-hote.example` compte.
  */
 const fs = require('fs');
 const path = require('path');
@@ -61,8 +68,12 @@ const SESSION = 'v1.' + ADDR + '.' + (Math.floor(Date.now() / 1000) + 86400 * 20
   ok(pages.length > 40, pages.length + ' pages lisent ?server= (elles-memes ou par stakebubble.js)');
 
   const fautives = [];
-  for (const forme of ['https://' + PIEGE, 'wss://' + PIEGE]) {
-    for (const f of pages) {
+  const FORMES = ['https://' + PIEGE, 'wss://' + PIEGE, 'https://localhost.' + PIEGE, 'https://127.0.0.1.' + PIEGE, 'https://' + PIEGE + '/?localhost', 'https://' + PIEGE + '#127.0.0.1'];
+  /* Six pages a la fois : six formes sur ~45 pages, sans sextupler la duree. */
+  const travaux = [];
+  for (const forme of FORMES) for (const f of pages) travaux.push([forme, f]);
+  const unePage = async ([forme, f]) => {
+    {
       const ctx = await nav.newContext({ viewport: { width: 1280, height: 800 } });
       await ctx.addInitScript((j) => { try { localStorage.setItem('swogeSession', j); } catch (e) {} }, SESSION);
       const vers = [];
@@ -75,12 +86,13 @@ const SESSION = 'v1.' + ADDR + '.' + (Math.floor(Date.now() / 1000) + 86400 * 20
         await p.waitForTimeout(1200);
       } catch (e) { /* une page lente ne dit rien de la borne : on juge ce qui est deja parti */ }
       const hote = (u) => { try { return new URL(u).hostname; } catch (e) { return ''; } };
-      const mal = vers.filter((v) => hote(v.url) === PIEGE && (v.ws || v.auth));
-      if (mal.length) fautives.push(f + ' (' + forme.split(':')[0] + ' : ' + [...new Set(mal.map((v) => (v.ws ? 'socket ' : 'Authorization ') + new URL(v.url).pathname))].slice(0, 3).join(', ') + ')');
+      const mal = vers.filter((v) => (hote(v.url) === PIEGE || hote(v.url).endsWith('.' + PIEGE)) && (v.ws || v.auth));
+      if (mal.length) fautives.push(f + ' (' + forme + ' : ' + [...new Set(mal.map((v) => (v.ws ? 'socket ' : 'Authorization ') + new URL(v.url).pathname))].slice(0, 3).join(', ') + ')');
       await ctx.close();
     }
-  }
-  ok(fautives.length === 0, 'aucune page n ouvre de socket vers ' + PIEGE + ', ni ne lui envoie le jeton' + (fautives.length ? ' — fautives : ' + fautives.join(' ; ') : ''));
+  };
+  await Promise.all(Array.from({ length: 6 }, async () => { while (travaux.length) await unePage(travaux.shift()); }));
+  ok(fautives.length === 0, 'aucune page n ouvre de socket vers ' + PIEGE + ' (ni ses ' + (FORMES.length - 2) + ' formes qui contiennent localhost ou 127.0.0.1), ni ne lui envoie le jeton' + (fautives.length ? ' — fautives : ' + fautives.join(' ; ') : ''));
 
   await nav.close();
   srv.close();

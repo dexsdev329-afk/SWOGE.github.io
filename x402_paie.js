@@ -12,6 +12,8 @@
  *     montantUsd     : le montant que le JOUEUR a choisi (une recharge de 5 $) ;
  *                      une demande de paiement qui en sort n'est jamais signee ;
  *     rend la reponse finale (Response) apres signature.
+ *   SwogePaie.echec(e, "Not topped up") → la phrase a montrer d'un echec : « not
+ *     charged » SEULEMENT pour un echec avant la signature, ou quand le serveur le dit.
  *
  * Base : EIP-3009 transferWithAuthorization, domaine « USD Coin » v2 (lu sur la
  * chaine le 27/09), signe par eth_signTypedData_v4. Solana : Wallet Standard +
@@ -104,7 +106,7 @@
       statut("Sign in your wallet: " + (Number(acc.amount) / 1e6) + " USDC to SWOGE (" + acc.payTo.slice(0, 6) + "…" + acc.payTo.slice(-4) + ").");
       return eth.request({ method: "eth_signTypedData_v4", params: [etat.compte, JSON.stringify(typed)] }).then(function (signature) {
         statut("Signed. The payment settles - a few seconds…");
-        return o.appel({ "payment-signature": b64({ x402Version: 2, resource: req.resource, accepted: acc, payload: { signature: signature, authorization: auth }, extensions: req.extensions }) });
+        return envoieSigne(o, { "payment-signature": b64({ x402Version: 2, resource: req.resource, accepted: acc, payload: { signature: signature, authorization: auth }, extensions: req.extensions }) }, true);
       });
     });
   }
@@ -154,18 +156,76 @@
       if (!signe || !signe.length) throw erreur("the wallet returned no signed transaction");
       try { lu = racine.SwogeSolana.lit(new Uint8Array(signe)); } catch (e) { lu = null; }
       statut("Signed. The payment settles - a few seconds…");
-      return o.appel({ "payment-signature": b64({ x402Version: 2, resource: req.resource, accepted: acc, payload: { transaction: racine.SwogeSolana.b64(new Uint8Array(signe)) }, extensions: req.extensions }) });
+      return envoieSigne(o, { "payment-signature": b64({ x402Version: 2, resource: req.resource, accepted: acc, payload: { transaction: racine.SwogeSolana.b64(new Uint8Array(signe)) }, extensions: req.extensions }) }, false);
     }).then(function (r) {
       if (r.status === 200 || sansMemo || !lu || lu.programmes.length <= 6) return r;
       /* Le portefeuille a ajoute des instructions (Phantom : jusqu'a 3) et le facilitateur plafonne a 6 : une fois encore, sans le memo. */
       return r.clone().text().then(function (t) {
         if (!/smart_wallet|instructions_length/.test(t)) return r;
+        /* Refusee a la verification (avant tout reglement) : la premiere signature n'a rien debite. */
+        o._suivi.signe = false;
         statut("Your wallet added instructions the facilitator refuses - sign once more (a shorter transaction)…");
         return solUneFois(o, true);
       });
     });
   }
   function paieSolana(o) { return solConnecte(o).then(function () { return solUneFois(o, false); }); }
+
+  /* ---- APRES LA SIGNATURE : ATTENDRE LA CHAINE, NE JAMAIS CONCLURE « NOT CHARGED » ----
+   * Releve du 14/10 (revue de studio.html, sonde s1, 5 cas sur 5) : toute issue autre qu'un 200 apres
+   * la signature s'affichait « Not topped up, not charged ». Trois issues reelles du serveur le
+   * dementent :
+   *  - reglement en attente : 402 + PAYMENT-RESPONSE (settlement_pending ou unexpected_settle_error),
+   *    SANS PAYMENT-REQUIRED (x402.js, traite, cas 'attente'). Le credit n'est ajoute que sur le 200
+   *    (credits.js, recharge) et le serveur ne reconcilie que la MEME signature representee, pendant
+   *    GARDE_ATTENTE_MS = 10 min (x402.js:192, reconcilie). On la represente donc, avec un delai
+   *    croissant, jusqu'a 10 min. Solana : le serveur ne reconcilie pas (une signature representee y
+   *    est « already presented ») : on ne represente pas, on le dit.
+   *  - reglement fait mais credit illisible (502, credits.js) : la phrase du serveur, telle quelle.
+   *  - reseau coupe apres l'envoi signe : le serveur a pu regler ; on ne conclut rien.
+   * `o._suivi.signe` : vrai des que la requete signee part ; une erreur levee avant porte
+   * `avantSignature` (refus du portefeuille, montant hors borne, aucune demande de paiement). */
+  var GARDE_MS = 10 * 60 * 1000;
+  function delais() { var d = racine.SWOGE_PAIE_DELAIS; return Array.isArray(d) && d.length ? d : [3000, 5000, 10000, 15000, 30000]; }
+  function attenteDe(r) {
+    if (r.status !== 402 || r.headers.get("payment-required")) return null;
+    var h = r.headers.get("payment-response"); if (!h) return null;
+    var x = null; try { x = de64(h); } catch (e) { return null; }
+    return x && (x.errorReason === "settlement_pending" || x.errorReason === "unexpected_settle_error") ? x : null;
+  }
+  function apres(t, champs) { var e = erreur(t); e.apresSignature = true; for (var k in champs) e[k] = champs[k]; return e; }
+  function envoieSigne(o, entetes, representable) {
+    var statut = o.statut || function () {}, debut = Date.now(), essai = 0;
+    o._suivi.signe = true;
+    function un() {
+      return o.appel(entetes).then(function (r) {
+        var x = attenteDe(r);
+        if (!x) return r;
+        var tx = x.transaction || null;
+        if (!representable) throw apres("the payment was sent and the chain has not confirmed it yet - don't sign again", { attente: true, tx: tx });
+        var d = delais(), pause = d[Math.min(essai, d.length - 1)];
+        if (Date.now() - debut + pause > GARDE_MS) throw apres("the payment was sent and the chain has not confirmed it after 10 minutes - don't sign again", { attente: true, tx: tx });
+        essai++;
+        statut("Payment sent, waiting for the chain - don't sign again…");
+        return new Promise(function (s) { setTimeout(s, pause); }).then(un);
+      }, function (e) {
+        /* La requete signee perdue en route : le serveur a pu la recevoir et la regler. */
+        if (e && e.apresSignature) throw e;
+        throw apres("the connection dropped after you signed - don't sign again", { reseauCoupe: true });
+      });
+    }
+    return un();
+  }
+  /* La phrase d'un echec pour le joueur. `quoi` : « Not topped up », « Not bought »… */
+  function echec(e, quoi) {
+    var m = String(e && (e.message || e.code) || e || "").slice(0, 200);
+    if (e && e.avantSignature) return quoi + ", not charged: " + m;
+    if (e && (e.attente || e.reseauCoupe))
+      return "Payment sent - " + m.replace(/^the payment was sent and /, "") + ". If it went through, your balance shows it within a few minutes; if not, contact support" + (e.tx ? " with transaction " + e.tx : "") + ".";
+    /* Le serveur a repondu apres la signature : sa phrase, telle quelle (« nothing was charged »
+       quand il le dit, « the payment settled… » sinon), sans rien y ajouter. */
+    return quoi + ": " + m;
+  }
 
   /** Lit le corps d'une reponse finale : { ok, corps, tx } (tx : la transaction du PAYMENT-RESPONSE). */
   function lit(r) {
@@ -179,8 +239,18 @@
   }
 
   racine.SwogePaie = {
-    paie: function (o) { return o.reseau === "solana" ? paieSolana(o) : paieBase(o); },
+    paie: function (o) {
+      o._suivi = { signe: false };
+      return (o.reseau === "solana" ? paieSolana(o) : paieBase(o))["catch"](function (e) {
+        if (o._suivi.signe) throw e;
+        var f = e;
+        try { e.avantSignature = true; } catch (x) { f = null; }
+        if (!f || f.avantSignature !== true) { f = erreur(String(e && (e.message || e.code) || e)); f.avantSignature = true; }
+        throw f;
+      });
+    },
     lit: lit,
+    echec: echec,
     solanaDispo: function () { return etat.portefeuilles.filter(solPeutSigner).length > 0; },
     baseDispo: function () { return !!racine.ethereum; }
   };

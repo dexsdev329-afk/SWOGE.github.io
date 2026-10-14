@@ -156,7 +156,7 @@
       if (!signe || !signe.length) throw erreur("the wallet returned no signed transaction");
       try { lu = racine.SwogeSolana.lit(new Uint8Array(signe)); } catch (e) { lu = null; }
       statut("Signed. The payment settles - a few seconds…");
-      return envoieSigne(o, { "payment-signature": b64({ x402Version: 2, resource: req.resource, accepted: acc, payload: { transaction: racine.SwogeSolana.b64(new Uint8Array(signe)) }, extensions: req.extensions }) }, false);
+      return envoieSigne(o, { "payment-signature": b64({ x402Version: 2, resource: req.resource, accepted: acc, payload: { transaction: racine.SwogeSolana.b64(new Uint8Array(signe)) }, extensions: req.extensions }) }, true);
     }).then(function (r) {
       if (r.status === 200 || sansMemo || !lu || lu.programmes.length <= 6) return r;
       /* Le portefeuille a ajoute des instructions (Phantom : jusqu'a 3) et le facilitateur plafonne a 6 : une fois encore, sans le memo. */
@@ -179,8 +179,10 @@
    *    SANS PAYMENT-REQUIRED (x402.js, traite, cas 'attente'). Le credit n'est ajoute que sur le 200
    *    (credits.js, recharge) et le serveur ne reconcilie que la MEME signature representee, pendant
    *    GARDE_ATTENTE_MS = 10 min (x402.js:192, reconcilie). On la represente donc, avec un delai
-   *    croissant, jusqu'a 10 min. Solana : le serveur ne reconcilie pas (une signature representee y
-   *    est « already presented ») : on ne represente pas, on le dit.
+   *    croissant, jusqu'a 10 min. Solana aussi depuis le 14/10 : le serveur retient la transaction
+   *    et la relit sur la chaine a la reprise (x402.js, reconcilieSolana ; credit_solana_attente.test.js
+   *    cote serveur). Un serveur d'avant repond « already presented » a la reprise : la page ne
+   *    conclut rien et ne fait pas signer une seconde fois (x402_paie_attente.test.js).
    *  - reglement fait mais credit illisible (502, credits.js) : la phrase du serveur, telle quelle.
    *  - reseau coupe apres l'envoi signe : le serveur a pu regler ; on ne conclut rien.
    * `o._suivi.signe` : vrai des que la requete signee part ; une erreur levee avant porte
@@ -197,11 +199,20 @@
   function envoieSigne(o, entetes, representable) {
     var statut = o.statut || function () {}, debut = Date.now(), essai = 0;
     o._suivi.signe = true;
+    var tx = null;
     function un() {
       return o.appel(entetes).then(function (r) {
         var x = attenteDe(r);
+        /* Une REPRISE refusee comme deja presentee : l'argent est peut-etre parti (un serveur qui ne
+           reconcilie pas encore ce reseau) — ni « not charged », ni une seconde signature. */
+        if (!x && essai > 0 && r.status === 402 && r.headers.get("payment-required")) {
+          return r.clone().text().then(function (t) {
+            if (/already presented/.test(t)) throw apres("the payment was sent and the chain has not confirmed it yet - don't sign again", { attente: true, tx: tx });
+            return r;
+          });
+        }
         if (!x) return r;
-        var tx = x.transaction || null;
+        tx = x.transaction || tx;
         if (!representable) throw apres("the payment was sent and the chain has not confirmed it yet - don't sign again", { attente: true, tx: tx });
         var d = delais(), pause = d[Math.min(essai, d.length - 1)];
         if (Date.now() - debut + pause > GARDE_MS) throw apres("the payment was sent and the chain has not confirmed it after 10 minutes - don't sign again", { attente: true, tx: tx });
@@ -239,6 +250,8 @@
   }
 
   racine.SwogePaie = {
+    /* Pour les essais seulement (x402_paie_attente.test.js) : l'envoi signe et ses reprises. */
+    _envoieSigne: function (o, entetes, representable) { o._suivi = { signe: false }; return envoieSigne(o, entetes, representable); },
     paie: function (o) {
       o._suivi = { signe: false };
       return (o.reseau === "solana" ? paieSolana(o) : paieBase(o))["catch"](function (e) {

@@ -247,10 +247,13 @@ const SHOTS = process.env.SHOTS || null;
   await p.click('#sxRes [data-res="1080p"]');
   ok(/\$2\.69/.test(await texteGo(p)), '1080p : le prix du serveur change ($2.69)');
   if (SHOTS) await capture(p, 'studio_swap_1280_anime.png');
+  /* 16/10 : la marque est un CHOIX (cochee par defaut) ; ici le joueur la retire */
+  ok(await p.isChecked('#sxMarque'), 'la case « Made with SWOGE AI » est cochee par defaut');
+  await p.uncheck('#sxMarque');
   await p.click('#sxGo');
   await attend(p, () => /Animating/.test(document.getElementById('sxScene').textContent));
   const la = appels('/studio/swap/' + ID + '/lance', 'POST')[0] || {};
-  ok(JSON.stringify(la.corps) === JSON.stringify({ apercu: 2, resolution: '1080p', confirmeUsd: 2.69 }), 'POST …/lance { apercu, resolution, confirmeUsd } et rien d autre ' + JSON.stringify(la.corps));
+  ok(JSON.stringify(la.corps) === JSON.stringify({ apercu: 2, resolution: '1080p', confirmeUsd: 2.69, marque: false }), 'POST …/lance { apercu, resolution, confirmeUsd, marque:false (decochee) } et rien d autre ' + JSON.stringify(la.corps));
   ok(/Animating with Kling/.test(await p.textContent('#sxScene')) && await p.isDisabled('#sxGo'), 'en cours : « Animating with Kling… » sur l apercu choisi');
   S.etat = etat('fini', { video: '/studio/swap/' + ID + '/video', dureeFinale: 8, choix: { apercu: 2 }, paiement: { reserveUsd: 2.69, factureUsd: 2.69, renduUsd: 0 } });
   await attend(p, () => { const v = document.querySelector('#sxScene video'); return v && /^blob:/.test(v.src); }, null, 20000);

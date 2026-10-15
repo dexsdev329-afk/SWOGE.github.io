@@ -802,6 +802,7 @@ footer b{color:var(--navy)}
 @media (max-width:440px){ .sx-chars{grid-template-columns:minmax(0,1fr)} }
 @media (max-width:380px){ .swapx-head h2{font-size:27px} }
 @media (prefers-reduced-motion:reduce){ *{transition:none!important;animation:none!important} }
+.sx-marque{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--mut,#5b6478);cursor:pointer;margin:0 0 10px}.sx-marque input{width:16px;height:16px;accent-color:#2563eb;margin:0}
 </style>
 </head>
 <body>
@@ -1045,6 +1046,7 @@ footer b{color:var(--navy)}
                 <button type="button" data-res="720p" aria-pressed="true">720p</button>
                 <button type="button" data-res="1080p" aria-pressed="false">1080p</button>
               </div>
+              <label class="sx-marque" id="sxMarqueL"><input type="checkbox" id="sxMarque" checked> Add the “Made with SWOGE AI” mark</label>
               <button class="gen" type="button" id="sxGo" disabled><svg class="ic"><use href="#i-spark"/></svg><span class="gl" id="sxGoL">Create preview</span><span class="gd" id="sxGoD" hidden>·</span><span class="gp" id="sxGoP"></span></button>
               <p id="sxGoNote">Choose a video first.</p>
             </div>
@@ -1065,7 +1067,7 @@ footer b{color:var(--navy)}
     </div>
     <ul class="sx-rules" aria-label="Rules">
       <li><svg class="ic"><use href="#i-ban"/></svg>Characters only — never a real person's face</li>
-      <li><svg class="ic"><use href="#i-check"/></svg>Finished videos carry a small “Made with SWOGE AI” mark</li>
+      <li><svg class="ic"><use href="#i-check"/></svg>“Made with SWOGE AI” mark optional — your choice</li>
       <li><svg class="ic"><use href="#i-clock"/></svg>Kept 48 h, visible only to your wallet</li>
     </ul>
   </section>
@@ -3151,7 +3153,7 @@ footer b{color:var(--navy)}
   function anime(){
     var p = prixVideo(); if (p == null || X.choisi == null || !pret()) return;
     X.err = ""; X.geste = true; peint();
-    api("/studio/swap/" + X.id + "/lance", "POST", { apercu: X.choisi, resolution: X.res, confirmeUsd: p }).then(function(e){
+    api("/studio/swap/" + X.id + "/lance", "POST", { apercu: X.choisi, resolution: X.res, confirmeUsd: p, marque: !!$("sxMarque").checked }).then(function(e){
       X.geste = false; X.etat = e; peint(); suis(); chargeCredit();
     })["catch"](function(e){ X.geste = false; if (e.code === 402) chargeCredit(); erreur(e.message); });
   }

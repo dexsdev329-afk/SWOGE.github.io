@@ -119,13 +119,15 @@ function vue(modif) {
     ok(L.MUET && L.MUET.pnl === '—' && L.MUET.pct === '—' && /no fresh price/.test(L.MUET.det), 'MUET : sans prix frais, un tiret et la raison — jamais +0.0 %');
     ok(m.tot === '+$12.11', 'le total est celui des positions cotees seulement (−2.53 + 14.64 = ' + m.tot + ')');
     ok(m.titre === 'Open positions' && m.papier === 'Paper', 'et le panneau dit qu elles sont de PAPIER');
-    /* v8 : les positions sortent de la scene — une grille de cartes SOUS le cerveau, pleine largeur */
+    /* 15/10 : le proprietaire devait descendre pour voir ses positions. Intention :
+       sur un ecran large, elles se voient SANS defiler — a cote de la scene, a sa
+       hauteur, jamais par-dessus le cerveau. */
     const g = await page.evaluate(() => { const e = document.getElementById('cvEcran').getBoundingClientRect(), p = document.getElementById('cvPos').getBoundingClientRect(),
       c = [...document.querySelectorAll('#cvPListe .cv-ligne')].map((l) => l.getBoundingClientRect());
-      return { sous: p.top >= e.bottom - 1, dedans: !!document.getElementById('cvEcran').querySelector('#cvPos'), larg: p.width, tops: c.map((r) => Math.round(r.top)),
-               cols: getComputedStyle(document.getElementById('cvPListe')).gridTemplateColumns.split(' ').length }; });
-    ok(g.sous && !g.dedans, 'le panneau des positions est SOUS la scene, plus par-dessus');
-    ok(g.cols >= 3 && new Set(g.tops).size === 1 && g.larg >= 1000, 'une grille de cartes : ' + g.cols + ' colonnes, les trois positions sur une rangee, ' + Math.round(g.larg) + ' px de large');
+      return { cote: p.left >= e.right - 1 && Math.abs(p.top - e.top) < 2, dedans: !!document.getElementById('cvEcran').querySelector('#cvPos'),
+               visibles: c.length > 0 && c.every((r) => r.bottom <= innerHeight && r.right <= innerWidth), scene: e.width, larg: p.width }; });
+    ok(g.cote && !g.dedans, 'le panneau des positions est A COTE de la scene, a sa hauteur, pas par-dessus');
+    ok(g.visibles && g.scene >= 900, 'les trois positions se voient sans defiler, et la scene garde ' + Math.round(g.scene) + ' px (>= 900, le seuil des cartes) ; colonne de ' + Math.round(g.larg) + ' px');
     const v8 = await page.evaluate(() => ({ veille: document.getElementById('cvVeille').textContent, tag: getComputedStyle(document.getElementById('cvPosP')).textTransform }));
     ok(v8.veille === 'Watched by Sentinel · Extender · Watcher' && v8.tag === 'uppercase', 'au-dessus, ceux du roster qui veillent sur elles : « ' + v8.veille + ' », et l etiquette PAPER');
     ok(err.length === 0, 'aucune erreur' + (err.length ? ' — ' + err[0] : ''));
@@ -284,6 +286,8 @@ function vue(modif) {
     const { ctx, page, err } = await ouvre({ w: 900, h: 900 });
     const m = await page.evaluate(() => { const A = Cerveau.aires(), C = Cerveau.cartes(), xs = A.map((a) => a.x);
       return { n: C.length, g: Math.max(...C.filter((c) => c.x < 450).map((c) => c.x + c.w)), d: Math.min(...C.filter((c) => c.x > 450).map((c) => c.x)), amin: Math.min(...xs), amax: Math.max(...xs) }; });
+    const sous = await page.evaluate(() => document.getElementById('cvPos').getBoundingClientRect().top >= document.getElementById('cvEcran').getBoundingClientRect().bottom - 1);
+    ok(sous, '900 px : les positions repassent SOUS la scene (pas de place a cote)');
     ok(m.n === 8 && m.g < m.amin && m.d > m.amax, '900 px : huit cartes, aucune sur une aire (gauche jusqu a ' + Math.round(m.g) + ', aires de ' + Math.round(m.amin) + ' a ' + Math.round(m.amax) + ', droite des ' + Math.round(m.d) + ')');
     ok(err.length === 0, 'aucune erreur' + (err.length ? ' — ' + err[0] : ''));
     await ctx.close();

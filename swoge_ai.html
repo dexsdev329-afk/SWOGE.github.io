@@ -38,7 +38,7 @@
  * une fois par session pour savoir si le serveur en a une plus recente.
  * Sans ca, un joueur garde des semaines une version corrigee depuis
  * longtemps. `node cache_marqueur.test.js` donne la valeur a ecrire. */
-var MARQUE_PAGE = '17ae6365';
+var MARQUE_PAGE = '690ddf78';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -257,7 +257,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:8px;margin-left:auto;min-width:
 .cv-pensee small{font:600 10.5px var(--mono);letter-spacing:2px;color:var(--cv-pale);text-transform:uppercase}
 .cv-pensee p{margin:6px 0 0;font:400 16px/1.5 Inter,var(--f);color:#dfe6ff;min-height:48px;overflow-wrap:anywhere}
 .cv-pensee p b{color:#fff;font-weight:600} .cv-pensee p .r{color:var(--cv-rouge)} .cv-pensee p .g{color:var(--cv-vert)} .cv-pensee p .o{color:var(--cv-or)}
-/* les positions, sous le cerveau : une carte par position */
+/* les positions : a cote du cerveau sur ecran large, dessous sur telephone */
 .cv-pos{max-width:1180px;margin:0 auto;padding:18px 24px 40px}
 .cv-pos .cv-tete{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:12px}
 .cv-pos .cv-tete small{font:600 11px var(--mono);letter-spacing:1.8px;color:var(--cv-pale);text-transform:uppercase}
@@ -276,6 +276,19 @@ nav.sb-ancre{display:flex;align-items:center;gap:8px;margin-left:auto;min-width:
 .cv-pied{display:flex;justify-content:space-between;gap:10px;margin-top:14px;padding-top:11px;border-top:1px solid rgba(120,140,255,.12);font:500 12px var(--mono);color:var(--cv-pale)}
 .cv-pied b{font-weight:700;white-space:nowrap} .cv-pied span{min-width:0}
 .cerveau .up{color:var(--cv-vert)!important} .cerveau .dn{color:var(--cv-rouge)!important}
+/* 15/10 : sur un ecran large, les positions vont A COTE du cerveau, a la meme
+   hauteur (le proprietaire devait descendre a chaque fois pour les voir). La
+   colonne defile seule quand il y a beaucoup de positions. Des 1240 px : la
+   scene garde alors >= 900 px, le seuil ou les huit cartes tiennent sans
+   couvrir une aire ; en dessous, les positions restent sous le cerveau. */
+@media (min-width:1240px){
+  .cerveau{display:grid;grid-template-columns:minmax(0,1fr) clamp(300px,25vw,380px);--cv-h:max(680px,min(calc(100svh - 60px),1000px))}
+  .cv-ecran{height:var(--cv-h)}
+  .cv-pos{max-width:none;margin:0;height:var(--cv-h);overflow-y:auto;padding:22px 18px 86px;border-left:1px solid rgba(120,140,255,.14);background:rgba(6,9,26,.85);display:flex;flex-direction:column}
+  .cv-pos .cv-tete b{font-size:20px}
+  .cv-grille{grid-template-columns:1fr;gap:10px;align-content:start;flex:1 1 auto}
+  .cv-pied{margin-top:auto}
+}
 @media (max-width:899.98px){
   .cv-ecran{height:auto;display:flex;flex-direction:column}
   .cv-haut{position:relative;order:-1;padding:18px 16px 4px;flex-direction:column;gap:12px}
@@ -529,10 +542,6 @@ th:last-child,td:last-child{padding-right:18px}
 .pager button:disabled{opacity:.35;cursor:default}
 .feed td.tm{font:500 12px/1.3 var(--mono);color:var(--dim2);white-space:nowrap}
 
-.foot{margin-top:32px;font-size:12.5px;color:var(--dim);line-height:1.6;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
-.foot>div{padding:16px 18px;border-radius:16px;border:1px solid var(--line);background:rgba(10,18,44,.5)}
-.foot b{color:#fff}
-.foot .t{display:block;color:#fff;font-size:13px;margin-bottom:4px}
 .pied{margin-top:16px;display:flex;flex-wrap:wrap;gap:12px 18px;align-items:center;justify-content:space-between;padding:14px 18px;border-radius:16px;border:1px solid var(--line);background:rgba(10,18,44,.5);font-size:12.5px;color:var(--dim)}
 .sw-chiffres{display:flex;gap:6px;flex-wrap:wrap;min-width:0}
 .sw-ch{display:flex;align-items:center;gap:8px;padding:4px 10px;border-radius:10px;background:var(--field)}
@@ -564,7 +573,7 @@ th:last-child,td:last-child{padding-right:18px}
   .s8,.s7,.s6,.s5,.s4{grid-column:span 12}
   .col{display:contents}
   .col>.card{grid-column:1/-1}
-  #cEq{order:1}#cAl{order:2}#cMi{order:3}#cMp{order:4}#cPo{order:5}#cFu{order:6}#cRt{order:7}#cAg{order:8}#cLt{order:9}
+  #cEq{order:1}#cMi{order:3}#cMp{order:4}#cPo{order:5}#cFu{order:6}#cRt{order:7}#cAg{order:8}#cLt{order:9}
   .c3{display:none}
   .hero-in{grid-template-columns:1fr;grid-template-rows:none;height:auto}
   .hero-head,.hero-body,.stage{grid-column:1;grid-row:auto}
@@ -584,7 +593,6 @@ th:last-child,td:last-child{padding-right:18px}
   .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
   .stats>div:nth-child(3){border-left:0}
   .stats>div:nth-child(n+3){border-top:1px solid var(--line)}
-  .foot{grid-template-columns:1fr}
   .gx-menu,.menu{top:auto;margin-top:6px}
 }
 @media (max-width:640px){
@@ -745,8 +753,8 @@ th:last-child,td:last-child{padding-right:18px}
              plus de selecteur ni de barre d'onglets IA, seulement le chemin. -->
         <span class="path"><span data-t="chemin">AI Trading</span> &rsaquo; <b data-t="colonies">Robinhood colony</b></span>
         <!-- ---- LA LANGUE ----
-             L'anglais est le defaut (c'est la langue du site) ; ce bouton bascule
-             en francais et le choix se garde d'une visite a l'autre. Il montre la
+             L'anglais est la langue de la page, a chaque visite ; ce bouton bascule
+             en francais pour la visite en cours seulement (15/10). Il montre la
              langue OU L'ON EST, pas celle vers laquelle on irait. -->
         <button class="drapeau" id="langue" type="button" title="Français">EN</button>
       </div>
@@ -990,22 +998,11 @@ th:last-child,td:last-child{padding-right:18px}
     </div>
   </section>
 
-  <!-- ---- CE QUE LA PAGE PROMET, EN TOUTES LETTRES ----
-       Rien n'est signe, la tresorerie est du papier ; ca tourne sur le serveur
-       et tout le monde voit le meme etat ; un vrai achat paierait le gaz et le
-       glissement. Les deux langues disent la meme chose. -->
-  <div class="foot" id="foot">
-    <div data-t="pied1"><span class="t">What is real</span>The tokens, the pools, the prices, the contract safety checks, the holder concentration and the age all come from GeckoTerminal, GoPlus, DexScreener and the blocks of chain 4663. Mirror results are measured on the wallets themselves.</div>
-    <div data-t="pied2"><span class="t">What is paper</span>No transaction is signed by the colony: a paper position opens and closes at real quoted prices, and a real buy would also pay gas and slippage. The mirror results show how much that costs. Only pairs quoted in ETH are traded.</div>
-    <div data-t="pied3"><span class="t">Where decisions are made</span>The colony runs on the server, continuously: it does not stop when you close the tab, and everyone sees the same state. This page computes nothing — it asks, and it shows. Safety checks and stake limits live in the code; when a reading fails, it is written, and nothing is invented to fill the gap. NFA.</div>
-  </div>
-  <!-- 15/10/2026 : « Needs attention » tout en bas de la page (demande du proprietaire). -->
-  <div style="margin:28px 0 8px">
-    <div id="cAl" class="card" data-pan="alertes">
-      <div class="ch"><h2 data-t="tAlertes">Needs attention</h2><span class="r"><span class="tag" id="alerteN">0</span></span></div>
-      <div id="alertes"></div>
-    </div>
-  </div>
+  <!-- 15/10/2026 : le pied en trois blocs (« What is real »…) et la carte
+       « Needs attention » sont retires a la demande du proprietaire (« pas
+       besoin d'autant de choses sur la page »). La promesse qui compte — papier,
+       rien n'est signe — reste dite en haut, dans `noteHero`. Les alertes
+       restent dans /ai/colonie (champ `alertes`) et dans releve.js. -->
   <div class="pied">
     <span class="goplus" id="goplusAttrib"></span>
     <!-- ---- LES QUATRE CHIFFRES DU SITE ----
@@ -1820,7 +1817,7 @@ const FR = {
   tEntonnoir:"L'entonnoir de décision", sEntonnoir:"chaque jeton passe chaque agent dans cet ordre ; un veto l'arrête",
   tRecents:"Derniers trades papier", tousTrades:"Tous les trades",
   hJeton:"Jeton", hFerme:"Fermé", hTenu:"Tenu", hMise:"Mise", hRetour:"Rendement", hPnl:"P&amp;L", hSortie:"Sortie",
-  tAlertes:"À regarder", tMiroir:"Votre miroir", voirMiroirs:"Voir ce que les miroirs ont vraiment touché →",
+  tMiroir:"Votre miroir", voirMiroirs:"Voir ce que les miroirs ont vraiment touché →",
   tMirPos:"Votre miroir · positions ouvertes", vMirPos:"Connectez-vous et créez un portefeuille miroir pour voir vos positions ici.",
   tAgents:"Agents", hAgent:"Agent", hRole:"Rôle", hVus:"Vus", hBloques:"Refusés",
   tTour:"Dernier tour", hHeure:"Heure", hEvt:"Événement", hDetail:"Détail",
@@ -1844,9 +1841,6 @@ const FR = {
   tSurv:"Surveillance", hExamens:"Examens", hMeilleureNote:"Meilleure note", hDernier:"Vu", hStatut:"Statut",
   tServices:"Sources de données", hSource:"Source", hApporte:"Ce qu'elle apporte", hLectures:"Lectures", hReussite:"Réussite", hEchec:"Dernière erreur",
   tTg:"Canaux Telegram",
-  pied1:"<span class=\"t\">Ce qui est réel</span>Les jetons, les pools, les prix, les contrôles de sécurité des contrats, la concentration des porteurs et l'âge viennent de GeckoTerminal, de GoPlus, de DexScreener et des blocs de la chaîne 4663. Les résultats des miroirs sont mesurés sur les portefeuilles eux-mêmes.",
-  pied2:"<span class=\"t\">Ce qui est du papier</span>Aucune transaction n'est signée par la colonie : une position papier s'ouvre et se ferme aux prix réellement cotés, et un vrai achat paierait en plus le gaz et le glissement. Les résultats des miroirs montrent ce que ça coûte. Seules les paires cotées en ETH sont tradées.",
-  pied3:"<span class=\"t\">Où se prennent les décisions</span>La colonie tourne sur le serveur, en continu : elle ne s'arrête pas quand vous fermez l'onglet, et tout le monde voit le même état. Cette page ne calcule rien — elle demande, et elle montre. Les contrôles de sécurité et les bornes de mise sont dans le code ; quand une lecture échoue, c'est écrit, et rien n'est inventé pour combler. NFA.",
 };
 const FR_PH = { cherche:"Chercher un jeton ou une adresse" };
 const EN = {}, EN_PH = {};
@@ -1856,7 +1850,6 @@ function releveAnglais(){
 }
 function poseLangue(l){
   LANGUE = (l === "fr") ? "fr" : "en";
-  try{ localStorage.setItem(CLE_LANGUE, LANGUE); }catch(e){}
   const src = LANGUE === "fr" ? FR : EN, srcPh = LANGUE === "fr" ? FR_PH : EN_PH;
   document.querySelectorAll("[data-t]").forEach(e => { const v = src[e.dataset.t]; if(v !== undefined) e.innerHTML = v; });
   document.querySelectorAll("[data-t-ph]").forEach(e => { const v = srcPh[e.dataset.tPh]; if(v !== undefined) e.setAttribute("placeholder", v); });
@@ -2035,26 +2028,11 @@ function peintCourbe(){
 }
 
 /* ---- CE DONT LA COLONIE A BESOIN ----
- * Chaque alerte porte le chiffre qui la justifie ET ce qu'il faudrait faire.
- * La carte disparait quand la colonie n'a besoin de rien ; la haute d'abord. */
+ * 15/10/2026 : la carte est retiree de la page (demande du proprietaire). Les
+ * alertes vivent dans /ai/colonie et releve.js ; la page n'allume plus rien. */
 function peintAlertes(){
-  const l = (VUE && VUE.alertes) || [];
-  $("cAl").hidden = !l.length;
-  $("alerteN").textContent = l.length;
-  const rang = { haute:0, moyenne:1, basse:2 }, r = g => (g in rang ? rang[g] : 9);
-  const forte = l.some(a => a.gravite === "haute");
-  $("alerteN").className = "tag " + (forte ? "r" : l.length ? "a" : "");
-  /* La pastille de l'onglet ne s'allume que pour ce qui demande d'agir : une
-     alerte « basse » (un creux ordinaire) se lit dans la carte, sans appeler. */
   const b = document.querySelector('#tabs button[data-tab="ov"]');
-  if(b) b.classList.toggle("demande", l.some(a => a.gravite !== "basse"));
-  $("alertes").innerHTML = l.slice().sort((a, b2) => r(a.gravite) - r(b2.gravite)).map(a => {
-    const g = a.gravite === "haute" ? ["alHaute", "r"] : a.gravite === "moyenne" ? ["alMoyenne", "a"] : ["alBasse", ""];
-    const p = String(a.pourquoi || ""), i = p.indexOf(". ");
-    return '<div class="al alerte" data-gravite="' + esc(a.gravite) + '"><div class="h">' + tag(ph(g[0]), g[1]) + '<b>' + esc(a.quoi) + '</b></div>'
-      + '<p>' + esc(i > 0 ? p.slice(0, i + 1) : p) + '</p>'
-      + '<details><summary>' + esc(ph("alTout")) + '</summary><p>' + esc(p) + '</p><p><b>' + esc(ph("alFaire")) + '</b> ' + esc(a.quoiFaire || "") + '</p></details></div>';
-  }).join("");
+  if(b) b.classList.remove("demande");
 }
 function peintEntonnoir(){
   const P = parcours(), c = C();
@@ -3747,8 +3725,12 @@ releveAnglais();
    des maintenant, pour redemander ses soumissions a l'ouverture de session. */
 ecouteSoumissions();
 (function(){
-  let l = "en";
-  try{ l = localStorage.getItem(CLE_LANGUE) || "en"; }catch(e){}
+  /* 15/10 : le proprietaire veut la page en anglais. Elle s'ouvre TOUJOURS en
+     anglais ; le bouton FR reste pour la visite en cours, sans memoire (un clic
+     ancien gardait la page en francais d'une visite a l'autre). L'ancienne
+     cle est effacee. */
+  const l = "en";
+  try{ localStorage.removeItem(CLE_LANGUE); }catch(e){}
   const b = $("langue");
   if(b) b.addEventListener("click", () => poseLangue(LANGUE === "fr" ? "en" : "fr"));
   let t = ongletDeAncre(location.hash);

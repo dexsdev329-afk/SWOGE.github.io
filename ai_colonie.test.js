@@ -685,35 +685,15 @@ async function filSansDoublon() {
 async function panneauAlertes() {
   console.log('\n-- les alertes --');
   {
-    const { page, boum } = await ouvre(nav, port, {});
-    const v = await lit(page);
-    console.log('   ' + v.alerteN + ' · ' + v.alertes.slice(0, 120));
-    ok(!v.alerteCachee, 'la carte apparait quand il y a quelque chose a demander');
-    ok(v.alerteN === '2', 'les deux alertes sont comptees');
-    ok(/34% of reads/.test(v.alertes), 'chacune porte le CHIFFRE qui la justifie');
-    ok(/dedicated RPC/.test(v.alertes) && /ANTHROPIC_API_KEY/.test(v.alertes), 'et ce qu il faudrait faire, precisement');
+    /* 15/10/2026 : la carte « Needs attention » est retiree de la page (demande du
+       proprietaire). L'intention qui reste : une alerte HAUTE dans la vue ne casse
+       rien, n'ajoute aucune carte et n'allume pas la pastille d'un panneau absent. */
+    const haute = { gravite: 'haute', quoi: 'The chain nodes are refusing 34% of reads', pourquoi: 'x', quoiFaire: 'y' };
+    const { page, boum } = await ouvre(nav, port, { vue: vueFausse({ alertes: [haute] }) });
+    ok(!(await page.evaluate(() => !!document.getElementById('cAl') || !!document.getElementById('alertes'))), 'la carte des alertes n est plus sur la page');
+    ok(!(await page.$eval('#tabs button[data-tab="ov"]', (b) => b.classList.contains('demande'))), 'et rien ne s allume pour un panneau qu on ne voit plus');
     ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
     await page.context().close();
-  }
-  {
-    const { page } = await ouvre(nav, port, { vue: vueFausse({ alertes: [] }) });
-    ok((await lit(page)).alerteCachee, 'et elle disparait quand la colonie n a besoin de rien');
-    await page.context().close();
-  }
-  {
-    /* 28/09 : « haute » valait 0 et `rang[g]||9` la rangeait derniere ; une alerte
-       basse (un creux ordinaire) allumait la pastille de l'onglet comme une vraie demande. */
-    const basse = { gravite: 'basse', quoi: 'Nothing bought for 228 turns (9.5 h)', pourquoi: 'At the pace of the last 7 days (18 buys, 2.6 a day), a silence this long happens 36% of the time: it is ordinary.', quoiFaire: 'Nothing.' };
-    const haute = { gravite: 'haute', quoi: 'The chain nodes are refusing 34% of reads', pourquoi: 'x', quoiFaire: 'y' };
-    const { page } = await ouvre(nav, port, { vue: vueFausse({ alertes: [basse, haute] }) });
-    const ordre = await page.$$eval('#alertes .alerte', (l) => l.map((x) => x.dataset.gravite));
-    ok(ordre.join() === 'haute,basse', 'la haute d abord, meme listee apres [' + ordre.join() + ']');
-    ok(await page.$eval('#tabs button[data-tab="ov"]', (b) => b.classList.contains('demande')), 'une haute allume la pastille de l onglet qui la porte');
-    await page.context().close();
-    const p2 = (await ouvre(nav, port, { vue: vueFausse({ alertes: [basse] }) })).page;
-    ok(!(await p2.$eval('#tabs button[data-tab="ov"]', (b) => b.classList.contains('demande'))) && /ordinary/.test(await p2.textContent('#alertes')),
-       'une basse seule se lit dans la carte, sans allumer la pastille');
-    await p2.context().close();
   }
 
   /* ---- LA BARRE DU HAUT EST CELLE DU SITE ----
@@ -804,7 +784,7 @@ async function panneauAlertes() {
     }));
     ok(p.onglets.join() === p.sections.join() && p.onglets.length === 6, 'six onglets, six sections, un bouton pour chacune');
     ok(p.montres.length === 1 && p.choisi && p.choisi.tab === p.montres[0], 'une seule section est montree, celle que l onglet marque (' + p.montres.join() + ')');
-    ok(p.perdus.length === 0 && p.horsOnglet.every((k) => k === 'alertes'), 'aucun panneau perdu : hors onglet, seul « Needs attention », visible sur chaque onglet' + (p.perdus.length ? ' [' + p.perdus.join() + ']' : '') + ' [hors : ' + p.horsOnglet.join() + ']');
+    ok(p.perdus.length === 0 && p.horsOnglet.length === 0, 'aucun panneau perdu, aucun hors des onglets (« Needs attention » retire le 15/10)' + (p.perdus.length ? ' [' + p.perdus.join() + ']' : '') + ' [hors : ' + p.horsOnglet.join() + ']');
     ok(p.peints.every(Boolean), 'les onglets caches sont peints quand meme : un onglet qu on ouvre est deja a jour');
     await onglet(page, 'le');
     await page.reload({ waitUntil: 'domcontentloaded' });
@@ -1456,15 +1436,13 @@ async function auditDesVetos() {
   {
     const { page, boum } = await ouvre(nav, port, {});
     const v = await lit(page);
-    const promesses = [[/no transaction is signed/i, /paper/i, 'nothing is signed, and the treasury is paper'],
-      [/runs on the server/i, /same state/i, 'it runs on the server and everyone sees the same state'],
-      [/gas and slippage/i, /gas and slippage/i, 'a real buy would also pay gas and slippage']];
-    for (const [a1, a2, quoi] of promesses) ok(a1.test(v.foot) && a2.test(v.foot), 'en anglais, elle dit que ' + quoi);
-    ok(!/stops when you close the tab/i.test(v.foot) && !/kept on (?:the|this) device/i.test(v.foot), 'et elle ne promet plus le contraire, qui etait vrai de l ancienne version');
-    const fr = await page.evaluate(() => { poseLangue('fr'); return (document.getElementById('foot') || {}).textContent || ''; });
-    for (const [rx, quoi] of [[/aucune transaction n'est sign/i, 'rien n est signe'], [/tourne sur le serveur/i, 'ca tourne sur le serveur'],
-      [/m[eê]me [eé]tat/i, 'tout le monde voit le meme etat'], [/gaz et le glissement/i, 'un vrai achat paierait le gaz et le glissement']])
-      ok(rx.test(fr), 'et en francais aussi : ' + quoi);
+    /* 15/10/2026 : le pied en trois blocs est retire (demande du proprietaire).
+       La promesse qui compte reste dite, en haut : papier, rien n'est signe. */
+    ok(!(await page.evaluate(() => !!document.getElementById('foot'))), 'le pied en trois blocs n est plus sur la page');
+    const note = await page.evaluate(() => (document.querySelector('[data-t="noteHero"]') || {}).textContent || '');
+    ok(/paper/i.test(note) && /signs no transaction/i.test(note), 'la promesse reste dite en haut : « ' + note.slice(0, 80) + ' »');
+    const fr = await page.evaluate(() => { poseLangue('fr'); return (document.querySelector('[data-t="noteHero"]') || {}).textContent || ''; });
+    ok(/papier/i.test(fr) && /ne signe aucune transaction/i.test(fr), 'et en francais aussi');
     await page.evaluate(() => poseLangue('en'));
     ok(!(await page.evaluate(() => !!document.getElementById('oublier'))), 'le bouton « Reset » n existe plus : sur un etat partage, il effacerait celui de tout le monde');
     const morts = await page.evaluate(() => ['refresh', 'pause', 'speed'].filter((id) => !!document.getElementById(id)));

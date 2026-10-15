@@ -581,8 +581,11 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
   <!-- ==================== SWOGE SWAP (14/10/2026) ====================
        « Mets SWOGE dans ta video » : le service PUBLIC du serveur (swap.js, routes /studio/swap*).
        La page MONTRE et ENVOIE ; le serveur decide de tout (session, prix, credit, file, plafond du
-       jour, personnages). Aucune image ni aucun texte du joueur ne part : il choisit un personnage
-       maison et qui remplacer. Le resultat se lit avec la session (blob), jamais par une adresse. -->
+       jour, personnages). Depuis le 15/10/2026, le joueur peut televerser 1-2 images de personnage
+       (jugees par la porte du serveur, swap_garde.js, AVANT tout paiement : jamais une personne
+       reelle), ecrire une direction libre (600 signes, citee par le serveur dans son gabarit) et
+       choisir 720p ou 1080p. La page n'envoie au lancement que les identifiants (sha256) rendus par
+       la porte, jamais l'image ni une URL. Le resultat se lit avec la session (blob). -->
   <style>
   /* tout prefixe .swq- : ne touche ni ds- ni sw- ni cine- */
   .swq{ scroll-margin-top:12px; }
@@ -623,6 +626,18 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
   .swq-part button{ margin-top:6px; font:700 12px/1 Inter,system-ui,sans-serif; border:1px solid var(--ds-bleu); color:var(--ds-bleu); background:#fff; border-radius:9px; padding:7px 9px; cursor:pointer; }
   .swq-ecran{ margin-top:12px; background:#05070D; border-radius:16px; overflow:hidden; max-width:420px; }
   .swq-ecran video{ display:block; width:100%; max-height:70vh; background:#05070D; }
+  /* le personnage du joueur, la direction, la resolution (15/10/2026) */
+  .swq-perso-l{ display:grid; grid-template-columns:repeat(auto-fill,minmax(min(100%,140px),1fr)); gap:8px; margin-top:8px; }
+  .swq-img{ border:1px solid var(--ds-ligne); border-radius:12px; padding:6px; background:var(--ds-blanc); min-width:0; font-size:12px; color:var(--ds-pale); overflow-wrap:anywhere; }
+  .swq-img img{ display:block; width:100%; aspect-ratio:1/1; object-fit:cover; border-radius:8px; background:var(--ds-fond); }
+  .swq-img b{ display:block; margin:6px 0 2px; font-size:12.5px; color:var(--ds-encre); }
+  .swq-img.ok{ border-color:#BFE5CF; background:#F2FAF5; }
+  .swq-img.refuse{ border-color:#F3C9C5; background:#FFF5F4; }
+  .swq-img button{ margin-top:6px; font:700 12px/1 Inter,system-ui,sans-serif; border:1px solid var(--ds-ligne); color:var(--ds-encre); background:#fff; border-radius:9px; padding:7px 9px; cursor:pointer; min-height:32px; }
+  .swq-texte{ display:block; width:100%; box-sizing:border-box; min-height:84px; resize:vertical; border:1px solid var(--ds-ligne); border-radius:12px; padding:10px 12px;
+    font:400 14px/1.4 Inter,system-ui,sans-serif; color:var(--ds-encre); background:var(--ds-blanc); }
+  .swq-compte{ display:block; text-align:right; font-size:12px; color:var(--ds-pale); margin-top:4px; font-variant-numeric:tabular-nums; }
+  .swq-compte.plein{ color:#B42318; }
   .swq-regles{ margin:14px 0 0; padding-left:18px; color:var(--ds-pale); font-size:12.5px; }
   .swq-regles li{ margin:3px 0; }
   /* la recharge : la feuille du studio, aux couleurs de la page */
@@ -641,10 +656,10 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
       <div class="ds-badges"><span class="ds-badge papier">&#10024; New &middot; SWOGE Swap</span><span class="ds-badge" id="swPastille"><span class="pt"></span><span id="swPastilleTxt">Pay with your dollar credit</span></span></div>
     </div>
     <h2 id="swTitre">Put SWOGE in <em>any video</em></h2>
-    <p class="swq-intro">Upload a clip, pick who to replace, and our AI studio swaps them for SWOGE &mdash; same moves, lips synced to the words, your original sound. You see the exact price before you pay, and parts that fail are refunded.</p>
+    <p class="swq-intro">Upload a clip, pick who to replace, and our AI studio swaps them for SWOGE or your own character &mdash; same moves, lips synced to the words, your original sound. You see the exact price before you pay, and parts that fail are refunded.</p>
     <ol class="ds-etapes" id="swEtapes">
       <li data-etape="1"><b>Upload</b>An MP4 you own or have the right to use, <span id="swBornes">3 to 60 seconds, up to 60 MB</span>.</li>
-      <li data-etape="2"><b>Plan &amp; price</b>We cut it into parts and show the exact price. Pick SWOGE and who to replace.</li>
+      <li data-etape="2"><b>Plan &amp; price</b>We cut it into parts and show the exact price. Pick SWOGE or your own character, and who to replace.</li>
       <li data-etape="3"><b>Run</b>Paid from your dollar credit. Watch it here and download it &mdash; kept 48 h, visible only to you.</li>
     </ol>
 
@@ -654,7 +669,7 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
       <div class="swq-fichier">
         <input type="file" id="swFichier" accept="video/mp4" aria-label="Choose an MP4 video">
       </div>
-      <p class="ds-note"><span id="swFichierInfo">MP4 only.</span> About <span id="swParSec">&mdash;</span> per second of video (720p).</p>
+      <p class="ds-note"><span id="swFichierInfo">MP4 only.</span> About <span id="swParSec">&mdash;</span> per second of video in 720p<span id="swParSecHd"></span>.</p>
       <label class="swq-case"><input type="checkbox" id="swDroits"><span id="swDroitsTxt">I own this video or have the right to use it, and it shows no one who did not agree to it.</span></label>
       <div class="swq-actions">
         <button type="button" class="ds-bouton plein" id="swEnvoie" disabled>Upload and get the price</button>
@@ -663,11 +678,27 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
 
     <!-- 2. le plan, le prix, et 3. le lancement -->
     <div class="swq-pas" id="swPas2" hidden>
-      <h3>2 &middot; Who becomes SWOGE</h3>
+      <h3>2 &middot; Choose the character</h3>
       <span class="swq-l" id="swPersoL">Character</span>
       <div class="swq-perso" id="swPersos" role="group" aria-labelledby="swPersoL"></div>
+      <div id="swMienBloc">
+        <span class="swq-l" id="swMienL">Your character (optional)</span>
+        <div class="swq-fichier">
+          <input type="file" id="swImages" accept="image/jpeg,image/png,image/webp" multiple aria-labelledby="swMienL">
+        </div>
+        <p class="ds-note" id="swMienNote">Up to 2 images (JPEG, PNG or WebP, 6 MB each): an NFT, a mascot, a pet, a drawing, a 3D or game character. Each image is checked first &mdash; never a real person.</p>
+        <div class="swq-perso-l" id="swMiens" aria-live="polite"></div>
+      </div>
       <span class="swq-l" id="swCibleL">Replace</span>
       <div class="ds-seg" id="swCibles" role="group" aria-labelledby="swCibleL"></div>
+      <label class="swq-l" for="swTexte">Direction (optional)</label>
+      <textarea class="swq-texte" id="swTexte" maxlength="600" rows="3" placeholder="Gestures, outfit, style, scene, props&hellip; any language." aria-describedby="swTexteCompte"></textarea>
+      <span class="swq-compte" id="swTexteCompte" aria-live="polite">0 / 600</span>
+      <span class="swq-l" id="swResL">Quality</span>
+      <div class="ds-seg" id="swRes" role="group" aria-labelledby="swResL">
+        <button type="button" data-res="720p" aria-pressed="true">720p</button>
+        <button type="button" data-res="1080p" aria-pressed="false">1080p</button>
+      </div>
       <div class="swq-prix" aria-live="polite"><b id="swPrix">&mdash;</b><span id="swPrixInfo"></span></div>
       <p class="ds-note" id="swCredit"></p>
       <div class="swq-manque" id="swManque" hidden></div>
@@ -692,7 +723,7 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
     </div>
     <p class="ds-statut" id="swStatut" role="status" aria-live="polite"></p>
     <ul class="swq-regles">
-      <li>Only our own characters: no uploaded faces, no custom prompts.</li>
+      <li>Any character you like — never a real person's face. AI-generated videos carry a small SWOGE AI mark.</li>
       <li>Each failed part gets one free retry; if it fails again it keeps the original footage and is not charged.</li>
       <li>The price counts every started second of each part. Your result is kept 48 h and only your signed-in wallet can open it.</li>
     </ul>
@@ -754,6 +785,9 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
  *   `Authorization: Bearer` ; aucune adresse n'est jamais envoyee.
  * - La video part BRUTE (video/mp4) avec `x-swap-rights: yes` seulement si la case est cochee.
  * - Le prix vient du plan du serveur ; « Run » renvoie CE prix (confirmeUsd) : un autre est refuse.
+ * - 15/10/2026 : « Your character » envoie chaque image BRUTE a POST /studio/swap/image (la porte du
+ *   serveur la juge) et ne garde que le sha256 rendu ; « Run » n'envoie que ces identifiants,
+ *   la direction (600 signes) et la resolution. Le refus du serveur est montre tel quel.
  * - Le credit : GET /credit ; trop bas, la recharge de studio.html (x402_paie.js, credit_depot.js).
  * - Le resultat se lit avec la session, en blob : aucune adresse publique.
  * - Rien n'est demande au serveur avant que la section approche de l'ecran (ou un geste).
@@ -786,7 +820,17 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
   function statut(t, err){ var s = $("swStatut"); s.textContent = t || ""; s.className = "ds-statut" + (err ? " err" : ""); }
 
   var S = { vue: null, id: null, etat: null, fichier: null, dureeLocale: null, perso: null, cible: null, credit: null, limites: null, reseaux: null, hist: [],
-            suivi: null, blob: null, occupe: false, charge: false };
+            suivi: null, blob: null, occupe: false, charge: false, miens: [], resolution: "720p" };
+  var IMG_TYPES = ["image/jpeg", "image/png", "image/webp"];
+  /* les images du joueur acceptees par la porte, et celles encore a l'examen */
+  function acceptees(){ return S.miens.filter(function(m){ return m.etat === "ok"; }); }
+  function enExamen(){ return S.miens.some(function(m){ return m.etat === "examen"; }); }
+  /* le prix du plan pour la resolution choisie (le serveur les donne toutes les deux) */
+  function prixPlan(e){
+    e = e || S.etat || {};
+    var t = e.prixUsdParResolution || {};
+    return t[S.resolution] != null ? Number(t[S.resolution]) : Number(e.prixUsd);
+  }
   var ACTIFS = ["decoupe", "file", "en_cours", "assemblage"];
   var ETIQ = { planned: "planned", waiting: "waiting", sending: "sending", processing: "being made", downloading: "downloading", done: "done", failed: "failed", original: "original kept (refunded)" };
 
@@ -815,6 +859,8 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
     if (v) {
       $("swBornes").textContent = Math.round(v.dureeMinS) + " to " + Math.round(v.dureeMaxS) + " seconds, up to " + Math.round(v.octetsMax / 1048576) + " MB";
       $("swParSec").textContent = "$" + Number(v.prixParSecondeUsd).toFixed(3).replace(/0$/, "");
+      var hd = v.prixParSecondeUsdParResolution && v.prixParSecondeUsdParResolution["1080p"];
+      $("swParSecHd").textContent = hd ? ", $" + Number(hd).toFixed(3).replace(/0$/, "") + " in 1080p" : "";
       if (v.droitsTexte) $("swDroitsTxt").textContent = v.droitsTexte;
       var ferme = v.actif === false || v.ouvertAujourdhui === false;
       $("swPastille").className = "ds-badge " + (ferme ? "panne" : "vif");
@@ -837,13 +883,23 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
   }
   function peintPlan(e, v){
     var lp = $("swPersos"); lp.textContent = "";
+    var libre = acceptees().length > 0;
     (v.personnages || []).forEach(function(p){
-      var bt = el("button", { type: "button", "aria-pressed": String(p.id === S.perso), "data-perso": p.id });
+      var bt = el("button", { type: "button", "aria-pressed": String(!libre && p.id === S.perso), "data-perso": p.id });
       /* une vignette du site seulement */
       if (/^\/img\/site\/[a-z0-9_\-]+\.(jpg|jpeg|png|webp)$/.test(String(p.vignette || ""))) bt.appendChild(el("img", { src: String(p.vignette).slice(1), alt: "" }));
       bt.appendChild(el("span", { text: p.nom }));
-      bt.addEventListener("click", function(){ S.perso = p.id; peint(); });
+      /* le personnage maison : les images du joueur sont retirees */
+      bt.addEventListener("click", function(){ S.perso = p.id; videMiens(); peint(); });
       lp.appendChild(bt);
+    });
+    peintMiens(v);
+    [].forEach.call($("swRes").querySelectorAll("[data-res]"), function(b){
+      var r = b.getAttribute("data-res"), t = e.prixUsdParResolution || {};
+      var ouvert = !v.resolutions || v.resolutions.indexOf(r) >= 0;
+      b.hidden = !ouvert;
+      b.setAttribute("aria-pressed", String(r === S.resolution));
+      b.textContent = r + (t[r] != null ? " · " + dollars(t[r]) : "");
     });
     var lc = $("swCibles"); lc.textContent = "";
     (v.cibles || []).forEach(function(c){
@@ -851,18 +907,78 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
       bt.addEventListener("click", function(){ S.cible = c.id; peint(); });
       lc.appendChild(bt);
     });
-    var prix = Number(e.prixUsd);
+    var prix = prixPlan(e);
     $("swPrix").textContent = dollars(prix);
-    $("swPrixInfo").textContent = e.morceaux.length + (e.morceaux.length > 1 ? " parts" : " part") + " · " + Number(e.source && e.source.duree || 0).toFixed(1) + " s · 720p · every started second of each part counts";
+    $("swPrixInfo").textContent = e.morceaux.length + (e.morceaux.length > 1 ? " parts" : " part") + " · " + Number(e.source && e.source.duree || 0).toFixed(1) + " s · " + S.resolution + " · every started second of each part counts";
     var c = S.credit;
     $("swCredit").textContent = c == null ? "Checking your dollar credit…" : "Your dollar credit: " + dollars(c) + ". Charged only for the parts you get.";
     var assez = c != null && c + 1e-9 >= prix;
-    $("swLance").hidden = !assez; $("swLance").disabled = S.occupe || !S.perso || !S.cible;
+    $("swLance").hidden = !assez; $("swLance").disabled = S.occupe || !(S.perso || libre) || !S.cible || enExamen();
     $("swLance").textContent = "Run — " + dollars(prix);
     $("swRecharge").hidden = c == null || assez;
     $("swManque").hidden = c == null || assez;
     if (c != null && !assez) $("swManque").textContent = "You need " + dollars(Math.ceil((prix - c) * 100 - 1e-9) / 100) + " more on your dollar credit to run this video.";
   }
+  /* ---- le personnage du joueur : l'apercu (local), l'examen (serveur), le verdict ---- */
+  function peintMiens(v){
+    var ouvert = v.verificationImages !== false;
+    $("swImages").disabled = !ouvert || S.miens.length >= (v.imagesMax || 2) || S.occupe;
+    if (!ouvert) $("swMienNote").textContent = "Custom characters are paused right now — use SWOGE.";
+    var l = $("swMiens"); l.textContent = "";
+    S.miens.forEach(function(m){
+      var c = el("div", { cls: "swq-img " + (m.etat === "ok" ? "ok" : m.etat === "refuse" ? "refuse" : ""), "data-etat": m.etat });
+      if (m.apercu) c.appendChild(el("img", { src: m.apercu, alt: "Your character" }));
+      c.appendChild(el("b", { text: m.etat === "examen" ? "Checking image…" : m.etat === "ok" ? "Accepted" : "Not accepted" }));
+      if (m.raison) c.appendChild(el("div", { text: m.raison }));
+      var x = el("button", { type: "button", text: "Remove" });
+      x.addEventListener("click", function(){ retire(m); });
+      c.appendChild(x);
+      l.appendChild(c);
+    });
+  }
+  function retire(m){
+    if (m.apercu) URL.revokeObjectURL(m.apercu);
+    S.miens = S.miens.filter(function(x){ return x !== m; });
+    peint();
+  }
+  function videMiens(){ S.miens.slice().forEach(function(m){ if (m.apercu) URL.revokeObjectURL(m.apercu); }); S.miens = []; $("swImages").value = ""; }
+  function examine(m){
+    fetch(serveur() + "/studio/swap/image", { method: "POST", cache: "no-store", headers: { "content-type": m.fichier.type, authorization: "Bearer " + jeton() }, body: m.fichier })
+      .then(lis).then(function(o){
+        if (S.miens.indexOf(m) < 0) return;
+        m.etat = o.accepte && /^[0-9a-f]{64}$/.test(String(o.id)) ? "ok" : "refuse"; m.id = o.id; m.raison = null; peint();
+      })["catch"](function(err){
+        if (S.miens.indexOf(m) < 0) return;
+        m.etat = "refuse"; m.raison = err.message; peint();
+      });
+  }
+  $("swImages").addEventListener("change", function(){
+    var v = S.vue || {}, max = v.imageOctetsMax || 6 * 1048576, place = (v.imagesMax || 2) - S.miens.length;
+    var fs = [].slice.call(this.files || []);
+    this.value = "";
+    if (!jeton()) return connexion();
+    if (fs.length > place) statut("Up to " + (v.imagesMax || 2) + " images — the first " + Math.max(0, place) + " were kept.", true);
+    fs.slice(0, Math.max(0, place)).forEach(function(f){
+      var m = { fichier: f, apercu: null, etat: "examen", id: null, raison: null };
+      if (IMG_TYPES.indexOf(f.type) < 0) { m.etat = "refuse"; m.raison = "Use a JPEG, PNG or WebP image."; }
+      else if (f.size > max) { m.etat = "refuse"; m.raison = "This image is " + (f.size / 1048576).toFixed(1) + " MB — " + Math.round(max / 1048576) + " MB at most."; }
+      else { try { m.apercu = URL.createObjectURL(f); } catch (e) {} }
+      S.miens.push(m);
+      if (m.etat === "examen") examine(m);
+    });
+    peint();
+  });
+  $("swTexte").addEventListener("input", function(){
+    var n = this.value.length, max = (S.vue && S.vue.texteMax) || 600;
+    $("swTexteCompte").textContent = n + " / " + max;
+    $("swTexteCompte").className = "swq-compte" + (n >= max ? " plein" : "");
+  });
+  $("swRes").addEventListener("click", function(ev){
+    var b = ev.target.closest && ev.target.closest("[data-res]");
+    if (!b || b.hidden) return;
+    S.resolution = b.getAttribute("data-res"); peint();
+  });
+
   function peintSuivi(e){
     var g = $("swGrille"); g.textContent = "";
     (e.morceaux || []).forEach(function(m){
@@ -966,8 +1082,13 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
   });
   $("swLance").addEventListener("click", function(){
     var e = S.etat; if (!e || e.statut !== "pret") return;
-    S.occupe = true; peint(); statut("Reserving " + dollars(e.prixUsd) + " on your credit and sending the first parts…");
-    api("/studio/swap/" + S.id + "/lance", "POST", { personnage: S.perso, cible: S.cible, confirmeUsd: e.prixUsd })
+    if (enExamen()) return;
+    var prix = prixPlan(e), ids = acceptees().map(function(m){ return m.id; }), texte = $("swTexte").value.trim();
+    /* seulement ce qui est choisi : le personnage maison OU les identifiants rendus par la porte */
+    var q = ids.length ? { cible: S.cible, confirmeUsd: prix, resolution: S.resolution, images: ids } : { personnage: S.perso, cible: S.cible, confirmeUsd: prix, resolution: S.resolution };
+    if (texte) q.prompt = texte;
+    S.occupe = true; peint(); statut("Reserving " + dollars(prix) + " on your credit and sending the first parts…");
+    api("/studio/swap/" + S.id + "/lance", "POST", q)
       .then(function(r){ S.occupe = false; S.etat = r; peint(); suis(); chargeCredit(); })
       ["catch"](function(err){
         S.occupe = false;
@@ -990,6 +1111,7 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
     if (S.suivi) clearTimeout(S.suivi);
     S.id = null; S.etat = null; S.fichier = null; $("swFichier").value = ""; $("swDroits").checked = false;
     if (S.blob) { URL.revokeObjectURL(S.blob); S.blob = null; }
+    videMiens(); $("swTexte").value = ""; $("swTexteCompte").textContent = "0 / " + ((S.vue && S.vue.texteMax) || 600); S.resolution = "720p";
     $("swFichierInfo").textContent = "MP4 only."; statut(""); peint();
   });
 
@@ -997,7 +1119,7 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
   var RC = { usd: null, reseau: "base" };
   function montants(){
     var L = S.limites || {}, min = L.minUsd || 0.1, max = L.maxUsd || 50;
-    var manque = S.etat && S.etat.prixUsd != null && S.credit != null ? Math.max(0, S.etat.prixUsd - S.credit) : 0;
+    var manque = S.etat && S.etat.prixUsd != null && S.credit != null ? Math.max(0, prixPlan(S.etat) - S.credit) : 0;
     var l = [Math.max(1, Math.ceil(manque - 1e-9)), 5, 20].filter(function(x, i, a){ return x >= min && x <= max && a.indexOf(x) === i; }).sort(function(a, b){ return a - b; });
     if (RC.usd == null || l.indexOf(RC.usd) < 0 || RC.usd < manque) RC.usd = l.filter(function(x){ return x >= manque; })[0] || l[l.length - 1];
     var seg = $("swRcMontants"); seg.textContent = "";
@@ -1063,7 +1185,7 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
     recharge(RC.usd, function(t){ st.textContent = t; }).then(function(r){
       b.disabled = false;
       st.textContent = r.corps.alreadyCredited ? "This payment was already credited." : "Done: " + dollars(r.corps.creditedUsd) + " added. Your credit: " + dollars(r.corps.balanceUsd) + ".";
-      chargeCredit().then(function(){ montants(); if (S.credit != null && S.etat && S.credit + 1e-9 >= S.etat.prixUsd) $("swRc").hidden = true; });
+      chargeCredit().then(function(){ montants(); if (S.credit != null && S.etat && S.credit + 1e-9 >= prixPlan(S.etat)) $("swRc").hidden = true; });
     })["catch"](function(e){
       /* apres la signature, le bouton reste coupe : signer encore paierait deux fois */
       b.disabled = !(e && e.avantSignature) && !!(e && (e.attente || e.reseauCoupe));

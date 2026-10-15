@@ -257,6 +257,7 @@ img.vign{ width:64px; height:64px; object-fit:cover; border-radius:10px; vertica
     <label for="aStill">Your still (JPG or PNG: the first frame of the clip, SWOGE in it)</label>
     <input id="aStill" type="file" accept="image/png,image/jpeg">
     <img id="aStillVue" class="apercu" alt="Your still" hidden>
+    <button type="button" class="pale2" id="aStillRetire" hidden>Remove this still</button>
     <p class="pale" id="aStillInfo"></p>
     <label for="aQuoi">Length</label>
     <select id="aQuoi"><option value="clip" selected>One clip (3–10 s)</option><option value="entier">Whole video (parts, one after another)</option></select>
@@ -999,7 +1000,8 @@ img.vign{ width:64px; height:64px; object-fit:cover; border-radius:10px; vertica
         if (p < 300 || g / p > 2.5) { aStatut("Kling needs 300 px at least per side and a shape between 1:2.5 and 2.5:1 — this still is " + l + "×" + h + ".", "err"); peintAnime(); return; }
         A.still = d; A.stillL = l; A.stillH = h;
         var vu = $("aStillVue"); vu.src = d; vu.hidden = false;
-        $("aStillInfo").textContent = f.name + " · " + l + "×" + h + " · " + (f.size / 1048576).toFixed(1) + " MB — this is the first frame of the result.";
+        $("aStillInfo").textContent = (f.name === NOM_DEFAUT ? "Default: SWOGE in the shop (ChatGPT) · " : f.name + " · ") + l + "×" + h + " · " + (f.size / 1048576).toFixed(1) + " MB — this is the first frame of the result. Choose another file to replace it.";
+        $("aStillRetire").hidden = false;
         aStatut(""); peintAnime();
       };
       im.onerror = function(){ aStatut("This picture could not be read.", "err"); peintAnime(); };
@@ -1007,6 +1009,23 @@ img.vign{ width:64px; height:64px; object-fit:cover; border-radius:10px; vertica
     };
     r.readAsDataURL(f);
   });
+  /* 15/10/2026, demande du proprietaire : son image ChatGPT (SWOGE dans l'epicerie) est chargee par
+   * defaut quand on ouvre « Animate my still » ; elle passe par le meme controle qu'un fichier choisi
+   * (DataTransfer -> evenement change). Un autre fichier la remplace ; « Remove » la retire. */
+  var STILL_DEFAUT = "img/site/swoge_epicerie_still.jpg", NOM_DEFAUT = "swoge_shop_still.jpg", defautFait = false;
+  function stillParDefaut(){
+    if (defautFait || A.still || $("blocAnimer").hidden) return;
+    defautFait = true;
+    fetch(STILL_DEFAUT).then(function(r){ return r.ok ? r.blob() : null; }).then(function(b){
+      if (!b || A.still) return;
+      try { var dt = new DataTransfer(); dt.items.add(new File([b], NOM_DEFAUT, { type: "image/jpeg" })); $("aStill").files = dt.files; $("aStill").dispatchEvent(new Event("change")); } catch (e) {}
+    })["catch"](function(){});
+  }
+  $("modeAnimer").addEventListener("click", stillParDefaut);
+  $("aStillRetire").addEventListener("click", function(){
+    A.still = null; A.stillL = A.stillH = 0; $("aStill").value = ""; $("aStillVue").hidden = true; $("aStillInfo").textContent = ""; $("aStillRetire").hidden = true; peintAnime();
+  });
+  stillParDefaut();
   $("aClip").addEventListener("change", function(){
     var f = $("aClip").files && $("aClip").files[0];
     A.fichier = null; A.dureeS = null; $("aClipInfo").textContent = ""; aStatut("");

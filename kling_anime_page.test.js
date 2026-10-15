@@ -185,7 +185,11 @@ const TEXTE = 'Start exactly from @image_1: the first frame of the video is @ima
     ok((posts('/studio/kling/entier')[0] || {}).recherche === '?mode=anime', 'Plan : ?mode=anime');
     const i2 = await q.textContent('#aPlanInfo');
     ok(/^3 parts, one after another: /.test(i2) && /Time: 3 times one part's wait at Kling, in a row/.test(i2), 'le plan : 3 parts a la suite, le temps dit [' + i2 + ']');
-    ok(await q.isDisabled('#aLancer') && /Choose your still first/.test(await q.textContent('#aLancer')), 'sans image fixe : Run ferme');
+    /* 15/10 : l image ChatGPT du proprietaire est chargee par defaut ; « Remove » la retire */
+    await attend(q, () => !document.getElementById('aStillVue').hidden);
+    ok(/Default: SWOGE in the shop/.test(await q.textContent('#aStillInfo')) && await q.isVisible('#aStillRetire'), 'l image par defaut (SWOGE dans l epicerie) est chargee, avec Remove [' + await q.textContent('#aStillInfo') + ']');
+    await q.click('#aStillRetire');
+    ok(await q.isDisabled('#aLancer') && /Choose your still first/.test(await q.textContent('#aLancer')), 'sans image fixe (retiree) : Run ferme');
     await q.setInputFiles('#aStill', F.still);
     await attend(q, () => !document.getElementById('aStillVue').hidden);
     ok(await q.isEnabled('#aLancer') && /Run — \$2\.646 worst case/.test(await q.textContent('#aLancer')), 'avec l image fixe : Run, 2,646 $');

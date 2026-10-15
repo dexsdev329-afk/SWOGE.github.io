@@ -148,6 +148,10 @@ const FRANCAIS = /[éèêàùçôîœ]|\b(?:les|des|une|est|pas|sur|avec|dans|po
   console.log('\n-- 4. mouvement reduit : rien ne tourne, rien ne manque --');
   {
     const v = await ouvre({ attente: 1500 });
+    /* la scene s'arrete hors de l'ecran (voulu) ; depuis que les positions du
+       cerveau v8 sont une grille SOUS lui, #sky commence sous la ligne de
+       flottaison a 1440 x 900 : on l'amene a l'ecran avant de la regarder */
+    await v.page.evaluate(() => document.getElementById('sky').scrollIntoView({ block: 'center' })); await v.page.waitForTimeout(300);
     const vivant = await v.page.evaluate(async () => { const c = document.getElementById('sky'), a = c.toDataURL(); await new Promise((r) => setTimeout(r, 700)); return { tourne: Scene.tourne(), change: c.toDataURL() !== a }; });
     ok(vivant.tourne && vivant.change, 'sans preference, la scene tourne (temoin : elle change en 0,7 s)');
     await v.ctx.close();

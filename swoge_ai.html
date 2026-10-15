@@ -38,7 +38,7 @@
  * une fois par session pour savoir si le serveur en a une plus recente.
  * Sans ca, un joueur garde des semaines une version corrigee depuis
  * longtemps. `node cache_marqueur.test.js` donne la valeur a ecrire. */
-var MARQUE_PAGE = '2ef66627';
+var MARQUE_PAGE = '17ae6365';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -226,63 +226,63 @@ nav.sb-ancre{display:flex;align-items:center;gap:8px;margin-left:auto;min-width:
 .note .ic{color:var(--amber);margin-top:1px;width:15px;height:15px}
 .note b{color:var(--text2)}
 
-/* ==================== LE CERVEAU DE LA COLONIE (15/10/2026) ====================
-   Maquette v7 « cerveau » choisie par le proprietaire : un cerveau vu de dessus,
-   chaque agent une aire, chaque jeton un influx. Tout est prefixe `cv-` sous
-   `.cerveau` : la page a deja ses `.kpi`, `.pos`, `.tag` et la maquette ne doit
-   pas les toucher. Au-dessus de 1100 px, la maquette telle quelle (le panneau
-   des positions a droite, par-dessus la scene) ; en dessous, empile : titre,
-   cerveau, puis le panneau (mesure le 15/10 : entre 760 et 1100 px le panneau
-   de 300 px couvrait les etiquettes de droite). */
-.cerveau{--cv-fond:#03040a;--cv-pale:#7d87a6;--cv-cyan:#5ce1ff;--cv-rouge:#ff4d6d;--cv-or:#ffcf5c;--cv-vert:#43f0a8;
-  position:relative;overflow:hidden;color:#eef2ff;font-family:Inter,var(--f);
-  height:max(680px,min(calc(100svh - 60px),1000px));
-  background:radial-gradient(60% 55% at 50% 48%,rgba(80,70,200,.16),transparent 70%),radial-gradient(40% 40% at 50% 50%,rgba(92,225,255,.06),transparent 70%),var(--cv-fond)}
+/* ==================== LE CERVEAU DE LA COLONIE (15/10/2026, maquette v8) ====================
+   Maquette v8 validee par le proprietaire le 15/10, d'apres son image de
+   reference : un cerveau VU DE FACE, bleu, plisse, au contour lumineux double,
+   un noyau « SWOGE AI » au centre ; sur ordinateur (>= 900 px) huit cartes
+   d'agents, quatre a gauche, quatre a droite, reliees a leur aire par un cable
+   lumineux — dessinees dans le canvas. Les positions ouvertes SORTENT de la
+   scene : une grille de cartes pleine largeur sous le cerveau. Sous 900 px, le
+   titre et les chiffres passent au-dessus de la scene et les aires portent
+   leur nom en couleur (le seuil de la maquette v8 : en dessous, les cartes
+   couvriraient le cerveau). Tout est prefixe `cv-`
+   sous `.cerveau` : la page a deja ses `.kpi`, `.pos`, `.tag`. */
+.cerveau{--cv-fond:#02030a;--cv-pale:#8b95b8;--cv-cyan:#3fb6ff;--cv-rouge:#ff4d6d;--cv-or:#ffc65c;--cv-vert:#43f0a8;
+  position:relative;color:#eef3ff;font-family:Inter,var(--f);background:var(--cv-fond)}
+.cv-ecran{position:relative;overflow:hidden;height:max(680px,min(calc(100svh - 60px),1000px));
+  background:radial-gradient(55% 60% at 50% 50%,rgba(40,60,200,.20),transparent 70%),var(--cv-fond)}
 .cv-scene{position:absolute;inset:0}
 .cv-scene canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
-.cv-haut{position:absolute;z-index:3;left:0;right:0;top:0;padding:26px 32px;display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;pointer-events:none}
-.cv-sur{font:500 11px var(--mono);letter-spacing:2.6px;color:var(--cv-pale);text-transform:uppercase;display:flex;gap:10px;align-items:center}
+.cv-haut{position:absolute;z-index:3;left:0;right:0;top:0;padding:22px 30px;display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;pointer-events:none}
+.cv-sur{font:600 11px var(--mono);letter-spacing:2.6px;color:var(--cv-pale);text-transform:uppercase;display:flex;gap:10px;align-items:center}
 .cv-sur i{width:7px;height:7px;flex:0 0 auto;border-radius:50%;background:var(--cv-cyan);box-shadow:0 0 12px var(--cv-cyan);animation:cvp 1.4s infinite}
 @keyframes cvp{50%{opacity:.3}}
-.cv-titre{margin:8px 0 0;font:600 clamp(24px,3vw,42px)/1.05 Inter,var(--f);letter-spacing:-1px;color:#eef2ff}
-.cv-titre em{font-style:normal;background:linear-gradient(90deg,#5ce1ff,#a98bff);-webkit-background-clip:text;background-clip:text;color:transparent}
-.cv-kpi{display:flex;gap:28px;flex-wrap:wrap}
-.cv-kpi small{display:block;font:500 10.5px var(--mono);letter-spacing:1.6px;color:var(--cv-pale);text-transform:uppercase}
-.cv-kpi b{display:block;margin-top:6px;font:500 clamp(18px,2vw,28px) var(--mono);font-variant-numeric:tabular-nums}
+.cv-titre{margin:8px 0 0;font:600 clamp(20px,2.1vw,30px)/1.1 Inter,var(--f);letter-spacing:-.6px;color:#eef3ff}
+.cv-titre em{font-style:normal;background:linear-gradient(90deg,#3fb6ff,#b56bff);-webkit-background-clip:text;background-clip:text;color:transparent}
+.cv-kpi{display:flex;gap:26px;flex-wrap:wrap}
+.cv-kpi small{display:block;font:600 10.5px var(--mono);letter-spacing:1.6px;color:var(--cv-pale);text-transform:uppercase}
+.cv-kpi b{display:block;margin-top:5px;font:600 clamp(18px,1.9vw,24px) var(--mono);font-variant-numeric:tabular-nums}
 .cv-kpi .v{color:var(--cv-vert)} .cv-kpi .o{color:var(--cv-or)} .cv-kpi .c{color:var(--cv-cyan)}
-.cv-pensee{position:absolute;z-index:3;left:50%;bottom:22px;transform:translateX(-50%);width:min(720px,calc(100% - 32px));text-align:center;pointer-events:none}
-.cv-pensee small{font:500 10.5px var(--mono);letter-spacing:2px;color:var(--cv-pale);text-transform:uppercase}
-.cv-pensee p{margin:6px 0 0;font:400 17px/1.5 Inter,var(--f);color:#dfe6ff;min-height:46px;text-shadow:0 0 20px rgba(92,225,255,.25);overflow-wrap:anywhere}
+.cv-pensee{position:absolute;z-index:3;left:50%;bottom:20px;transform:translateX(-50%);width:min(760px,calc(100% - 32px));text-align:center;pointer-events:none}
+.cv-pensee small{font:600 10.5px var(--mono);letter-spacing:2px;color:var(--cv-pale);text-transform:uppercase}
+.cv-pensee p{margin:6px 0 0;font:400 16px/1.5 Inter,var(--f);color:#dfe6ff;min-height:48px;overflow-wrap:anywhere}
 .cv-pensee p b{color:#fff;font-weight:600} .cv-pensee p .r{color:var(--cv-rouge)} .cv-pensee p .g{color:var(--cv-vert)} .cv-pensee p .o{color:var(--cv-or)}
-.cv-pos{position:absolute;z-index:4;right:28px;top:128px;width:340px;border-radius:18px;background:rgba(12,14,32,.78);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
-  border:1px solid rgba(140,150,255,.18);box-shadow:0 20px 60px rgba(0,0,0,.45);overflow:hidden}
-.cv-pos .cv-tete{display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:14px 16px 10px;border-bottom:1px solid rgba(140,150,255,.12)}
+/* les positions, sous le cerveau : une carte par position */
+.cv-pos{max-width:1180px;margin:0 auto;padding:18px 24px 40px}
+.cv-pos .cv-tete{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:12px}
 .cv-pos .cv-tete small{font:600 11px var(--mono);letter-spacing:1.8px;color:var(--cv-pale);text-transform:uppercase}
-.cv-pos .cv-tete .tag{margin-left:8px;vertical-align:1px}
-.cv-pos .cv-tete b{font:700 18px var(--mono);white-space:nowrap}
-.cv-pos .cv-ligne{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;padding:11px 16px;border-bottom:1px solid rgba(140,150,255,.08)}
-.cv-pos .cv-sym{font:700 14.5px Inter,var(--f);color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.cv-pos .cv-pnl{font:700 15px var(--mono);text-align:right}
-.cv-pos .cv-det{font:400 11.5px var(--mono);color:var(--cv-pale);min-width:0}
-.cv-pos .cv-pct{font:500 12px var(--mono);text-align:right}
-.cv-pos .cv-jauge{grid-column:1/-1;height:3px;border-radius:3px;background:rgba(255,255,255,.07);position:relative;overflow:hidden;margin-top:6px}
-.cv-pos .cv-jauge i{position:absolute;top:0;bottom:0;left:50%;border-radius:3px}
-.cv-pos .cv-vide{padding:16px;font:400 12.5px/1.5 var(--mono);color:var(--cv-pale)}
-.cv-pos .cv-pied{display:flex;justify-content:space-between;gap:10px;padding:11px 16px;font:500 12px var(--mono);color:var(--cv-pale);background:rgba(255,255,255,.02)}
-.cv-pos .cv-pied b{font-weight:700;white-space:nowrap}
-.cv-pos .cv-pied span{min-width:0}
+.cv-pos .cv-papier{display:inline-block;margin-left:8px;padding:2px 7px;border-radius:6px;border:1px solid rgba(255,198,92,.45);color:var(--cv-or);font:600 11px var(--mono);letter-spacing:1px;text-transform:uppercase;vertical-align:1px}
+.cv-pos .cv-tete b{font:700 22px var(--mono);white-space:nowrap}
+.cv-veille{margin:-4px 0 12px;font:400 11.5px/1.5 var(--mono);color:var(--cv-pale)}
+.cv-grille{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
+.cv-ligne{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;align-items:baseline;padding:14px 16px;border-radius:16px;background:rgba(14,18,44,.72);border:1px solid rgba(120,140,255,.18);min-width:0}
+.cv-sym{font:700 15px Inter,var(--f);color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cv-pnl{font:700 16px var(--mono);text-align:right;white-space:nowrap}
+.cv-det{font:400 11.5px var(--mono);color:var(--cv-pale);min-width:0;overflow-wrap:anywhere}
+.cv-pct{font:500 11.5px var(--mono);text-align:right;white-space:nowrap}
+.cv-jauge{grid-column:1/-1;height:3px;border-radius:3px;background:rgba(255,255,255,.07);position:relative;overflow:hidden;margin-top:5px}
+.cv-jauge i{position:absolute;top:0;bottom:0;left:50%;border-radius:3px}
+.cv-vide{grid-column:1/-1;font:400 13px/1.5 var(--mono);color:var(--cv-pale);padding:6px 0}
+.cv-pied{display:flex;justify-content:space-between;gap:10px;margin-top:14px;padding-top:11px;border-top:1px solid rgba(120,140,255,.12);font:500 12px var(--mono);color:var(--cv-pale)}
+.cv-pied b{font-weight:700;white-space:nowrap} .cv-pied span{min-width:0}
 .cerveau .up{color:var(--cv-vert)!important} .cerveau .dn{color:var(--cv-rouge)!important}
-@media (max-width:1099.98px){
-  .cerveau{height:auto;display:flex;flex-direction:column}
-  .cv-haut{position:relative;order:-1;padding:20px 16px 4px}
-  .cv-scene{position:relative;inset:auto;height:620px}
-  .cv-pos{position:relative;right:auto;top:auto;width:auto;max-width:560px;margin:0 auto 24px}
-}
-@media (max-width:759.98px){
-  .cv-kpi{gap:14px}
+@media (max-width:899.98px){
+  .cv-ecran{height:auto;display:flex;flex-direction:column}
+  .cv-haut{position:relative;order:-1;padding:18px 16px 4px;flex-direction:column;gap:12px}
+  .cv-kpi{gap:16px}
+  .cv-scene{position:relative;inset:auto;height:clamp(440px,128vw,600px)}
   .cv-pensee p{font-size:14px}
-  .cv-scene{height:clamp(440px,128vw,600px)}
-  .cv-pos{margin:0 16px 24px}
+  .cv-pos{margin:0 16px;padding:14px 0 28px}
 }
 
 /* scene des agents */
@@ -702,34 +702,39 @@ th:last-child,td:last-child{padding-right:18px}
 
 <!-- ==================== LE HEROS : LA COLONIE EN DIRECT ==================== -->
 <section class="colhero" id="tm-live" aria-label="Robinhood Chain colony">
-  <!-- ==================== LE CERVEAU (15/10/2026) ====================
-       La maquette v7 choisie par le proprietaire, en tete de la colonie. Le
+  <!-- ==================== LE CERVEAU (15/10/2026, maquette v8) ====================
+       La maquette v8 validee par le proprietaire, en tete de la colonie. Le
        texte est ecrit en anglais ici (ce qu'on lit si le script ne tourne pas)
        et repeint par `peintCerveau` depuis la table PHRASES. Chaque chiffre
        vient de /ai/colonie ; ce que la scene invente pour ne jamais paraitre
-       morte (les influx anonymes) ne porte ni nom ni chiffre. -->
+       morte (les influx anonymes) ne porte ni nom ni chiffre. Les cartes des
+       agents sont dessinees dans le canvas ; les positions sont une grille
+       sous la scene. -->
   <div class="cerveau" id="cerveau">
-    <div class="cv-scene" id="cvScene">
-      <canvas id="cvCanvas" role="img" aria-label="The colony as a brain: each agent is an area, each real token an impulse that stops where it was refused or reaches the Closer when bought."></canvas>
-      <div class="cv-pensee"><small id="cvPenseeT">Current thought</small><p id="cvPensee" aria-live="off">…</p></div>
-    </div>
-    <div class="cv-haut">
-      <div>
-        <div class="cv-sur"><i></i><span id="cvSur">SWOGE AI · colony · thinking live</span></div>
-        <h2 class="cv-titre" id="cvTitre">One brain. <em>Many agents.</em></h2>
+    <div class="cv-ecran" id="cvEcran">
+      <div class="cv-scene" id="cvScene">
+        <canvas id="cvCanvas" role="img" aria-label="The colony as a brain: each agent is an area with its card, each real token an impulse that stops where it was refused or reaches the Closer when bought."></canvas>
+        <div class="cv-pensee"><small id="cvPenseeT">Current thought</small><p id="cvPensee" aria-live="off">…</p></div>
       </div>
-      <div class="cv-kpi">
-        <div><small id="cvKvL">Seen / min</small><b class="c" id="cvKv">—</b></div>
-        <div><small id="cvKrL">Rejected</small><b id="cvKr">—</b></div>
-        <div><small id="cvKaL">Bought</small><b class="o" id="cvKa">—</b></div>
-        <div><small id="cvKtL">Treasury</small><b class="v" id="cvKt">—</b></div>
+      <div class="cv-haut" id="cvHaut">
+        <div>
+          <div class="cv-sur"><i></i><span id="cvSur">SWOGE AI · colony · thinking live</span></div>
+          <h2 class="cv-titre" id="cvTitre">One brain. <em>Many agents.</em></h2>
+        </div>
+        <div class="cv-kpi">
+          <div><small id="cvKvL">Seen / min</small><b class="c" id="cvKv">—</b></div>
+          <div><small id="cvKrL">Rejected</small><b id="cvKr">—</b></div>
+          <div><small id="cvKaL">Bought</small><b class="o" id="cvKa">—</b></div>
+          <div><small id="cvKtL">Treasury</small><b class="v" id="cvKt">—</b></div>
+        </div>
       </div>
     </div>
-    <div class="cv-pos" id="cvPos">
-      <div class="cv-tete"><span><small id="cvPosT">Open positions</small><span class="tag a" id="cvPosP">Paper</span></span><b id="cvPTot">—</b></div>
-      <div id="cvPListe"><div class="cv-vide">Waiting for the server…</div></div>
+    <section class="cv-pos" id="cvPos" aria-labelledby="cvPosT">
+      <div class="cv-tete"><span><small id="cvPosT">Open positions</small><span class="cv-papier" id="cvPosP">Paper</span></span><b id="cvPTot">—</b></div>
+      <div class="cv-veille" id="cvVeille" hidden></div>
+      <div class="cv-grille" id="cvPListe"><div class="cv-vide">Waiting for the server…</div></div>
       <div class="cv-pied"><span id="cvRealL">Realized today</span><b id="cvReal">—</b></div>
-    </div>
+    </section>
   </div>
   <div class="orb a"></div><div class="orb b"></div>
   <div class="floor" aria-hidden="true"><i></i></div>
@@ -1202,7 +1207,7 @@ const PHRASES = {
   cvPasse:      [(p) => p + ' pass', (p) => p + ' passent'],
   cvOuvertes:   [(n) => n + ' opened', (n) => n + ' ouvertes'],
   cvMises:      [(n) => n + ' sized', (n) => n + ' mises'],
-  /* --- le cerveau (maquette v7, 15/10/2026) --- */
+  /* --- le cerveau (maquette v8, 15/10/2026) --- */
   brSur:        ['SWOGE AI · colony · thinking live', 'SWOGE AI · colonie · pense en direct'],
   brTitre1:     ['One brain.', 'Un cerveau.'],
   brTitre2:     [(n) => n == null ? 'Many agents.' : (BR_MOTS_EN[n] || String(n)) + ' agent' + (n === 1 ? '' : 's') + '.',
@@ -1229,15 +1234,15 @@ const PHRASES = {
   brDetVendu:   [(p) => ' · ' + p + '% sold', (p) => ' · ' + p + ' % vendu'],
   brSansPrix:   [(m) => 'in ' + m + ' → no fresh price', (m) => 'misé ' + m + ' → pas de prix frais'],
   brSansPrixC:  ['no price', 'sans prix'],
-  /* les aires : le nom vient du roster, le role est ecrit ici */
-  brd_scout:    ['perception · sees new tokens', 'perception · voit les jetons'],
-  brd_whale:    ['memory · who holds', 'mémoire · qui détient'],
-  brd_whisper:  ['hearing · who buys', 'ouïe · qui achète'],
-  brd_warden:   ['instinct · danger', 'instinct · danger'],
-  brd_oracle:   ['judgement · decides', 'jugement · décide'],
-  brd_cobaye:   ['imagination · tests exit', 'imagination · teste la sortie'],
-  brd_banquier: ['will · sizes the stake', 'volonté · dose la mise'],
-  brd_closer:   ['motor · acts', 'moteur · agit'],
+  /* les cartes : le nom vient du roster, le role (une ligne) est ecrit ici */
+  brd_scout:    ['Sweeps three feeds for new tokens.', 'Balaie trois flux à la recherche de jetons.'],
+  brd_whale:    ['Reads who holds the supply.', 'Lit qui détient l\'offre.'],
+  brd_whisper:  ['Reads every trade: who really buys.', 'Lit chaque échange : qui achète vraiment.'],
+  brd_warden:   ['Contract checks: honeypot, taxes, owner.', 'Contrôle le contrat : piège, taxes, propriétaire.'],
+  brd_oracle:   ['Scores conviction, learns, decides.', 'Note la conviction, apprend, décide.'],
+  brd_cobaye:   ['Simulates the sale on chain, spends nothing.', 'Simule la vente sur la chaîne, sans rien dépenser.'],
+  brd_banquier: ['Sizes the stake from the treasury.', 'Dose la mise sur la trésorerie.'],
+  brd_closer:   ['Opens and closes at the real price.', 'Ouvre et ferme au prix réel.'],
   brRefuse:     [(p, n) => MIN + p + '% of ' + n + ' refused', (p, n) => MIN + p + ' % de ' + n + ' refusés'],
   brRefuseC:    [(p, n) => MIN + p + '% of ' + n, (p, n) => MIN + p + ' % de ' + n],
   brPasse:      [(n) => 'passes · ' + n + ' seen', (n) => 'laisse passer · ' + n + ' vus'],
@@ -1246,6 +1251,8 @@ const PHRASES = {
   brMises:      [(n) => n + ' stakes sized', (n) => n + ' mises dosées'],
   brOuvre:      [(n) => n + ' opened', (n) => n + ' ouvertes'],
   brPasPorte:   ['not a gate', 'pas une porte'],
+  brNoyau:      ['SWOGE AI', 'SWOGE AI'],
+  brVeille:     [(n) => 'Watched by ' + n, (n) => 'Surveillées par ' + n],
   /* les pensees : un evenement reel a la fois */
   brPRefus:     [(s, a, r) => '<b>$' + s + '</b> — the ' + a + ' says no: <span class="r">' + r + '</span>.', (s, a, r) => '<b>$' + s + '</b> — le ' + a + ' dit non : <span class="r">' + r + '</span>.'],
   brPPasse:     [(s) => '<b>$' + s + '</b> passed every gate of the last turn.', (s) => '<b>$' + s + '</b> a passé toutes les portes du dernier tour.'],
@@ -2983,21 +2990,28 @@ const Scene = (function(){
 window.Scene = Scene;
 
 /* ============================ LE CERVEAU DE LA COLONIE ============================
- * Maquette v7 (15/10/2026), choisie par le proprietaire : un cerveau vu de
- * dessus, deux hemispheres, ~1 300 neurones relies par leurs synapses. Chaque
- * agent est une AIRE ; chaque jeton un influx qui court de hub en hub.
+ * Maquette v8 (15/10/2026), validee par le proprietaire d'apres son image de
+ * reference : un cerveau vu de face, deux hemispheres bleus plisses, un noyau
+ * « SWOGE AI » au centre. Chaque agent du parcours est une AIRE (neurones
+ * colores, plus denses autour d'elle) et, sur ordinateur, une CARTE reliee a son
+ * aire par un cable lumineux ; chaque jeton est un influx qui court de hub en hub.
  *
  * Ce qui vient de /ai/colonie, et rien d'autre :
- *   - les etiquettes des aires : `roster[].vus` et `roster[].bloques` (part
- *     refusee = bloques / vus), le nom du roster ; sous AUDIT_ASSEZ jetons vus,
- *     l'aire ne donne pas de part, elle dit qu'il en faut plus ;
+ *   - les cartes (et, sur telephone, les noms poses sur les aires) : le nom du
+ *     roster (`roster[].nom`), le numero d'etape dans l'ordre du SERVEUR
+ *     (`parcours()`), et `roster[].vus` / `roster[].bloques` (part refusee =
+ *     bloques / vus) ; sous AUDIT_ASSEZ jetons vus, la carte ne donne pas de
+ *     part, elle dit qu'il en faut plus. Un agent absent du roster n'a ni carte
+ *     ni nom : la geometrie reste, rien ne pretend qu'il existe ;
+ *   - les SATELLITES : les agents du roster qui ne sont pas une etape du
+ *     parcours (Sentinel, Extender, Watcher, Advisor, le specialiste…) tournent
+ *     autour de l'aire qu'ils servent — leur parent s'ils en ont un, l'Oracle
+ *     pour le conseil, le Closer pour ceux qui veillent sur les positions ;
  *   - les influx NOMMES : les `candidats` du dernier tour, chacun arrete chez
  *     l'agent qui l'a refuse (`agentRefus`, donc `quiRefuse`), les `signaux`
  *     d'achat (jusqu'au Closer) et de vente, et les `flux` « skip » chez l'agent
  *     `par` ; a la premiere lecture on rejoue le dernier tour et le geste le plus
- *     recent, ensuite seulement ce qui est NOUVEAU ;
- *   - le panneau : `positions[]` (mise, gainLatent, encaisse, latent, reste) et
- *     le carnet des trades fermes (`carnet.lignes`, gain, t) pour « aujourd'hui ».
+ *     recent, ensuite seulement ce qui est NOUVEAU.
  * Ce qui est invente pour que le cerveau ne paraisse jamais mort : des influx
  * ANONYMES, pales, sans nom, sans chiffre, qui ne s'arretent nulle part.
  *
@@ -3005,32 +3019,45 @@ window.Scene = Scene;
  * mouvement reduit : une image fixe, redessinee a chaque nouvelle vue.
  * ======================================================================== */
 const Cerveau = (function(){
-  const cv = $("cvCanvas"), cx = cv.getContext("2d"), boite = $("cerveau");
-  /* La geometrie et les couleurs sont celles de la maquette ; les cles sont
-     celles du roster du serveur (`banquier`, pas `banker`). */
+  const cv = $("cvCanvas"), cx = cv.getContext("2d"), haut = $("cvHaut");
+  /* La geometrie, les couleurs et les icones sont celles de la maquette v8 ;
+     les cles sont celles du roster du serveur (`banquier`, pas `banker`).
+     `cote` : la colonne de la carte (-1 a gauche, 1 a droite). */
   const AIRES = [
-    { k:"scout",    n:"Scout",   c:"#5ce1ff", u:-0.52, v:-0.62 },
-    { k:"whale",    n:"Whale",   c:"#ff8a5c", u: 0.52, v:-0.62 },
-    { k:"whisper",  n:"Whisper", c:"#43f0d0", u:-0.70, v:-0.12 },
-    { k:"warden",   n:"Warden",  c:"#a98bff", u: 0.70, v:-0.12 },
-    { k:"oracle",   n:"Oracle",  c:"#ffcf5c", u:-0.36, v: 0.18 },
-    { k:"cobaye",   n:"Cobaye",  c:"#ff6fae", u: 0.36, v: 0.18 },
-    { k:"banquier", n:"Banker",  c:"#43f0a8", u:-0.50, v: 0.62 },
-    { k:"closer",   n:"Closer",  c:"#ffffff", u: 0.50, v: 0.62 },
+    { k:"scout",    n:"Scout",   c:"#38b6ff", ico:"jumelles", cote:-1, u:-0.46, v:-0.55 },
+    { k:"whisper",  n:"Whisper", c:"#2ff09a", ico:"bulle",    cote:-1, u:-0.62, v:-0.08 },
+    { k:"oracle",   n:"Oracle",  c:"#b56bff", ico:"diamant",  cote:-1, u:-0.40, v: 0.22 },
+    { k:"banquier", n:"Banker",  c:"#ffb02e", ico:"pieces",   cote:-1, u:-0.36, v: 0.58 },
+    { k:"whale",    n:"Whale",   c:"#ff8a2e", ico:"baleine",  cote: 1, u: 0.40, v:-0.58 },
+    { k:"warden",   n:"Warden",  c:"#3f7bff", ico:"bouclier", cote: 1, u: 0.56, v:-0.16 },
+    { k:"cobaye",   n:"Cobaye",  c:"#e55cff", ico:"fiole",    cote: 1, u: 0.52, v: 0.20 },
+    { k:"closer",   n:"Closer",  c:"#2ff0b4", ico:"cible",    cote: 1, u: 0.34, v: 0.55 },
   ];
   const PAR_CLE = {}; AIRES.forEach((a, i) => PAR_CLE[a.k] = i);
   const CLOSER = PAR_CLE.closer;
-  let W = 0, H = 0, DPR = 1, neur = [], liens = [], voisins = [], centre = { x:0, y:0 }, echelle = 1, fond = null;
+  let W = 0, H = 0, DPR = 1, E = 1, EX = 1, neur = [], liens = [], voisins = [], centre = { x:0, y:0 }, fond = null, calque = null, cartesVues = [], satVues = [];
+  /* au-dessus de 900 px les cartes ; en dessous, les noms sur les aires */
+  const large = () => W >= 900;
 
+  /* un hemisphere vu de face : rond, un peu plus large en haut, bord bossele
+     en circonvolutions (deux frequences, pour que la bosse ne soit pas reguliere) */
   function hemi(u, v, cote){
-    /* un hemisphere vu de dessus : ovale en oeuf (avant en haut, plus etroit), bord presque lisse */
-    const larg = 0.46 * (1 + 0.14*v);
-    const x = (u - cote*(0.04 + larg))/larg, y = v/0.9;
-    const a = Math.atan2(y, x), r = Math.hypot(x, y);
-    return r < 1 + 0.012*Math.sin(a*14 + cote);
+    const x = (u - cote*0.47)/0.47, y = (v + 0.02)/0.93;
+    const a = Math.atan2(y, x), r = Math.hypot(x*(1 - 0.06*y), y);
+    return r < 1 + 0.022*Math.abs(Math.sin(a*8 + cote)) + 0.012*Math.sin(a*15);
   }
-  const dansCerveau = (u, v) => Math.abs(u) > 0.035 && (hemi(u, v, -1) || hemi(u, v, 1));
-  const large = () => W >= 1100, etroit = () => W < 760;
+  const dansCerveau = (u, v) => Math.abs(u) > 0.03 && (hemi(u, v, -1) || hemi(u, v, 1));
+  const hexA = (h, a) => { const n = parseInt(h.slice(1), 16); return "rgba(" + (n >> 16) + "," + ((n >> 8) & 255) + "," + (n & 255) + "," + a + ")"; };
+  const couleurSure = c => /^#[0-9a-f]{6}$/i.test(c || "") ? c : null;
+  /* une lueur par couleur, peinte une fois : les neurones sont des sprites additifs */
+  const sprites = {};
+  function sprite(c){
+    if(sprites[c]) return sprites[c];
+    const s = document.createElement("canvas"); s.width = s.height = 64; const x = s.getContext("2d");
+    const g = x.createRadialGradient(32, 32, 0, 32, 32, 32);
+    g.addColorStop(0, "rgba(255,255,255,1)"); g.addColorStop(0.12, hexA(c, 1)); g.addColorStop(0.4, hexA(c, 0.35)); g.addColorStop(1, hexA(c, 0));
+    x.fillStyle = g; x.fillRect(0, 0, 64, 64); return sprites[c] = s;
+  }
 
   function mise(){
     const r = cv.getBoundingClientRect();
@@ -3038,23 +3065,27 @@ const Cerveau = (function(){
     /* plafond a 2 : au-dela, quatre fois plus de pixels pour rien a l'oeil */
     DPR = Math.min(2, devicePixelRatio || 1);
     cv.width = Math.round(W*DPR); cv.height = Math.round(H*DPR);
-    echelle = Math.min(W*(etroit() ? 0.44 : large() ? 0.22 : 0.3), H*(etroit() ? 0.3 : 0.34));
-    centre = { x: large() ? W*0.37 : W*0.5, y: H*(etroit() ? 0.44 : 0.52) };
-    AIRES.forEach(a => { a.x = centre.x + a.u*echelle; a.y = centre.y + a.v*echelle; });
-    /* neurones : tirage dans la silhouette, rattaches a l'aire la plus proche */
-    neur = []; const N = etroit() ? 700 : 1300;
-    for(let essais = 0; neur.length < N && essais < 60000; essais++){
+    /* l'echelle verticale E et, a part, l'horizontale EX : vu de face, le
+       cerveau est plus large que haut (x1,28 sur ordinateur, comme la maquette) */
+    E = large() ? Math.min(W*0.17, H*0.37) : Math.min(W*0.4, H*0.3);
+    EX = E*(large() ? 1.28 : 1.1);
+    centre = { x: W/2, y: H*(large() ? 0.52 : 0.46) };
+    AIRES.forEach(a => { a.x = centre.x + a.u*EX; a.y = centre.y + a.v*E; });
+    /* neurones : tirage dans la silhouette, rattaches a l'aire la plus proche,
+       et plus denses pres des aires (loin, un tirage sur deux est rejete) */
+    neur = []; const N = large() ? 1600 : 800;
+    for(let essais = 0; neur.length < N && essais < 90000; essais++){
       const u = Math.random()*2 - 1, v = Math.random()*2 - 1;
       if(!dansCerveau(u, v)) continue;
-      const x = centre.x + u*echelle, y = centre.y + v*echelle;
+      const x = centre.x + u*EX, y = centre.y + v*E;
       let best = 0, bd = 1e9;
       AIRES.forEach((a, i) => { const d = Math.hypot(x - a.x, y - a.y); if(d < bd){ bd = d; best = i; } });
-      neur.push({ x, y, aire:best, d:bd, ph:Math.random()*7, r:0.8 + Math.random()*1.4, feu:0 });
+      if(bd > E*0.3 && Math.random() < 0.55) continue;
+      neur.push({ x, y, aire:best, d:bd, ph:Math.random()*7, r:0.7 + Math.random()*1.3, feu:0 });
     }
-    dessineFond();
     /* synapses : chaque neurone relie ses 3 voisins les plus proches */
     liens = []; voisins = neur.map(() => []);
-    const lim = (echelle*0.16)**2;
+    const lim = (E*0.13)**2;
     for(let i = 0; i < neur.length; i++){
       const d = [];
       for(let j = 0; j < neur.length; j++){ if(i === j) continue; const dd = (neur[i].x - neur[j].x)**2 + (neur[i].y - neur[j].y)**2; if(dd < lim) d.push([dd, j]); }
@@ -3062,38 +3093,200 @@ const Cerveau = (function(){
       d.slice(0, 3).forEach(([, j]) => { if(i < j) liens.push([i, j]); voisins[i].push(j); voisins[j].push(i); });
     }
     AIRES.forEach(a => { let best = 0, bd = 1e9; neur.forEach((n, i) => { const dd = (n.x - a.x)**2 + (n.y - a.y)**2; if(dd < bd){ bd = dd; best = i; } }); a.hub = best; });
+    dessineFond(); dessineCartes();
     influx.length = 0; etincelles.length = 0;
     return true;
   }
+  /* le fond fixe : anneaux, cortex bleu plisse, contour lumineux double, fissure */
   function dessineFond(){
     fond = document.createElement("canvas"); fond.width = W*DPR; fond.height = H*DPR; const f = fond.getContext("2d"); f.setTransform(DPR, 0, 0, DPR, 0, 0);
-    /* masque des hemispheres */
+    /* anneaux concentriques, a peine visibles */
+    for(let i = 1; i <= 4; i++){ f.strokeStyle = "rgba(80,120,255," + (0.10 - i*0.018) + ")"; f.lineWidth = 1; f.beginPath(); f.arc(centre.x, centre.y, E*(1.05 + i*0.16), 0, 7); f.stroke(); }
+    /* le masque des hemispheres, calcule seulement dans leur boite */
     const m = document.createElement("canvas"); m.width = W; m.height = H; const mx = m.getContext("2d"), img = mx.createImageData(W, H);
-    for(let y = 0; y < H; y++) for(let x = 0; x < W; x++){ const u = (x - centre.x)/echelle, v = (y - centre.y)/echelle;
-      if(Math.abs(u) < 1.1 && Math.abs(v) < 1 && dansCerveau(u, v)){ const k = (y*W + x)*4; img.data[k] = 255; img.data[k+3] = 255; } }
+    const x0 = Math.max(0, Math.floor(centre.x - EX*1.1)), x1 = Math.min(W, Math.ceil(centre.x + EX*1.1)), y0 = Math.max(0, Math.floor(centre.y - E*1.05)), y1 = Math.min(H, Math.ceil(centre.y + E*1.05));
+    for(let y = y0; y < y1; y++) for(let x = x0; x < x1; x++){ if(dansCerveau((x - centre.x)/EX, (y - centre.y)/E)){ const k = (y*W + x)*4; img.data[k] = 255; img.data[k+3] = 255; } }
     mx.putImageData(img, 0, 0);
-    /* circonvolutions : des sillons qui serpentent, rognes par le masque */
-    const g = document.createElement("canvas"); g.width = W; g.height = H; const gx = g.getContext("2d");
-    gx.lineCap = "round";
-    for(let k = 0; k < (etroit() ? 150 : 260); k++){
-      let x = centre.x + (Math.random()*2 - 1)*echelle, y = centre.y + (Math.random()*2 - 1)*echelle*0.9, ang = Math.random()*7, tour = (Math.random() - 0.5)*0.5;
-      gx.strokeStyle = "rgba(150,160,255," + (0.10 + Math.random()*0.16) + ")"; gx.lineWidth = 0.8 + Math.random()*1.2;
-      gx.beginPath(); gx.moveTo(x, y);
-      for(let i = 0; i < 34; i++){ tour += (Math.random() - 0.5)*0.35; tour = Math.max(-0.6, Math.min(0.6, tour)); ang += tour; x += Math.cos(ang)*echelle*0.022; y += Math.sin(ang)*echelle*0.022; gx.lineTo(x, y); }
-      gx.stroke();
+    /* le cortex : bleu profond qui s'eclaircit au bord, et des circonvolutions
+       enroulees, plus marquees pres du bord */
+    const t = document.createElement("canvas"); t.width = W; t.height = H; const tx = t.getContext("2d");
+    const g = tx.createRadialGradient(centre.x, centre.y, E*0.2, centre.x, centre.y, E*1.05);
+    g.addColorStop(0, "rgba(20,30,120,0.35)"); g.addColorStop(0.75, "rgba(40,70,220,0.28)"); g.addColorStop(1, "rgba(70,120,255,0.55)");
+    tx.fillStyle = g; tx.fillRect(0, 0, W, H);
+    tx.lineCap = "round";
+    for(let k = 0; k < (large() ? 520 : 260); k++){
+      let x = centre.x + (Math.random()*2 - 1)*EX, y = centre.y + (Math.random()*2 - 1)*E, ang = Math.random()*7, tour = (Math.random() - 0.5)*0.5;
+      const bord = Math.min(1, Math.hypot((x - centre.x)/EX, (y - centre.y)/E));
+      tx.strokeStyle = "rgba(110,160,255," + (0.10 + bord*0.32) + ")"; tx.lineWidth = 0.8 + Math.random()*1.6;
+      tx.beginPath(); tx.moveTo(x, y);
+      for(let i = 0; i < 26; i++){ tour += (Math.random() - 0.5)*0.4; tour = Math.max(-0.7, Math.min(0.7, tour)); ang += tour; x += Math.cos(ang)*E*0.025; y += Math.sin(ang)*E*0.025; tx.lineTo(x, y); }
+      tx.stroke();
     }
-    gx.globalCompositeOperation = "destination-in"; gx.drawImage(m, 0, 0);
-    /* remplissage doux, contour lumineux */
-    const r = f.createRadialGradient(centre.x, centre.y, 0, centre.x, centre.y, echelle*1.1);
-    r.addColorStop(0, "rgba(90,80,220,0.16)"); r.addColorStop(1, "rgba(40,40,120,0.05)");
-    const m2 = document.createElement("canvas"); m2.width = W; m2.height = H; const m2x = m2.getContext("2d");
-    m2x.fillStyle = r; m2x.fillRect(0, 0, W, H); m2x.globalCompositeOperation = "destination-in"; m2x.drawImage(m, 0, 0);
-    f.drawImage(m2, 0, 0); f.drawImage(g, 0, 0);
-    f.save(); f.filter = "blur(1.2px)"; f.globalAlpha = 0.9;
-    const c = document.createElement("canvas"); c.width = W; c.height = H; const cxx = c.getContext("2d");
-    cxx.drawImage(m, 0, 0); cxx.globalCompositeOperation = "source-in"; cxx.fillStyle = "rgba(150,170,255,1)"; cxx.fillRect(0, 0, W, H);
-    cxx.globalCompositeOperation = "destination-out"; cxx.drawImage(m, 2, 2); cxx.drawImage(m, -2, -2); cxx.drawImage(m, 2, -2); cxx.drawImage(m, -2, 2);
-    f.shadowColor = "#7f8cff"; f.shadowBlur = 14; f.drawImage(c, 0, 0); f.restore();
+    tx.globalCompositeOperation = "destination-in"; tx.drawImage(m, 0, 0);
+    f.drawImage(t, 0, 0, W, H);
+    /* le contour : un anneau de 3 px tire du masque, peint deux fois avec sa lueur */
+    const c = document.createElement("canvas"); c.width = W; c.height = H; const cc = c.getContext("2d");
+    cc.drawImage(m, 0, 0); cc.globalCompositeOperation = "source-in"; cc.fillStyle = "#6fa8ff"; cc.fillRect(0, 0, W, H);
+    cc.globalCompositeOperation = "destination-out"; [[3,0],[-3,0],[0,3],[0,-3],[2,2],[-2,-2],[2,-2],[-2,2]].forEach(([a, b]) => cc.drawImage(m, a, b));
+    f.save(); f.shadowColor = "#4f8cff"; f.shadowBlur = 18; f.drawImage(c, 0, 0, W, H); f.drawImage(c, 0, 0, W, H); f.restore();
+    /* la fissure, lumineuse au milieu, eteinte aux deux bouts */
+    const fg = f.createLinearGradient(0, centre.y - E, 0, centre.y + E);
+    fg.addColorStop(0, "rgba(90,170,255,0)"); fg.addColorStop(0.5, "rgba(140,200,255,0.9)"); fg.addColorStop(1, "rgba(90,170,255,0)");
+    f.save(); f.strokeStyle = fg; f.lineWidth = 1.5; f.shadowColor = "#5fb0ff"; f.shadowBlur = 12;
+    f.beginPath(); f.moveTo(centre.x, centre.y - E*1.15); f.lineTo(centre.x, centre.y + E*1.15); f.stroke(); f.restore();
+  }
+
+  /* ---- les icones, au trait (aucun emoji) ---- */
+  function icone(p, k, x, y, s, c){
+    p.save(); p.translate(x, y); p.strokeStyle = c; p.fillStyle = c; p.lineWidth = 1.8; p.lineCap = "round"; p.lineJoin = "round";
+    p.scale(s/24, s/24); p.translate(-12, -12);
+    p.beginPath();
+    if(k === "jumelles"){ p.arc(7,15,4,0,7); p.moveTo(21,15); p.arc(17,15,4,0,7); p.moveTo(11,15); p.lineTo(13,15); p.moveTo(4,13); p.lineTo(6,6); p.lineTo(9,6); p.lineTo(10,11); p.moveTo(20,13); p.lineTo(18,6); p.lineTo(15,6); p.lineTo(14,11); }
+    else if(k === "bulle"){ p.moveTo(4,6); p.quadraticCurveTo(4,3,7,3); p.lineTo(17,3); p.quadraticCurveTo(20,3,20,6); p.lineTo(20,13); p.quadraticCurveTo(20,16,17,16); p.lineTo(10,16); p.lineTo(6,20); p.lineTo(6,16); p.quadraticCurveTo(4,16,4,13); p.closePath(); p.stroke(); p.beginPath(); [8,12,16].forEach(q => { p.moveTo(q+1,9.5); p.arc(q,9.5,1,0,7); }); p.fill(); p.restore(); return; }
+    else if(k === "diamant"){ p.moveTo(12,2); p.lineTo(19,12); p.lineTo(12,22); p.lineTo(5,12); p.closePath(); p.moveTo(5,12); p.lineTo(12,15); p.lineTo(19,12); p.moveTo(12,2); p.lineTo(12,15); }
+    else if(k === "pieces"){ [[12,6],[12,11],[12,16]].forEach(([q, r]) => { p.moveTo(q+7,r); p.ellipse(q,r,7,2.6,0,0,7); }); p.moveTo(5,6); p.lineTo(5,18); p.moveTo(19,6); p.lineTo(19,18); p.moveTo(19,18); p.ellipse(12,18,7,2.6,0,0,Math.PI); }
+    else if(k === "baleine"){ p.moveTo(3,13); p.quadraticCurveTo(4,7,11,7); p.quadraticCurveTo(17,7,18,12); p.lineTo(21,9); p.lineTo(20.5,14); p.lineTo(22,17); p.lineTo(18,15); p.quadraticCurveTo(15,19,9,19); p.quadraticCurveTo(3,19,3,13); p.closePath(); p.moveTo(8,3); p.quadraticCurveTo(9,5,10,7); p.moveTo(12,3); p.quadraticCurveTo(11,5,10.5,7); p.stroke(); p.beginPath(); p.arc(7.5,12,0.9,0,7); p.fill(); p.restore(); return; }
+    else if(k === "bouclier"){ p.moveTo(12,2.5); p.lineTo(20,5.5); p.lineTo(20,11); p.quadraticCurveTo(20,18,12,21.5); p.quadraticCurveTo(4,18,4,11); p.lineTo(4,5.5); p.closePath(); p.moveTo(8.5,12); p.lineTo(11,14.5); p.lineTo(15.5,9.5); }
+    else if(k === "fiole"){ p.moveTo(9,2.5); p.lineTo(15,2.5); p.moveTo(10,2.5); p.lineTo(10,9); p.lineTo(4.5,19); p.quadraticCurveTo(4,21,6,21); p.lineTo(18,21); p.quadraticCurveTo(20,21,19.5,19); p.lineTo(14,9); p.lineTo(14,2.5); p.moveTo(7,15); p.lineTo(17,15); }
+    else if(k === "cible"){ p.arc(11,13,8,0,7); p.moveTo(15,13); p.arc(11,13,4,0,7); p.moveTo(11,13); p.lineTo(20,4); p.moveTo(17,3.5); p.lineTo(20,4); p.lineTo(20.5,7); }
+    p.stroke(); p.restore();
+  }
+  /* un texte qui ne deborde pas de sa place : coupe, avec « … » */
+  function tient(p, s, w){
+    if(p.measureText(s).width <= w) return s;
+    let a = 0, b = s.length;
+    while(a < b){ const m = (a + b + 1) >> 1; if(p.measureText(s.slice(0, m) + "…").width <= w) a = m; else b = m - 1; }
+    return s.slice(0, a).trimEnd() + "…";
+  }
+
+  /* le role sur deux lignes au plus : on coupe aux espaces, la derniere ligne prend le reste */
+  function lignes(p, s, w, n){
+    const mots = String(s).split(" "), L = []; let cur = "";
+    for(let i = 0; i < mots.length; i++){
+      const essai = cur ? cur + " " + mots[i] : mots[i];
+      if(!cur || p.measureText(essai).width <= w){ cur = essai; continue; }
+      L.push(cur); cur = mots[i];
+      if(L.length === n - 1){ cur = mots.slice(i).join(" "); break; }
+    }
+    L.push(cur); return L.map(l => tient(p, l, w));
+  }
+
+  /* ---- les cartes des agents, peintes une fois par vue (ou par langue, ou par taille) ----
+     verre sombre aux coins coupes, bord colore lumineux, pastille ronde avec
+     l'icone au trait, numero d'etape, NOM du roster, role, vrai chiffre ; un
+     cable lumineux de la carte au hub de l'aire. Entre 900 et ~1 300 px la
+     carte est etroite : le role passe sur deux lignes, le nom se resserre, le
+     chiffre prend sa forme courte — rien n'est coupe tant qu'il tient. */
+  function dessineCartes(){
+    cartesVues = []; calque = null;
+    if(!W || !large() || !neur.length || !VUE) return;
+    calque = document.createElement("canvas"); calque.width = W*DPR; calque.height = H*DPR;
+    const p = calque.getContext("2d"); p.setTransform(DPR, 0, 0, DPR, 0, 0);
+    const O = ordre(), sc = cv.getBoundingClientRect(), hb = haut.getBoundingClientRect();
+    const haut0 = Math.max(110, Math.round(hb.bottom - sc.top) + 16), bas = H - 96;
+    const cw = Math.min(330, W*0.24), petit = cw < 270, tx0 = petit ? 62 : 78, place = cw - 12 - tx0;
+    /* d'abord le texte de chaque carte, pour connaitre la hauteur commune */
+    const C8 = AIRES.map((a, i) => {
+      const g = agent(a.k); if(!g) return null;
+      const nom = lib(g.nom).toUpperCase(), L = ligneAire(a, false), Lc = ligneAire(a, true);
+      let fn = 17; p.font = "700 " + fn + "px Inter, Archivo, sans-serif";
+      while(fn > 13 && p.measureText(nom).width > place - 25){ fn--; p.font = "700 " + fn + "px Inter, Archivo, sans-serif"; }
+      const nomV = tient(p, nom, place - 25);
+      p.font = "400 12.5px Inter, Archivo, sans-serif"; const role = lignes(p, ph("brd_" + a.k), place, 2);
+      p.font = "500 11.5px 'JetBrains Mono', monospace"; const st = p.measureText(L.txt).width <= place ? L.txt : tient(p, Lc.txt, place);
+      return { a, i, nom, nomV, fn, role, st, c:L.c };
+    });
+    const nl = Math.max(1, ...C8.filter(Boolean).map(q => q.role.length)), ch = 82 + 15*(nl - 1);
+    const gap = Math.max(ch + 8, (bas - haut0)/4);
+    C8.forEach(q => {
+      if(!q) return;
+      const a = q.a, rang = AIRES.filter(b => b.cote === a.cote).indexOf(a);
+      const x = a.cote < 0 ? 24 : W - 24 - cw, y = Math.round(haut0 + rang*gap + (gap - ch)/2);
+      /* le cable, sous la carte */
+      const ax = a.cote < 0 ? x + cw : x, ay = y + ch/2, hub = neur[a.hub], mx = (ax + hub.x)/2;
+      p.save(); p.strokeStyle = hexA(a.c, 0.85); p.lineWidth = 2; p.shadowColor = a.c; p.shadowBlur = 10;
+      p.beginPath(); p.moveTo(ax, ay); p.bezierCurveTo(mx, ay, mx, hub.y, hub.x, hub.y); p.stroke();
+      p.fillStyle = "#fff"; p.beginPath(); p.arc(ax + (a.cote < 0 ? 6 : -6), ay, 3.5, 0, 7); p.fill();
+      p.restore();
+      /* la carte */
+      const coin = 12;
+      p.save(); p.beginPath(); p.moveTo(x + coin, y); p.lineTo(x + cw, y); p.lineTo(x + cw, y + ch - coin); p.lineTo(x + cw - coin, y + ch); p.lineTo(x, y + ch); p.lineTo(x, y + coin); p.closePath();
+      p.fillStyle = "rgba(6,10,28,0.88)"; p.fill();
+      p.strokeStyle = hexA(a.c, 0.9); p.lineWidth = 1.4; p.shadowColor = a.c; p.shadowBlur = 16; p.stroke(); p.restore();
+      /* la pastille et l'icone */
+      const br = petit ? 20 : 25, ix = x + (petit ? 32 : 40), iy = y + ch/2;
+      p.save(); p.strokeStyle = hexA(a.c, 0.8); p.lineWidth = 1.5; p.fillStyle = hexA(a.c, 0.10); p.shadowColor = a.c; p.shadowBlur = 10;
+      p.beginPath(); p.arc(ix, iy, br, 0, 7); p.fill(); p.stroke(); p.restore();
+      icone(p, a.ico, ix, iy, petit ? 21 : 26, a.c);
+      /* numero d'etape (l'ordre du serveur), nom, role, chiffre */
+      const tx = x + tx0, etape = O.indexOf(q.i) + 1;
+      p.fillStyle = a.c; p.beginPath(); p.arc(tx + 9, y + 21, 9, 0, 7); p.fill();
+      p.font = "700 11px Inter, Archivo, sans-serif"; p.fillStyle = "#02030a"; p.textAlign = "center"; p.fillText(etape > 0 ? String(etape) : "·", tx + 9, y + 25);
+      p.textAlign = "left";
+      p.font = "700 " + q.fn + "px Inter, Archivo, sans-serif";
+      p.save(); p.fillStyle = a.c; p.shadowColor = a.c; p.shadowBlur = 8; p.fillText(q.nomV, tx + 25, y + 27); p.restore();
+      p.font = "400 12.5px Inter, Archivo, sans-serif"; p.fillStyle = "#d6def7";
+      q.role.forEach((l, k) => p.fillText(l, tx, y + 48 + 15*k));
+      p.font = "500 11.5px 'JetBrains Mono', monospace"; p.fillStyle = q.c; p.fillText(q.st, tx, y + 66 + 15*(nl - 1));
+      cartesVues.push({ k:a.k, nom:q.nom, etape, role:q.role.join(" "), ligne:q.st, ico:a.ico, c:a.c, x, y, w:cw, h:ch, badge:{ x:ix, y:iy, r:br } });
+    });
+  }
+  /* sur telephone : le nom du roster en couleur sur l'aire, et sa part en court */
+  function noms(){
+    cx.save(); cx.textAlign = "center"; cx.shadowColor = "#000"; cx.shadowBlur = 6;
+    AIRES.forEach(a => {
+      const g = agent(a.k); if(!g) return;
+      const nom = lib(g.nom).toUpperCase(), L = ligneAire(a, true);
+      cx.font = "700 11px Inter, Archivo, sans-serif"; const w1 = cx.measureText(nom).width;
+      cx.font = "500 9.5px 'JetBrains Mono', monospace"; const w2 = cx.measureText(L.txt).width;
+      const x = Math.max(6 + Math.max(w1, w2)/2, Math.min(W - 6 - Math.max(w1, w2)/2, a.x));
+      /* un liseré sombre sous chaque texte : il se lit sur les neurones de sa propre couleur */
+      cx.lineWidth = 3; cx.lineJoin = "round"; cx.strokeStyle = "rgba(2,3,10,.85)";
+      cx.font = "700 11px Inter, Archivo, sans-serif"; cx.strokeText(nom, x, a.y - 14); cx.fillStyle = a.c; cx.fillText(nom, x, a.y - 14);
+      cx.font = "500 9.5px 'JetBrains Mono', monospace"; cx.strokeText(L.txt, x, a.y - 3); cx.fillStyle = L.c; cx.fillText(L.txt, x, a.y - 3);
+    });
+    cx.restore();
+  }
+  /* Les agents du roster qui ne sont pas une etape du parcours, et l'aire qu'ils servent. */
+  function satellites(){
+    return roster().filter(a => a && a.key && PAR_CLE[a.key] == null).map(a => {
+      const ancre = a.parent && PAR_CLE[a.parent] != null ? a.parent : a.role === "conseil" ? "oracle" : a.role === "specialiste" ? "scout" : "closer";
+      return { k:a.key, nom:lib(a.nom), role:a.role, ancre, c:couleurSure(a.couleur) || AIRES[PAR_CLE[ancre]].c };
+    });
+  }
+  function orbite(t){
+    const G = {}; satVues = [];
+    satellites().forEach(s => (G[s.ancre] = G[s.ancre] || []).push(s));
+    cx.save();
+    Object.keys(G).forEach(k => {
+      const a = AIRES[PAR_CLE[k]], hub = neur[a.hub] || a, L = G[k], rr = E*0.2;
+      cx.strokeStyle = hexA(a.c, 0.22); cx.lineWidth = 1; cx.setLineDash([2, 4]);
+      cx.beginPath(); cx.ellipse(hub.x, hub.y, rr, rr*0.6, 0, 0, 7); cx.stroke(); cx.setLineDash([]);
+      L.forEach((s, i) => {
+        const ang = t*0.35 + i*(Math.PI*2/L.length), x = hub.x + Math.cos(ang)*rr, y = hub.y + Math.sin(ang)*rr*0.6;
+        cx.globalCompositeOperation = "lighter"; cx.drawImage(sprite(s.c), x - 9, y - 9, 18, 18); cx.globalCompositeOperation = "source-over";
+        cx.fillStyle = "#fff"; cx.beginPath(); cx.arc(x, y, 2, 0, 7); cx.fill();
+        if(large()){ cx.font = "500 10px 'JetBrains Mono', monospace"; cx.textAlign = "center"; cx.shadowColor = "#000"; cx.shadowBlur = 5; cx.fillStyle = "#dfe6ff"; cx.fillText(s.nom, x, y - 9); cx.shadowBlur = 0; }
+        satVues.push({ k:s.k, nom:s.nom, ancre:k, x, y });
+      });
+    });
+    cx.restore();
+  }
+  /* le noyau SWOGE AI : disque sombre, anneau lumineux, petit cerveau au trait, arc qui tourne */
+  function noyau(t){
+    const r = Math.max(26, E*0.17), pu = 1 + Math.sin(t*2.2)*0.03;
+    cx.save();
+    const g = cx.createRadialGradient(centre.x, centre.y, 0, centre.x, centre.y, r*2.4); g.addColorStop(0, "rgba(90,170,255,0.45)"); g.addColorStop(1, "rgba(90,170,255,0)");
+    cx.fillStyle = g; cx.beginPath(); cx.arc(centre.x, centre.y, r*2.4, 0, 7); cx.fill();
+    cx.fillStyle = "#060c24"; cx.strokeStyle = "#7fc1ff"; cx.lineWidth = 2.2; cx.shadowColor = "#5fb0ff"; cx.shadowBlur = 22;
+    cx.beginPath(); cx.arc(centre.x, centre.y, r*pu, 0, 7); cx.fill(); cx.stroke(); cx.shadowBlur = 0;
+    cx.strokeStyle = "rgba(127,193,255,0.35)"; cx.lineWidth = 1; cx.beginPath(); cx.arc(centre.x, centre.y, r*1.18, t % 7, (t % 7) + 4.4); cx.stroke();
+    cx.strokeStyle = "#e8f3ff"; cx.lineWidth = 1.6; const s = r*0.32, y0 = centre.y - r*0.22;
+    cx.beginPath(); cx.ellipse(centre.x - s*0.55, y0, s*0.6, s*0.75, 0, 0, 7); cx.moveTo(centre.x + s*1.15, y0); cx.ellipse(centre.x + s*0.55, y0, s*0.6, s*0.75, 0, 0, 7);
+    cx.moveTo(centre.x - s*0.55, y0 - s*0.4); cx.quadraticCurveTo(centre.x - s*0.2, y0, centre.x - s*0.6, y0 + s*0.3);
+    cx.moveTo(centre.x + s*0.55, y0 - s*0.4); cx.quadraticCurveTo(centre.x + s*0.2, y0, centre.x + s*0.6, y0 + s*0.3); cx.stroke();
+    cx.font = "700 " + Math.round(r*0.3) + "px Inter, Archivo, sans-serif"; cx.textAlign = "center"; cx.fillStyle = "#fff"; cx.fillText(ph("brNoyau"), centre.x, centre.y + r*0.5);
+    cx.restore();
   }
   /* chemin entre deux neurones par les synapses (en largeur d'abord) */
   function chemin(a, b){
@@ -3101,7 +3294,6 @@ const Cerveau = (function(){
     for(let q = 0; q < f.length; q++){ const i = f[q]; if(i === b) break; for(const j of voisins[i]) if(!vu[j]){ vu[j] = 1; prev[j] = i; f.push(j); } }
     const p = []; let i = b; while(i !== -1){ p.unshift(i); if(i === a) break; i = prev[i]; } return p[0] === a ? p : [a, b];
   }
-  const hexA = (h, a) => { const n = parseInt(h.slice(1), 16); return "rgba(" + (n >> 16) + "," + ((n >> 8) & 255) + "," + (n & 255) + "," + a + ")"; };
 
   /* ---- les donnees ---- */
   const agent = k => AG()[k] || null;
@@ -3127,7 +3319,7 @@ const Cerveau = (function(){
 
   /* ---- les evenements reels, rejoues un a un ---- */
   const file = [], deja = new Set();
-  let premier = true, tourVu = null, dernierTour = [], quand = 0, boucle = 0;
+  let premier = true, tourVu = null, dernierTour = [], boucle = 0;
   function maj(){
     const v = VUE; if(!v) return;
     const nouveaux = [];
@@ -3148,7 +3340,9 @@ const Cerveau = (function(){
     premier = false;
     file.push(...nouveaux);
     if(file.length > 60) file.splice(0, file.length - 60);
-    if(RM) pensePlusRecent();
+    /* les cartes portent les chiffres de la vue (et la langue) : repeintes a chaque vue */
+    dessineCartes();
+    if(RM){ pensePlusRecent(); statique(); }
   }
   /* mouvement reduit : la pensee est le dernier evenement reel, sans animation */
   function pensePlusRecent(){
@@ -3171,7 +3365,7 @@ const Cerveau = (function(){
   /* ---- les influx ---- */
   const influx = [], etincelles = [];
   function burst(a, coul, n, v){ for(let k = 0; k < n; k++) etincelles.push({ x:a.x, y:a.y, vx:(Math.random() - 0.5)*v, vy:(Math.random() - 0.5)*v, a:1, c:coul }); }
-  function allume(i){ for(const n of neur) if(n.aire === i && n.d < echelle*0.22) n.feu = Math.max(n.feu, 0.6 + Math.random()*0.4); }
+  function allume(i){ for(const n of neur) if(n.aire === i && n.d < E*0.25) n.feu = Math.max(n.feu, 0.5 + Math.random()*0.5); }
   function joue(e){
     if(!neur.length) return;
     pense(phrase(e));
@@ -3186,11 +3380,11 @@ const Cerveau = (function(){
   function lance(sym, etapes, fin){
     if(!etapes.length) return;
     const a0 = AIRES[etapes[0]];
-    influx.push({ sym, etapes, i:0, path:[a0.hub, a0.hub], seg:0, t:0, v:0.09 + Math.random()*0.05, c:"#bfefff", vivant:true, fin });
+    influx.push({ sym, etapes, i:0, path:[a0.hub, a0.hub], seg:0, t:0, v:0.09 + Math.random()*0.05, c:"#bfe6ff", vivant:true, fin });
   }
   /* l'influx anonyme : il erre de synapse en synapse, ne porte rien, ne s'arrete chez personne */
   function ambiant(){
-    if(!neur.length || influx.filter(f => f.anon).length > (etroit() ? 6 : 12)) return;
+    if(!neur.length || influx.filter(f => f.anon).length > (large() ? 12 : 6)) return;
     let i = (Math.random()*neur.length) | 0; const p = [i];
     for(let s = 0; s < 14; s++){ const vs = voisins[i]; if(!vs.length) break; i = vs[(Math.random()*vs.length) | 0]; p.push(i); }
     if(p.length > 2) influx.push({ anon:true, path:p, seg:0, t:0, v:0.07 + Math.random()*0.04, c:"#8f9cff", vivant:true });
@@ -3201,11 +3395,11 @@ const Cerveau = (function(){
     allume(ia);
     if(f.i === f.etapes.length - 1){
       f.vivant = false;
-      if(f.fin === "or") burst(a, "#ffcf5c", 30, 3); else burst(a, "#ff4d6d", 18, 2.2);
+      if(f.fin === "or") burst(a, "#ffc65c", 34, 3); else burst(a, "#ff4d6d", 20, 2.4);
       return;
     }
     f.i++; f.path = chemin(a.hub, AIRES[f.etapes[f.i]].hub); f.seg = 0; f.t = 0;
-    f.c = f.i >= 4 ? "#ffe39b" : "#bfefff";
+    f.c = f.i >= 4 ? "#ffc65c" : "#bfe6ff";
   }
 
   /* ---- le dessin ---- */
@@ -3215,24 +3409,25 @@ const Cerveau = (function(){
     const t = T;
     cx.setTransform(DPR, 0, 0, DPR, 0, 0); cx.clearRect(0, 0, W, H);
     if(fond) cx.drawImage(fond, 0, 0, W, H);
-    /* synapses : les eteintes d'un seul trait, les allumees une a une */
-    cx.lineWidth = 0.6; cx.strokeStyle = "rgba(120,130,220,0.08)"; cx.beginPath();
-    const chaudes = [];
-    for(const l of liens){ const a = neur[l[0]], b = neur[l[1]]; if(a.feu > 0.05 || b.feu > 0.05) chaudes.push(l); else { cx.moveTo(a.x, a.y); cx.lineTo(b.x, b.y); } }
-    cx.stroke();
-    for(const [i, j] of chaudes){ const a = neur[i], b = neur[j], f = Math.max(a.feu, b.feu);
-      cx.strokeStyle = "rgba(170,200,255," + (0.08 + f*0.5) + ")"; cx.beginPath(); cx.moveTo(a.x, a.y); cx.lineTo(b.x, b.y); cx.stroke(); }
-    /* neurones */
+    /* synapses : pres des aires, a la couleur de l'aire (un trait par aire) ;
+       allumees, une a une ; loin et eteintes, on ne les dessine pas */
+    cx.lineWidth = 0.7;
+    const parAire = AIRES.map(() => []), chaudes = [];
+    for(const l of liens){ const a = neur[l[0]], b = neur[l[1]], f = Math.max(a.feu, b.feu);
+      if(f >= 0.05) chaudes.push(l); else if(Math.min(a.d, b.d) < E*0.28) parAire[a.aire].push(l); }
+    parAire.forEach((L, i) => { if(!L.length) return; cx.strokeStyle = hexA(AIRES[i].c, 0.22); cx.beginPath(); for(const [p, q] of L){ cx.moveTo(neur[p].x, neur[p].y); cx.lineTo(neur[q].x, neur[q].y); } cx.stroke(); });
+    for(const [i, j] of chaudes){ const a = neur[i], b = neur[j], f = Math.max(a.feu, b.feu), pres = Math.min(a.d, b.d) < E*0.28;
+      cx.strokeStyle = hexA(AIRES[a.aire].c, Math.min(1, (pres ? 0.22 : 0) + f*0.6)); cx.beginPath(); cx.moveTo(a.x, a.y); cx.lineTo(b.x, b.y); cx.stroke(); }
+    /* neurones : des lueurs additives, colorees pres des aires */
+    cx.globalCompositeOperation = "lighter";
     for(const n of neur){
-      const a = AIRES[n.aire], proche = n.d < echelle*0.22;
-      const al = Math.min(1, (proche ? 0.35 : 0.18) + 0.08*Math.sin(t*1.6 + n.ph) + n.feu);
-      cx.fillStyle = proche ? hexA(a.c, al) : "rgba(150,160,240," + al + ")";
-      if(n.feu > 0.2){ cx.shadowColor = a.c; cx.shadowBlur = 10*n.feu; }
-      cx.beginPath(); cx.arc(n.x, n.y, n.r + n.feu*1.6, 0, 7); cx.fill(); cx.shadowBlur = 0;
+      const a = AIRES[n.aire], pres = n.d < E*0.28;
+      const al = (pres ? 0.42 : 0.16) + 0.12*Math.sin(t*1.7 + n.ph) + n.feu*0.6, s = (pres ? 5.5 : 3.5)*n.r*(1 + n.feu*0.6);
+      cx.globalAlpha = Math.max(0, Math.min(1, al)); cx.drawImage(sprite(pres ? a.c : "#6f8cff"), n.x - s, n.y - s, s*2, s*2);
       n.feu = Math.max(0, n.feu - 0.02*dt);
     }
+    cx.globalAlpha = 1;
     /* influx */
-    cx.globalCompositeOperation = "lighter";
     for(let i = influx.length - 1; i >= 0; i--){
       const f = influx[i];
       if(!f.vivant){ influx.splice(i, 1); continue; }
@@ -3241,57 +3436,17 @@ const Cerveau = (function(){
       if(!f.vivant) continue;
       const a = neur[f.path[Math.min(f.seg, f.path.length - 1)]], b = neur[f.path[Math.min(f.seg + 1, f.path.length - 1)]];
       if(!a || !b){ f.vivant = false; continue; }
-      const x = a.x + (b.x - a.x)*f.t, y = a.y + (b.y - a.y)*f.t, R = f.anon ? 8 : 14;
-      if(!f.anon) a.feu = Math.max(a.feu, 0.5);
-      const g = cx.createRadialGradient(x, y, 0, x, y, R); g.addColorStop(0, f.anon ? "rgba(143,156,255,.55)" : f.c); g.addColorStop(1, "rgba(0,0,0,0)");
-      cx.fillStyle = g; cx.beginPath(); cx.arc(x, y, R, 0, 7); cx.fill();
-      if(!f.anon){ cx.fillStyle = "#fff"; cx.beginPath(); cx.arc(x, y, 1.8, 0, 7); cx.fill(); }
-      if(!f.anon && f.i >= 3){ cx.globalCompositeOperation = "source-over"; cx.font = "500 10px 'JetBrains Mono', monospace"; cx.fillStyle = "rgba(255,227,155,.9)"; cx.fillText("$" + f.sym, x + 8, y - 6); cx.globalCompositeOperation = "lighter"; }
+      const x = a.x + (b.x - a.x)*f.t, y = a.y + (b.y - a.y)*f.t, R = f.anon ? 7 : 10;
+      if(!f.anon) a.feu = Math.max(a.feu, 0.6);
+      cx.globalAlpha = f.anon ? 0.55 : 1; cx.drawImage(sprite(f.c), x - R, y - R, R*2, R*2); cx.globalAlpha = 1;
+      if(!f.anon && f.i >= 3){ cx.globalCompositeOperation = "source-over"; cx.font = "500 10px 'JetBrains Mono', monospace"; cx.textAlign = "left"; cx.fillStyle = "rgba(255,227,155,.9)"; cx.fillText("$" + f.sym, x + 8, y - 6); cx.globalCompositeOperation = "lighter"; }
     }
     for(let i = etincelles.length - 1; i >= 0; i--){ const e = etincelles[i]; e.x += e.vx*dt; e.y += e.vy*dt; e.vx *= 0.96; e.vy *= 0.96; e.a -= 0.02*dt;
-      cx.fillStyle = hexA(e.c, Math.max(0, e.a)); cx.fillRect(e.x - 1, e.y - 1, 2.2, 2.2); if(e.a <= 0) etincelles.splice(i, 1); }
-    cx.globalCompositeOperation = "source-over";
-    /* sur telephone les boites des aires passent DEVANT les positions : sinon le
-       ±$ d'une position couvre la part refusee du Cobaye (capture du 15/10, 390 px) */
-    if(etroit()){ orbite(t); etiquettes(); } else { etiquettes(); orbite(t); }
-  }
-  /* les noms des aires, avec un trait fin ; la boite est rangee DANS la scene,
-     a gauche du panneau des positions sur ordinateur */
-  const rect = (x, y, w, h, r) => { cx.beginPath(); if(cx.roundRect) cx.roundRect(x, y, w, h, r); else cx.rect(x, y, w, h); };
-  function etiquettes(){
-    const court = etroit(), droite = large() ? W - 400 : W - 8;
-    AIRES.forEach(a => {
-      const gauche = a.x < centre.x, ecart = court ? echelle*0.25 : echelle*0.62;
-      const lx = gauche ? a.x - ecart : a.x + ecart, ly = a.y + (a.v < 0 ? -echelle*0.12 : echelle*0.12);
-      const g = agent(a.k), titre = g ? lib(g.nom) : a.n, sous = court ? "" : ph("brd_" + a.k), L = ligneAire(a, court);
-      cx.font = "600 15px Inter, Archivo, sans-serif"; const w1 = cx.measureText(titre).width;
-      cx.font = "400 11.5px 'JetBrains Mono', monospace"; const w2 = Math.max(sous ? cx.measureText(sous).width : 0, cx.measureText(L.txt).width);
-      const bw = Math.max(w1 + 18, w2) + 22, bh = sous ? 54 : 40;
-      let bx = gauche ? lx - bw : lx; bx = Math.max(8, Math.min(droite - bw, bx));
-      const by = ly - 20, bord = gauche ? bx + bw : bx;
-      cx.strokeStyle = hexA(a.c, 0.45); cx.lineWidth = 1; cx.beginPath(); cx.moveTo(a.x, a.y); cx.lineTo(bord + (gauche ? 40 : -40), ly); cx.lineTo(bord, ly); cx.stroke();
-      cx.fillStyle = a.c; cx.beginPath(); cx.arc(a.x, a.y, 3, 0, 7); cx.fill();
-      cx.fillStyle = "rgba(8,10,26,.82)"; cx.strokeStyle = hexA(a.c, 0.35); rect(bx, by, bw, bh, 10); cx.fill(); cx.stroke();
-      cx.textAlign = "left";
-      cx.fillStyle = a.c; cx.beginPath(); cx.arc(bx + 14, by + 15, 4, 0, 7); cx.fill();
-      cx.font = "600 15px Inter, Archivo, sans-serif"; cx.fillStyle = "#ffffff"; cx.fillText(titre, bx + 24, by + 20);
-      let yy = by + 36;
-      if(sous){ cx.font = "400 11.5px 'JetBrains Mono', monospace"; cx.fillStyle = "#a7b0d0"; cx.fillText(sous, bx + 11, yy); yy += 14; }
-      cx.font = "500 11.5px 'JetBrains Mono', monospace"; cx.fillStyle = L.c; cx.fillText(L.txt, bx + 11, sous ? yy : by + 34);
-    });
-  }
-  /* les positions ouvertes tournent autour du Closer, vertes ou rouges, avec leur ±$ */
-  function orbite(t){
-    const P = lignesPositions(), cl = AIRES[CLOSER];
-    P.forEach((p, i) => {
-      const ang = t*0.5 + i*(Math.PI*2/Math.max(1, P.length)), rr = echelle*0.2;
-      const x = cl.x + Math.cos(ang)*rr, y = cl.y + Math.sin(ang)*rr*0.7;
-      const c = p.pnl == null ? "#a7b0d0" : p.pnl >= 0 ? "#43f0a8" : "#ff4d6d";
-      cx.shadowColor = c; cx.shadowBlur = 14; cx.fillStyle = c; cx.beginPath(); cx.arc(x, y, 4.5, 0, 7); cx.fill(); cx.shadowBlur = 0;
-      cx.font = "600 11px 'JetBrains Mono', monospace"; cx.textAlign = "center"; cx.fillStyle = "#fff"; cx.fillText("$" + p.sym, x, y - 18);
-      cx.fillStyle = c; cx.fillText(p.pnl == null ? ph("brSansPrixC") : usdS(p.pnl), x, y - 7);
-    });
-    cx.textAlign = "left";
+      cx.globalAlpha = Math.max(0, e.a); cx.drawImage(sprite(e.c), e.x - 5, e.y - 5, 10, 10); if(e.a <= 0) etincelles.splice(i, 1); }
+    cx.globalAlpha = 1; cx.globalCompositeOperation = "source-over";
+    noyau(t);
+    orbite(t);
+    if(large()){ if(calque) cx.drawImage(calque, 0, 0, W, H); } else noms();
   }
 
   /* ---- la boucle : seulement a l'ecran, onglet visible, mouvement permis ---- */
@@ -3305,7 +3460,7 @@ const Cerveau = (function(){
       if(file.length) joue(file.shift());
       else if(dernierTour.length){ joue({ k:"cand", c:dernierTour[boucle++ % dernierTour.length] }); }
       else if(VUE) pense(esc(ph("brPCalme"))); }
-    if(accA >= (etroit() ? 0.5 : 0.32)){ accA = 0; ambiant(); }
+    if(accA >= (large() ? 0.32 : 0.5)){ accA = 0; ambiant(); }
     frame(dt);
     raf = requestAnimationFrame(loop);
   }
@@ -3321,19 +3476,22 @@ const Cerveau = (function(){
     setRun();
   }
   /* on ne refait la forme que si la LARGEUR change, ou la hauteur de plus de 80 px :
-     la barre d'adresse d'un telephone qui se replie ne doit pas redessiner 1 300 neurones */
+     la barre d'adresse d'un telephone qui se replie ne doit pas redessiner 1 600 neurones */
   let rz = 0; addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(() => {
     const r = cv.getBoundingClientRect(); if(Math.round(r.width) === W && Math.abs(Math.round(r.height) - H) < 80) return;
     mise(); if(RM || !run) statique(); }, 150); });
-  if(document.fonts) document.fonts.ready.then(() => { if(RM || !run) statique(); });
+  /* les cartes mesurent leur texte : on les repeint quand les polices sont la */
+  if(document.fonts) document.fonts.ready.then(() => { dessineCartes(); if(RM || !run) statique(); });
   if(!RM){
-    if(window.IntersectionObserver) new IntersectionObserver(es => { vis = es[0].isIntersecting; setRun(); }).observe(boite);
+    if(window.IntersectionObserver) new IntersectionObserver(es => { vis = es[0].isIntersecting; setRun(); }).observe($("cvEcran"));
     document.addEventListener("visibilitychange", setRun);
   }
   mise();
   return { maj, demarre, statique, tourne:() => run, file:() => file.length,
     aires:() => AIRES.map(a => ({ k:a.k, nom:agent(a.k) ? lib(agent(a.k).nom) : a.n, vus:(agent(a.k) || {}).vus, bloques:(agent(a.k) || {}).bloques, ligne:ligneAire(a, false).txt, court:ligneAire(a, true).txt, x:a.x, y:a.y })),
-    neurones:() => neur.length, dpr:() => DPR, ordre:() => ordre().map(i => AIRES[i].k) };
+    cartes:() => cartesVues.map(c => Object.assign({}, c, { badge:Object.assign({}, c.badge) })),
+    satellites:() => satellites().map(s => ({ k:s.k, nom:s.nom, ancre:s.ancre })), orbites:() => satVues.slice(),
+    large, neurones:() => neur.length, dpr:() => DPR, ordre:() => ordre().map(i => AIRES[i].k) };
 })();
 window.Cerveau = Cerveau;
 
@@ -3389,7 +3547,11 @@ function peintCerveau(){
   $("cvKr").textContent = v ? int(gardes.reduce((s, a) => s + a.bloques, 0)) : "—"; $("cvKr").title = ph("brKrT", gardes.length);
   $("cvKa").textContent = v ? int(v.ouvertures) : "—"; $("cvKa").title = ph("brKaT");
   $("cvKt").textContent = v && num(v.tresor) != null ? usd(v.tresor, 0) : "—"; $("cvKt").title = ph("brKtT");
-  /* le panneau */
+  /* qui veille sur ces positions : les agents du roster dont c'est le role
+     (couper, prolonger, relire le prix) — jamais un nom que le roster n'a pas */
+  const veille = R.filter(a => a && (a.role === "veille" || a.role === "prolonge" || a.role === "suivi")).map(a => lib(a.nom)), VE = $("cvVeille");
+  VE.hidden = !veille.length; VE.textContent = veille.length ? ph("brVeille", veille.join(" · ")) : "";
+  /* la grille : une carte par position */
   const L = $("cvPListe"), P = lignesPositions();
   if(!v) L.innerHTML = '<div class="cv-vide">' + esc(ph("brAttente")) + '</div>';
   else if(!P.length) L.innerHTML = '<div class="cv-vide" id="cvVide">' + esc(ph("brVide")) + '</div>';

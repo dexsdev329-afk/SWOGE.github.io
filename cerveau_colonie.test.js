@@ -1,10 +1,12 @@
 'use strict';
 /* ============================================================================
- * LE CERVEAU DE LA COLONIE (15/10/2026) — LA MAQUETTE v7, BRANCHEE SUR LE VRAI
+ * LE CERVEAU DE LA COLONIE (15/10/2026) — LA MAQUETTE v8, BRANCHEE SUR LE VRAI
  *
- * Le proprietaire a choisi la maquette « cerveau » : un cerveau vu de dessus,
- * chaque agent une aire, chaque jeton un influx, et un panneau des positions
- * ouvertes en DOLLARS. Elle est posee en tete de la colonie de `swoge_ai.html`.
+ * Le proprietaire a valide la maquette v8 : un cerveau vu de face, chaque
+ * agent du parcours une aire et, sur ordinateur, une CARTE (icone au trait,
+ * numero d'etape, nom du roster, vrai chiffre) reliee a son aire ; chaque jeton
+ * un influx ; les positions ouvertes en DOLLARS dans une grille SOUS le
+ * cerveau. Elle est posee en tete de la colonie de `swoge_ai.html`.
  * Ce que cet essai tient, sur la vraie reponse de /ai/colonie
  * (`ai_colonie_reelle.json`, recalee sur l'heure de l'essai) servie par une
  * route moquee, a laquelle on ajoute des positions et un carnet du jour :
@@ -22,7 +24,10 @@
  *   5. aucun defilement de cote a 320, 390 et 1280 px ; aucune erreur ;
  *   6. mouvement reduit : une image fixe, les chiffres quand meme ; sans
  *      preference, la scene tourne, et s'arrete hors de l'ecran ;
- *   7. la densite de pixels est plafonnee a 2 ; le francais bascule tout.
+ *   7. la densite de pixels est plafonnee a 2 ; le francais bascule tout ;
+ *   8. les huit cartes : noms et parts du roster, numero = ordre du serveur,
+ *      icones au trait (aucun emoji) ; les cinq autres agents du roster sont
+ *      des satellites, et aucun agent n'est montre que le roster n'a pas.
  * ==========================================================================*/
 const fs = require('fs'), path = require('path'), http = require('http');
 let chromium = null;
@@ -92,7 +97,7 @@ function vue(modif) {
     ok(m.premier && m.premierGrand, 'le cerveau est le premier element de #tm-live, et le premier grand');
     ok(Math.abs(m.l - m.vw) <= 1 && m.h >= 0.6 * m.vh, 'pleine largeur (' + m.l + ' / ' + m.vw + ' px) et au moins 60 % de la hauteur de l ecran (' + Math.round(m.h) + ' px)');
     ok(m.avantSky, 'il est AU-DESSUS de l ancien schema des agents (#sky), qui reste pour ce qu il porte');
-    ok(m.n === 1300, 'les neurones de la maquette sur ordinateur (' + m.n + ')');
+    ok(m.n === 1600, 'les neurones de la maquette v8 sur ordinateur (' + m.n + ')');
     const p = await peint(page);
     ok(p.k > 200, 'le canvas est dessine (' + p.k + ' points echantillonnes non transparents)');
     ok(err.length === 0, 'aucune erreur' + (err.length ? ' — ' + err.slice(0, 2).join(' | ') : ''));
@@ -114,8 +119,15 @@ function vue(modif) {
     ok(L.MUET && L.MUET.pnl === '—' && L.MUET.pct === '—' && /no fresh price/.test(L.MUET.det), 'MUET : sans prix frais, un tiret et la raison — jamais +0.0 %');
     ok(m.tot === '+$12.11', 'le total est celui des positions cotees seulement (−2.53 + 14.64 = ' + m.tot + ')');
     ok(m.titre === 'Open positions' && m.papier === 'Paper', 'et le panneau dit qu elles sont de PAPIER');
-    const orb = await page.evaluate(() => Cerveau.aires().find((a) => a.k === 'closer'));
-    ok(orb && orb.x > 0, 'le Closer, autour duquel elles tournent, est place');
+    /* v8 : les positions sortent de la scene — une grille de cartes SOUS le cerveau, pleine largeur */
+    const g = await page.evaluate(() => { const e = document.getElementById('cvEcran').getBoundingClientRect(), p = document.getElementById('cvPos').getBoundingClientRect(),
+      c = [...document.querySelectorAll('#cvPListe .cv-ligne')].map((l) => l.getBoundingClientRect());
+      return { sous: p.top >= e.bottom - 1, dedans: !!document.getElementById('cvEcran').querySelector('#cvPos'), larg: p.width, tops: c.map((r) => Math.round(r.top)),
+               cols: getComputedStyle(document.getElementById('cvPListe')).gridTemplateColumns.split(' ').length }; });
+    ok(g.sous && !g.dedans, 'le panneau des positions est SOUS la scene, plus par-dessus');
+    ok(g.cols >= 3 && new Set(g.tops).size === 1 && g.larg >= 1000, 'une grille de cartes : ' + g.cols + ' colonnes, les trois positions sur une rangee, ' + Math.round(g.larg) + ' px de large');
+    const v8 = await page.evaluate(() => ({ veille: document.getElementById('cvVeille').textContent, tag: getComputedStyle(document.getElementById('cvPosP')).textTransform }));
+    ok(v8.veille === 'Watched by Sentinel · Extender · Watcher' && v8.tag === 'uppercase', 'au-dessus, ceux du roster qui veillent sur elles : « ' + v8.veille + ' », et l etiquette PAPER');
     ok(err.length === 0, 'aucune erreur' + (err.length ? ' — ' + err[0] : ''));
     await ctx.close();
   }
@@ -179,7 +191,9 @@ function vue(modif) {
     ok(m.sw <= w, w + ' px : la page ne deborde pas (' + m.sw + ')');
     if (w < 760) {
       ok(m.pos.top >= m.scene.bottom - 1 && m.pos.left >= 15 && m.pos.right <= w - 15, w + ' px : le panneau passe SOUS le cerveau, a 16 px des bords');
-      ok(m.n === 700, w + ' px : moins de neurones sur telephone (' + m.n + ')');
+      ok(m.n === 800, w + ' px : moins de neurones sur telephone (' + m.n + ')');
+      const t = await page.evaluate(() => ({ cartes: Cerveau.cartes().length, large: Cerveau.large() }));
+      ok(t.cartes === 0 && !t.large, w + ' px : pas de cartes, les noms sont poses sur les aires');
     }
     ok(err.length === 0, w + ' px : aucune erreur' + (err.length ? ' — ' + err[0] : ''));
     await ctx.close();
@@ -214,6 +228,63 @@ function vue(modif) {
     await page.click('#langue'); await page.waitForTimeout(400);
     const fr = await page.evaluate(() => ({ t: cvPosT.textContent, r: cvRealL.textContent, k: cvKrL.textContent, l: Cerveau.aires().find((a) => a.k === 'scout').ligne }));
     ok(fr.t === 'Positions ouvertes' && /^Réalisé aujourd'hui/.test(fr.r) && fr.k === 'Refusés' && / % de .* refusés$/.test(fr.l), 'le bouton de langue bascule aussi le cerveau (' + JSON.stringify(fr) + ')');
+    ok(err.length === 0, 'aucune erreur' + (err.length ? ' — ' + err[0] : ''));
+    await ctx.close();
+  }
+
+  console.log('\n-- 8. les cartes des agents, les satellites --');
+  {
+    const { ctx, page, err } = await ouvre({ attente: 2000 });
+    const m = await page.evaluate(() => ({ cartes: Cerveau.cartes(), sat: Cerveau.satellites(), orb: Cerveau.orbites(), ordre: Cerveau.ordre(), W: document.getElementById('cvCanvas').getBoundingClientRect().width }));
+    const R = {}; REELLE.roster.forEach((a) => R[a.key] = a);
+    const C = {}; m.cartes.forEach((c) => C[c.k] = c);
+    const ETAPES = ['scout', 'whale', 'whisper', 'warden', 'oracle', 'cobaye', 'banquier', 'closer'];
+    ok(m.cartes.length === 8 && ETAPES.every((k) => C[k]), 'huit cartes, une par etape du parcours (' + m.cartes.map((c) => c.k).join(', ') + ')');
+    ok(ETAPES.every((k) => C[k] && C[k].nom === R[k].nom.toUpperCase()), 'les noms sont ceux du roster, en capitales (' + m.cartes.map((c) => c.nom).join(', ') + ')');
+    ok(m.cartes.filter((c) => c.x < m.W / 2).length === 4 && m.cartes.filter((c) => c.x > m.W / 2).length === 4, 'quatre a gauche, quatre a droite');
+    /* le numero est l etape dans l ordre du SERVEUR, pas la place sur l ecran */
+    ok(ETAPES.every((k) => C[k] && C[k].etape === m.ordre.indexOf(k) + 1) && new Set(m.cartes.map((c) => c.etape)).size === 8, 'le numero de chaque carte est son etape dans l ordre du serveur (' + m.ordre.join(' → ') + ')');
+    for (const k of ['scout', 'whale', 'oracle', 'cobaye']) {
+      const p = (R[k].bloques / R[k].vus * 100).toFixed(1);
+      ok(C[k] && C[k].ligne.indexOf('−' + p + '%') === 0, k + ' : la carte donne la vraie part refusee « ' + (C[k] || {}).ligne + ' » (' + R[k].bloques + ' / ' + R[k].vus + ')');
+    }
+    ok(C.banquier && C.banquier.ligne === REELLE.compteurs.banquier.toLocaleString('en-US') + ' stakes sized' && C.closer && C.closer.ligne === REELLE.compteurs.closer.toLocaleString('en-US') + ' opened',
+      'Banker et Closer : leurs compteurs (« ' + (C.banquier || {}).ligne + ' », « ' + (C.closer || {}).ligne + ' »)');
+    ok(m.cartes.every((c) => c.role.length > 10 && !/\p{Extended_Pictographic}/u.test(c.nom + c.role + c.ligne)), 'chaque carte a son role, et aucun emoji dans le texte');
+    const ICONES = ['jumelles', 'bulle', 'diamant', 'pieces', 'baleine', 'bouclier', 'fiole', 'cible'];
+    ok(new Set(m.cartes.map((c) => c.ico)).size === 8 && m.cartes.every((c) => ICONES.includes(c.ico)), 'huit icones differentes, au trait : ' + m.cartes.map((c) => c.ico).join(', '));
+    /* au trait : dans la pastille, l icone allume une PART des pixels — ni rien (pas dessinee), ni tout (un glyphe plein) */
+    const parts = await page.evaluate((cs) => { const c = document.getElementById('cvCanvas'), x = c.getContext('2d'), k = c.width / c.getBoundingClientRect().width;
+      return cs.map((q) => { const r = Math.round(q.badge.r * 0.62 * k), cx0 = Math.round(q.badge.x * k), cy0 = Math.round(q.badge.y * k), d = x.getImageData(cx0 - r, cy0 - r, 2 * r, 2 * r).data;
+        let tot = 0, vif = 0; for (let yy = 0; yy < 2 * r; yy++) for (let xx = 0; xx < 2 * r; xx++) { if ((xx - r) ** 2 + (yy - r) ** 2 > r * r) continue; tot++; const i = (yy * 2 * r + xx) * 4; if (Math.max(d[i], d[i + 1], d[i + 2]) > 140) vif++; }
+        return Math.round(vif / tot * 100); }); }, m.cartes);
+    ok(parts.every((p) => p >= 4 && p <= 55), 'les icones sont des traits : ' + parts.join(' %, ') + ' % des pixels de la pastille allumes');
+    /* les autres agents du roster : des satellites, aucun invente */
+    const S = {}; m.sat.forEach((x) => S[x.k] = x);
+    const montres = m.cartes.map((c) => c.k).concat(m.sat.map((x) => x.k)).sort();
+    ok(JSON.stringify(montres) === JSON.stringify(REELLE.roster.map((a) => a.key).sort()), 'cartes + satellites = le roster, ni plus ni moins (' + montres.length + ' / ' + REELLE.roster.length + ')');
+    ok(m.sat.every((x) => x.nom === R[x.k].nom), 'les satellites portent le nom du roster (' + m.sat.map((x) => x.nom).join(', ') + ')');
+    ok(['sentinelle', 'promoteur', 'veilleur'].every((k) => S[k] && S[k].ancre === 'closer') && S.conseiller && S.conseiller.ancre === 'oracle' && S['scout-agemc'] && S['scout-agemc'].ancre === 'scout',
+      'ceux qui veillent sur les positions tournent autour du Closer, le conseil autour de l Oracle, le specialiste autour de son parent');
+    ok(m.orb.length === 5, 'et ils sont dessines (' + m.orb.length + ' en orbite)');
+    ok(err.length === 0, 'aucune erreur' + (err.length ? ' — ' + err[0] : ''));
+    await ctx.close();
+  }
+  {
+    /* un agent que le roster n a plus : ni carte, ni nom, rien ne pretend qu il existe */
+    const { ctx, page, err } = await ouvre({ vue: () => vue((j) => { j.roster = j.roster.filter((a) => a.key !== 'cobaye' && a.key !== 'veilleur'); }) });
+    const m = await page.evaluate(() => ({ c: Cerveau.cartes().map((c) => c.k), s: Cerveau.satellites().map((x) => x.k), v: document.getElementById('cvVeille').textContent, t: cvTitre.textContent }));
+    ok(m.c.length === 7 && m.c.indexOf('cobaye') < 0 && m.s.indexOf('veilleur') < 0 && !/Watcher/.test(m.v), 'sans le Cobaye ni le Watcher dans le roster : 7 cartes, 4 satellites, « ' + m.v + ' »');
+    ok(m.t === 'One brain. Eleven agents.', 'et le titre compte ce qui reste (« ' + m.t + ' »)');
+    ok(err.length === 0, 'aucune erreur' + (err.length ? ' — ' + err[0] : ''));
+    await ctx.close();
+  }
+  {
+    /* a 900 px, le seuil : les cartes tiennent sans couvrir le cerveau */
+    const { ctx, page, err } = await ouvre({ w: 900, h: 900 });
+    const m = await page.evaluate(() => { const A = Cerveau.aires(), C = Cerveau.cartes(), xs = A.map((a) => a.x);
+      return { n: C.length, g: Math.max(...C.filter((c) => c.x < 450).map((c) => c.x + c.w)), d: Math.min(...C.filter((c) => c.x > 450).map((c) => c.x)), amin: Math.min(...xs), amax: Math.max(...xs) }; });
+    ok(m.n === 8 && m.g < m.amin && m.d > m.amax, '900 px : huit cartes, aucune sur une aire (gauche jusqu a ' + Math.round(m.g) + ', aires de ' + Math.round(m.amin) + ' a ' + Math.round(m.amax) + ', droite des ' + Math.round(m.d) + ')');
     ok(err.length === 0, 'aucune erreur' + (err.length ? ' — ' + err[0] : ''));
     await ctx.close();
   }

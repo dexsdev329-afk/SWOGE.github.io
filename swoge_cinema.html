@@ -585,7 +585,10 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
        (jugees par la porte du serveur, swap_garde.js, AVANT tout paiement : jamais une personne
        reelle), ecrire une direction libre (600 signes, citee par le serveur dans son gabarit) et
        choisir 720p ou 1080p. La page n'envoie au lancement que les identifiants (sha256) rendus par
-       la porte, jamais l'image ni une URL. Le resultat se lit avec la session (blob). -->
+       la porte, jamais l'image ni une URL. Le resultat se lit avec la session (blob).
+       15/10/2026 : QUI remplacer est un choix OBLIGATOIRE (gauche / centre / droite / seule personne,
+       la liste du serveur) : « the person singing » avait fait remplacer la mauvaise personne. Aucune
+       cible n'est pre-choisie ; « Run » reste ferme tant qu'elle manque. -->
   <style>
   /* tout prefixe .swq- : ne touche ni ds- ni sw- ni cine- */
   .swq{ scroll-margin-top:12px; }
@@ -638,6 +641,7 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
     font:400 14px/1.4 Inter,system-ui,sans-serif; color:var(--ds-encre); background:var(--ds-blanc); }
   .swq-compte{ display:block; text-align:right; font-size:12px; color:var(--ds-pale); margin-top:4px; font-variant-numeric:tabular-nums; }
   .swq-compte.plein{ color:#B42318; }
+  .swq-requis{ color:#B42318; font-weight:700; }
   .swq-regles{ margin:14px 0 0; padding-left:18px; color:var(--ds-pale); font-size:12.5px; }
   .swq-regles li{ margin:3px 0; }
   /* la recharge : la feuille du studio, aux couleurs de la page */
@@ -689,8 +693,9 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
         <p class="ds-note" id="swMienNote">Up to 2 images (JPEG, PNG or WebP, 6 MB each): an NFT, a mascot, a pet, a drawing, a 3D or game character. Each image is checked first &mdash; never a real person.</p>
         <div class="swq-perso-l" id="swMiens" aria-live="polite"></div>
       </div>
-      <span class="swq-l" id="swCibleL">Replace</span>
+      <span class="swq-l" id="swCibleL">Who to replace (required)</span>
       <div class="ds-seg" id="swCibles" role="group" aria-labelledby="swCibleL"></div>
+      <p class="ds-note" id="swCibleNote">Pick the one person SWOGE replaces, by where they stand in the video. Everyone else stays as they are.</p>
       <label class="swq-l" for="swTexte">Direction (optional)</label>
       <textarea class="swq-texte" id="swTexte" maxlength="600" rows="3" placeholder="Gestures, outfit, style, scene, props&hellip; any language." aria-describedby="swTexteCompte"></textarea>
       <span class="swq-compte" id="swTexteCompte" aria-live="polite">0 / 600</span>
@@ -840,7 +845,8 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
     return fetch(serveur() + "/studio/swap", { cache: "no-store", headers: h }).then(lis).then(function(v){
       S.vue = v; S.charge = true;
       if (!S.perso && v.personnages && v.personnages.length) S.perso = v.personnages[0].id;
-      if (!S.cible && v.cibles && v.cibles.length) S.cible = v.cibles[0].id;
+      /* aucune cible par defaut (15/10/2026) : le joueur la choisit ; une cible qui n'est plus offerte est oubliee */
+      if (S.cible && !(v.cibles || []).some(function(c){ return c.id === S.cible; })) S.cible = null;
       if (v.passe && !S.id) { S.id = v.passe; suis(); }
       peint();
     })["catch"](function(e){ S.charge = true; statut("SWOGE Swap could not be reached: " + e.message + ". Try again in a moment.", true); peint(); });
@@ -907,6 +913,7 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
       bt.addEventListener("click", function(){ S.cible = c.id; peint(); });
       lc.appendChild(bt);
     });
+    $("swCibleNote").className = "ds-note" + (S.cible ? "" : " swq-requis");
     var prix = prixPlan(e);
     $("swPrix").textContent = dollars(prix);
     $("swPrixInfo").textContent = e.morceaux.length + (e.morceaux.length > 1 ? " parts" : " part") + " · " + Number(e.source && e.source.duree || 0).toFixed(1) + " s · " + S.resolution + " · every started second of each part counts";
@@ -914,7 +921,7 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
     $("swCredit").textContent = c == null ? "Checking your dollar credit…" : "Your dollar credit: " + dollars(c) + ". Charged only for the parts you get.";
     var assez = c != null && c + 1e-9 >= prix;
     $("swLance").hidden = !assez; $("swLance").disabled = S.occupe || !(S.perso || libre) || !S.cible || enExamen();
-    $("swLance").textContent = "Run — " + dollars(prix);
+    $("swLance").textContent = S.cible ? "Run — " + dollars(prix) : "Pick who to replace first";
     $("swRecharge").hidden = c == null || assez;
     $("swManque").hidden = c == null || assez;
     if (c != null && !assez) $("swManque").textContent = "You need " + dollars(Math.ceil((prix - c) * 100 - 1e-9) / 100) + " more on your dollar credit to run this video.";

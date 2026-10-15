@@ -37,6 +37,26 @@
  * Les references par defaut des editions : le corps, le Swole Doge
  * (img/site/swoge_swole_ref.jpg, image_1), et le visage officiel
  * (img/site/swoge_face_ref.jpg, image_2) — choix du proprietaire le 14/10/2026.
+ *
+ * 15 OCTOBRE 2026 — LE PERSONNAGE, LA CIBLE, LA PREMIERE IMAGE. Mesures du
+ * jour (EXPLOITATION.md) : « the singer » a fait remplacer la mauvaise
+ * personne ; puis, la bonne personne visee, SWOGE restait un culturiste humain
+ * (peau nue, mains humaines) sous une tete de shiba. Donc :
+ *   - la reference primaire devient le meme « Swole Doge »
+ *     (img/site/swoge_meme_ref.jpg, @image_1), le visage reste @image_2 ; le
+ *     texte par defaut est celui du serveur (swoge_texte.js, mot pour mot) ;
+ *   - un selecteur « Who to replace » (gauche / centre / droite / seule
+ *     personne, defaut : seule) reecrit la phrase de cible dans le texte ;
+ *   - « SWOGE character » : les vues (le meme, le visage, une vue de face et une
+ *     de trois quarts generees par Kling Image O1 ou televersees), l'element
+ *     Kling cree, suivi, recree, efface (swoge_element.js). Quand il existe, le
+ *     SERVEUR envoie l'element a la place des deux images et reecrit @image_1 /
+ *     @image_2 en @element_1 ; la page le dit ;
+ *   - « Prepare first frame » : l'image 0 du clip (ou du morceau 1) refaite
+ *     avec SWOGE par Kling Image O1, 2 candidats ; celui qu'on choisit part avec
+ *     la video comme reference de scene (premiere_image.js).
+ *   Les images du proprietaire se lisent avec la session (blob:), jamais par une
+ *   adresse publique.
  * ================================================================== -->
 <style>
 :root{ --fond:#EEF3FB; --carte:#fff; --encre:#0B1B36; --pale:#5a6b85; --bleu:#1652f0; --ligne:#E1E9F6; --ok:#0a7d3e; --err:#b3261e; }
@@ -81,6 +101,15 @@ a.telecharge{ display:inline-block; margin-top:8px; font-weight:700; color:var(-
 .part button{ margin-top:6px; padding:4px 10px; min-height:32px; font-size:13px; }
 #tStatut{ min-height:22px; font-weight:600; margin-top:10px; overflow-wrap:anywhere; }
 #tStatut.err{ color:var(--err); } #tStatut.ok{ color:var(--ok); }
+.vues{ display:grid; grid-template-columns:repeat(auto-fill,minmax(min(100%,250px),1fr)); gap:10px; margin:10px 0; }
+.vue{ border:1px solid var(--ligne); border-radius:12px; padding:10px; min-width:0; }
+.vue b{ display:block; margin-bottom:6px; }
+.cands{ display:flex; flex-wrap:wrap; gap:6px; margin:6px 0; }
+.cand{ display:flex; flex-direction:column; align-items:center; gap:3px; width:76px; padding:3px; border:2px solid var(--ligne); border-radius:10px; background:#fff; font-size:11px; color:var(--pale); cursor:pointer; min-height:44px; overflow-wrap:anywhere; text-align:center; }
+.cand[aria-pressed="true"]{ border-color:var(--bleu); color:var(--encre); }
+.cand img{ width:66px; height:88px; object-fit:cover; border-radius:7px; background:var(--fond); }
+.vue .actions{ display:flex; flex-wrap:wrap; gap:6px; }
+.vue .actions button{ padding:4px 10px; min-height:36px; font-size:13px; }
 img.vign{ width:64px; height:64px; object-fit:cover; border-radius:10px; vertical-align:middle; margin-right:8px; }
 </style>
 </head>
@@ -110,6 +139,17 @@ img.vign{ width:64px; height:64px; object-fit:cover; border-radius:10px; vertica
     <video id="video" controls playsinline hidden></video>
   </div>
 
+  <div class="carte" id="swoge" hidden>
+    <h2 style="font-size:18px;margin:0 0 4px">SWOGE character (Kling element)</h2>
+    <p class="pale">One Kling "element" built from several views of SWOGE: a frontal picture plus 1 to 3 other views. While it exists, every SWOGE edit (clip, whole video, SWOGE Swap) sends the element instead of the two pictures, and the text names it @element_1. Without it, edits send the two pictures as before.</p>
+    <p id="sElement" role="status"></p>
+    <div class="vues" id="sVues"></div>
+    <button id="sPrepare" type="button">Prepare SWOGE views</button>
+    <p class="pale" id="sPrepareInfo"></p>
+    <div class="rang"><button id="sCree" type="button">Create the element</button> <button class="pale2" id="sSupprime" type="button" hidden>Delete the element</button></div>
+    <p id="sStatut" role="status"></p>
+  </div>
+
   <div class="carte" id="edition" hidden>
     <h2 style="font-size:18px;margin:0 0 4px">Edit a clip (replace a person)</h2>
     <p class="pale">Kling O1 redraws one person in a short clip from a reference picture. MP4, 3 to 10 s, 700 to 2160 px per side.</p>
@@ -117,13 +157,21 @@ img.vign{ width:64px; height:64px; object-fit:cover; border-radius:10px; vertica
     <input id="eClip" type="file" accept="video/mp4">
     <p class="pale" id="eClipInfo"></p>
     <label>Reference picture</label>
-    <div><img class="vign" id="eVign" src="/img/site/swoge_swole_ref.jpg" alt="Reference"><img class="vign" id="eVign2" src="/img/site/swoge_face_ref.jpg" alt="Face"><span id="eRefNom">SWOGE (default: body @image_1, face @image_2)</span>
+    <div><img class="vign" id="eVign" src="/img/site/swoge_meme_ref.jpg" alt="Reference"><img class="vign" id="eVign2" src="/img/site/swoge_face_ref.jpg" alt="Face"><span id="eRefNom">SWOGE (default: full body @image_1, face @image_2)</span>
       <button class="pale2" id="eImage" type="button">Choose another (replaces both)</button> <button class="pale2" id="eSansImage" type="button" hidden>Back to SWOGE</button></div>
     <label class="coche"><input id="eSon" type="checkbox" checked> Keep the original sound</label>
 
     <h3>Kling O1</h3>
+    <label for="eCible">Who to replace</label>
+    <select id="eCible"><option value="seule" selected>The only person</option><option value="gauche">The person on the left</option><option value="centre">The person in the center</option><option value="droite">The person on the right</option></select>
+    <p class="pale" id="eCibleInfo"></p>
+    <label>First frame (optional)</label>
+    <p class="pale">Fix SWOGE's look on one still before paying for the video: Kling Image O1 redraws the first frame with SWOGE in place of the chosen person (2 pictures). The one you pick goes with the edit as a scene reference.</p>
+    <button class="pale2" id="ePrep" type="button" disabled>Prepare first frame</button> <button class="pale2" id="eRegen" type="button" hidden>Regenerate</button>
+    <p class="pale" id="ePrepInfo"></p>
+    <div class="cands" id="eCands"></div>
     <label for="ePrompt">What to change</label>
-    <textarea id="ePrompt" maxlength="2500" style="min-height:150px">Replace the singer in @video_1 with the exact 3D character of @image_1 and @image_2: SWOGE, a huge bodybuilder Shiba Inu with thick fluffy cream-white fur on the chest, belly and arms and orange-tan fur on the head and back, the round friendly Doge face of @image_2 with white cheeks, small dark eyes and a smiling mouth that opens to lip-sync the words, furry dog paws with dark pads instead of hands, wearing plain black gym shorts, much bigger and more muscular than the original person, with nothing left of the original person (no hair, glasses, clothes or accessories). Keep the other person, the camera, the background and the original audio unchanged.</textarea>
+    <textarea id="ePrompt" maxlength="2500" style="min-height:150px">Replace the only person in @video_1 with the exact SWOGE character of @image_1 (full body) and @image_2 (face): the Swole Doge, a 3D Shiba Inu with a small Doge head on a thick tall neck, an enormous muscular upper body with huge arms, and short thin legs, much bigger than the original person. Thick fluffy cream-beige fur EVERYWHERE, one uniform colour; no bare human skin anywhere: chest, belly, arms and legs are all thick fur. Furry dog paws with dark pads and small dark claws instead of human hands. Plain black gym shorts. The face is the round friendly Doge face of @image_2 (cream-white cheeks, small dark eyes, black nose, smile), NOT a realistic wolf-like Shiba; its mouth follows the words. Nothing is kept from the replaced person: no hair, skin, glasses, clothes or accessories. Keep the camera, the background and the original audio unchanged.</textarea>
     <div class="rang">
       <div><label for="eResolution">Resolution</label><select id="eResolution"><option value="720p">720p</option><option value="1080p">1080p</option></select></div>
     </div>
@@ -153,13 +201,20 @@ img.vign{ width:64px; height:64px; object-fit:cover; border-radius:10px; vertica
     <label>Reference pictures (<span id="tRefsMax">4</span> at most: @image_1, @image_2…)</label>
     <div class="refs" id="tRefs"></div>
     <button class="pale2" id="tAjout" type="button">Add a picture</button>
+    <label for="tCible">Who to replace</label>
+    <select id="tCible"><option value="seule" selected>The only person</option><option value="gauche">The person on the left</option><option value="centre">The person in the center</option><option value="droite">The person on the right</option></select>
+    <p class="pale" id="tCibleInfo"></p>
     <label for="tPrompt">What to change</label>
-    <textarea id="tPrompt" maxlength="2500" style="min-height:170px">Replace the singer in @video_1 with the exact 3D character of @image_1 and @image_2: SWOGE, a huge bodybuilder Shiba Inu with thick fluffy cream-white fur on the chest, belly and arms and orange-tan fur on the head and back, the round friendly Doge face of @image_2 with white cheeks, small dark eyes and a smiling mouth that opens to lip-sync the words, furry dog paws with dark pads instead of hands, wearing plain black gym shorts, much bigger and more muscular than the original person, with nothing left of the original person (no hair, glasses, clothes or accessories). Keep the other person, the camera, the background and the original audio unchanged.</textarea>
+    <textarea id="tPrompt" maxlength="2500" style="min-height:170px">Replace the only person in @video_1 with the exact SWOGE character of @image_1 (full body) and @image_2 (face): the Swole Doge, a 3D Shiba Inu with a small Doge head on a thick tall neck, an enormous muscular upper body with huge arms, and short thin legs, much bigger than the original person. Thick fluffy cream-beige fur EVERYWHERE, one uniform colour; no bare human skin anywhere: chest, belly, arms and legs are all thick fur. Furry dog paws with dark pads and small dark claws instead of human hands. Plain black gym shorts. The face is the round friendly Doge face of @image_2 (cream-white cheeks, small dark eyes, black nose, smile), NOT a realistic wolf-like Shiba; its mouth follows the words. Nothing is kept from the replaced person: no hair, skin, glasses, clothes or accessories. Keep the camera, the background and the original audio unchanged.</textarea>
     <div class="rang">
       <div><label for="tResolution">Resolution</label><select id="tResolution"><option value="720p">720p</option><option value="1080p">1080p</option></select></div>
     </div>
     <button id="tPlan" type="button" disabled>Plan (upload and cut, nothing is paid)</button>
     <p class="pale" id="tPlanInfo"></p>
+    <div id="tPremiere"><label>First frame of part 1 (optional)</label>
+    <button class="pale2" id="tPrep" type="button" disabled>Prepare first frame</button> <button class="pale2" id="tRegen" type="button" hidden>Regenerate</button>
+    <p class="pale" id="tPrepInfo"></p>
+    <div class="cands" id="tCands"></div></div>
     <button id="tLancer" type="button" hidden disabled>Run all parts</button>
     <p id="tStatut" role="status"></p>
     <div class="grille" id="tGrille"></div>
@@ -222,7 +277,7 @@ img.vign{ width:64px; height:64px; object-fit:cover; border-radius:10px; vertica
       M = o.modeles;
       $("acces").textContent = o.actif ? "Kling is connected." : "Kling is not set up yet: add KLING_API_KEY on Railway.";
       $("formulaire").hidden = !o.actif;
-      E.vue = o.edition || null; E.wan = o.wan || null; T.vue = o.entier || null;
+      E.vue = o.edition || null; E.wan = o.wan || null; T.vue = o.entier || null; SE.vue = o.swoge || null; peintSwoge();
       $("edition").hidden = !((o.actif && E.vue) || (E.wan && E.wan.actif));
       peintReglages(); peintEdition(); peintEntier(); peintHistorique(o.essais);
       if (T.vue && T.vue.passe && !T.id) { T.id = T.vue.passe; tSuis(); }
@@ -267,7 +322,8 @@ img.vign{ width:64px; height:64px; object-fit:cover; border-radius:10px; vertica
   /* Les references par defaut des editions, les memes que le serveur (14/10/2026) :
      le corps (Swole Doge, image_1) et le visage officiel (image_2) — le premier
      vrai resultat avait la mauvaise tete (un shiba orange realiste). */
-  var REF_SWOGE = "/img/site/swoge_swole_ref.jpg", REF_VISAGE = "/img/site/swoge_face_ref.jpg";
+  /* 15/10/2026 : le corps est le meme « Swole Doge » (reference primaire du proprietaire). */
+  var REF_SWOGE = "/img/site/swoge_meme_ref.jpg", REF_VISAGE = "/img/site/swoge_face_ref.jpg";
   function eStatut(t, g){ var s = $("eStatut"); s.textContent = t || ""; s.className = g || ""; }
   /* La duree d'un MP4 (copie de swolemind.html, meme lecture que le serveur) :
      ftyp en premier, moov > mvhd v0/v1 ; un MP4 fragmente (mvex) ne se lit
@@ -334,6 +390,7 @@ img.vign{ width:64px; height:64px; object-fit:cover; border-radius:10px; vertica
       $("ePrix").textContent = p === null ? "Pick a clip to see the price (" + E.vue.dureeMinS + " to " + E.vue.dureeMaxS + " s)."
         : "About $" + p.toFixed(3) + " on your Kling account (official price list, every started second counts).";
       $("eLancer").disabled = !(E.clip && p !== null && !E.occupeK);
+      $("ePrep").disabled = !E.clip || EP.occupe();
     } else { $("ePrix").textContent = "Kling is not set up."; $("eLancer").disabled = true; }
     if (E.wan && E.wan.actif) {
       var w = prixWan();
@@ -345,7 +402,7 @@ img.vign{ width:64px; height:64px; object-fit:cover; border-radius:10px; vertica
   $("wResolution").addEventListener("change", peintEdition);
   $("eClip").addEventListener("change", function(){
     var f = $("eClip").files && $("eClip").files[0];
-    E.clip = null; E.dureeS = null; $("eClipInfo").textContent = ""; eStatut("");
+    E.clip = null; E.dureeS = null; $("eClipInfo").textContent = ""; eStatut(""); EP.efface();
     if (!f) { peintEdition(); return; }
     var max = (E.vue && E.vue.octetsMax) || 20 * 1024 * 1024;
     if (f.size > max) { eStatut("Clip too large: " + (f.size / 1048576).toFixed(1) + " MB (" + Math.round(max / 1048576) + " MB at most).", "err"); peintEdition(); return; }
@@ -373,7 +430,7 @@ img.vign{ width:64px; height:64px; object-fit:cover; border-radius:10px; vertica
     });
     i.click();
   });
-  $("eSansImage").addEventListener("click", function(){ E.image = null; $("eVign").src = REF_SWOGE; $("eVign2").hidden = false; $("eRefNom").textContent = "SWOGE (default: body @image_1, face @image_2)"; $("eSansImage").hidden = true; });
+  $("eSansImage").addEventListener("click", function(){ E.image = null; $("eVign").src = REF_SWOGE; $("eVign2").hidden = false; $("eSansImage").hidden = true; peintRefNom(); });
   function eSuis(id, depart){
     api("/studio/kling/" + encodeURIComponent(id)).then(function(r){
       var s = Math.round((Date.now() - depart) / 1000);
@@ -393,6 +450,7 @@ img.vign{ width:64px; height:64px; object-fit:cover; border-radius:10px; vertica
     E.occupeK = true; $("eLancer").disabled = true; $("eVideo").hidden = true; $("eLien").hidden = true; eStatut("Uploading the clip…");
     var corps = { video: E.clip, prompt: t, resolution: $("eResolution").value, audio: $("eSon").checked ? "original" : "off" };
     if (E.image) corps.image = E.image;
+    if (EP.choisi()) corps.premiere = EP.choisi();
     api("/studio/kling/edition", "POST", corps)
       .then(function(r){ eStatut("Sent to Kling (~$" + Number(r.estimationUsd).toFixed(3) + ")."); eSuis(r.id, Date.now()); })
       ["catch"](function(e){ eStatut("Not sent: " + e.message, "err"); E.occupeK = false; peintEdition(); });
@@ -439,7 +497,7 @@ img.vign{ width:64px; height:64px; object-fit:cover; border-radius:10px; vertica
    * « swoge-face » (le visage), a leur place dans la liste, ou une data-URL
    * PNG/JPEG. Le resultat
    * ne sort qu'avec la session (lu en blob). */
-  var T = { vue: null, fichier: null, refs: [{ jeton: "swoge", nom: "SWOGE body (default)", src: REF_SWOGE }, { jeton: "swoge-face", nom: "SWOGE face (default)", src: REF_VISAGE }], id: null, etat: null, suivi: null, blob: null, blobDe: null, occupe: false };
+  var T = { vue: null, fichier: null, refs: [{ jeton: "swoge", nom: "SWOGE full body (default)", src: REF_SWOGE }, { jeton: "swoge-face", nom: "SWOGE face (default)", src: REF_VISAGE }], id: null, etat: null, suivi: null, blob: null, blobDe: null, occupe: false };
   function tStatut(t, g){ var s = $("tStatut"); s.textContent = t || ""; s.className = g || ""; }
   function dollars(x){ return "$" + Number(x).toFixed(3); }
   function mmss(s){ var m = Math.floor(s / 60), r = s - m * 60; return m + ":" + (r < 10 ? "0" : "") + r.toFixed(1); }
@@ -480,6 +538,8 @@ img.vign{ width:64px; height:64px; object-fit:cover; border-radius:10px; vertica
       if (!e) $("tPlanInfo").textContent = "Up to " + Math.round(v.dureeEntierMaxS) + " s and " + Math.round(v.octetsMax / 1048576) + " MB. Cap " + dollars(v.plafondUsd) + " per run, " + v.parallele + " parts at a time.";
     }
     $("tResolution").disabled = !!(e && e.statut !== "pret" && e.statut !== "erreur");
+    $("tPrep").disabled = !(e && e.statut === "pret") || TP.occupe();
+    if (!(e && e.statut === "pret") && TP.choisi() && e && e.statut !== "en_cours") TP.efface();
     peintGrille();
   }
   var ETIQ = { planned: "planned", waiting: "waiting", sending: "sending", processing: "at Kling", downloading: "downloading", done: "done", failed: "failed" };
@@ -559,7 +619,7 @@ img.vign{ width:64px; height:64px; object-fit:cover; border-radius:10px; vertica
   $("tPlan").addEventListener("click", function(){
     if (!T.fichier) return;
     if (T.suivi) clearTimeout(T.suivi);
-    T.occupe = true; T.etat = null; T.id = null; $("tVideo").hidden = true; $("tLien").hidden = true; peintEntier();
+    T.occupe = true; T.etat = null; T.id = null; TP.efface(); $("tVideo").hidden = true; $("tLien").hidden = true; peintEntier();
     tStatut("Uploading the video (" + (T.fichier.size / 1048576).toFixed(1) + " MB)…");
     fetch(serveur() + "/studio/kling/entier", { method: "POST", cache: "no-store", headers: { "content-type": "video/mp4", authorization: "Bearer " + jeton() }, body: T.fichier })
       .then(function(r){ return r.json().catch(function(){ return {}; }).then(function(o){ if (!r.ok || o.ok === false) throw new Error(o.raison || ("error " + r.status)); return o; }); })
@@ -571,7 +631,9 @@ img.vign{ width:64px; height:64px; object-fit:cover; border-radius:10px; vertica
     var p = prixPlan(); if (p == null || !T.id) return;
     T.occupe = true; $("tLancer").disabled = true; tStatut("Sending the first parts to Kling…");
     var images = T.refs.map(function(r){ return r.jeton || r.data; });
-    api("/studio/kling/entier/" + T.id + "/lance", "POST", { images: images, prompt: t, resolution: $("tResolution").value, confirmeUsd: p })
+    var corpsT = { images: images, prompt: t, resolution: $("tResolution").value, confirmeUsd: p };
+    if (TP.choisi()) corpsT.premiere = TP.choisi();
+    api("/studio/kling/entier/" + T.id + "/lance", "POST", corpsT)
       .then(function(e){ T.etat = e; T.occupe = false; peintEntier(); tSuis(); })
       ["catch"](function(e){ tStatut("Not sent: " + e.message, "err"); T.occupe = false; peintEntier(); });
   });
@@ -582,6 +644,165 @@ img.vign{ width:64px; height:64px; object-fit:cover; border-radius:10px; vertica
     api("/studio/kling/entier/" + T.id + "/abandonne", "POST", {}).then(function(e){ if (T.suivi) clearTimeout(T.suivi); T.etat = e.statut === "supprime" ? null : e; T.id = null; peintEntier(); tStatut("Abandoned: the parts were deleted.", "err"); })
       ["catch"](function(e){ tStatut("Not abandoned: " + e.message, "err"); });
   });
+  /* ---- QUI REMPLACER (15/10/2026) : les phrases du serveur (swoge_texte.js CIBLES). Le
+   * selecteur reecrit la phrase de cible du texte ; un texte qui ne commence pas par
+   * « Replace … in @video_1 » n'est pas touche (le proprietaire l'a reecrit a la main). */
+  var QUI = { gauche: "ONLY the person on the LEFT side of the frame", centre: "ONLY the person in the CENTER of the frame", droite: "ONLY the person on the RIGHT side of the frame", seule: "the only person" };
+  var AUTRES = " The other people stay exactly as they are.";
+  var CIBLE_RE = /^Replace (ONLY the person on the (?:LEFT|RIGHT) side of the frame|ONLY the person in the CENTER of the frame|the only person|the singer|the person who is singing or talking) in @video_1/;
+  function cibleTexte(t, c){
+    if (!QUI[c] || !CIBLE_RE.test(t)) return null;
+    t = t.replace(CIBLE_RE, "Replace " + QUI[c] + " in @video_1").split(AUTRES).join("");
+    if (c !== "seule") { var k = t.indexOf(" Keep the camera"); t = k >= 0 ? t.slice(0, k) + AUTRES + t.slice(k) : t + AUTRES; }
+    return t;
+  }
+  function brancheCible(sel, zone, info){
+    $(sel).addEventListener("change", function(){
+      var t = cibleTexte($(zone).value, $(sel).value);
+      if (t === null) { $(info).textContent = "The text does not start with \"Replace … in @video_1\": change who to replace by hand."; return; }
+      $(zone).value = t; $(info).textContent = "";
+    });
+  }
+  brancheCible("eCible", "ePrompt", "eCibleInfo");
+  brancheCible("tCible", "tPrompt", "tCibleInfo");
+
+  /* Une image du proprietaire servie avec la session : lue en blob, gardee par chemin. */
+  var BLOBS = {};
+  function blobImage(chemin, img){
+    if (BLOBS[chemin]) { img.src = BLOBS[chemin]; return; }
+    fetch(serveur() + chemin, { cache: "no-store", headers: { authorization: "Bearer " + jeton() } })
+      .then(function(r){ if (!r.ok) throw new Error("error " + r.status); return r.blob(); })
+      .then(function(b){ BLOBS[chemin] = URL.createObjectURL(b); img.src = BLOBS[chemin]; })["catch"](function(){ img.alt = "not loaded"; });
+  }
+  function tuile(src, texte, choisi, quand, blob){
+    var b = document.createElement("button"); b.type = "button"; b.className = "cand"; b.setAttribute("aria-pressed", String(!!choisi));
+    if (src) { var im = document.createElement("img"); im.alt = ""; if (blob) blobImage(src, im); else im.src = src; b.appendChild(im); }
+    var s = document.createElement("span"); s.textContent = texte; b.appendChild(s);
+    if (quand) b.addEventListener("click", quand); else b.disabled = true;
+    return b;
+  }
+
+  /* ---- LE PERSONNAGE SWOGE : VUES ET ELEMENT (swoge_element.js, 15/10/2026) ---- */
+  var SE = { vue: null, suivi: null };
+  var NOMS = { frontal: "Frontal picture (main)", visage: "Face close-up", pied: "Full body, front", profil: "3/4 side view" };
+  function sStatut(t, g){ var s = $("sStatut"); s.textContent = t || ""; s.className = g || ""; }
+  function peintRefNom(){
+    if (E.image) return;
+    var en = SE.vue && SE.vue.enService;
+    $("eRefNom").textContent = en ? "SWOGE element " + en + " (@element_1) — sent instead of the two pictures" : "SWOGE (default: full body @image_1, face @image_2)";
+  }
+  function sRelit(){ api("/studio/kling/swoge").then(function(o){ SE.vue = o; peintSwoge(); })["catch"](function(e){ sStatut("Not refreshed: " + e.message, "err"); }); }
+  function sGeste(chemin, corps, attente){
+    if (attente) sStatut(attente);
+    return api(chemin, "POST", corps || {}).then(function(o){ SE.vue = o.etat || SE.vue; sStatut(""); peintSwoge(); return o; })
+      ["catch"](function(e){ sStatut(e.message, "err"); sRelit(); });
+  }
+  function televerse(slot){
+    var i = document.createElement("input"); i.type = "file"; i.accept = "image/png,image/jpeg";
+    i.addEventListener("change", function(){
+      var f = i.files && i.files[0]; if (!f) return;
+      if (!/^image\/(png|jpeg)$/.test(f.type)) { sStatut("A view must be a PNG or JPEG picture.", "err"); return; }
+      if (f.size > 10 * 1024 * 1024) { sStatut("Picture too large (10 MB at most for a Kling element).", "err"); return; }
+      var r = new FileReader(); r.onload = function(){ sGeste("/studio/kling/swoge/vue", { slot: slot, image: String(r.result) }, "Uploading…"); }; r.readAsDataURL(f);
+    });
+    i.click();
+  }
+  function peintSwoge(){
+    var v = SE.vue;
+    $("swoge").hidden = !v;
+    peintRefNom();
+    if (!v) return;
+    var el = v.element, m = $("sElement");
+    m.textContent = !el ? "No element yet: SWOGE edits send the two pictures (@image_1 full body, @image_2 face)."
+      : el.statut === "pret" ? "Element " + el.elementId + " in service: SWOGE edits send it as @element_1." + (el.deduction ? " Kling deducted " + el.deduction + " units." : "") + (el.message ? " " + el.message : "")
+      : el.statut === "creation" ? "Creating the element at Kling…" + (el.precedent ? " Element " + el.precedent + " stays in service meanwhile." : "")
+      : "Element not created: " + (el.message || "error");
+    m.className = el && el.statut === "echec" ? "err" : el && el.statut === "pret" ? "ok" : "";
+    var box = $("sVues"); box.textContent = "";
+    v.slots.forEach(function(slot){
+      var d = document.createElement("div"); d.className = "vue"; d.setAttribute("data-slot", slot);
+      var t = document.createElement("b"); t.textContent = NOMS[slot] || slot; d.appendChild(t);
+      var c = document.createElement("div"); c.className = "cands";
+      var choix = v.choix[slot];
+      if (v.defauts[slot]) c.appendChild(tuile(v.defauts[slot].slice(1), "Site picture", choix === "site", function(){ sGeste("/studio/kling/swoge/choisit", { slot: slot, id: "site" }); }));
+      v.vues.filter(function(x){ return x.slot === slot; }).forEach(function(x){
+        if (x.statut === "pret") c.appendChild(tuile(x.image, x.source === "upload" ? "Uploaded" : "Kling", choix === x.id, function(){ sGeste("/studio/kling/swoge/choisit", { slot: slot, id: x.id }); }, true));
+        else c.appendChild(tuile(null, x.statut === "en_cours" ? "Being made…" : "Failed: " + (x.message || ""), false, null));
+      });
+      if (!c.childNodes.length) { var p = document.createElement("span"); p.className = "pale"; p.textContent = "No picture yet."; c.appendChild(p); }
+      d.appendChild(c);
+      var a = document.createElement("div"); a.className = "actions";
+      var up = document.createElement("button"); up.type = "button"; up.className = "pale2"; up.textContent = "Upload"; up.addEventListener("click", function(){ televerse(slot); }); a.appendChild(up);
+      if (v.generes.indexOf(slot) >= 0) {
+        var g = document.createElement("button"); g.type = "button"; g.className = "pale2"; g.textContent = "Regenerate"; g.setAttribute("data-regen", slot);
+        g.disabled = !v.actif || v.imagesJour >= v.imagesJourMax || v.vues.some(function(x){ return x.slot === slot && x.statut === "en_cours" && x.source === "kling"; });
+        g.addEventListener("click", function(){ sGeste("/studio/kling/swoge/prepare", { vues: [slot] }, "Asking Kling for a new " + NOMS[slot].toLowerCase() + "…"); }); a.appendChild(g);
+      }
+      if (slot !== "frontal" && choix) { var z = document.createElement("button"); z.type = "button"; z.className = "pale2"; z.textContent = "Leave out"; z.addEventListener("click", function(){ sGeste("/studio/kling/swoge/choisit", { slot: slot, id: null }); }); a.appendChild(z); }
+      d.appendChild(a);
+      box.appendChild(d);
+    });
+    var nG = v.generes.length, reste = v.imagesJourMax - v.imagesJour;
+    $("sPrepare").textContent = "Prepare SWOGE views — " + nG + " pictures, about $" + (v.prixImageUsd * nG).toFixed(3);
+    $("sPrepare").disabled = !v.actif || reste < nG || v.vues.some(function(x){ return x.statut === "en_cours" && x.source === "kling"; });
+    $("sPrepareInfo").textContent = "Kling Image O1 draws a full-body front view and a 3/4 side view from the Swole Doge picture. $" + Number(v.prixImageUsd).toFixed(3) + " per picture (official price list); " + v.imagesJour + " of " + v.imagesJourMax + " pictures made today (UTC). Pick or regenerate before creating the element.";
+    $("sCree").textContent = el && el.statut === "pret" ? "Re-create the element" : "Create the element";
+    $("sCree").disabled = !v.actif || !!(el && el.statut === "creation");
+    $("sSupprime").hidden = !(el && el.statut === "pret" && el.elementId);
+    clearTimeout(SE.suivi);
+    if (v.vues.some(function(x){ return x.statut === "en_cours"; }) || (el && el.statut === "creation")) SE.suivi = setTimeout(sRelit, 5000);
+  }
+  $("sPrepare").addEventListener("click", function(){ sGeste("/studio/kling/swoge/prepare", {}, "Asking Kling for the views…"); });
+  $("sCree").addEventListener("click", function(){ sGeste("/studio/kling/swoge/element", {}, "Sending the views to Kling…"); });
+  $("sSupprime").addEventListener("click", function(){ sGeste("/studio/kling/swoge/supprime", {}, "Deleting the element at Kling…"); });
+
+  /* ---- LA PREMIERE IMAGE (premiere_image.js, 15/10/2026) : px = « e » (clip) ou « t » (video entiere). ---- */
+  function Premiere(px, corps){
+    var P = { id: null, etat: null, suivi: null, occupe: false };
+    function st(t, g){ var s = $(px + "PrepInfo"); s.textContent = t || ""; s.className = "pale" + (g ? " " + g : ""); }
+    function peint(){
+      var c = $(px + "Cands"); c.textContent = "";
+      var e = P.etat;
+      $(px + "Regen").hidden = !e || e.enCours || e.essais >= e.essaisMax;
+      if (!e) return;
+      c.appendChild(tuile(e.image, "Original", false, null, true));
+      e.candidats.forEach(function(k){
+        c.appendChild(tuile(k.image, e.choisi === k.k ? "Chosen" : "Use this", e.choisi === k.k, function(){
+          api("/studio/kling/premiere/" + P.id + "/choisit", "POST", { k: e.choisi === k.k ? null : k.k }).then(function(o){ P.etat = o.premiere; peint(); })["catch"](function(err){ st(err.message, "err"); });
+        }, true));
+      });
+      if (e.enCours) c.appendChild(tuile(null, "Making 2 pictures…", false, null));
+    }
+    function suis(){
+      clearTimeout(P.suivi);
+      api("/studio/kling/premiere/" + P.id).then(function(o){
+        P.etat = o.premiere; peint();
+        if (P.etat.enCours) { P.suivi = setTimeout(suis, 4000); return; }
+        P.occupe = false; peintEdition(); peintEntier();
+        if (P.etat.candidats.length) st("Pick the picture where SWOGE looks right, or regenerate (" + P.etat.essais + " of " + P.etat.essaisMax + " tries). The chosen one goes with the video edit.");
+        else st(P.etat.message || "No picture came back.", "err");
+      })["catch"](function(e){ st("Follow-up failed: " + e.message, "err"); P.occupe = false; });
+    }
+    $(px + "Prep").addEventListener("click", function(){
+      var b = corps(); if (!b) return;
+      b.cible = $(px + "Cible").value;
+      P.occupe = true; $(px + "Prep").disabled = true; P.id = null; P.etat = null; peint(); st("Reading the first frame and asking Kling for 2 pictures…");
+      api("/studio/kling/premiere", "POST", b).then(function(o){ P.id = o.premiere.id; P.etat = o.premiere; peint(); suis(); })
+        ["catch"](function(e){ st("Not prepared: " + e.message, "err"); P.occupe = false; peintEdition(); peintEntier(); });
+    });
+    $(px + "Regen").addEventListener("click", function(){
+      if (!P.id) return;
+      P.occupe = true; $(px + "Regen").hidden = true; st("Asking Kling for 2 more pictures…");
+      api("/studio/kling/premiere/" + P.id + "/regenere", "POST", {}).then(function(o){ P.etat = o.premiere; peint(); suis(); })
+        ["catch"](function(e){ st(e.message, "err"); P.occupe = false; peint(); });
+    });
+    $(px + "Prep").textContent = "Prepare first frame — 2 pictures, about $0.056";
+    return { choisi: function(){ return P.etat && P.etat.choisi != null ? P.id : null; }, occupe: function(){ return P.occupe; },
+             efface: function(){ clearTimeout(P.suivi); P.id = null; P.etat = null; P.occupe = false; peint(); st(""); } };
+  }
+  var EP = Premiere("e", function(){ return E.clip ? { video: E.clip } : null; });
+  var TP = Premiere("t", function(){ return T.id && T.etat && T.etat.statut === "pret" ? { entier: T.id } : null; });
+
   charge();
 })();
 </script>

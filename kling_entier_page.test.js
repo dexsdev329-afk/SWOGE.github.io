@@ -4,7 +4,7 @@
  *
  * Le serveur est simule par page.route ; ce que la page DOIT tenir :
  *   1. Le proprietaire voit le mode : le texte demande pre-rempli, 720p, le
- *      corps (Swole Doge) en @image_1 et le visage officiel en @image_2, « Plan » ferme sans video, ni bouton
+ *      corps (le meme Swole Doge) en @image_1 et le visage officiel en @image_2, « Plan » ferme sans video, ni bouton
  *      de lancement ni lien de telechargement avant un plan / un resultat.
  *   2. Une video plus grosse que la borne du serveur est refusee AVANT envoi.
  *   3. « Plan » envoie la video BRUTE (video/mp4, octet pour octet) avec le
@@ -25,7 +25,8 @@ let chromium = null; try { chromium = require('playwright').chromium; } catch (e
 let n = 0, rates = 0;
 const ok = (c, m) => { n++; if (c) console.log('  ok   ' + m); else { rates++; console.log('  RATE ' + m); } };
 const T = { '.html': 'text/html', '.js': 'text/javascript', '.json': 'application/json', '.jpg': 'image/jpeg', '.png': 'image/png', '.ico': 'image/x-icon' };
-const PROMPT = 'Replace the singer in @video_1 with the exact 3D character of @image_1 and @image_2: SWOGE, a huge bodybuilder Shiba Inu with thick fluffy cream-white fur on the chest, belly and arms and orange-tan fur on the head and back, the round friendly Doge face of @image_2 with white cheeks, small dark eyes and a smiling mouth that opens to lip-sync the words, furry dog paws with dark pads instead of hands, wearing plain black gym shorts, much bigger and more muscular than the original person, with nothing left of the original person (no hair, glasses, clothes or accessories). Keep the other person, the camera, the background and the original audio unchanged.';
+/* 15/10/2026 : le texte par defaut du serveur (swoge_texte.texte('seule')) — le meme « Swole Doge » en @image_1, la seule personne */
+const PROMPT = "Replace the only person in @video_1 with the exact SWOGE character of @image_1 (full body) and @image_2 (face): the Swole Doge, a 3D Shiba Inu with a small Doge head on a thick tall neck, an enormous muscular upper body with huge arms, and short thin legs, much bigger than the original person. Thick fluffy cream-beige fur EVERYWHERE, one uniform colour; no bare human skin anywhere: chest, belly, arms and legs are all thick fur. Furry dog paws with dark pads and small dark claws instead of human hands. Plain black gym shorts. The face is the round friendly Doge face of @image_2 (cream-white cheeks, small dark eyes, black nose, smile), NOT a realistic wolf-like Shiba; its mouth follows the words. Nothing is kept from the replaced person: no hair, skin, glasses, clothes or accessories. Keep the camera, the background and the original audio unchanged.";
 let ID = 'e'.repeat(24);   /* let : la section 7b fait une SECONDE passe dans la meme page */
 
 (async () => {
@@ -100,7 +101,7 @@ let ID = 'e'.repeat(24);   /* let : la section 7b fait une SECONDE passe dans la
   ok((await p.inputValue('#tPrompt')) === PROMPT && (await p.inputValue('#ePrompt')) === PROMPT, 'le texte demande, pre-rempli (video entiere ET clip)');
   ok((await p.inputValue('#tResolution')) === '720p', '720p par defaut');
   const refs0 = await p.$$eval('#tRefs .ref', (l) => l.map((x) => ({ src: x.querySelector('img').getAttribute('src'), t: x.textContent, l: x.querySelector('img').naturalWidth })));
-  ok(refs0.length === 2 && refs0[0].src === '/img/site/swoge_swole_ref.jpg' && /@image_1 · SWOGE body \(default\)/.test(refs0[0].t) && refs0[0].l === 832
+  ok(refs0.length === 2 && refs0[0].src === '/img/site/swoge_meme_ref.jpg' && /@image_1 · SWOGE full body \(default\)/.test(refs0[0].t) && refs0[0].l === 1170
      && refs0[1].src === '/img/site/swoge_face_ref.jpg' && /@image_2 · SWOGE face \(default\)/.test(refs0[1].t) && refs0[1].l === 768, 'deux references : le corps en @image_1, le visage en @image_2 (chargees)');
   ok(/Doge face of @image_2/.test(await p.inputValue('#tPrompt')), 'le texte prend le visage de @image_2');
   ok(await p.isDisabled('#tPlan') && !(await p.isVisible('#tLancer')) && !(await p.isVisible('#tLien')) && !(await p.isVisible('#tVideo')), 'Plan ferme sans video ; ni lancement, ni video, ni lien de telechargement');

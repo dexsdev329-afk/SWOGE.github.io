@@ -12,7 +12,9 @@
  *   3. L'envoi : la video BRUTE (video/mp4, octet pour octet), le jeton,
  *      `x-swap-rights: yes` — aucune adresse.
  *   4. Le plan : le prix du serveur, le personnage (vignette du site), les
- *      quatre cibles ; credit trop bas : pas de « Run », le manque dit et la
+ *      quatre cibles par POSITION (15/10/2026 : « the person singing » avait fait
+ *      remplacer la mauvaise personne) — aucune pre-choisie, « Run » ferme et
+ *      « Pick who to replace first » tant qu'elle manque ; credit trop bas : pas de « Run », le manque dit et la
  *      recharge (montants des bornes du serveur, Base/Solana, SOL/USDT) ; le
  *      credit suffisant : « Run — $x » renvoie { personnage, cible, confirmeUsd,
  *      resolution } et RIEN d'autre (ni image, ni texte vide, ni adresse).
@@ -25,7 +27,7 @@
  *      390 et 1280 px : la direction compte ses signes (600) ; chaque image part
  *      BRUTE a /studio/swap/image, « Checking image… » pendant l'examen, puis
  *      « Accepted » ou le refus du serveur tel quel ; Run attend la fin des
- *      examens ; 1080p change le prix ; Run envoie les SEULS identifiants
+ *      examens ; la cible a choisir a chaque largeur ; 1080p change le prix ; Run envoie les SEULS identifiants
  *      acceptes, la direction, la resolution et le prix 1080p ; aucun debord.
  * ==========================================================================*/
 const fs = require('fs'), path = require('path'), http = require('http'), os = require('os');
@@ -54,11 +56,12 @@ const ID = 'a'.repeat(24);
   /* ---- le faux serveur ---- */
   const journal = [];
   const S = { passe: null, credit: 2, suite: [], images: [] };
-  const CIBLES = [{ id: 'chante', nom: 'The person singing / talking' }, { id: 'gauche', nom: 'The person on the left' }, { id: 'droite', nom: 'The person on the right' }, { id: 'tous', nom: 'Everyone' }];
+  /* les cibles du serveur depuis le 15/10/2026 (swoge_texte.js CIBLES, sans les cachees) */
+  const CIBLES = [{ id: 'gauche', nom: 'The person on the left' }, { id: 'centre', nom: 'The person in the center' }, { id: 'droite', nom: 'The person on the right' }, { id: 'seule', nom: 'The only person in the video' }];
   const VUE = { ok: true, actif: true, dureeMinS: 3, dureeMaxS: 60, octetsMax: 2 * 1048576, resolution: '720p', prixParSecondeUsd: 0.252, partMaxS: 9.5, passesMax: 2, enFile: 0, occupees: 0,
     ouvertAujourdhui: true, relancesGratuites: 1, gardeH: 48, resolutions: ['720p', '1080p'], prixParSecondeUsdParResolution: { '720p': 0.252, '1080p': 0.336 },
     texteMax: 600, imagesMax: 2, imageOctetsMax: 6 * 1048576, imageTypes: ['image/jpeg', 'image/png', 'image/webp'], verificationImages: true, droitsTexte: 'I own this video or have the right to use it, and it shows no one who did not agree to it.',
-    personnages: [{ id: 'swoge', nom: 'SWOGE', vignette: '/img/site/swoge_face_ref.jpg' }], cibles: CIBLES };
+    personnages: [{ id: 'swoge', nom: 'SWOGE', vignette: '/img/site/swoge_meme_ref.jpg' }], cibles: CIBLES, cibleRequise: true };
   const parts = (statuts, o) => statuts.map((s, i) => Object.assign({ i, debut: i * 7, duree: 7, statut: s, message: s === 'failed' ? 'Kling failed: content risk' : s === 'original' ? 'kept the original footage here — this part is refunded' : null,
     essais: 1, rejouable: s === 'failed', relanceGratuite: s === 'failed' }, o || {}));
   const etat = (statut, o) => Object.assign({ ok: true, id: ID, statut, message: null, source: { duree: 14, largeur: 720, hauteur: 1280, fps: 30, son: true }, fps: 30,
@@ -151,8 +154,10 @@ const ID = 'a'.repeat(24);
   console.log('\n-- 4. le plan, le prix, le credit --');
   ok(await p.textContent('#swPrix') === '$3.53' && /2 parts · 14\.0 s · 720p/.test(await p.textContent('#swPrixInfo')), 'le prix du serveur (3,53 $), 2 parts, 14 s, 720p');
   const perso = await p.$$eval('#swPersos button', (l) => l.map((b) => ({ t: b.textContent, src: (b.querySelector('img') || {}).getAttribute ? b.querySelector('img').getAttribute('src') : null, on: b.getAttribute('aria-pressed') })));
-  ok(perso.length === 1 && perso[0].t === 'SWOGE' && perso[0].src === 'img/site/swoge_face_ref.jpg' && perso[0].on === 'true', 'SWOGE choisi, sa vignette du site');
-  ok((await p.$$eval('#swCibles button', (l) => l.map((b) => b.textContent))).join('|') === CIBLES.map((c) => c.nom).join('|'), 'les quatre cibles du serveur');
+  ok(perso.length === 1 && perso[0].t === 'SWOGE' && perso[0].src === 'img/site/swoge_meme_ref.jpg' && perso[0].on === 'true', 'SWOGE choisi, sa vignette du site (le meme)');
+  ok((await p.$$eval('#swCibles button', (l) => l.map((b) => b.textContent))).join('|') === CIBLES.map((c) => c.nom).join('|'), 'les quatre cibles du serveur, par position');
+  ok((await p.$$eval('#swCibles button', (l) => l.filter((b) => b.getAttribute('aria-pressed') === 'true').length)) === 0 && /Who to replace \(required\)/.test(await p.textContent('#swCibleL'))
+     && await p.getAttribute('#swCibleNote', 'class') === 'ds-note swq-requis', 'aucune cible pre-choisie : « Who to replace (required) », la note en rouge');
   ok(!(await p.isVisible('#swLance')) && await p.isVisible('#swRecharge') && /You need \$1\.53 more/.test(await p.textContent('#swManque')) && /Your dollar credit: \$2\.00/.test(await p.textContent('#swCredit')),
      'credit de 2 $ : pas de Run ; il manque 1,53 $ ; « Top up your credit »');
   await p.click('#swRecharge');
@@ -163,13 +168,16 @@ const ID = 'a'.repeat(24);
   S.credit = 10;
   await p.evaluate(() => window.dispatchEvent(new CustomEvent('swoge:credit', { detail: { balanceUsd: 10 } })));
   await attend(p, () => !document.getElementById('swLance').hidden);
-  ok(await p.isVisible('#swLance') && await p.textContent('#swLance') === 'Run — $3.53' && !(await p.isVisible('#swRecharge')), 'credit de 10 $ : « Run — $3.53 »');
-  await p.click('#swCibles button[data-cible="tous"]');
+  ok(await p.isVisible('#swLance') && await p.isDisabled('#swLance') && await p.textContent('#swLance') === 'Pick who to replace first' && !(await p.isVisible('#swRecharge')),
+     'credit de 10 $ mais aucune cible : Run ferme, « Pick who to replace first »');
+  await p.click('#swCibles button[data-cible="droite"]');
+  ok(await p.isEnabled('#swLance') && await p.textContent('#swLance') === 'Run — $3.53' && await p.getAttribute('#swCibles button[data-cible="droite"]', 'aria-pressed') === 'true'
+     && await p.getAttribute('#swCibleNote', 'class') === 'ds-note', 'la personne de droite choisie : « Run — $3.53 »');
   S.suite = [etat('file', { file: 2, morceaux: parts(['waiting', 'waiting']) })];
   await p.click('#swLance');
   await attend(p, () => /position 2/.test(document.getElementById('swStatut').textContent));
   const la = appels('/studio/swap/' + ID + '/lance', 'POST')[0] || {};
-  ok(la.auth === 'jJoueur' && JSON.stringify(la.corps) === JSON.stringify({ personnage: 'swoge', cible: 'tous', confirmeUsd: 3.53, resolution: '720p' }), 'Run envoie { personnage, cible, confirmeUsd, resolution } et rien d autre ' + JSON.stringify(la.corps));
+  ok(la.auth === 'jJoueur' && JSON.stringify(la.corps) === JSON.stringify({ personnage: 'swoge', cible: 'droite', confirmeUsd: 3.53, resolution: '720p' }), 'Run envoie { personnage, cible, confirmeUsd, resolution } et rien d autre ' + JSON.stringify(la.corps));
 
   console.log('\n-- 5. la file, une part ratee, la fin --');
   ok(/In the queue: position 2/.test(await p.textContent('#swStatut')) && await p.isVisible('#swAnnule') && await p.isHidden('#swPas2'), 'la file : le rang, « Cancel and refund »');
@@ -232,6 +240,10 @@ const ID = 'a'.repeat(24);
     ok(await q.isVisible('#swImages') && await q.isVisible('#swTexte') && await q.isVisible('#swRes') && /Your character \(optional\)/.test(await q.textContent('#swMienL'))
        && (await q.$$eval('#swRes button', (l) => l.map((b) => b.textContent))).join('|') === '720p · $3.53|1080p · $4.71', largeur + ' px : « Your character (optional) », la direction, 720p/1080p avec leur prix');
     await q.fill('#swTexte', 'Dances in a red tuxedo, holding a trophy');
+    const cible = largeur === 320 ? 'gauche' : largeur === 390 ? 'centre' : 'droite';
+    ok(await q.isVisible('#swCibles button[data-cible="' + cible + '"]') && await q.isDisabled('#swLance'), largeur + ' px : les cibles visibles, Run ferme sans cible');
+    await q.click('#swCibles button[data-cible="' + cible + '"]');
+    ok(await q.getAttribute('#swCibles button[data-cible="' + cible + '"]', 'aria-pressed') === 'true', largeur + ' px : cible « ' + cible + ' » choisie');
     ok(await q.textContent('#swTexteCompte') === '40 / 600' && await q.getAttribute('#swTexte', 'maxlength') === '600', largeur + ' px : le compteur de la direction (40 / 600, maxlength 600)');
     const avant = journal.length;
     const MASCOTTE = Buffer.concat([PNG, Buffer.from('x')]);
@@ -256,7 +268,7 @@ const ID = 'a'.repeat(24);
       await q.click('#swLance');
       await attend(q, () => /position 1/.test(document.getElementById('swStatut').textContent));
       const lb = appels('/studio/swap/' + ID + '/lance', 'POST')[n0] || {};
-      ok(JSON.stringify(lb.corps) === JSON.stringify({ cible: 'chante', confirmeUsd: 4.71, resolution: '1080p', images: [SHA], prompt: 'Dances in a red tuxedo, holding a trophy' }),
+      ok(JSON.stringify(lb.corps) === JSON.stringify({ cible: 'droite', confirmeUsd: 4.71, resolution: '1080p', images: [SHA], prompt: 'Dances in a red tuxedo, holding a trophy' }),
          'Run envoie l identifiant ACCEPTE seul (pas la photo refusee, pas d image), la direction, 1080p et son prix ' + JSON.stringify(lb.corps));
     } else {
       await q.click('#swMiens .swq-img.refuse button');

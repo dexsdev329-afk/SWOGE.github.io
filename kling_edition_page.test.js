@@ -30,7 +30,8 @@ const ok = (c, m) => { n++; if (c) console.log('  ok   ' + m); else { rates++; c
 const eq = (a, b, m) => ok(a === b, m + ' [' + JSON.stringify(a) + ']');
 const T = { '.html': 'text/html', '.js': 'text/javascript', '.json': 'application/json', '.jpg': 'image/jpeg', '.png': 'image/png', '.ico': 'image/x-icon' };
 /* le texte demande par le proprietaire le 14/10/2026 : le corps de @image_1, le visage EXACT de @image_2 */
-const PROMPT = 'Replace the singer in @video_1 with the exact 3D character of @image_1 and @image_2: SWOGE, a huge bodybuilder Shiba Inu with thick fluffy cream-white fur on the chest, belly and arms and orange-tan fur on the head and back, the round friendly Doge face of @image_2 with white cheeks, small dark eyes and a smiling mouth that opens to lip-sync the words, furry dog paws with dark pads instead of hands, wearing plain black gym shorts, much bigger and more muscular than the original person, with nothing left of the original person (no hair, glasses, clothes or accessories). Keep the other person, the camera, the background and the original audio unchanged.';
+/* 15/10/2026 : le texte par defaut du serveur (swoge_texte.texte('seule')) — le meme « Swole Doge » en @image_1, la seule personne */
+const PROMPT = "Replace the only person in @video_1 with the exact SWOGE character of @image_1 (full body) and @image_2 (face): the Swole Doge, a 3D Shiba Inu with a small Doge head on a thick tall neck, an enormous muscular upper body with huge arms, and short thin legs, much bigger than the original person. Thick fluffy cream-beige fur EVERYWHERE, one uniform colour; no bare human skin anywhere: chest, belly, arms and legs are all thick fur. Furry dog paws with dark pads and small dark claws instead of human hands. Plain black gym shorts. The face is the round friendly Doge face of @image_2 (cream-white cheeks, small dark eyes, black nose, smile), NOT a realistic wolf-like Shiba; its mouth follows the words. Nothing is kept from the replaced person: no hair, skin, glasses, clothes or accessories. Keep the camera, the background and the original audio unchanged.";
 
 /* MP4 synthetique : ftyp, mdat, moov/mvhd v0 */
 const u32 = (x) => { const b = Buffer.alloc(4); b.writeUInt32BE(x); return b; };
@@ -122,9 +123,9 @@ const clip = (s) => Buffer.concat([boite('ftyp', Buffer.from('isom\0\0\x02\0isom
   eq(await p.inputValue('#ePrompt'), PROMPT, 'le texte demande, pre-rempli');
   eq(await p.inputValue('#eResolution'), '720p', '720p par defaut');
   ok(await p.isChecked('#eSon'), 'son d origine coche');
-  ok(await p.evaluate(() => /\/img\/site\/swoge_swole_ref\.jpg$/.test(document.getElementById('eVign').src) && document.getElementById('eVign').naturalWidth === 832
+  ok(await p.evaluate(() => /\/img\/site\/swoge_meme_ref\.jpg$/.test(document.getElementById('eVign').src) && document.getElementById('eVign').naturalWidth === 1170
      && /\/img\/site\/swoge_face_ref\.jpg$/.test(document.getElementById('eVign2').src) && document.getElementById('eVign2').naturalWidth === 768 && !document.getElementById('eVign2').hidden),
-     'les vignettes par defaut : le corps (Swole Doge, 832 px) et le visage (768 px), chargees');
+     'les vignettes par defaut : le corps (le meme Swole Doge, 1170 px) et le visage (768 px), chargees');
   ok(/@image_2/.test(await p.inputValue('#ePrompt')) && /face of @image_2/.test(await p.inputValue('#ePrompt')), 'le texte prend le visage de @image_2');
   ok(!(await p.isVisible('#eLien')) && !(await p.isVisible('#wLien')) && !(await p.isVisible('#tLien')), 'aucun « Download the result » avant un resultat (l attribut hidden l emporte)');
   ok(await p.isDisabled('#eLancer'), 'bouton ferme sans clip');
@@ -188,7 +189,7 @@ const clip = (s) => Buffer.concat([boite('ftyp', Buffer.from('isom\0\0\x02\0isom
   ok(c2.corps && /^data:image\/png;base64,/.test(c2.corps.image) && c2.corps.audio === 'off', 'l image part en data-URL PNG, son « off »');
   ok(/content risk/.test(await p.textContent('#eStatut')) && await p.isEnabled('#eLancer'), 'l echec montre la raison, le bouton se rouvre');
   await p.click('#eSansImage');
-  ok(/swoge_swole_ref\.jpg$/.test(await p.getAttribute('#eVign', 'src')) && await p.isVisible('#eVign2'), '« Back to SWOGE » remet les deux references (corps et visage)');
+  ok(/swoge_meme_ref\.jpg$/.test(await p.getAttribute('#eVign', 'src')) && await p.isVisible('#eVign2'), '« Back to SWOGE » remet les deux references (corps et visage)');
   ok(!journal.some((x) => x.erreurPage), 'aucune erreur JavaScript ' + JSON.stringify(journal.filter((x) => x.erreurPage)));
   await p.close();
 

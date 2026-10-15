@@ -795,12 +795,16 @@ async function panneauAlertes() {
       sections: [...document.querySelectorAll('section[data-p]')].map((s) => s.dataset.p),
       montres: [...document.querySelectorAll('section[data-p]')].filter((s) => !s.hidden).map((s) => s.dataset.p),
       choisi: (document.querySelector('#tabs button[aria-selected="true"]') || {}).dataset,
-      perdus: [...document.querySelectorAll('.card[data-pan]')].filter((c) => !c.closest('section[data-p]')).map((c) => c.dataset.pan),
+      /* 15/10/2026 : « Needs attention » vit hors des onglets, tout en bas (demande du proprietaire).
+         L'intention reste : aucun panneau perdu. Un panneau hors onglet doit etre visible quel que soit
+         l'onglet (aucun ancetre cache) ; un panneau dans un onglet compte comme avant. */
+      perdus: [...document.querySelectorAll('.card[data-pan]')].filter((c) => !c.closest('section[data-p]') && !!(c.parentElement && c.parentElement.closest('[hidden]'))).map((c) => c.dataset.pan),
+      horsOnglet: [...document.querySelectorAll('.card[data-pan]')].filter((c) => !c.closest('section[data-p]')).map((c) => c.dataset.pan),
       peints: ['closed', 'audit', 'tmLignes', 'services'].map((id) => (document.getElementById(id) || {}).textContent.length > 20),
     }));
     ok(p.onglets.join() === p.sections.join() && p.onglets.length === 6, 'six onglets, six sections, un bouton pour chacune');
     ok(p.montres.length === 1 && p.choisi && p.choisi.tab === p.montres[0], 'une seule section est montree, celle que l onglet marque (' + p.montres.join() + ')');
-    ok(p.perdus.length === 0, 'aucun panneau n est hors d un onglet : rien n est perdu en chemin' + (p.perdus.length ? ' [' + p.perdus.join() + ']' : ''));
+    ok(p.perdus.length === 0 && p.horsOnglet.every((k) => k === 'alertes'), 'aucun panneau perdu : hors onglet, seul « Needs attention », visible sur chaque onglet' + (p.perdus.length ? ' [' + p.perdus.join() + ']' : '') + ' [hors : ' + p.horsOnglet.join() + ']');
     ok(p.peints.every(Boolean), 'les onglets caches sont peints quand meme : un onglet qu on ouvre est deja a jour');
     await onglet(page, 'le');
     await page.reload({ waitUntil: 'domcontentloaded' });

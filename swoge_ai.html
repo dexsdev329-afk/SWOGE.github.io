@@ -38,7 +38,7 @@
  * une fois par session pour savoir si le serveur en a une plus recente.
  * Sans ca, un joueur garde des semaines une version corrigee depuis
  * longtemps. `node cache_marqueur.test.js` donne la valeur a ecrire. */
-var MARQUE_PAGE = '6a8dc9aa';
+var MARQUE_PAGE = '2ef66627';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -773,7 +773,9 @@ th:last-child,td:last-child{padding-right:18px}
         <div><small data-t="tresorPapier">Paper treasury</small><div class="big" id="aiBal">&mdash;</div></div>
         <div class="d" id="delta"></div>
       </div>
-      <div class="truth" id="truth"></div>
+      <!-- 15/10/2026, demande du proprietaire : trop de chiffres en tete ; le trio et les six cartes
+           restent calcules (les essais les lisent) mais ne sont plus montres. -->
+      <div class="truth" id="truth" hidden></div>
       <div class="cta">
         <a class="btn pri lg" href="#cMi" id="goMir" data-t="creeMiroir">Create a mirror wallet</a>
         <a class="btn lg" href="#ev" id="goEv"><span data-t="lirePreuves">Read the evidence</span> <svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M6 13l6 6 6-6"/></svg></a>
@@ -788,7 +790,7 @@ th:last-child,td:last-child{padding-right:18px}
 </section>
 
 <main class="wrap" id="ev">
-  <div class="kpis rv" id="kpis"></div>
+  <div class="kpis rv" id="kpis" hidden></div>
 
   <div class="tabs" role="tablist" id="tabs" aria-label="Sections">
     <span class="ind" id="tabInd"></span>
@@ -828,10 +830,6 @@ th:last-child,td:last-child{padding-right:18px}
     </div>
   </div>
   <div class="col s4">
-    <div id="cAl" class="card" data-pan="alertes">
-      <div class="ch"><h2 data-t="tAlertes">Needs attention</h2><span class="r"><span class="tag" id="alerteN">0</span></span></div>
-      <div id="alertes"></div>
-    </div>
     <!-- ---- LE MIROIR : ARGENT REEL ----
          `#tmMiroirBilan`, `#gxMiroir`, `#gxMiroirPositions` et `#mirPosN` sont
          remplis par `swogemiroir.js` : creer, Play, Stop, la cle (montree une
@@ -995,6 +993,13 @@ th:last-child,td:last-child{padding-right:18px}
     <div data-t="pied1"><span class="t">What is real</span>The tokens, the pools, the prices, the contract safety checks, the holder concentration and the age all come from GeckoTerminal, GoPlus, DexScreener and the blocks of chain 4663. Mirror results are measured on the wallets themselves.</div>
     <div data-t="pied2"><span class="t">What is paper</span>No transaction is signed by the colony: a paper position opens and closes at real quoted prices, and a real buy would also pay gas and slippage. The mirror results show how much that costs. Only pairs quoted in ETH are traded.</div>
     <div data-t="pied3"><span class="t">Where decisions are made</span>The colony runs on the server, continuously: it does not stop when you close the tab, and everyone sees the same state. This page computes nothing — it asks, and it shows. Safety checks and stake limits live in the code; when a reading fails, it is written, and nothing is invented to fill the gap. NFA.</div>
+  </div>
+  <!-- 15/10/2026 : « Needs attention » tout en bas de la page (demande du proprietaire). -->
+  <div style="margin:28px 0 8px">
+    <div id="cAl" class="card" data-pan="alertes">
+      <div class="ch"><h2 data-t="tAlertes">Needs attention</h2><span class="r"><span class="tag" id="alerteN">0</span></span></div>
+      <div id="alertes"></div>
+    </div>
   </div>
   <div class="pied">
     <span class="goplus" id="goplusAttrib"></span>

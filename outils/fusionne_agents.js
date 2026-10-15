@@ -235,145 +235,45 @@ const LIEN = '<a href="swoge_agents.html" class="on" aria-current="page"><span c
  *     `?mode=osint|esim|store` et `?tab=x402` rouvrent toujours leur vue. Le chat les atteint
  *     par ses outils (osint_lookup, find_esim_plans, find_paid_services).
  *
- * La page prend la charte de studio.html : fond #EEF3FB sous un halo, cartes blanches bordees
- * #E1E9F6, encre #0B1B36, UN accent bleu #1B5FE0, Archivo elargie, titre au mot surligne,
- * onglets en pilule dont l actif est marine, icones SVG en ligne. Le menu commun (.sw-cote)
- * reste celui des quarante autres pages (menu_rangee.test.js, colonne_nav.test.js) ; seule la
- * colonne d affiches de droite tombe, comme le Studio qui n en a pas. */
-const ONGLETS_CSS = `
-:root{--hb-bg:#EEF3FB;--hb-line:#E1E9F6;--hb-ink:#0B1B36;--hb-navy:#0A1F44;--hb-text2:#3A4C6B;--hb-dim:#5A6B85;--hb-dim2:#5F6E88;
-  --hb-blue:#1B5FE0;--hb-blue-soft:#EAF1FF;--hb-green:#12805A;
-  --hb-sh-card:0 1px 2px rgba(11,27,54,.06),0 8px 24px rgba(11,27,54,.05);
-  --hb-sh-box:0 2px 14px rgba(11,27,54,.06),0 30px 60px -30px rgba(27,95,224,.30);
-  --hb-f:'Archivo',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif}
-body{background:radial-gradient(900px 420px at 50% -140px,#D9E6FF 0%,rgba(217,230,255,0) 72%),var(--hb-bg)}
-/* La barre du haut : verre blanc et marque du Studio (l icone du site, pas l emoji). */
-.sw-haut{background:rgba(255,255,255,.94);backdrop-filter:saturate(1.4) blur(10px);-webkit-backdrop-filter:saturate(1.4) blur(10px)}
-.sw-marque img{width:36px;height:36px;border-radius:11px;box-shadow:0 0 0 1px var(--hb-line);display:block}
-.sw-marque b,.sw-marque i{font-family:var(--hb-f)}
-.sw-marque i{color:var(--hb-dim2)}
-.sw-nav a{font-family:var(--hb-f);color:var(--hb-text2)}
-.sw-nav a:hover{background:var(--hb-blue-soft);color:var(--hb-blue)}
-.sw-nav a.on{color:var(--hb-blue)}
-@media (min-width:1361px){
-  .sw-lat{display:none}
-  .sw-corps{grid-template-columns:230px minmax(0,1fr);max-width:1480px;gap:24px;padding:14px 24px}
-}
-.hub{max-width:1040px;margin:0 auto;padding:20px 16px 0;text-align:center;font-family:var(--hb-f);color:var(--hb-ink)}
-.hub .ic{width:18px;height:18px;flex:0 0 auto;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-.hub .eyebrow{display:inline-flex;align-items:center;gap:8px;padding:5px 12px 5px 6px;border-radius:999px;background:#fff;border:1px solid var(--hb-line);
-  font:800 11.5px/1 var(--hb-f);letter-spacing:1.6px;text-transform:uppercase;color:var(--hb-navy);box-shadow:var(--hb-sh-card)}
-.hub .eyebrow span{width:22px;height:22px;border-radius:999px;background:var(--hb-blue);display:grid;place-items:center;color:#fff}
-.hub .eyebrow .ic{width:13px;height:13px;stroke-width:2.2}
-.hub h1{font:850 42px/1.06 var(--hb-f);font-stretch:106%;letter-spacing:-1.5px;text-transform:none;color:var(--hb-navy);margin:12px auto 8px;max-width:860px}
-.hub .hl{display:inline-block;background:var(--hb-blue);color:#fff;padding:0 .2em .04em;border-radius:12px;
-  box-shadow:0 12px 30px -8px rgba(27,95,224,.55);transform:rotate(-1.2deg)}
-.hub .sub{font:500 16px/1.5 var(--hb-f);color:var(--hb-dim);max-width:760px;margin:0 auto}
-.hub .checks{list-style:none;display:flex;justify-content:center;flex-wrap:wrap;gap:8px 18px;margin:12px 0 0;padding:0}
-.hub .checks li{display:inline-flex;align-items:center;gap:6px;font:700 13.5px/1 var(--hb-f);color:var(--hb-navy)}
-.hub .checks .ic{width:16px;height:16px;color:#fff;background:var(--hb-green);border-radius:999px;padding:3px;stroke-width:3}
-.hub .rangee{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:6px 14px;margin:16px 0 14px}
-/* Les onglets du Studio. Le bouton general de la page (Anton, majuscules, fond bleu) est repris en entier. */
-.onglets{display:inline-flex;gap:4px;padding:5px;background:#fff;border:1px solid var(--hb-line);border-radius:999px;box-shadow:var(--hb-sh-card)}
-.onglets button{display:inline-flex;align-items:center;gap:8px;height:42px;padding:0 20px;border:0;border-radius:999px;background:transparent;min-width:0;
-  font:650 15px/1 var(--hb-f);text-transform:none;letter-spacing:0;color:var(--hb-dim);cursor:pointer;box-shadow:none}
-.onglets button:hover{color:var(--hb-navy);transform:none;filter:none;background:transparent}
-.onglets button[aria-selected="true"]{background:var(--hb-navy);color:#fff;box-shadow:0 6px 16px -6px rgba(10,31,68,.55)}
-.onglets button:focus-visible,.hub a:focus-visible{outline:2px solid var(--hb-blue);outline-offset:2px}
-.hub-lien{display:inline-flex;align-items:center;gap:7px;height:40px;padding:0 14px;border-radius:999px;font:650 13.5px/1 var(--hb-f);
-  color:var(--hb-text2);text-decoration:none;border:1px solid transparent}
-.hub-lien:hover{background:#fff;border-color:var(--hb-line);color:var(--hb-blue)}
-.hub-lien[aria-current="page"]{background:var(--hb-blue-soft);color:var(--hb-blue)}
-.hub-retour[hidden]{display:none}
-.hub-retour{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:6px 12px;margin:0 0 12px;font:600 13.5px/1.4 var(--hb-f);color:var(--hb-dim)}
-.hub-retour b{color:var(--hb-navy)}
-.hub-retour a{color:var(--hb-blue);text-decoration:none;font-weight:700}
-.ag-mode[hidden]{display:none}
-/* Le chat et le compte prennent la largeur du Studio ; le cadre du chat devient une carte du Studio. */
-#modeChat .chat{max-width:1040px}
-#modeChat .ch-cadre{border-radius:22px;border-color:var(--hb-line);box-shadow:var(--hb-sh-box)}
-/* Les onglets NOMMENT la vue : le titre « SwoleMind » faisait doublon (mesure du 30/09 a
-   1280x860 : avec titres, la page arrivait defilee de 100 px). */
-#modeChat .chat-tete .titre{display:none}
-#modeChat .chat-tete .droite{margin-left:0}
-#modeChat .chat{padding-top:0}
-/* L accueil du chat se centrait en flex : plus haut que le cadre, son haut passait SOUS le bord, hors
-   d atteinte (titre coupe a 1440x900 avant ce changement deja). Des marges automatiques centrent sans
-   jamais couper : ce qui deborde defile. */
-#modeChat .accueil{justify-content:flex-start}
-#modeChat .accueil > :first-child{margin-top:auto}
-#modeChat .accueil > :last-child{margin-bottom:auto}
-/* Le titre et l intro Mission de l accueil redisent ce que dit le titre de la page : ils tombent ici
-   (swolemind.html, seule, les garde). Reste ce qui sert : les suggestions et la facon de payer. */
-#modeChat .accueil > h1,#modeChat .accueil > .mission-intro{display:none}
-/* 14/10/2026, le proprietaire : « pas besoin de ces icones (Mission, Chat, Image, Video) sur la
-   page agents, il y a deja le Studio ». Le chat de cette page est toujours en mode Mission (la
-   route /studio/agent, ses outils) ; images et videos se font au Studio. swolemind.html, seule,
-   garde ses quatre modes. */
-#modeChat .modes{display:none}
-/* Le compte : ce que l onglet Agent avait en plus du chat (embauches, eSIM, x402, cles d API). Son
-   cadre de tache ne s affiche plus : la tache part du chat, mode Mission, sur la meme route. */
-.ag-cadre{max-width:1040px;margin:0 auto;padding:0 16px}
-#modeAgent .ta-cadre{display:none}
-#modeAgent .ta-plus{margin-top:0}
-#modeAgent details.dev{background:#fff;border:1px solid var(--hb-line);border-radius:18px;box-shadow:var(--hb-sh-card)}
-.compte-vide{font:500 14px/1.5 var(--hb-f);color:var(--hb-dim);text-align:center;margin:0 0 12px}
-/* Browse : « .bw-cadre img{display:block} » l emportait sur l attribut hidden — avant la premiere
-   page, le texte de remplacement de l ecran vide s affichait sous la consigne (releve du 14/10). */
-#modeBrowse .bw-cadre img[hidden]{display:none}
-/* OSINT et eSIM : l onglet n est plus la, leurs grands titres les nomment. */
-#modeOsint .wrap{padding-top:14px}
-#modeEsim .es-cadre{font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:var(--encre)}
-#modeEsim h1{font-family:inherit;text-transform:none;letter-spacing:0}
-#modeEsim button{text-transform:none;letter-spacing:0}
-#modeEsim button:hover{transform:none;filter:none}
-#modeStore .st-cadre{max-width:1080px;margin:0 auto;font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:var(--encre)}
-#modeStore h1{font-family:inherit;text-transform:none;letter-spacing:-.01em}
-#modeStore button{text-transform:none;letter-spacing:0}
-#modeStore button:hover{transform:none;filter:none}
-/* La hauteur va au chat : les trois garanties ne s affichent que sur un grand ecran. */
-@media (max-height:1000px){ .hub .checks{display:none} }
-/* Un ecran bas : le chat doit tenir sous l en-tete, composeur visible a l arrivee (1024x768). */
-@media (max-height:860px){
-  .hub{padding-top:14px}
-  .hub h1{font-size:34px;letter-spacing:-1.1px;margin:10px auto 6px}
-  .hub .checks{display:none}
-  .hub .rangee{margin:12px 0 10px}
-}
-@media (max-height:780px){ .hub .sub{display:none} }
-@media (max-width:720px){
-  .hub{padding:14px 16px 0}
-  .hub .eyebrow{font-size:10.5px}
-  .hub h1{font-size:28px;letter-spacing:-.9px;margin:10px auto 6px}
-  .hub .hl{border-radius:9px}
-  .hub .sub{font-size:14.5px}
-  .hub .sub .s2,.hub .checks{display:none}
-  /* Au telephone, la place va au composeur : le titre et les onglets disent deja tout. */
-  .hub .sub{display:none}
-  .hub .rangee{margin:12px 0 10px}
-  .onglets{display:flex;width:100%}
-  .onglets button{flex:1 1 0;justify-content:center;height:40px;padding:0 8px;font-size:14px}
-  .hub-lien{height:34px}
-}
-`;
+ * Le menu commun (.sw-cote) reste celui des quarante autres pages (menu_rangee.test.js, colonne_nav.test.js) ;
+ * seule la colonne d affiches de droite tombe, comme le Studio qui n en a pas.
+ * Premier habit (14/10) : la charte claire de studio.html. Remplace le 15/10 — voir plus bas.
+ *
+ * ---- L HABIT SOMBRE, DES IMAGES ET DES FILMS (15/10/2026) ----
+ * Le proprietaire : « regarde la difference de qualite entre la page SWOGE AI et SWOGE Agents, c est
+ * vraiment pas beau, il manque des images, des videos ». La page prend la charte de swoge_ai.html
+ * (outils/agents_habit.css) ; le heros joue media/fond_agents (le fond fait pour cette page, retourne
+ * en nuit) avec le Swole Doge 3D officiel en visage de l agent (img/site/ia/agent_doge.webp, detoure
+ * de img/site/swoge_meme_ref.jpg) ; sous le chat, six cartes illustrees et les quatre temps d une
+ * mission (outils/agents_vitrine.html). Aucune fonction ne change : memes identifiants, memes gestes.
+ * Le film clair de fond_anime.js n est plus pose : derriere une page sombre il la blanchissait
+ * (le constat deja fait pour swoge_ai.html, fond_anime.test.js). */
+const ONGLETS_CSS = '\n' + lis('outils/agents_habit.css');
 
-/* Les icones du Studio (studio.html, <symbol>), et deux de plus pour les onglets. */
+/* Les icones du Studio (studio.html, <symbol>), deux pour les onglets, quatre pour les temps d une mission. */
 const ONGLETS_HTML = `<svg width="0" height="0" style="position:absolute" aria-hidden="true">
-  <symbol id="hb-spark" viewBox="0 0 24 24"><path d="M11 2.8l2.1 6 6.1 2.1-6.1 2.1-2.1 6-2.1-6-6.1-2.1 6.1-2.1z" fill="currentColor" stroke="none"/><path d="M18.6 14.6l.9 2.4 2.4.9-2.4.9-.9 2.4-.9-2.4-2.4-.9 2.4-.9z" fill="currentColor" stroke="none"/></symbol>
   <symbol id="hb-check" viewBox="0 0 24 24"><path d="M5 12.5l4.4 4.4L19 7.4"/></symbol>
   <symbol id="hb-chat" viewBox="0 0 24 24"><path d="M4.5 6.5A2.5 2.5 0 0 1 7 4h10a2.5 2.5 0 0 1 2.5 2.5v7A2.5 2.5 0 0 1 17 16h-6.2L6.5 19.5V16H7a2.5 2.5 0 0 1-2.5-2.5z"/></symbol>
   <symbol id="hb-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.6"/><path d="M3.6 12h16.8M12 3.4c2.3 2.4 3.5 5.3 3.5 8.6s-1.2 6.2-3.5 8.6c-2.3-2.4-3.5-5.3-3.5-8.6s1.2-6.2 3.5-8.6z"/></symbol>
   <symbol id="hb-user" viewBox="0 0 24 24"><circle cx="12" cy="8.8" r="3.8"/><path d="M4.8 19.5c1.4-3.4 4.1-5.2 7.2-5.2s5.8 1.8 7.2 5.2"/></symbol>
+  <symbol id="hb-plan" viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.2"/><circle cx="18" cy="18" r="2.2"/><path d="M8.2 6H15a3 3 0 0 1 0 6H9a3 3 0 0 0 0 6h6.8"/></symbol>
+  <symbol id="hb-outil" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></symbol>
+  <symbol id="hb-cout" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M14.8 9.2c-.5-.9-1.6-1.4-2.8-1.4-1.6 0-2.8.8-2.8 2.1 0 2.9 5.6 1.5 5.6 4.3 0 1.3-1.2 2.1-2.8 2.1-1.3 0-2.4-.6-2.9-1.5M12 6.2v1.6M12 16.3v1.5"/></symbol>
 </svg>
-<div class="hub">
-  <span class="eyebrow"><span><svg class="ic"><use href="#hb-spark"/></svg></span>SWOGE Agents</span>
-  <h1>One chat that <span class="hl">gets it done.</span></h1>
-  <p class="sub">Ask a question or give it a mission.<span class="s2"> It runs real tools &mdash; tokens, the colony, the web, domains, eSIMs &mdash; and shows each step&rsquo;s cost. Images and videos are made in the <a href="studio.html">Studio</a>.</span></p>
-  <ul class="checks" aria-label="How it works">
-    <li><svg class="ic"><use href="#hb-check"/></svg>Claude, ChatGPT, Grok</li>
-    <li><svg class="ic"><use href="#hb-check"/></svg>Every step shown</li>
-    <li><svg class="ic"><use href="#hb-check"/></svg>Pay per use</li>
-  </ul>
+<section class="hub" aria-labelledby="hubTitre">
+  <div class="hub-film" aria-hidden="true"><video data-film data-mp4="media/fond_agents.mp4" data-webm="media/fond_agents.webm" poster="img/site/fonds/agents.webp" muted autoplay loop playsinline preload="none" disablepictureinpicture></video></div>
+  <div class="hub-sol" aria-hidden="true"><i></i></div>
+  <figure class="hub-doge"><img src="img/site/ia/agent_doge.webp" alt="The SWOGE agent, the Swole Doge" width="640" height="565" fetchpriority="high"><figcaption><i></i>SWOGE agent</figcaption></figure>
+  <div class="hub-texte">
+    <p class="eyebrow">SWOGE Agents<span class="eb2">&nbsp;&middot; mission mode</span></p>
+    <h1 id="hubTitre">Give it a mission. <span class="g">Watch every step.</span></h1>
+    <p class="sub">Token checks, project research, website recon, new launches on Base: the agent plans the work, runs real tools and shows what each step cost. Images and videos are made in the <a href="studio.html">Studio</a>.</p>
+    <ul class="checks" aria-label="How it works">
+      <li><svg class="ic"><use href="#hb-check"/></svg>Every step shown</li>
+      <li><svg class="ic"><use href="#hb-check"/></svg>Pay per use</li>
+      <li><svg class="ic"><use href="#hb-check"/></svg>USDC, signed by your wallet</li>
+    </ul>
+  </div>
   <div class="rangee">
     <div class="onglets" role="tablist" aria-label="SWOGE Agents">
       <button type="button" role="tab" id="ongletChat" aria-controls="modeChat" aria-selected="true"><svg class="ic"><use href="#hb-chat"/></svg>Chat</button>
@@ -382,7 +282,7 @@ const ONGLETS_HTML = `<svg width="0" height="0" style="position:absolute" aria-h
     <a class="hub-lien" id="lienCompte" href="swoge_agents.html?mode=account"><svg class="ic"><use href="#hb-user"/></svg>Your eSIMs, hires &amp; API keys</a>
   </div>
   <div class="hub-retour" id="hubRetour" hidden><b id="hubRetourNom"></b><a href="swoge_agents.html?mode=chat" id="hubRetourChat">&larr; Back to the chat</a></div>
-</div>
+</section>
 `;
 
 /* Le compte : ce qui coiffe la vue « account ». Le reste vient de swogeagentic.html. */
@@ -463,6 +363,72 @@ const ONGLETS_JS = `<script>
 </script>
 `;
 
+/* La vitrine sous le chat (15/10/2026) : outils/agents_vitrine.html. */
+const VITRINE = () => lis('outils/agents_vitrine.html');
+
+/* Les films de la page et les gestes des cartes.
+ * - Un film ne se charge qu a l ecran (IntersectionObserver ; preload none et aucune source dans le
+ *   HTML) et s arrete hors de l ecran ou quand l onglet est cache. Rien pour qui demande moins de
+ *   mouvement ni pour qui economise ses donnees : l image reste. H.264 la ou il se lit, VP9 sinon —
+ *   un Chromium sans codecs proprietaires ne lit pas le mp4 (meme choix que fond_anime.js).
+ * - Une carte de mission appuie sur la suggestion du chat qui porte le meme data-sugg : le texte,
+ *   le mode Mission et l indication de saisie sont ceux de swolemind.html, rien n est recopie.
+ * - La carte des paiements ouvre la recharge du chat (#recharger) : elle ne signe rien, c est le
+ *   joueur qui choisit et signe, comme avant. */
+const VITRINE_JS = `<script>
+(function(){
+  "use strict";
+  var calme = false, econome = false;
+  try { calme = matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (e) {}
+  try { econome = !!(navigator.connection && navigator.connection.saveData); } catch (e) {}
+  var films = Array.prototype.slice.call(document.querySelectorAll("video[data-film]"));
+  var mp4 = false;
+  try { mp4 = !!document.createElement("video").canPlayType('video/mp4; codecs="avc1.42E01E"'); } catch (e) {}
+  function joue(v){ try { var p = v.play(); if (p && p["catch"]) p["catch"](function(){}); } catch (e) {} }
+  function lance(v){
+    if (!v.getAttribute("src")) {
+      var m = v.getAttribute("data-mp4"), w = v.getAttribute("data-webm");
+      var s = (mp4 && m) ? m : (w || m); if (!s) return;
+      v.src = s;
+    }
+    joue(v);
+  }
+  films.forEach(function(v){ v.addEventListener("playing", function(){ v.classList.add("joue"); }); });
+  if (!calme && !econome && films.length && "IntersectionObserver" in window) {
+    var vus = new IntersectionObserver(function(es){
+      es.forEach(function(e){ if (e.isIntersecting && !document.hidden) lance(e.target); else if (e.target.getAttribute("src")) e.target.pause(); });
+    }, { rootMargin: "120px 0px" });
+    films.forEach(function(v){ vus.observe(v); });
+    document.addEventListener("visibilitychange", function(){
+      films.forEach(function(v){ if (!v.getAttribute("src")) return; if (document.hidden) v.pause(); else { var r = v.getBoundingClientRect(); if (r.bottom > 0 && r.top < innerHeight) joue(v); } });
+    });
+  }
+  var el = function(id){ return document.getElementById(id); };
+  function versLeChat(bloc){
+    var c = el("cadre"); if (!c) return;
+    try { c.scrollIntoView({ behavior: calme ? "auto" : "smooth", block: bloc }); } catch (e) { c.scrollIntoView(); }
+  }
+  Array.prototype.forEach.call(document.querySelectorAll("#vitrine [data-mission]"), function(b){
+    b.addEventListener("click", function(){
+      var s = document.querySelector('#accueil .suggestion[data-sugg="' + b.getAttribute("data-mission") + '"]');
+      if (!s) return;
+      s.click();
+      versLeChat("end");
+    });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("#vitrine [data-paie]"), function(b){
+    b.addEventListener("click", function(){
+      var box = el("rechargeBox"), r = el("recharger");
+      if (box && box.hidden && r) r.click();
+      versLeChat("start");
+    });
+  });
+  var vc = el("vitrineCompte");
+  if (vc) vc.addEventListener("click", function(e){ var l = el("lienCompte"); if (!l) return; e.preventDefault(); l.click(); try { scrollTo(0, 0); } catch (x) {} });
+})();
+</script>
+`;
+
 function fusionne() {
   const chat = decoupe(lis('swolemind.html'), '<main class="chat-main">\n', 'swolemind.html');
   const ag = decoupe(lis('swogeagentic.html'), '<main class="chat-main ag">\n', 'swogeagentic.html');
@@ -475,8 +441,9 @@ function fusionne() {
   tete = remplace(tete, 'SwoleMind: chat with Claude, ChatGPT and Grok, search the web with sources, create images and videos.', RESUME, 3, 'resumes');
   remplace(tete, LIEN, LIEN, 1, 'entree Agents du menu');
   if (/href="swolemind\.html"|href="swogeagentic\.html"/.test(tete)) throw new Error('tete : le menu pointe encore vers une ancienne page');
-  /* Le gabarit du Studio (14/10) : Archivo avec son axe de largeur, la marque du site en image. */
-  tete = remplace(tete, 'family=Archivo:wght@600;700;800', 'family=Archivo:wdth,wght@100..125,400..900', 1, 'police du Studio');
+  /* Archivo avec son axe de largeur (14/10), Inter et JetBrains Mono (15/10, les polices de
+     swoge_ai.html), la marque du site en image. */
+  tete = remplace(tete, 'family=Archivo:wght@600;700;800', 'family=Archivo:wdth,wght@100..125,400..900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700', 1, 'polices de SWOGE AI');
   tete = remplace(tete, '<span class="sw-patte">&#128062;</span>', '<img src="img/site/icone-180.png" alt="" width="36" height="36">', 1, 'marque du Studio');
 
   /* ---- l agent : identifiants prefixes, requetes globales bornees ---- */
@@ -511,23 +478,16 @@ function fusionne() {
     '<style>\n/* ==== Agent Store, borne a #modeStore (genere) ==== */\n' + st.css + '</style>\n' +
     '<style>' + ONGLETS_CSS + '</style>\n' +
     ONGLETS_HTML +
-    '<section class="ag-mode" id="modeChat" role="tabpanel" aria-labelledby="ongletChat">\n' + chat.html + '</section>\n' +
+    '<section class="ag-mode" id="modeChat" role="tabpanel" aria-labelledby="ongletChat">\n' + chat.html + VITRINE() + '</section>\n' +
     '<section class="ag-mode" id="modeAgent" role="region" aria-label="Your eSIMs, paid hires and API keys" hidden>\n<div class="ag-cadre">\n' + COMPTE_HTML + html + '</div>\n</section>\n' +
     '<section class="ag-mode" id="modeBrowse" role="tabpanel" aria-labelledby="ongletBrowse" hidden>\n' + BROWSE() + '</section>\n' +
     '<section class="ag-mode" id="modeOsint" role="region" aria-label="OSINT lookup" hidden>\n' + os.html + '</section>\n' +
     '<section class="ag-mode" id="modeEsim" role="region" aria-label="Travel eSIM" hidden>\n' + es.html + '</section>\n' +
     '<section class="ag-mode" id="modeStore" role="region" aria-label="Agent Store" hidden>\n' + st.html + '</section>\n' +
-    ONGLETS_JS +
+    ONGLETS_JS + VITRINE_JS +
     jsChat + '\n' +
     js + '\n' + os.js + es.js + st.js +
-    '</main>' + chat.queue.replace('</body>', FOND() + '</body>');
-}
-
-/* Le fond d ecran anime (fond_anime.js), avec l empreinte du fichier relue a chaque generation :
-   un marqueur ecrit a la main ici serait perime au premier changement du script. */
-function FOND() {
-  const v = require('crypto').createHash('md5').update(fs.readFileSync(path.join(SITE, 'fond_anime.js'))).digest('hex').slice(0, 8);
-  return '<!-- Le fond d ecran anime, derriere tout : voir fond_anime.js. -->\n<script src="fond_anime.js?v=' + v + '" data-fond="agents" defer></script>\n';
+    '</main>' + chat.queue;
 }
 
 module.exports = { fusionne, CIBLE };

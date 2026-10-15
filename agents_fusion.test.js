@@ -461,6 +461,43 @@ let chromium = null; try { chromium = require('playwright').chromium; } catch (e
     await ctx.close();
   }
 
+  /* 15/10/2026 : l habit sombre, des images et des films (« il manque des images, des videos »).
+     Ce qui doit tenir : une carte de mission remplit le chat EXACTEMENT comme la suggestion du meme
+     nom ; la carte des paiements ouvre la recharge sans rien signer ; un film ne se charge qu a
+     l ecran, et jamais pour qui demande moins de mouvement. */
+  console.log('\n-- la vitrine : des cartes illustrees qui lancent le chat --');
+  {
+    ({ p, ctx, erreurs } = await ouvre('?mode=chat', 1280));
+    const sources = () => p.$$eval('#vitrine video[data-film]', (v) => v.filter((x) => x.getAttribute('src')).length);
+    ok(await p.$$eval('#vitrine video[data-film]', (v) => v.length === 6 && v.every((x) => x.getAttribute('preload') === 'none' && x.muted && x.loop && x.hasAttribute('playsinline')))
+       && await sources() === 0, 'six films de cartes, muets, en boucle, preload none — aucun charge tant qu ils ne sont pas a l ecran');
+    await p.click('#accueil .suggestion[data-sugg="m_site"]');
+    const parSuggestion = await p.$eval('#question', (t) => [t.value, t.placeholder]);
+    await p.fill('#question', '');
+    await p.click('#vitrine [data-mission="m_site"]');
+    const parCarte = await p.$eval('#question', (t) => [t.value, t.placeholder]);
+    ok(parCarte[0].length > 0 && parCarte[0] === parSuggestion[0] && parCarte[1] === parSuggestion[1] && await p.getAttribute('#modeChat .mode[data-mode="mission"]', 'aria-pressed') === 'true',
+       'une carte de mission remplit le chat comme la suggestion du meme nom, en mode Mission');
+    await p.waitForTimeout(700);
+    ok(await p.evaluate(() => { const b = document.getElementById('question').getBoundingClientRect(); return b.top >= 0 && b.bottom <= innerHeight; }), 'et ramene la saisie a l ecran');
+    await p.$eval('#vitrine', (v) => v.scrollIntoView());
+    await p.waitForTimeout(500);
+    ok(await sources() > 0, 'arrivees a l ecran, les cartes chargent leur film (' + (await sources()) + ')');
+    await p.click('#vitrine [data-paie]');
+    ok(await visible(p, 'rechargeBox'), 'la carte des paiements ouvre la recharge du chat (rien n est signe)');
+    ok(await p.getAttribute('#vitrine a.carte-ag', 'href') === 'studio.html', 'la carte images et videos mene au Studio');
+    ok(erreurs.length === 0, erreurs.length ? 'erreurs : ' + erreurs.slice(0, 2).join(' | ') : 'aucune erreur de script');
+    await ctx.close();
+    const c = await nav.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' });
+    const q = await c.newPage();
+    await q.route('**/*', (r) => r.request().url().startsWith(base) ? r.continue() : r.abort());
+    await q.goto(base + CIBLE, { waitUntil: 'load' });
+    await q.$eval('#vitrine', (v) => v.scrollIntoView());
+    await q.waitForTimeout(500);
+    ok(await q.$$eval('video[data-film]', (v) => v.every((x) => !x.getAttribute('src'))), 'moins de mouvement demande : aucun film, les images seules');
+    await c.close();
+  }
+
   for (const m of ['chat', 'agent', 'account', 'browse', 'osint', 'esim', 'store']) {
     ({ p, ctx, erreurs } = await ouvre('?mode=' + m, 360));
     const large = await p.evaluate(() => document.documentElement.scrollWidth);

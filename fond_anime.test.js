@@ -52,9 +52,20 @@ const srv = http.createServer((q, r) => {
      un film CLAIR (« un centre vide et clair ») : pose derriere une page sombre, il la
      blanchissait. La page porte donc son propre fond anime, et pas celui-ci — ce que la
      derniere verification tient, pour qu il ne revienne pas par megarde. */
-  const attendues = ['games.html', 'swogebet.html', 'swoge_agents.html', 'whitepaper.html', 'swoge_wallet.html'];
-  ok(attendues.every((a) => PAGES.some((p) => p.f === a)) && !PAGES.some((p) => /^swoge_(perp|predict|sol_ai|eth_ai|colonies|polymarket_ai)\.html$/.test(p.f)),
-     'les cinq pages claires du menu ont leur fond, aucune page retiree n en porte (' + PAGES.map((p) => p.f + ':' + p.nom).join(', ') + ')');
+  /* 15/10/2026 : SWOGE Agents passe a son tour au sombre (la charte de SWOGE AI, demande du
+     proprietaire). Meme regle que pour swoge_ai.html : le film clair ne la porte plus, son heros
+     joue lui-meme media/fond_agents, retourne en nuit — et ce film garde son budget. */
+  const attendues = ['games.html', 'swogebet.html', 'whitepaper.html', 'swoge_wallet.html'];
+  ok(attendues.every((a) => PAGES.some((p) => p.f === a)) && !PAGES.some((p) => /^swoge_(perp|predict|sol_ai|eth_ai|colonies|polymarket_ai|agents)\.html$/.test(p.f)),
+     'les quatre pages claires du menu ont leur fond, aucune page retiree ni sombre n en porte (' + PAGES.map((p) => p.f + ':' + p.nom).join(', ') + ')');
+  {
+    const ag = fs.readFileSync(path.join(SITE, 'swoge_agents.html'), 'utf8');
+    const t = (f) => { try { return fs.statSync(path.join(SITE, f)).size; } catch (e) { return -1; } };
+    const film = /<video data-film data-mp4="media\/fond_agents\.mp4" data-webm="media\/fond_agents\.webm" poster="img\/site\/fonds\/agents\.webp" muted autoplay loop playsinline preload="none"/.test(ag);
+    const mp4 = t('media/fond_agents.mp4'), webm = t('media/fond_agents.webm'), af = t('img/site/fonds/agents.webp');
+    ok(!/fond_anime\.js/.test(ag) && film && mp4 > 0 && mp4 <= 130000 && webm > 0 && webm <= 60000 && af > 0 && af <= 12000,
+       'swoge_agents.html (sombre) ne porte pas le film clair : son heros joue fond_agents (' + mp4 + ' o / ' + webm + ' o, affiche ' + af + ' o)');
+  }
   {
     const ai = fs.readFileSync(path.join(SITE, 'swoge_ai.html'), 'utf8');
     ok(!/fond_anime\.js/.test(ai) && /class="colhero"/.test(ai) && /<canvas id="sky"/.test(ai),

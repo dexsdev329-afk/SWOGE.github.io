@@ -1,0 +1,57 @@
+<!-- CE QU IL SAIT FAIRE (15/10/2026) : pose par outils/fusionne_agents.js sous le chat, dans #modeChat.
+     Une carte de mission appuie sur la suggestion du chat qui porte le meme data-sugg : le texte, le
+     mode et l indication de saisie viennent de swolemind.html, rien n est recopie ici. Les films ne
+     se chargent qu a l ecran (data-mp4 / data-webm, voir le script de la vitrine). -->
+<div class="vitrine" id="vitrine">
+  <div class="vt-tete">
+    <p class="vt-eb">What it can do</p>
+    <h2>Real tools, real answers</h2>
+    <p>Pick a mission to start it in the chat above, then add your token, project or website.</p>
+  </div>
+  <div class="cartes">
+    <button type="button" class="carte-ag" data-mission="m_jeton">
+      <span class="media"><img src="img/site/uni_ia_poster.webp" alt="" loading="lazy" decoding="async" width="960" height="540"><video data-film data-mp4="media/uni_ia.mp4" data-webm="media/uni_ia.webm" muted loop playsinline preload="none" disablepictureinpicture aria-hidden="true"></video></span>
+      <span class="tag">Mission</span>
+      <span class="corps"><b>Token due diligence</b><span class="d">Paste a contract: holders, liquidity, taxes and red flags, read on-chain before you buy.</span><span class="go">Start this mission &rarr;</span></span>
+    </button>
+    <button type="button" class="carte-ag" data-mission="m_projet">
+      <span class="media"><img src="img/site/accueil/ia.webp" alt="" loading="lazy" decoding="async" width="1200" height="800"><video data-film data-mp4="media/accueil_ia.mp4" muted loop playsinline preload="none" disablepictureinpicture aria-hidden="true"></video></span>
+      <span class="tag">Mission</span>
+      <span class="corps"><b>Research a project</b><span class="d">What it does, who is behind it and what looks off, from the live web, with sources.</span><span class="go">Start this mission &rarr;</span></span>
+    </button>
+    <button type="button" class="carte-ag" data-mission="m_site">
+      <span class="media"><img src="img/site/accueil/colonie.webp" alt="" loading="lazy" decoding="async" width="1200" height="800"><video data-film data-mp4="media/accueil_colonie.mp4" muted loop playsinline preload="none" disablepictureinpicture aria-hidden="true"></video></span>
+      <span class="tag">Mission</span>
+      <span class="corps"><b>Check a website&rsquo;s infrastructure</b><span class="d">DNS, hosting and certificates from public sources, with anything unusual flagged.</span><span class="go">Start this mission &rarr;</span></span>
+    </button>
+    <button type="button" class="carte-ag" data-mission="m_lancements">
+      <span class="media"><img src="img/site/studio/vignettes/openai-qualite.jpg" alt="" loading="lazy" decoding="async" width="854" height="480"><video data-film data-mp4="media/studio/openai-qualite.mp4" data-webm="media/studio/openai-qualite.webm" muted loop playsinline preload="none" disablepictureinpicture aria-hidden="true"></video></span>
+      <span class="tag">Base</span>
+      <span class="corps"><b>What launched on Base today?</b><span class="d">Today&rsquo;s Clanker and Zora launches, and what is known about the people behind them.</span><span class="go">Start this mission &rarr;</span></span>
+    </button>
+    <a class="carte-ag" href="studio.html">
+      <span class="media"><img src="img/site/studio/vignettes/motion.jpg" alt="" loading="lazy" decoding="async" width="854" height="480"><video data-film data-mp4="media/studio/motion.mp4" data-webm="media/studio/motion.webm" muted loop playsinline preload="none" disablepictureinpicture aria-hidden="true"></video></span>
+      <span class="tag studio">Studio</span>
+      <span class="corps"><b>Images and videos</b><span class="d">Create pictures and short clips in the SWOGE Studio, paid per use like everything here.</span><span class="go">Open the Studio &rarr;</span></span>
+    </a>
+    <button type="button" class="carte-ag" data-paie>
+      <span class="media"><img src="img/site/fonds/wallet_cles.webp" alt="" loading="lazy" decoding="async" width="1280" height="720"><video data-film data-mp4="media/wallet_cles.mp4" data-webm="media/wallet_cles.webm" muted loop playsinline preload="none" disablepictureinpicture aria-hidden="true"></video></span>
+      <span class="tag paie">Payments</span>
+      <span class="corps"><b>Wallet-signed payments</b><span class="d">No subscription, no $SWOGE needed: your wallet signs USDC on Base or Solana for what a mission really costs.</span><span class="go">Top up &rarr;</span></span>
+    </button>
+  </div>
+
+  <div class="deroule">
+    <div class="vt-tete">
+      <p class="vt-eb">How a mission runs</p>
+      <h2>Four steps, all on screen</h2>
+    </div>
+    <ol class="etapes">
+      <li><span class="pic"><svg class="ic"><use href="#hb-plan"/></svg></span><b>Plan</b><p>The planner reads your objective and splits it into steps, choosing the tool each one needs.</p></li>
+      <li><span class="pic"><svg class="ic"><use href="#hb-outil"/></svg></span><b>Run real tools</b><p>Token scans, the SWOGE AI colony, web search, page reads, domain and eSIM lookups: live data, not memory.</p></li>
+      <li><span class="pic"><svg class="ic"><use href="#hb-cout"/></svg></span><b>See each step&rsquo;s cost</b><p>Every step shows what it really cost. Your wallet signs USDC, or it comes from your credit.</p></li>
+      <li><span class="pic"><svg class="ic"><use href="#hb-check"/></svg></span><b>Get the result</b><p>A sourced answer with token cards and links, kept in your chats on this device.</p></li>
+    </ol>
+    <p class="vt-pied">Bought an eSIM or hired a paid service through the chat? It is under <a href="swoge_agents.html?mode=account" id="vitrineCompte">Your eSIMs, hires &amp; API keys</a>.</p>
+  </div>
+</div>

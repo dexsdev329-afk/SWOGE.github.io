@@ -520,7 +520,8 @@ const FR = /[àâçéèêëîïôûùüÿœ]|\b(les|des|une|est|pour|avec|vous|v
     await p.click('.tab[data-tab="image"]'); await p.click('#topUp'); await p.click('#rcClose');
     await p.reload({ waitUntil: 'domcontentloaded' }); await p.waitForTimeout(600);
     eq(posts().length, 0, 'charger, taper, choisir, ouvrir la recharge, recharger : aucun POST');
-    ok(S.envois.every((e) => e.m === 'GET' && /^\/(studio\/chat\/solde|credit|studio\/production)$/.test(e.chemin)), 'seulement les lectures du solde, du credit et des productions');
+    /* 15/10 (soir) : la section SWOGE Swap (#swap) lit aussi sa vue (GET /studio/swap) quand elle approche — une lecture */
+    ok(S.envois.every((e) => e.m === 'GET' && /^\/(studio\/chat\/solde|credit|studio\/production|studio\/swap)$/.test(e.chemin)), 'seulement les lectures du solde, du credit, des productions et de la vue SWOGE Swap');
     await ferme(p);
   }
 

@@ -19,6 +19,10 @@
  *   6. Une erreur : une phrase claire, et dessous le message EXACT de Kling ou
  *      du serveur ; « Try again » relance la part ratee.
  *   7. 320, 390 et 1280 px : aucun defilement horizontal ; aucune erreur JS.
+ *   9. (15/10 soir) L'etape FACULTATIVE « Make the picture from the video (ChatGPT) » : fermee
+ *      avant le plan ; POST …/<id>/apercu { cible } (ou { cible: decrit, qui }) et rien d'autre ;
+ *      l'image lue avec la session (blob:), « Regenerate », « Use this picture » la met a la
+ *      place de l'image par defaut, et « Make the video » envoie CETTE image en `still`.
  * CAPTURES=<dossier> : garde la vue du resultat a 1280 et 390 px.
  * ==========================================================================*/
 const fs = require('fs'), path = require('path'), http = require('http'), os = require('os');
@@ -58,7 +62,8 @@ const CAPTURES = process.env.CAPTURES || null;
 
   /* ---- le faux serveur ---- */
   const journal = [], erreursPage = [];
-  const S = { suite: [], passeAnime: null, refusPlan: null };
+  const S = { suite: [], passeAnime: null, refusPlan: null, ap: [] };
+  const IMG_AP = fs.readFileSync(path.join(SITE, 'img/site/swoge_meme_ref.jpg'));
   const parts = (statuts, o) => statuts.map((st, i) => Object.assign({ i, debut: i * 6, duree: 6, statut: st, message: st === 'failed' ? 'Kling failed: content risk' : null, essais: 1,
     rejouable: st === 'failed', bloque: false, secondes: st === 'done' ? 240 : null }, (o && o[i]) || {}));
   const etat = (statut, o) => Object.assign({ ok: true, id: ID, statut, message: null, source: { duree: 6, largeur: 720, hauteur: 1280, fps: 30, son: true }, fps: 30,
@@ -75,7 +80,7 @@ const CAPTURES = process.env.CAPTURES || null;
     if (auth === 'jAutre' && url.pathname === '/studio/kling') return [200, { ok: true, proprietaire: false, actif: true }];
     if (auth !== 'jOwner') return [401, { ok: false, raison: 'sign in with your wallet first' }];
     if (url.pathname === '/studio/kling' && q.method() === 'GET') {
-      return [200, { ok: true, proprietaire: true, actif: true, modeles: {}, essais: [], entier: Object.assign({}, ENTIER, { passeAnime: S.passeAnime }) }];
+      return [200, { ok: true, proprietaire: true, actif: true, modeles: {}, essais: [], entier: Object.assign({}, ENTIER, { passeAnime: S.passeAnime }), apercu: { actif: true, modele: 'gpt-image-2', prixPireUsd: 0.562, parJour: 30 } }];
     }
     if (url.pathname === '/studio/kling/entier' && q.method() === 'POST') {
       if (S.refusPlan) return [429, { ok: false, raison: S.refusPlan }];
@@ -83,6 +88,9 @@ const CAPTURES = process.env.CAPTURES || null;
     }
     if (url.pathname === '/studio/kling/entier/' + ID && q.method() === 'GET') { const o = S.suite.length > 1 ? S.suite.shift() : S.suite[0]; return [200, o]; }
     if (url.pathname === '/studio/kling/entier/' + ID + '/lance' && q.method() === 'POST') return [200, S.apresLance];
+    /* l'image faite depuis la video (swap_apercu.js) */
+    if (url.pathname === '/studio/kling/entier/' + ID + '/apercu' && q.method() === 'POST') { S.ap.push({ k: S.ap.length, statut: 'making', cible: corps.cible, modele: 'gpt-image-2', coutUsd: null }); return [200, { ok: true, apercu: { candidats: S.ap } }]; }
+    if (url.pathname === '/studio/kling/entier/' + ID + '/apercu' && q.method() === 'GET') { S.ap.forEach((c) => { if (c.statut === 'making') { c.statut = 'ready'; c.coutUsd = 0.2325; } }); return [200, { ok: true, apercu: S.ap.length ? { candidats: S.ap } : null }]; }
     if (/^\/studio\/kling\/entier\/b{24}\/reessaie\/\d$/.test(url.pathname) && q.method() === 'POST') return [200, S.apresRelance];
     if (url.pathname === '/studio/kling/entier/' + ID + '/abandonne' && q.method() === 'POST') return [200, { ok: true, id: ID, statut: 'supprime' }];
     return [404, { ok: false, raison: 'unknown' }];
@@ -106,6 +114,11 @@ const CAPTURES = process.env.CAPTURES || null;
         const auth = String(q.headers().authorization || '');
         journal.push({ m: 'GET', chemin: u.pathname, auth: auth.replace(/^Bearer /, '') });
         return auth === 'Bearer jOwner' ? r.fulfill({ status: 200, contentType: 'video/mp4', body: RESULTAT }) : r.fulfill({ status: 401, contentType: 'application/json', body: '{"ok":false}' });
+      }
+      if (/^\/studio\/kling\/entier\/b{24}\/apercu\/\d+$/.test(u.pathname)) {
+        const auth = String(q.headers().authorization || '');
+        journal.push({ m: 'GET', chemin: u.pathname, auth: auth.replace(/^Bearer /, '') });
+        return auth === 'Bearer jOwner' ? r.fulfill({ status: 200, contentType: 'image/jpeg', body: IMG_AP }) : r.fulfill({ status: 401, contentType: 'application/json', body: '{"ok":false}' });
       }
       if (/^\/studio\/kling(\/|$)/.test(u.pathname)) { const [code, o] = route(q, u); return r.fulfill({ status: code, contentType: 'application/json', body: JSON.stringify(o) }); }
       return r.abort();
@@ -142,8 +155,10 @@ const CAPTURES = process.env.CAPTURES || null;
   ok(await p.isVisible('#image') && (await p.getAttribute('#image', 'src')) === 'data:image/jpeg;base64,' + DEFAUT.toString('base64') && /SWOGE in the shop \(default\) · 956×1645/.test(await texte(p, 'imageInfo')),
      'l image du proprietaire chargee par defaut, apercu et cotes [' + await texte(p, 'imageInfo') + ']');
   ok((await texte(p, 'imageChange')) === 'Change picture' && (await texte(p, 'videoChoix')) === 'Choose a video', '« Change picture » et « Choose a video »');
-  const entrees = await p.$$eval('#outil input, #outil select, #outil textarea', (l) => l.map((x) => x.id));
-  ok(JSON.stringify(entrees) === JSON.stringify(['imageFichier', 'videoFichier']), 'deux entrees seulement : ' + JSON.stringify(entrees));
+  /* l'intention : deux entrees a remplir, pas d'options partout. Depuis le 15/10 (soir), l'etape
+     facultative ChatGPT ajoute seulement un champ « Describe… », cache tant qu'on ne le choisit pas. */
+  const entrees = await p.$$eval('#outil input, #outil select, #outil textarea', (l) => l.filter((x) => x.offsetParent !== null || x.type === 'file').map((x) => x.id));
+  ok(JSON.stringify(entrees) === JSON.stringify(['imageFichier', 'videoFichier']), 'deux entrees seulement (le champ « Describe… » cache) : ' + JSON.stringify(entrees));
   ok(await p.isDisabled('#faire') && /Choose a video first/.test(await texte(p, 'faireInfo')) && !(await p.isVisible('#resultat')) && posts().length === 0, 'sans video : le bouton ferme, rien envoye');
   ok(await p.isVisible('a[href="kling_essai.html"]'), 'un lien vers tous les outils Kling');
 
@@ -279,6 +294,41 @@ const CAPTURES = process.env.CAPTURES || null;
       await q.waitForTimeout(400);
       await q.screenshot({ path: path.join(CAPTURES, 'capture_' + L + '.png'), fullPage: true });
     }
+    await q.close();
+  }
+  console.log('\n-- 9. l image faite depuis la video (ChatGPT) --');
+  {
+    S.passeAnime = null; S.ap = [];
+    const q = await ouvre({ largeur: 390 });
+    await imageChargee(q);
+    ok(await q.isDisabled('#apFaire') && /Choose a video first/.test(await texte(q, 'apInfo')) && await q.$eval('#apCibles [data-cible="seule"]', (b) => b.getAttribute('aria-pressed')) === 'true',
+       'avant le plan : « Make the picture » ferme ; « Only person » par defaut');
+    S.suite = [etat('pret')];
+    await q.setInputFiles('#videoFichier', F.clip);
+    await attend(q, () => !document.getElementById('apFaire').disabled);
+    await q.click('#apCibles [data-cible="decrit"]');
+    await q.fill('#apQui', 'the drummer');
+    await q.click('#apFaire');
+    await attend(q, () => !document.getElementById('apVue').hidden && /^blob:/.test(document.getElementById('apVue').src));
+    const pa = posts('/studio/kling/entier/' + ID + '/apercu');
+    ok(pa.length === 1 && JSON.stringify(pa[0].corps) === JSON.stringify({ cible: 'decrit', qui: 'the drummer' }) && pa[0].auth === 'jOwner', 'POST …/apercu { cible: decrit, qui } et rien d autre, avec le jeton');
+    ok(await q.$eval('#apVue', (i) => /^blob:/.test(i.src)) && journal.some((x) => /\/apercu\/0$/.test(x.chemin) && x.auth === 'jOwner') && /OpenAI cost \$0\.233/.test(await texte(q, 'apInfo')) && await q.isVisible('#apRefait') && await q.isVisible('#apUtilise'),
+       'l image lue avec la session (blob:), son cout OpenAI dit, « Regenerate » et « Use this picture »');
+    await q.click('#apRefait');
+    await attend(q, () => posts !== null && document.getElementById('apInfo').textContent.indexOf('Picture 2') === 0);
+    ok(posts('/studio/kling/entier/' + ID + '/apercu').length === 2, 'Regenerate : une seconde image demandee');
+    await q.click('#apUtilise');
+    await attend(q, () => /chatgpt_frame/.test(document.getElementById('imageInfo').textContent));
+    const attendu = 'data:image/jpeg;base64,' + IMG_AP.toString('base64');
+    ok((await q.getAttribute('#image', 'src')) === attendu && /chatgpt_frame_2\.jpg · 1170×1280/.test(await texte(q, 'imageInfo')), '« Use this picture » : l image remplace celle par defaut (etape 1) [' + await texte(q, 'imageInfo') + ']');
+    S.apresLance = etat('en_cours', { morceaux: parts(['processing']) }); S.suite = [S.apresLance];
+    await attend(q, () => /\$0\.756 max/.test(document.getElementById('faire').textContent));
+    await q.click('#faire');
+    await attend(q, () => document.getElementById('faire').textContent !== 'Make the video — $0.756 max');
+    const la = posts('/studio/kling/entier/' + ID + '/lance').pop();
+    ok(la && la.corps.still === attendu && la.corps.confirmeUsd === 0.756, '« Make the video » envoie CETTE image en still');
+    const d = await q.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    ok(d <= 0 && !(await dansLEcran(q, ['apFaire', 'apCibles', 'apVue'])).length, '390 px : l etape tient dans l ecran');
     await q.close();
   }
   {

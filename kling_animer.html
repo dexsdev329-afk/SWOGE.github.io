@@ -31,6 +31,13 @@
  * serveur reverifie AI_OWNER a chaque geste et n'agit que pour la session ;
  * le resultat ne sort qu'avec la session (blob:), jamais par une adresse
  * publique. Hors moteurs (noindex), hors menus : un outil du proprietaire.
+ *
+ * 15/10/2026 (soir) — L'ETAPE 2 AUTOMATIQUE : « Make the picture from the video (ChatGPT) ».
+ * Le proprietaire faisait l'image a la main dans ChatGPT. Facultatif : une fois la video
+ * planifiee, il choisit qui remplacer ; POST /studio/kling/entier/<id>/apercu { cible, qui? }
+ * (swap_apercu.js : le plan de SA video + le meme de SWOGE a OpenAI images/edits, aux cotes de la
+ * video) ; l'image se lit avec la session (blob:), « Regenerate » en refait une, « Use this
+ * picture » la met a la place de l'image par defaut. Le serveur reverifie AI_OWNER a chaque geste.
  * ================================================================== -->
 <style>
 :root{ --fond:#EEF3FB; --carte:#fff; --encre:#0B1B36; --pale:#5a6b85; --bleu:#1652f0; --ligne:#E1E9F6; --ok:#0a7d3e; --err:#b3261e; --errFond:#fdecea; }
@@ -71,6 +78,15 @@ button[disabled]{ opacity:.45; cursor:default; }
 .erreur .rang > *{ flex:1 1 140px; min-width:0; }
 #resultat video{ display:block; width:100%; max-height:70vh; margin-top:14px; border-radius:12px; background:#000; }
 #telecharge{ background:var(--ok); }
+/* l'etape facultative : l'image faite depuis la video (ChatGPT) */
+.seg{ display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+.seg button{ flex:1 1 auto; min-height:40px; padding:8px 12px; border-radius:999px; background:var(--ligne); color:var(--encre); font-size:14px; }
+.seg button[aria-pressed="true"]{ background:var(--bleu); color:#fff; }
+#apQui{ display:block; width:100%; min-height:44px; margin-top:8px; padding:8px 12px; border:1px solid var(--ligne); border-radius:12px; font:inherit; }
+#apVue{ display:block; max-width:100%; max-height:420px; margin:12px auto 0; border-radius:10px; background:#000; }
+.rang2{ display:flex; flex-wrap:wrap; gap:8px; }
+.rang2 > *{ flex:1 1 160px; min-width:0; }
+#apUtilise{ background:var(--bleu); color:#fff; }
 </style>
 </head>
 <body>
@@ -96,6 +112,23 @@ button[disabled]{ opacity:.45; cursor:default; }
       <p class="info" id="videoInfo"></p>
       <input class="cache" id="videoFichier" type="file" accept="video/mp4,video/quicktime">
       <label class="bouton2" for="videoFichier" id="videoChoix">Choose a video</label>
+    </div>
+
+    <div class="carte" id="apCarte">
+      <h2><span class="num">+</span> Make the picture from the video (ChatGPT)</h2>
+      <p class="pale" style="margin:0">Optional. We take the first frame of your video and put SWOGE in place of the person you pick, then you check it. Paid by the owner's OpenAI account.</p>
+      <div class="seg" id="apCibles" role="group" aria-label="Who to replace">
+        <button type="button" data-cible="gauche" aria-pressed="false">Left</button>
+        <button type="button" data-cible="centre" aria-pressed="false">Center</button>
+        <button type="button" data-cible="droite" aria-pressed="false">Right</button>
+        <button type="button" data-cible="seule" aria-pressed="true">Only person</button>
+        <button type="button" data-cible="decrit" aria-pressed="false">Describe…</button>
+      </div>
+      <input id="apQui" type="text" maxlength="80" placeholder="For example: the man in the red cap" aria-label="Describe who to replace" hidden>
+      <button type="button" class="bouton2" id="apFaire" disabled>Make the picture</button>
+      <p class="info" id="apInfo">Choose a video first.</p>
+      <img id="apVue" alt="The picture made from the video" hidden>
+      <div class="rang2" id="apGestes" hidden><button type="button" class="petit" id="apRefait">Regenerate</button><button type="button" class="petit" id="apUtilise">Use this picture</button></div>
     </div>
 
     <button type="button" class="gros" id="faire" disabled>Make the video</button>
@@ -206,6 +239,7 @@ button[disabled]{ opacity:.45; cursor:default; }
 
   /* le seul bouton : ferme tant qu'il manque quelque chose, sinon il porte le prix au pire */
   function peint(){
+    try { apPeint(); } catch (x) {}
     var e = A.etat, p = prix(), b = $("faire"), info = $("faireInfo"), travail = enCours();
     $("imageFichier").disabled = $("videoFichier").disabled = travail || A.occupe;
     b.hidden = !!(e && e.statut === "fini");
@@ -297,6 +331,8 @@ button[disabled]{ opacity:.45; cursor:default; }
     if (!A.fichier || !A.still || enCours()) { peint(); return; }
     if (A.suivi) clearTimeout(A.suivi);
     A.occupe = true; A.etat = null; A.id = null; $("resultat").hidden = true; erreur("");
+    /* une autre video : les images faites depuis l'ancienne ne valent plus */
+    if (AP.suivi) clearTimeout(AP.suivi); AP.etat = null; AP.vu = null;
     peint();
     progres("Uploading the video (" + (A.fichier.size / 1048576).toFixed(1) + " MB)…", "travail");
     fetch(serveur() + "/studio/kling/entier?mode=" + A.mode, { method: "POST", cache: "no-store", headers: { "content-type": "video/mp4", authorization: "Bearer " + jeton() }, body: A.fichier })
@@ -320,7 +356,7 @@ button[disabled]{ opacity:.45; cursor:default; }
       A.etat = e; peintForme();
       var ms = e.morceaux || [], n = ms.length;
       if (e.statut === "decoupe") { progres("Reading the video…", "travail"); }
-      else if (e.statut === "pret") { A.occupe = false; progres(""); peint(); return; }
+      else if (e.statut === "pret") { A.occupe = false; progres(""); peint(); apCharge(); return; }
       else if (e.statut === "erreur") { A.occupe = false; erreur("The server could not use this video.", e.message || "no reason given"); peint(); return; }
       else if (e.statut === "file") { progres("Waiting for a free slot…", "travail"); }
       else if (e.statut === "en_cours") {
@@ -385,6 +421,66 @@ button[disabled]{ opacity:.45; cursor:default; }
       ["catch"](function(e){ erreur("Not cancelled.", e.message, A.gestes); });
   });
 
+  /* ---- l'image faite depuis la video (ChatGPT, swap_apercu.js du serveur), facultative ----
+     La passe planifiee (A.id, statut « pret ») fournit le plan ; qui remplacer ; l'image se lit
+     avec la session ; « Use this picture » la donne a prendImage, comme un fichier choisi. */
+  var AP = { cible: "seule", qui: "", etat: null, vu: null, blobs: {}, suivi: null, occupe: false };
+  function apPret(){ return !!(A.id && A.etat && A.etat.statut === "pret"); }
+  function apPeint(){
+    var info = $("apInfo"), en = AP.etat && AP.etat.candidats.some(function(c){ return c.statut === "making"; });
+    [].forEach.call($("apCibles").querySelectorAll("button"), function(b){ b.setAttribute("aria-pressed", String(b.getAttribute("data-cible") === AP.cible)); });
+    $("apQui").hidden = AP.cible !== "decrit";
+    var qui = AP.cible !== "decrit" || AP.qui.trim().length >= 3;
+    $("apFaire").disabled = !apPret() || !qui || en || AP.occupe || !(A.apercu && A.apercu.actif);
+    $("apFaire").textContent = en ? "Making the picture…" : AP.etat && AP.etat.candidats.length ? "Make another picture" : "Make the picture";
+    var c = AP.etat && AP.vu != null ? AP.etat.candidats[AP.vu] : null;
+    var dernier = AP.etat && AP.etat.candidats[AP.etat.candidats.length - 1];
+    if (!(A.apercu && A.apercu.actif)) info.textContent = "Not switched on: add OPENAI_API_KEY on Railway.";
+    else if (!apPret()) info.textContent = "Choose a video first (it is read, nothing is paid).";
+    else if (en) info.textContent = "OpenAI is redrawing the first frame… usually under a minute.";
+    else if (dernier && dernier.statut === "failed") info.textContent = dernier.message || "The picture could not be made.";
+    else if (c) info.textContent = "Picture " + (c.k + 1) + (c.coutUsd != null ? " · OpenAI cost $" + c.coutUsd.toFixed(3) : "") + (c.modele ? " · " + c.modele : "");
+    else info.textContent = "About $" + Number(A.apercu.prixPireUsd || 0).toFixed(2) + " at most per picture (estimate), " + (A.apercu.parJour || 30) + " per day.";
+    var url = c && AP.blobs[c.k];
+    $("apVue").hidden = !url; if (url) $("apVue").src = url;
+    $("apGestes").hidden = !url || en;
+  }
+  function apCharge(){
+    if (AP.suivi) clearTimeout(AP.suivi);
+    if (!A.id) return;
+    var id = A.id;
+    api("/studio/kling/entier/" + id + "/apercu").then(function(r){
+      if (A.id !== id) return;
+      AP.etat = r.apercu;
+      var l = (AP.etat && AP.etat.candidats) || [], d = l[l.length - 1];
+      if (d && d.statut === "ready") AP.vu = d.k;
+      if (d && d.statut === "ready" && !AP.blobs[d.k]) {
+        fetch(serveur() + "/studio/kling/entier/" + id + "/apercu/" + d.k, { cache: "no-store", headers: { authorization: "Bearer " + jeton() } })
+          .then(function(x){ if (!x.ok) throw new Error("error " + x.status); return x.blob(); })
+          .then(function(b){ AP.blobs[d.k] = URL.createObjectURL(b); AP.blobsB = AP.blobsB || {}; AP.blobsB[d.k] = b; apPeint(); })["catch"](function(){});
+      }
+      apPeint();
+      if (d && d.statut === "making") AP.suivi = setTimeout(apCharge, 2500);
+    })["catch"](function(){ AP.suivi = setTimeout(apCharge, 6000); });
+  }
+  function apFaire(){
+    if (!apPret()) return;
+    AP.occupe = true; apPeint();
+    var q = { cible: AP.cible }; if (AP.cible === "decrit") q.qui = AP.qui;
+    api("/studio/kling/entier/" + A.id + "/apercu", "POST", q)
+      .then(function(r){ AP.occupe = false; AP.etat = r.apercu; apPeint(); AP.suivi = setTimeout(apCharge, 1500); })
+      ["catch"](function(e){ AP.occupe = false; $("apInfo").textContent = "Not made: " + e.message; $("apFaire").disabled = false; });
+  }
+  $("apCibles").addEventListener("click", function(ev){ var b = ev.target.closest("button[data-cible]"); if (!b) return; AP.cible = b.getAttribute("data-cible"); apPeint(); if (AP.cible === "decrit") $("apQui").focus(); });
+  $("apQui").addEventListener("input", function(){ AP.qui = this.value; apPeint(); });
+  $("apFaire").addEventListener("click", apFaire);
+  $("apRefait").addEventListener("click", apFaire);
+  $("apUtilise").addEventListener("click", function(){
+    var b = AP.blobsB && AP.blobsB[AP.vu]; if (!b) return;
+    prendImage(new File([b], "chatgpt_frame_" + (AP.vu + 1) + ".jpg", { type: "image/jpeg" }));
+    $("apInfo").textContent = "This picture now starts the video (step 1).";
+  });
+
   /* ---- l'acces : proprietaire seulement (le serveur le reverifie a chaque geste) ---- */
   function charge(){
     if (!jeton()) { $("acces").textContent = "Sign in with your wallet (button below)."; return; }
@@ -392,7 +488,7 @@ button[disabled]{ opacity:.45; cursor:default; }
       if (!o.proprietaire) { $("acces").textContent = "This page is for the owner only."; return; }
       if (!o.actif) { $("acces").textContent = "Kling is not set up yet: add KLING_API_KEY on Railway."; return; }
       if (!o.entier || !o.entier.anime) { $("acces").textContent = "The server does not offer \"Animate a picture\" yet."; return; }
-      A.vue = o.entier;
+      A.vue = o.entier; A.apercu = o.apercu || null;
       $("porte").hidden = true; $("outil").hidden = false;
       imageParDefaut();
       peint();

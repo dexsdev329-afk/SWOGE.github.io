@@ -155,7 +155,7 @@ h1{font:850 50px/1.04 var(--f);font-stretch:106%;letter-spacing:-1.8px;color:var
 .sub{font:500 16.5px/1.5 var(--f);color:var(--dim);max-width:640px;margin:0 auto}
 .checks{list-style:none;display:flex;justify-content:center;flex-wrap:wrap;gap:8px 18px;margin:14px 0 0;padding:0}
 .checks li{display:inline-flex;align-items:center;gap:6px;font:700 13.5px/1 var(--f);color:var(--navy)}
-/* SWOGE Swap (14/10) : le service de swoge_cinema.html, un lien sous les promesses du heros */
+/* SWOGE Swap : un lien sous les promesses du heros, vers la section #swap de cette page (15/10 soir ; avant : swoge_cinema.html) */
 .versswap{margin:12px 0 0;text-align:center}
 .versswap a{display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:0 14px;border-radius:999px;background:var(--blue-soft);color:var(--blue);font:700 13.5px/1.2 var(--f);text-decoration:none}
 .versswap a:hover{text-decoration:underline}
@@ -669,6 +669,138 @@ footer b{color:var(--navy)}
 /* Sous 360 px seulement, et seulement « Credit » (le $ du montant le dit) : « $SWOGE » reste,
    sinon « 182.4k » s'affiche sans unite (regle de la maquette, l.521). */
 @media (max-width:359px){ .bal .bk:first-child small{display:none} }
+
+/* ======================================================================
+   SWOGE SWAP (section #swap, 15/10/2026 soir) — le chemin que le proprietaire a valide :
+   le plan de la video, refait avec le personnage (OpenAI), anime par Kling d'apres le
+   mouvement de la video, le son d'origine remis. La charte est celle du haut de la page :
+   pastille, titre au mot surligne, coches vertes, carte blanche a 26 px et son ombre bleue,
+   bouton bleu au prix dedans, segments pilules. Tout est prefixe .sx- (ou .swapx).
+   ====================================================================== */
+.swapx{margin-top:64px;scroll-margin-top:84px;position:relative}
+.swapx-head{text-align:center;max-width:880px;margin:0 auto}
+.swapx-head h2{font:850 42px/1.06 var(--f);font-stretch:106%;letter-spacing:-1.5px;color:var(--navy);margin:16px auto 12px;max-width:820px}
+.swapx-head .sub{max-width:660px}
+.swapx-head .checks{margin-top:14px}
+.swapx-work{max-width:1240px;margin:26px auto 0;display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:20px;align-items:start}
+.sx-card{background:#fff;border:1px solid var(--line);border-radius:26px;box-shadow:var(--sh-box);padding:6px 8px;min-width:0}
+.sx-step{display:grid;grid-template-columns:32px minmax(0,1fr);gap:0 14px;padding:18px 14px;border-bottom:1px solid var(--line);min-width:0}
+.sx-step:last-child{border-bottom:0}
+.sx-n{width:32px;height:32px;border-radius:999px;background:var(--blue-soft);color:var(--blue);display:grid;place-items:center;font:800 14px/1 var(--f)}
+.sx-n .ic{display:none;width:16px;height:16px;stroke-width:2.6}
+.sx-step.fait .sx-n{background:var(--green);color:#fff}
+.sx-step.fait .sx-n .ic{display:block}
+.sx-step.fait .sx-n span{display:none}
+.sx-step.off .sx-h,.sx-step.off .sx-body{opacity:.5}
+.sx-step.off .sx-body{pointer-events:none}
+.sx-h{min-width:0;align-self:center}
+.sx-t{font:800 17px/1.25 var(--f);letter-spacing:-.2px;color:var(--navy);margin:0}
+.sx-d{font:500 13px/1.45 var(--f);color:var(--dim);margin:3px 0 0}
+.sx-body{grid-column:2;min-width:0;margin-top:12px}
+.sx-drop{display:flex;align-items:center;gap:12px;width:100%;min-height:68px;padding:10px 14px;border:1.5px dashed var(--line2);border-radius:18px;background:var(--field);color:var(--dim);text-align:left;cursor:pointer}
+.sx-drop:hover{border-color:var(--blue);color:var(--blue)}
+.sx-drop .sx-ico{width:44px;height:44px;flex:0 0 auto;border-radius:14px;background:#fff;border:1px solid var(--line);display:grid;place-items:center;color:var(--blue)}
+.sx-drop .sx-ico .ic{width:20px;height:20px}
+.sx-drop span{display:flex;flex-direction:column;gap:3px;min-width:0}
+.sx-drop b{font:750 14.5px/1.25 var(--f);color:var(--navy);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sx-drop small{font:600 12px/1.35 var(--f);color:var(--dim);overflow-wrap:anywhere}
+.sx-drop.has{border-style:solid;border-color:var(--line);background:#fff}
+.sx-drop:focus-within{outline:2px solid var(--blue);outline-offset:2px}
+.sx-file{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;clip:rect(0 0 0 0)}
+.sx-case{display:flex;gap:10px;align-items:flex-start;margin:12px 0 0;font:500 13px/1.45 var(--f);color:var(--text2);cursor:pointer}
+.sx-case input{width:18px;height:18px;margin:1px 0 0;flex:0 0 auto;accent-color:var(--blue)}
+.sx-l{display:block;font:800 11px/1 var(--f);letter-spacing:1.6px;text-transform:uppercase;color:var(--dim2);margin:0 0 8px}
+.sx-l.sx-l2{margin-top:18px}
+.sx-chars{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.sx-char{position:relative;display:flex;align-items:center;gap:10px;min-height:60px;padding:8px 12px 8px 8px;border:1px solid var(--line);border-radius:18px;background:#fff;text-align:left;min-width:0;cursor:pointer}
+.sx-char:hover{border-color:var(--line2)}
+.sx-char[aria-pressed="true"]{border-color:var(--blue);box-shadow:0 0 0 3px rgba(27,95,224,.16)}
+.sx-char img,.sx-char .sx-ph{width:44px;height:44px;flex:0 0 auto;border-radius:12px;object-fit:cover;object-position:50% 20%;background:var(--field)}
+.sx-char .sx-ph{display:grid;place-items:center;color:var(--blue);border:1.5px dashed var(--line2)}
+.sx-char .sx-ph .ic{width:18px;height:18px}
+.sx-char span{display:flex;flex-direction:column;gap:3px;min-width:0}
+.sx-char b{font:750 14px/1.2 var(--f);color:var(--navy)}
+.sx-char small{font:600 11.5px/1.3 var(--f);color:var(--dim);overflow-wrap:anywhere}
+.sx-char small.ok{color:var(--green)}
+.sx-char small.non{color:var(--red)}
+.swapx .seg.sx-seg{display:flex;flex-wrap:wrap;height:auto;border-radius:18px;padding:4px;gap:4px}
+.swapx .seg.sx-seg button{flex:1 1 auto;height:34px;padding:0 12px}
+.sx-in{display:block;width:100%;height:44px;margin-top:8px;border:1px solid var(--line);border-radius:14px;background:var(--field);padding:0 14px;font:500 15px/1 var(--f);color:var(--ink)}
+.sx-in:focus{outline:2px solid var(--blue);outline-offset:1px;background:#fff}
+.sx-note{font:500 12.5px/1.45 var(--f);color:var(--dim);margin:8px 0 0}
+.sx-note b{color:var(--navy)}
+.sx-go{display:flex;align-items:center;gap:10px 14px;flex-wrap:wrap}
+.sx-go .gen{min-height:48px;height:auto;padding:12px 22px}
+.sx-go .seg{flex:0 0 auto}
+.sx-go p{margin:0;flex:1 1 220px;min-width:0;font:500 13px/1.45 var(--f);color:var(--dim)}
+.sx-go p b{color:var(--navy)}
+.sx-alt{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:40px;padding:0 16px;border-radius:999px;border:1px solid var(--line);background:#fff;font:750 13px/1 var(--f);color:var(--navy);white-space:nowrap}
+.sx-alt .gd{opacity:.5}
+.sx-alt .gp{font-weight:850;color:var(--blue);font-variant-numeric:tabular-nums}
+.sx-alt:hover{border-color:var(--line2)}
+.sx-err{margin:12px 0 0;padding:10px 12px;border-radius:14px;border:1px solid var(--red-line);background:var(--red-soft);color:#7A1F18;font:600 13px/1.45 var(--f);overflow-wrap:anywhere}
+.sx-cr{display:flex;align-items:center;gap:10px 14px;flex-wrap:wrap;margin:14px 0 0;padding:10px 14px;border:1px solid var(--line);border-radius:16px;background:var(--blue-tint)}
+.sx-cr span{flex:1 1 200px;min-width:0;font:500 12.5px/1.45 var(--f);color:var(--text2)}
+.sx-cr b{color:var(--navy);font-weight:800}
+.sx-cr .gold{height:36px}
+/* ---- le resultat ---- */
+.sx-res{background:#fff;border:1px solid var(--line);border-radius:26px;box-shadow:var(--sh-box);padding:10px;min-width:0;position:sticky;top:84px}
+.sx-stage{position:relative;width:100%;aspect-ratio:4/5;max-height:72vh;border-radius:18px;overflow:hidden;background:var(--field);border:1.5px dashed var(--line2);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;text-align:center;padding:18px;color:var(--dim)}
+.sx-stage > .ic{width:32px;height:32px;color:var(--dim2)}
+.sx-stage b{font:800 15px/1.3 var(--f);color:var(--navy)}
+.sx-stage small{font:500 12.5px/1.45 var(--f);color:var(--dim);max-width:270px}
+.sx-stage.run{border-style:solid;border-color:var(--line);background:linear-gradient(100deg,#EEF3FB 30%,#F8FAFE 50%,#EEF3FB 70%);background-size:200% 100%;animation:shim 1.8s linear infinite}
+.sx-stage.run b{color:var(--blue)}
+.sx-stage.media{border:0;padding:0;background:#0A1F44}
+.sx-stage.media img,.sx-stage.media video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#0A1F44}
+.sx-stage.err{border:1.5px solid var(--red-line);background:var(--red-soft);color:#7A1F18}
+.sx-stage.err b{color:#7A1F18}
+.sx-stage.err small{color:#7A1F18}
+.sx-tag{position:absolute;left:10px;top:10px;z-index:2;font:800 10.5px/1 var(--f);letter-spacing:.6px;color:var(--navy);background:rgba(255,255,255,.94);padding:6px 9px;border-radius:999px;max-width:calc(100% - 20px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sx-stage .rprog{margin:6px 0 2px}
+.sx-cands{display:flex;gap:6px;margin-top:8px;overflow-x:auto;scrollbar-width:none}
+.sx-cands::-webkit-scrollbar{display:none}
+.sx-cands button{position:relative;flex:0 0 auto;width:48px;height:48px;padding:0;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--field)}
+.sx-cands button img{width:100%;height:100%;object-fit:cover}
+.sx-cands button[aria-pressed="true"]::after{content:"";position:absolute;inset:0;border-radius:12px;box-shadow:inset 0 0 0 3px var(--blue)}
+.sx-cands button.rate{display:grid;place-items:center;color:var(--red);font:800 10px/1 var(--f)}
+.sx-acts{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.sx-acts > *{flex:1 1 100%;min-width:0}
+.sx-acts .gen{justify-content:center;height:44px;padding:0 16px;font-size:14px}
+.sx-acts .sx-alt{height:44px}
+.sx-acts a.gen{text-decoration:none}
+.sx-foot{margin:10px 4px 2px;font:500 12px/1.45 var(--f);color:var(--dim)}
+.sx-foot b{color:var(--navy)}
+.sx-parts{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.sx-part{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;border:1px solid var(--line);border-radius:12px;font:600 12.5px/1.3 var(--f);color:var(--text2);min-width:0}
+.sx-part span{min-width:0;overflow-wrap:anywhere}
+.sx-part.failed{border-color:var(--red-line);background:var(--red-soft);color:#7A1F18}
+.sx-part .rbtn{flex:0 0 auto}
+.sx-rules{list-style:none;max-width:1240px;margin:16px auto 0;padding:0;display:flex;flex-wrap:wrap;justify-content:center;gap:6px 18px;font:500 12.5px/1.45 var(--f);color:var(--dim)}
+.sx-rules li{display:inline-flex;align-items:center;gap:6px}
+.sx-rules .ic{width:14px;height:14px;color:var(--dim2)}
+@media (max-width:960px){
+  .swapx-work{grid-template-columns:minmax(0,1fr);max-width:720px}
+  .sx-res{position:static}
+  .sx-stage{max-height:62vh}
+}
+@media (max-width:720px){
+  .swapx{margin-top:44px}
+  .swapx-head h2{font-size:30px;letter-spacing:-1px;margin:14px auto 10px}
+  .sx-step{grid-template-columns:28px minmax(0,1fr);gap:0 10px;padding:16px 8px}
+  .sx-n{width:28px;height:28px;font-size:13px}
+  .sx-body{grid-column:1 / -1}
+  .sx-go .gen{width:100%;justify-content:center}
+  .sx-go .seg{width:100%}
+  .sx-go .seg button{flex:1}
+}
+@media (max-width:720px){
+  /* la section a l'ecran : la barre de prompt du Studio (collee en bas) laisse la place */
+  html.swap-vue .composer{transform:translateY(115%)}
+}
+@media (max-width:440px){ .sx-chars{grid-template-columns:minmax(0,1fr)} }
+@media (max-width:380px){ .swapx-head h2{font-size:27px} }
 @media (prefers-reduced-motion:reduce){ *{transition:none!important;animation:none!important} }
 </style>
 </head>
@@ -770,7 +902,7 @@ footer b{color:var(--navy)}
       <li><svg class="ic"><use href="#i-check"/></svg>No subscription</li>
       <li><svg class="ic"><use href="#i-check"/></svg>No expiring credits</li>
     </ul>
-    <p class="versswap"><a href="swoge_cinema.html#swap">New: put SWOGE in your own video, paid from the same dollar credit &rarr;</a></p>
+    <p class="versswap"><a href="#swap">New: SWOGE Swap — put SWOGE in your own video, paid from the same dollar credit &rarr;</a></p>
 
     <div class="tabs-wrap">
       <div class="tabs" role="tablist" aria-label="What to make">
@@ -851,6 +983,91 @@ footer b{color:var(--navy)}
       </div>
     </div>
     <div class="grid" id="grid" role="list"></div>
+  </section>
+
+  <!-- ============ SWOGE SWAP (15/10/2026 soir) — /studio/swap?mode=anime, …/apercu, …/lance ============
+       Le chemin valide par le proprietaire : le plan de la video, refait avec le personnage
+       (OpenAI, swap_apercu.js du serveur), anime par Kling d'apres le mouvement de la video, le son
+       d'origine remis. Trois gestes : la video ; le personnage et qui remplacer, puis « Create
+       preview » ; « Animate ». La page MONTRE et ENVOIE : prix, credit, porte des images, droits,
+       tout est decide au serveur. Remplace la section de swoge_cinema.html. -->
+  <section class="swapx" id="swap" aria-labelledby="sxTitre">
+    <div class="swapx-head">
+      <span class="eyebrow"><span><svg class="ic"><use href="#i-spark"/></svg></span>SWOGE Swap</span>
+      <h2 id="sxTitre">Put SWOGE in <span class="hl">any video.</span></h2>
+      <p class="sub">Pick who to replace. We redraw the first frame with your character, you approve it, then it moves exactly like the video &mdash; with the original sound.</p>
+      <ul class="checks" aria-label="How it works">
+        <li><svg class="ic"><use href="#i-check"/></svg>See the picture before the video</li>
+        <li><svg class="ic"><use href="#i-check"/></svg>Price on the button</li>
+        <li><svg class="ic"><use href="#i-check"/></svg>Failures refunded</li>
+      </ul>
+    </div>
+
+    <div class="swapx-work">
+      <div class="sx-card">
+        <!-- 1. la video -->
+        <div class="sx-step" id="sxEtape1">
+          <span class="sx-n"><span>1</span><svg class="ic"><use href="#i-check"/></svg></span>
+          <div class="sx-h"><p class="sx-t">Your video</p><p class="sx-d" id="sxBornes">An MP4 you own or have the right to use.</p></div>
+          <div class="sx-body">
+            <label class="sx-drop" id="sxDrop" for="sxFichier">
+              <span class="sx-ico"><svg class="ic"><use href="#i-video"/></svg></span>
+              <span><b id="sxFichierNom">Choose a video</b><small id="sxFichierInfo">MP4 · the first frame is what we redraw</small></span>
+            </label>
+            <input class="sx-file" type="file" id="sxFichier" accept="video/mp4">
+            <label class="sx-case"><input type="checkbox" id="sxDroits"><span id="sxDroitsTxt">I own this video or have the right to use it, and it shows no one who did not agree to it.</span></label>
+          </div>
+        </div>
+        <!-- 2. le personnage, qui remplacer -->
+        <div class="sx-step off" id="sxEtape2">
+          <span class="sx-n"><span>2</span><svg class="ic"><use href="#i-check"/></svg></span>
+          <div class="sx-h"><p class="sx-t">Character and who to replace</p><p class="sx-d">SWOGE, or your own character &mdash; never a real person.</p></div>
+          <div class="sx-body">
+            <span class="sx-l" id="sxPersoL">Character</span>
+            <div class="sx-chars" role="group" aria-labelledby="sxPersoL">
+              <button type="button" class="sx-char" id="sxSwoge" aria-pressed="true"><img src="img/site/swoge_meme_ref.jpg" alt="" width="44" height="44"><span><b>SWOGE</b><small>The Swole Doge</small></span></button>
+              <button type="button" class="sx-char" id="sxMien" aria-pressed="false"><span class="sx-ph" id="sxMienVue"><svg class="ic"><use href="#i-upload"/></svg></span><span><b>Your character</b><small id="sxMienEtat">Upload a picture</small></span></button>
+            </div>
+            <input class="sx-file" type="file" id="sxMienFichier" accept="image/jpeg,image/png,image/webp" aria-label="Upload your character">
+            <span class="sx-l sx-l2" id="sxCibleL">Who to replace</span>
+            <div class="seg sx-seg" id="sxCibles" role="group" aria-labelledby="sxCibleL"></div>
+            <input class="sx-in" id="sxQui" type="text" maxlength="80" placeholder="For example: the man in the red cap" aria-label="Describe who to replace" hidden>
+            <p class="sx-note" id="sxCibleNote">Only that person changes. Everyone and everything else stays as it is.</p>
+          </div>
+        </div>
+        <!-- 3. l'apercu, puis l'animation -->
+        <div class="sx-step off" id="sxEtape3">
+          <span class="sx-n"><span>3</span><svg class="ic"><use href="#i-check"/></svg></span>
+          <div class="sx-h"><p class="sx-t" id="sxT3">Preview, then animate</p><p class="sx-d" id="sxD3">First a picture you can check, then the video.</p></div>
+          <div class="sx-body">
+            <div class="sx-go">
+              <div class="seg" id="sxRes" role="group" aria-label="Quality" hidden>
+                <button type="button" data-res="720p" aria-pressed="true">720p</button>
+                <button type="button" data-res="1080p" aria-pressed="false">1080p</button>
+              </div>
+              <button class="gen" type="button" id="sxGo" disabled><svg class="ic"><use href="#i-spark"/></svg><span class="gl" id="sxGoL">Create preview</span><span class="gd" id="sxGoD" hidden>·</span><span class="gp" id="sxGoP"></span></button>
+              <p id="sxGoNote">Choose a video first.</p>
+            </div>
+            <div class="sx-cr" id="sxCr" hidden><span id="sxCrTxt"></span><button class="gold" type="button" id="sxCrTop"><svg class="ic"><use href="#i-plus"/></svg>Top up</button></div>
+            <p class="sx-err" id="sxErr" role="alert" hidden></p>
+          </div>
+        </div>
+      </div>
+
+      <!-- le resultat : l'apercu (Regenerate / Use this picture), la progression, la video -->
+      <aside class="sx-res" aria-label="SWOGE Swap result" aria-live="polite">
+        <div class="sx-stage" id="sxScene"><svg class="ic"><use href="#i-image"/></svg><b>Your preview appears here</b><small>We redraw the first frame of your video with your character in place. Nothing moves until you approve it.</small></div>
+        <div class="sx-cands" id="sxCands" hidden></div>
+        <div class="sx-acts" id="sxActs" hidden></div>
+        <div class="sx-parts" id="sxParts" hidden></div>
+        <p class="sx-foot" id="sxFoot" hidden></p>
+      </aside>
+    </div>
+    <ul class="sx-rules" aria-label="Rules">
+      <li><svg class="ic"><use href="#i-ban"/></svg>Characters only — never a real person's face</li>
+      <li><svg class="ic"><use href="#i-check"/></svg>Finished videos carry a small “Made with SWOGE AI” mark</li>
+      <li><svg class="ic"><use href="#i-clock"/></svg>Kept 48 h, visible only to your wallet</li>
+    </ul>
   </section>
 
   <!-- ============ SERIES & ADS (onglet Video) — /studio/production ============ -->
@@ -974,7 +1191,7 @@ footer b{color:var(--navy)}
     <div class="tcard nope">
       <div class="ti"><svg class="ic"><use href="#i-ban"/></svg></div>
       <h3>Not allowed here</h3>
-      <p>SWOGE and the characters you invent — never someone real. These are our rules of use. SWOGE runs no filter of its own; when a provider refuses a request, nothing is charged. No real person’s face is ever put on anyone, and there is no voice cloning here. SWOGE Swap only puts SWOGE into a video you own.</p>
+      <p>SWOGE and the characters you invent — never someone real. These are our rules of use. SWOGE runs no filter of its own; when a provider refuses a request, nothing is charged. No real person’s face is ever put on anyone, and there is no voice cloning here. SWOGE Swap only puts SWOGE, or a character you upload and we check first, into a video you own.</p>
       <div class="nolist">
         <span><svg class="ic"><use href="#i-x"/></svg>Face swap</span>
         <span><svg class="ic"><use href="#i-x"/></svg>Voice cloning</span>
@@ -1594,7 +1811,8 @@ footer b{color:var(--navy)}
     options($("format"), formats || ["auto"], t === "video" ? etat.formatV : etat.formatI, function(v){ return v === "auto" ? "Auto" : v; });
     $("prod").hidden = t !== "video";
   }
-  function choisisOnglet(t){
+  /* `garde` : l'adresse garde son ancre (#swap, la section SWOGE Swap) au premier dessin */
+  function choisisOnglet(t, garde){
     if (!ONGLETS[t]) t = "image";
     etat.onglet = t;
     [].forEach.call(document.querySelectorAll(".tab"), function(b){ b.setAttribute("aria-selected", String(b.getAttribute("data-tab") === t)); });
@@ -1602,7 +1820,7 @@ footer b{color:var(--navy)}
     if (etat.jointe) { etat.jointe = null; peintRef(); }
     peintCommandes(); peintGrille(); peintPrix(); peintResultat();
     if (t === "video") chargeProd();
-    try { history.replaceState(null, "", "#" + t); } catch (e) {}
+    if (!garde) try { history.replaceState(null, "", "#" + t); } catch (e) {}
     majBarre();
   }
 
@@ -2048,6 +2266,8 @@ footer b{color:var(--navy)}
     $("crTopL").textContent = j ? "Top up" : "Sign in";
     $("crTop").setAttribute("aria-label", j ? "Top up your dollar credit" : "Sign in with your wallet");
     peintPrix();
+    /* SWOGE Swap (section #swap, script a part) lit le meme credit */
+    try { window.dispatchEvent(new CustomEvent("swoge:studio-credit", { detail: { credit: etat.credit } })); } catch (e) {}
   }
   function chargeSoldes(){
     var j = jeton();
@@ -2720,15 +2940,503 @@ footer b{color:var(--navy)}
     if (window.swogeFil && typeof window.swogeFil.ecoute === "function")
       window.swogeFil.ecoute(function(m){ if (m && m.type === "balance" && m.balance != null && jeton()) { etat.swoge = Number(m.balance); peintSoldes(); } });
   });
+  /* Ce que la section SWOGE Swap (#swap) reprend de la page : la connexion, la recharge, le credit. */
+  window.swogeStudio = { ouvreConnexion: ouvreConnexion, ouvreRecharge: ouvreRecharge, chargeCredit: chargeCredit, credit: function(){ return etat.credit; } };
   var dep = (location.hash || "").replace("#", "");
   PROD.brouillon = nouveau("serie");
-  choisisOnglet(dep === "series" ? "video" : (ONGLETS[dep] ? dep : "image"));
+  choisisOnglet(dep === "series" ? "video" : (ONGLETS[dep] ? dep : "image"), dep === "swap");
   peintRef(); peintSoldes(); peintHisto(); peintProd();
   chargeCatalogue().then(function(){ peintFilm(); });
   chargeSoldes();
   synchroScenes();
   reprend();
   if (dep === "series") setTimeout(function(){ $("prod").scrollIntoView({ block: "start" }); }, 60);
+  if (dep === "swap") setTimeout(function(){ $("swap").scrollIntoView({ block: "start" }); }, 60);
+})();
+</script>
+
+<script>
+/* ==========================================================================
+ * SWOGE SWAP (section #swap, 15/10/2026 soir) — LA PAGE MONTRE ET ENVOIE ; LE SERVEUR DECIDE.
+ *
+ * Le chemin que le proprietaire a valide, en trois gestes :
+ *   1. la video : BRUTE (video/mp4) a POST /studio/swap?mode=anime, avec `x-swap-rights: yes`
+ *      seulement si la case est cochee ; la duree et la taille sont dites avant l'envoi ;
+ *   2. le personnage (SWOGE, ou une image du joueur envoyee BRUTE a POST /studio/swap/image : la
+ *      porte du serveur la juge, la page ne garde que le sha256 rendu) et qui remplacer (la liste du
+ *      serveur, ou une description courte) ;
+ *   3. « Create preview » : POST /studio/swap/<id>/apercu ; le prix est celui du serveur
+ *      (`apercu.prixUsd`), la reserve est prise et rendue la-bas. L'image se lit AVEC la session
+ *      (blob:). « Regenerate » en refait une, « Use this picture » la choisit ; « Animate » :
+ *      POST …/lance { apercu, resolution, confirmeUsd } — le prix montre, que le serveur recompare.
+ * Reprise apres un rechargement : GET /studio/swap rend `passeAnime` ; son etat et ses apercus
+ * sont relus. Le credit, la connexion et la recharge sont ceux de la page (window.swogeStudio).
+ * Aucune adresse n'est envoyee ; tout texte venu du serveur passe par textContent.
+ * ======================================================================== */
+(function(){
+  "use strict";
+  if (!document.getElementById("swap")) return;
+  var $ = function(id){ return document.getElementById(id); };
+  /* `?server=` : un serveur LOCAL seulement (les essais), comme le reste de la page */
+  function serveur(){
+    try { var q = new URLSearchParams(location.search).get("server"); if (q) { var u = new URL(String(q).replace(/^ws/, "http")); if (/^(127\.0\.0\.1|localhost|\[::1\])$/.test(u.hostname)) return u.origin; } } catch (e) {}
+    return "https://web-production-220a3.up.railway.app";
+  }
+  function jeton(){ try { return localStorage.getItem("swogeSession"); } catch (e) { return null; } }
+  /* une reponse refusee garde la raison EXACTE du serveur */
+  function lis(r){ return r.json()["catch"](function(){ return {}; }).then(function(o){ if (!r.ok || o.ok === false) { var e = new Error(o.raison || ("error " + r.status)); e.code = r.status; e.corps = o; throw e; } return o; }); }
+  function api(chemin, methode, corps){
+    var hd = { authorization: "Bearer " + jeton() }; if (corps) hd["content-type"] = "application/json";
+    return fetch(serveur() + chemin, { method: methode || "GET", cache: "no-store", headers: hd, body: corps ? JSON.stringify(corps) : undefined }).then(lis);
+  }
+  function dollars(x){ var n = Number(x); return isFinite(n) ? "$" + (Math.round(n * 100 + 1e-9) / 100).toFixed(2) : "—"; }
+  function secondes(s){ return s < 60 ? (Math.round(s * 10) / 10) + " s" : Math.floor(s / 60) + " min " + Math.round(s % 60) + " s"; }
+  function h(tag, a, kids){
+    var e = document.createElement(tag);
+    if (a) Object.keys(a).forEach(function(k){ var v = a[k]; if (v == null || v === false) return; if (k === "class") e.className = v; else if (k === "text") e.textContent = v; else e.setAttribute(k, v === true ? "" : String(v)); });
+    (kids || []).forEach(function(c){ if (c == null || c === false) return; e.appendChild(typeof c === "string" ? document.createTextNode(c) : c); });
+    return e;
+  }
+  function icone(id){ var s = document.createElementNS("http://www.w3.org/2000/svg", "svg"); s.setAttribute("class", "ic"); var u = document.createElementNS("http://www.w3.org/2000/svg", "use"); u.setAttribute("href", "#" + id); s.appendChild(u); return s; }
+  var studio = function(){ return window.swogeStudio || {}; };
+  function connexion(){ if (studio().ouvreConnexion) studio().ouvreConnexion(); }
+  function recharge(){ if (studio().ouvreRecharge) studio().ouvreRecharge(); }
+
+  /* La duree d'un MP4 lue dans la page (meme lecture que kling_animer.html et le serveur) : ftyp,
+     moov > mvhd v0/v1, mvex > mehd ; null quand on ne sait pas — le serveur juge alors. */
+  function dureeMp4(tampon){
+    var v = new DataView(tampon), n = v.byteLength;
+    function boite(pos, fin){
+      if (pos + 8 > fin) return null;
+      var taille = v.getUint32(pos), entete = 8, type = "";
+      for (var i = 4; i < 8; i++) type += String.fromCharCode(v.getUint8(pos + i));
+      if (taille === 1) { if (pos + 16 > fin) return null; taille = v.getUint32(pos + 8) * 4294967296 + v.getUint32(pos + 12); entete = 16; }
+      else if (taille === 0) taille = fin - pos;
+      if (taille < entete || pos + taille > fin) return null;
+      return { type: type, debut: pos + entete, fin: pos + taille };
+    }
+    function cherche(debut, fin, type){ for (var p = debut; p < fin;) { var b = boite(p, fin); if (!b) return null; if (b.type === type) return b; p = b.fin; } return null; }
+    var premiere = boite(0, n);
+    if (!premiere || premiere.type !== "ftyp") return null;
+    var moov = cherche(0, n, "moov"); if (!moov) return null;
+    var mvhd = cherche(moov.debut, moov.fin, "mvhd"); if (!mvhd) return null;
+    var d = mvhd.debut, echelle, duree, inconnue;
+    if (d + 1 > mvhd.fin) return null;
+    if (v.getUint8(d) === 1) { if (d + 32 > mvhd.fin) return null; echelle = v.getUint32(d + 20); duree = v.getUint32(d + 24) * 4294967296 + v.getUint32(d + 28); inconnue = v.getUint32(d + 24) === 4294967295 && v.getUint32(d + 28) === 4294967295; }
+    else { if (d + 20 > mvhd.fin) return null; echelle = v.getUint32(d + 12); duree = v.getUint32(d + 16); inconnue = duree === 4294967295; }
+    if (!echelle) return null;
+    var mvex = cherche(moov.debut, moov.fin, "mvex");
+    if (mvex) {
+      var mehd = cherche(mvex.debut, mvex.fin, "mehd"), m = mehd && mehd.debut;
+      duree = 0; inconnue = false;
+      if (mehd && m + 1 <= mehd.fin) {
+        if (v.getUint8(m) === 1 && m + 12 <= mehd.fin) { duree = v.getUint32(m + 4) * 4294967296 + v.getUint32(m + 8); inconnue = v.getUint32(m + 4) === 4294967295 && v.getUint32(m + 8) === 4294967295; }
+        else if (v.getUint8(m) === 0 && m + 8 <= mehd.fin) { duree = v.getUint32(m + 4); inconnue = duree === 4294967295; }
+      }
+    }
+    return !duree || inconnue ? null : duree / echelle;
+  }
+
+  /* ---- l'etat de la section ---- */
+  var NOMS = { gauche: "Left", centre: "Center", droite: "Right", seule: "Only person" };
+  var ACTIFS = ["file", "en_cours", "assemblage"];
+  var X = null;
+  function neuf(){
+    return { fichier: null, duree: null, id: null, etat: null, envoi: false, perso: "swoge", mien: null, sha: null, mienEtat: "", mienMsg: "", cible: null, qui: "",
+             apercu: null, vu: null, choisi: null, res: "720p", suivi: null, suiviA: null, images: {}, video: null, videoDe: null, err: "", geste: false };
+  }
+  X = neuf();
+  var VUE = null, CREDIT = null;
+  var statut = function(){ return X.etat ? X.etat.statut : null; };
+  var pret = function(){ return statut() === "pret"; };
+  function candidats(){ return (X.apercu && X.apercu.candidats) || []; }
+  function enFabrication(){ return candidats().some(function(c){ return c.statut === "making"; }); }
+  function prixApercu(){ return VUE && VUE.apercu ? VUE.apercu.prixUsd : null; }
+  function prixVideo(){ var p = X.etat && X.etat.prixUsdParResolution; return p ? p[X.res] : null; }
+  function erreur(t){ X.err = t || ""; peint(); }
+
+  /* ---- la vue du serveur (prix, bornes, cibles), le credit ---- */
+  function chargeVue(){
+    var hd = jeton() ? { authorization: "Bearer " + jeton() } : {};
+    return fetch(serveur() + "/studio/swap", { cache: "no-store", headers: hd }).then(lis).then(function(v){
+      VUE = v; peintCibles(); peint();
+      if (v.connecte && v.passeAnime && !X.id) reprend(v.passeAnime);
+    })["catch"](function(e){ erreur("SWOGE Swap could not be reached: " + e.message + ". Try again in a moment."); });
+  }
+  function chargeCredit(){
+    if (!jeton()) { CREDIT = null; peint(); return; }
+    fetch(serveur() + "/credit", { cache: "no-store", headers: { authorization: "Bearer " + jeton() } }).then(lis).then(function(d){ CREDIT = Number(d.balanceUsd); peint(); })["catch"](function(){});
+  }
+  window.addEventListener("swoge:studio-credit", function(e){ if (e && e.detail && e.detail.credit != null) { CREDIT = Number(e.detail.credit); peint(); } });
+  window.addEventListener("swoge:credit", function(){ chargeCredit(); });
+
+  /* ---- 1. la video ---- */
+  $("sxFichier").addEventListener("change", function(){
+    var f = this.files && this.files[0]; this.value = "";
+    if (!f) return;
+    if (!jeton()) { connexion(); return; }
+    var v = VUE || {}, max = v.octetsMax || 60 * 1048576;
+    X.err = "";
+    if (f.size > max) { erreur("This video is " + (f.size / 1048576).toFixed(1) + " MB — " + Math.round(max / 1048576) + " MB at most."); return; }
+    f.slice(0, Math.min(f.size, 64 * 1048576)).arrayBuffer().then(function(b){
+      var d = dureeMp4(b);
+      if (d != null && v.dureeMinS && d < v.dureeMinS) { erreur("This video is " + d.toFixed(1) + " s long — " + v.dureeMinS + " s at least."); return; }
+      if (d != null && v.dureeMaxS && d > v.dureeMaxS) { erreur("This video is " + d.toFixed(1) + " s long — " + v.dureeMaxS + " s at most."); return; }
+      /* une autre video : le plan d'avant (jamais lance) est rendu au serveur */
+      if (X.id && pret()) api("/studio/swap/" + X.id + "/abandonne", "POST", {})["catch"](function(){});
+      var garde = { perso: X.perso, sha: X.sha, mien: X.mien, mienEtat: X.mienEtat, mienMsg: X.mienMsg, cible: X.cible, qui: X.qui, droits: $("sxDroits").checked };
+      arreteSuivi(); X = neuf(); Object.assign(X, garde);
+      X.fichier = f; X.duree = d;
+      envoie();
+    });
+  });
+  $("sxDroits").addEventListener("change", function(){ X.err = ""; envoie(); });
+  function envoie(){
+    if (!X.fichier || X.id || X.envoi) { peint(); return; }
+    if (!$("sxDroits").checked) { peint(); return; }
+    X.envoi = true; peint();
+    fetch(serveur() + "/studio/swap?mode=anime", { method: "POST", cache: "no-store", headers: { "content-type": "video/mp4", authorization: "Bearer " + jeton(), "x-swap-rights": "yes" }, body: X.fichier })
+      .then(lis).then(function(o){ X.envoi = false; X.id = o.id; X.etat = { statut: "decoupe" }; suis(); })
+      ["catch"](function(e){ X.envoi = false; erreur(e.code === 401 ? "Sign in with your wallet first." : "The video was not accepted: " + e.message); });
+  }
+
+  /* ---- 2. le personnage, qui remplacer ---- */
+  $("sxSwoge").addEventListener("click", function(){ if (X.perso !== "swoge") { X.perso = "swoge"; X.choisi = null; } peint(); });
+  $("sxMien").addEventListener("click", function(){
+    if (!jeton()) { connexion(); return; }
+    if (X.sha && X.perso !== "libre") { X.perso = "libre"; X.choisi = null; peint(); return; }
+    $("sxMienFichier").click();
+  });
+  $("sxMienFichier").addEventListener("change", function(){
+    var f = this.files && this.files[0]; this.value = "";
+    if (!f) return;
+    if (!/^image\/(jpeg|png|webp)$/.test(f.type)) { X.mienEtat = "non"; X.mienMsg = "Use a JPEG, PNG or WebP picture."; peint(); return; }
+    if (VUE && VUE.imageOctetsMax && f.size > VUE.imageOctetsMax) { X.mienEtat = "non"; X.mienMsg = "The picture is over " + Math.round(VUE.imageOctetsMax / 1048576) + " MB."; peint(); return; }
+    if (X.mien) URL.revokeObjectURL(X.mien);
+    X.mien = URL.createObjectURL(f); X.sha = null; X.mienEtat = "verif"; X.mienMsg = ""; X.perso = "libre"; X.choisi = null; peint();
+    fetch(serveur() + "/studio/swap/image", { method: "POST", cache: "no-store", headers: { "content-type": f.type, authorization: "Bearer " + jeton() }, body: f })
+      .then(lis).then(function(o){ X.sha = o.id; X.mienEtat = "ok"; peint(); })
+      ["catch"](function(e){ X.sha = null; X.mienEtat = "non"; X.mienMsg = e.message; X.perso = "swoge"; peint(); });
+  });
+  function peintCibles(){
+    var box = $("sxCibles"); box.textContent = "";
+    var l = ((VUE && VUE.cibles) || []).map(function(c){ return { id: c.id, nom: NOMS[c.id] || c.nom, titre: c.nom }; });
+    l.push({ id: "decrit", nom: "Describe…", titre: "Describe the person in a few words" });
+    l.forEach(function(c){ box.appendChild(h("button", { type: "button", "data-cible": c.id, title: c.titre, "aria-pressed": String(X.cible === c.id), text: c.nom })); });
+    if (VUE && VUE.apercu && VUE.apercu.quiMax) $("sxQui").maxLength = VUE.apercu.quiMax;
+  }
+  $("sxCibles").addEventListener("click", function(ev){
+    var b = ev.target.closest("button[data-cible]"); if (!b) return;
+    X.cible = b.getAttribute("data-cible"); X.choisi = null; peint();
+    if (X.cible === "decrit") $("sxQui").focus();
+  });
+  $("sxQui").addEventListener("input", function(){ X.qui = this.value; X.choisi = null; peint(); });
+
+  /* ---- 3. l'apercu, puis la video ---- */
+  function creeApercu(){
+    if (!X.id || !pret() || enFabrication()) return;
+    var q = { cible: X.cible };
+    if (X.cible === "decrit") q.qui = X.qui;
+    if (X.perso === "libre") q.image = X.sha; else q.personnage = "swoge";
+    X.err = ""; X.choisi = null; X.geste = true; peint();
+    if (window.matchMedia && window.matchMedia("(max-width:960px)").matches) try { $("sxScene").scrollIntoView({ block: "center", behavior: "smooth" }); } catch (e) {}
+    api("/studio/swap/" + X.id + "/apercu", "POST", q).then(function(r){
+      X.geste = false; X.apercu = r.apercu; X.vu = null; peint(); suisApercu(); chargeCredit();
+    })["catch"](function(e){
+      X.geste = false;
+      if (e.code === 402) { X.err = e.message; chargeCredit(); peint(); return; }
+      erreur(e.message);
+    });
+  }
+  function anime(){
+    var p = prixVideo(); if (p == null || X.choisi == null || !pret()) return;
+    X.err = ""; X.geste = true; peint();
+    api("/studio/swap/" + X.id + "/lance", "POST", { apercu: X.choisi, resolution: X.res, confirmeUsd: p }).then(function(e){
+      X.geste = false; X.etat = e; peint(); suis(); chargeCredit();
+    })["catch"](function(e){ X.geste = false; if (e.code === 402) chargeCredit(); erreur(e.message); });
+  }
+  $("sxGo").addEventListener("click", function(){
+    if (!jeton()) return connexion();
+    var a = this.getAttribute("data-geste");
+    if (a === "recharge") return recharge();
+    if (a === "apercu") return creeApercu();
+    if (a === "anime") return anime();
+    if (a === "nouveau") return recommence();
+  });
+  $("sxCrTop").addEventListener("click", recharge);
+  $("sxRes").addEventListener("click", function(ev){ var b = ev.target.closest("button[data-res]"); if (!b) return; X.res = b.getAttribute("data-res"); peint(); });
+  function recommence(){
+    if (X.id && pret()) api("/studio/swap/" + X.id + "/abandonne", "POST", {})["catch"](function(){});
+    var garde = { perso: X.perso, sha: X.sha, mien: X.mien, mienEtat: X.mienEtat, mienMsg: X.mienMsg, cible: X.cible, qui: X.qui };
+    arreteSuivi(); X = neuf(); Object.assign(X, garde); $("sxDroits").checked = false; peint();
+  }
+
+  /* ---- le suivi de la passe, et celui des apercus ---- */
+  function arreteSuivi(){ if (X.suivi) clearTimeout(X.suivi); if (X.suiviA) clearTimeout(X.suiviA); X.suivi = X.suiviA = null; }
+  function suis(){
+    if (X.suivi) clearTimeout(X.suivi);
+    var id = X.id; if (!id) return;
+    api("/studio/swap/" + id).then(function(e){
+      if (X.id !== id) return;
+      X.etat = e; peint();
+      if (e.statut === "pret") { chargeApercu(); return; }
+      if (e.statut === "fini") { montreVideo(); chargeCredit(); return; }
+      if (e.statut === "erreur" || e.statut === "abandon") { chargeCredit(); return; }
+      if (e.statut === "incomplet") return;
+      X.suivi = setTimeout(suis, e.statut === "decoupe" ? 1500 : 5000);
+    })["catch"](function(err){ if (X.id !== id) return; X.err = "Lost contact with the server — trying again… (" + err.message + ")"; peint(); X.suivi = setTimeout(suis, 15000); });
+  }
+  function chargeApercu(){
+    if (X.suiviA) clearTimeout(X.suiviA);
+    var id = X.id; if (!id) return;
+    api("/studio/swap/" + id + "/apercu").then(function(r){
+      if (X.id !== id) return;
+      X.apercu = r.apercu;
+      var l = candidats(), prets = l.filter(function(c){ return c.statut === "ready"; });
+      /* reprise : la cible et le personnage de la derniere image ; on montre la derniere prete */
+      if (l.length && X.cible == null) { var d = l[l.length - 1]; X.cible = d.cible; if (d.decrit) X.qui = d.decrit; }
+      var dernier = l[l.length - 1];
+      if (dernier && dernier.statut === "ready" && (X.vu == null || X.vu < dernier.k)) X.vu = dernier.k;
+      else if (X.vu == null && prets.length) X.vu = prets[prets.length - 1].k;
+      peint();
+      if (X.vu != null) image(X.vu);
+      if (enFabrication()) X.suiviA = setTimeout(chargeApercu, 2500); else chargeCredit();
+    })["catch"](function(){ if (X.id === id) X.suiviA = setTimeout(chargeApercu, 6000); });
+  }
+  function suisApercu(){ if (X.suiviA) clearTimeout(X.suiviA); X.suiviA = setTimeout(chargeApercu, 1500); }
+  /* une image d'apercu, lue AVEC la session (blob:), gardee pour la passe */
+  function image(k){
+    if (X.images[k] || !X.id) return;
+    var id = X.id; X.images[k] = "…";
+    fetch(serveur() + "/studio/swap/" + id + "/apercu/" + k, { cache: "no-store", headers: { authorization: "Bearer " + jeton() } })
+      .then(function(r){ if (!r.ok) throw new Error("error " + r.status); return r.blob(); })
+      .then(function(b){ if (X.id !== id) return; X.images[k] = URL.createObjectURL(b); peint(); })
+      ["catch"](function(){ if (X.id === id) delete X.images[k]; });
+  }
+  function montreVideo(){
+    var e = X.etat; if (!e || !e.video || X.videoDe === e.id) return;
+    var id = e.id; X.videoDe = id;
+    fetch(serveur() + e.video, { cache: "no-store", headers: { authorization: "Bearer " + jeton() } })
+      .then(function(r){ if (!r.ok) throw new Error("error " + r.status); return r.blob(); })
+      .then(function(b){ if (X.id !== id) return; if (X.video) URL.revokeObjectURL(X.video); X.video = URL.createObjectURL(b); peint(); })
+      ["catch"](function(err){ X.videoDe = null; erreur("The finished video could not be loaded: " + err.message); });
+  }
+  function reprend(id){
+    api("/studio/swap/" + id).then(function(e){
+      if (X.id || X.fichier) return;
+      if (["pret", "file", "en_cours", "assemblage", "incomplet", "fini"].indexOf(e.statut) < 0) return;
+      X.id = e.id; X.etat = e;
+      if (e.choix && e.choix.cible && X.cible == null) X.cible = e.choix.cible;
+      if (e.choix && e.choix.apercu != null) { X.choisi = e.choix.apercu; X.vu = e.choix.apercu; image(X.vu); }
+      if (e.resolution) X.res = e.resolution;
+      $("sxDroits").checked = true;
+      peint();
+      if (e.statut === "pret") chargeApercu(); else suis();
+    })["catch"](function(){});
+  }
+
+  /* ---- le dessin ---- */
+  function bouton(texte, classe, action, prix){
+    var b = h("button", { type: "button", class: classe }, []);
+    if (classe === "gen") b.appendChild(icone(action === "telecharge" ? "i-download" : "i-spark"));
+    b.appendChild(h("span", { class: "gl", text: texte }));
+    if (prix) { b.appendChild(h("span", { class: "gd", text: "·" })); b.appendChild(h("span", { class: "gp", text: prix })); }
+    b.setAttribute("data-acte", action);
+    return b;
+  }
+  function peint(){
+    var co = !!jeton(), st = statut(), e = X.etat, v = VUE || {};
+    var pa = prixApercu(), pv = prixVideo();
+    /* les bornes, dites avant tout */
+    if (v.dureeMinS) $("sxBornes").textContent = "An MP4 you own or have the right to use · " + v.dureeMinS + " to " + v.dureeMaxS + " s · up to " + Math.round((v.octetsMax || 0) / 1048576) + " MB.";
+    if (v.droitsTexte) $("sxDroitsTxt").textContent = v.droitsTexte;
+    /* 1 */
+    var src = e && e.source;
+    $("sxDrop").classList.toggle("has", !!(X.fichier || src));
+    $("sxFichierNom").textContent = X.fichier ? X.fichier.name : src ? "Your video" : "Choose a video";
+    var info = [];
+    if (X.duree != null) info.push(secondes(X.duree)); else if (src && src.duree) info.push(secondes(src.duree));
+    if (src && src.largeur) info.push(src.largeur + "×" + src.hauteur);
+    if (X.fichier) info.push((X.fichier.size / 1048576).toFixed(1) + " MB");
+    $("sxFichierInfo").textContent = X.envoi ? "Uploading…" : st === "decoupe" ? "Reading the video…" : info.length ? info.join(" · ") : "MP4 · the first frame is what we redraw";
+    var bloque = X.envoi || st === "decoupe" || ACTIFS.indexOf(st) >= 0 || st === "incomplet";
+    $("sxFichier").disabled = bloque; $("sxDroits").disabled = !!X.id || X.envoi;
+    $("sxEtape1").classList.toggle("fait", !!(e && st !== "decoupe" && st !== "erreur"));
+    /* 2 */
+    var etape2 = pret();
+    $("sxEtape2").classList.toggle("off", !etape2);
+    $("sxEtape2").classList.toggle("fait", X.choisi != null || ACTIFS.indexOf(st) >= 0 || st === "fini" || st === "incomplet");
+    $("sxSwoge").setAttribute("aria-pressed", String(X.perso === "swoge"));
+    $("sxMien").setAttribute("aria-pressed", String(X.perso === "libre"));
+    var vueMien = $("sxMienVue");
+    if (X.mien) { if (vueMien.tagName !== "IMG") { var im = h("img", { id: "sxMienVue", alt: "", width: 44, height: 44 }); vueMien.parentNode.replaceChild(im, vueMien); vueMien = im; } vueMien.src = X.mien; }
+    var me = $("sxMienEtat");
+    me.className = X.mienEtat === "ok" ? "ok" : X.mienEtat === "non" ? "non" : "";
+    me.textContent = X.mienEtat === "verif" ? "Checking the picture…" : X.mienEtat === "ok" ? "Accepted" : X.mienEtat === "non" ? X.mienMsg : (v.verificationImages === false ? "Not available right now" : "Upload a picture");
+    $("sxMien").disabled = v.verificationImages === false && !X.sha;
+    [].forEach.call($("sxCibles").querySelectorAll("button"), function(b){ b.setAttribute("aria-pressed", String(b.getAttribute("data-cible") === X.cible)); });
+    $("sxQui").hidden = X.cible !== "decrit";
+    if (X.cible === "decrit" && $("sxQui").value !== X.qui) $("sxQui").value = X.qui;
+    /* 3 */
+    /* deconnecte, l'etape 3 porte « Sign in to start » : elle reste cliquable */
+    var etape3 = !co || pret() || ACTIFS.indexOf(st) >= 0 || st === "incomplet" || st === "fini" || st === "erreur" || st === "abandon";
+    $("sxEtape3").classList.toggle("off", !etape3);
+    $("sxEtape3").classList.toggle("fait", st === "fini");
+    var go = $("sxGo"), gl = $("sxGoL"), gp = $("sxGoP"), gd = $("sxGoD"), note = $("sxGoNote");
+    var geste = null, texte = "Create preview", prix = "", actif = false, phrase = "", point = true;
+    var qui = X.cible && (X.cible !== "decrit" || String(X.qui || "").trim().length >= 3);
+    var persoPret = X.perso === "swoge" || (X.perso === "libre" && X.mienEtat === "ok" && X.sha);
+    var manque = null;
+    $("sxRes").hidden = true;
+    if (!co) { geste = "connexion"; texte = "Sign in to start"; actif = true; phrase = "Sign in with your wallet. Nothing is charged before you click."; }
+    else if (!X.fichier && !X.id) { phrase = $("sxDroits").checked ? "Choose a video first." : "Choose a video and tick the box."; }
+    else if (X.fichier && !X.id && !X.envoi) { phrase = "Tick the box to upload your video."; }
+    else if (X.envoi || st === "decoupe") { texte = "Reading your video…"; phrase = "Nothing is paid yet."; }
+    else if (pret() && X.choisi == null) {
+      geste = "apercu"; texte = enFabrication() ? "Making your picture…" : candidats().length ? "New preview" : "Create preview"; prix = pa != null ? "up to " + dollars(pa) : "";
+      actif = !!qui && !!persoPret && !enFabrication() && !X.geste && candidats().length < ((v.apercu && v.apercu.max) || 6);
+      phrase = !persoPret ? (X.mienEtat === "verif" ? "Wait for your picture to be checked." : "Upload your character, or pick SWOGE.")
+        : !qui ? (X.cible === "decrit" ? "Describe the person in a few words." : "Pick who to replace.")
+        : "From your dollar credit: up to " + dollars(pa) + " held, you pay what the picture really costs and the rest comes back. A failed picture is free.";
+      if (pa != null && CREDIT != null && CREDIT + 1e-9 < pa) manque = pa;
+    }
+    else if (pret() && X.choisi != null) {
+      geste = "anime"; texte = pv != null ? "Animate —" : "Animate"; prix = pv != null ? dollars(pv) : ""; point = false; actif = pv != null && !X.geste;
+      $("sxRes").hidden = !(e && e.prixUsdParResolution && e.prixUsdParResolution["1080p"] != null);
+      phrase = "Kling moves your picture like your video, then we put the original sound back. " + (e.morceaux && e.morceaux.length > 1 ? e.morceaux.length + " parts, one after another. " : "") + "Clicking confirms this price.";
+      if (pv != null && CREDIT != null && CREDIT + 1e-9 < pv) manque = pv;
+    }
+    else if (ACTIFS.indexOf(st) >= 0) { texte = "Animating…"; phrase = "You can leave this page: your video keeps going and comes back here."; }
+    else if (st === "incomplet") { texte = "Animating…"; phrase = "Some parts failed — see the result panel."; }
+    else if (st === "fini") { geste = "nouveau"; texte = "Make another"; actif = true; phrase = "Your video is ready on the right. Download it — it is kept 48 h."; }
+    else if (st === "erreur" || st === "abandon") { geste = "nouveau"; texte = "Start over"; actif = true; phrase = ""; }
+    if (manque != null) { geste = "recharge"; texte = "Top up to continue"; prix = ""; actif = true; }
+    go.setAttribute("data-geste", geste || "");
+    go.disabled = !actif; gl.textContent = texte; gp.textContent = prix; gd.hidden = !prix || !point;
+    note.textContent = phrase;
+    [].forEach.call($("sxRes").querySelectorAll("button"), function(b){ b.setAttribute("aria-pressed", String(b.getAttribute("data-res") === X.res)); });
+    $("sxCr").hidden = manque == null;
+    if (manque != null) $("sxCrTxt").textContent = "Your dollar credit is " + dollars(CREDIT) + " — this needs " + dollars(manque) + ". Top up with USDC on Base or Solana.";
+    $("sxErr").hidden = !X.err; $("sxErr").textContent = X.err;
+    peintResultat();
+  }
+
+  function peintResultat(){
+    var sc = $("sxScene"), acts = $("sxActs"), cands = $("sxCands"), parts = $("sxParts"), foot = $("sxFoot");
+    var st = statut(), e = X.etat, src = e && e.source;
+    sc.textContent = ""; acts.textContent = ""; cands.textContent = ""; parts.textContent = "";
+    acts.hidden = true; cands.hidden = true; parts.hidden = true; foot.hidden = true; foot.textContent = "";
+    sc.className = "sx-stage";
+    sc.style.aspectRatio = src && src.largeur ? src.largeur + " / " + src.hauteur : "";
+    function vide(ic, titre, petit, genre){
+      sc.className = "sx-stage" + (genre ? " " + genre : "");
+      sc.appendChild(icone(ic)); sc.appendChild(h("b", { text: titre })); if (petit) sc.appendChild(h("small", { text: petit }));
+      if (genre === "run") { var p = h("div", { class: "rprog ind" }, [h("i")]); sc.appendChild(p); }
+    }
+    function media(el, tag){ sc.className = "sx-stage media"; if (tag) sc.appendChild(h("span", { class: "sx-tag", text: tag })); sc.appendChild(el); }
+    var l = candidats(), pa = prixApercu();
+    if (!X.id && !X.envoi) { vide("i-image", "Your preview appears here", "We redraw the first frame of your video with your character in place. Nothing moves until you approve it."); return; }
+    if (X.envoi || st === "decoupe") { vide("i-video", "Reading your video…", "Nothing is paid yet.", "run"); return; }
+    if (st === "erreur" || st === "abandon") { vide("i-alert", st === "erreur" ? "This video could not be used" : "Cancelled", (e && e.message) || "", "err"); return; }
+    if (st === "pret") {
+      var c = l.filter(function(x){ return x.k === X.vu; })[0];
+      var dernier = l[l.length - 1];
+      if (dernier && dernier.statut === "making") vide("i-spark", "Redrawing the first frame…", "Your character is being put in place of " + (NOMS[dernier.cible] ? "the person " + (dernier.cible === "seule" ? "in the video" : "on the " + NOMS[dernier.cible].toLowerCase()) : dernier.decrit ? dernier.decrit : "that person") + ". Usually under a minute — you can leave the page.", "run");
+      else if (c && c.statut === "ready" && X.images[c.k] && X.images[c.k] !== "…") media(h("img", { src: X.images[c.k], alt: "Preview: the first frame with your character" }), X.choisi === c.k ? "Chosen · this starts your video" : "Preview " + (c.k + 1));
+      else if (c && c.statut === "ready") vide("i-image", "Loading your preview…", "", "run");
+      else if (dernier && dernier.statut === "failed") vide("i-alert", "This picture could not be made", dernier.message || "", "err");
+      else { vide("i-image", "Your video is ready", "Pick your character and who to replace, then press Create preview."); }
+      if (l.length > 1) {
+        cands.hidden = false;
+        l.forEach(function(x){
+          var b = h("button", { type: "button", "data-k": x.k, "aria-pressed": String(x.k === X.vu), "aria-label": "Preview " + (x.k + 1), class: x.statut === "failed" ? "rate" : null });
+          if (x.statut === "ready" && X.images[x.k] && X.images[x.k] !== "…") b.appendChild(h("img", { src: X.images[x.k], alt: "" }));
+          else b.textContent = x.statut === "failed" ? "Failed" : "…";
+          if (x.statut === "ready") image(x.k);
+          cands.appendChild(b);
+        });
+      }
+      if (c && c.statut === "ready" && !(dernier && dernier.statut === "making")) {
+        acts.hidden = false;
+        var reste = l.length < ((VUE && VUE.apercu && VUE.apercu.max) || 6);
+        if (X.choisi !== c.k) acts.appendChild(bouton("Use this picture", "gen", "utilise"));
+        if (reste) acts.appendChild(bouton("Regenerate", "sx-alt", "regenere", pa != null ? "up to " + dollars(pa) : ""));
+        foot.hidden = false;
+        foot.textContent = (c.factureUsd != null ? "This picture cost " + dollars(c.factureUsd) + ". " : "") + (reste ? "Regenerate makes a new one (up to " + dollars(pa) + ")." : "That was the last picture for this video.");
+      } else if (dernier && dernier.statut === "failed") {
+        acts.hidden = false; acts.appendChild(bouton("Try again", "gen", "regenere", pa != null ? "up to " + dollars(pa) : ""));
+      }
+      return;
+    }
+    /* la video : en file, en cours, recollage, en suspens, finie */
+    var still = X.choisi != null && X.images[X.choisi] && X.images[X.choisi] !== "…" ? X.images[X.choisi] : null;
+    var ms = (e && e.morceaux) || [], faits = ms.filter(function(m){ return m.statut === "done"; }).length;
+    if (st === "fini") {
+      if (X.video) {
+        var vd = h("video", { src: X.video, controls: true, playsinline: true, preload: "metadata", "aria-label": "Your SWOGE Swap video" });
+        media(vd, "Done · " + secondes((e && (e.dureeFinale || (src && src.duree))) || 0));
+        acts.hidden = false;
+        var dl = h("a", { class: "gen", href: X.video, download: "swoge_swap.mp4" }, [icone("i-download"), h("span", { class: "gl", text: "Download" })]);
+        acts.appendChild(dl);
+      } else vide("i-video", "Loading your video…", "", "run");
+      if (e && e.paiement && e.paiement.factureUsd != null) { foot.hidden = false; foot.textContent = "Charged " + dollars(e.paiement.factureUsd) + (e.paiement.renduUsd ? ", " + dollars(e.paiement.renduUsd) + " refunded" : "") + ". Kept 48 h, only your wallet can open it."; }
+      return;
+    }
+    if (st === "file") vide("i-clock", "Waiting for a free slot" + (e.file ? " — #" + e.file + " in line" : ""), "Your credit is held; it starts by itself.", "run");
+    else if (st === "assemblage") still ? media(h("img", { src: still, alt: "" }), "Putting the original sound back…") : vide("i-video", "Putting the original sound back…", "", "run");
+    else if (st === "en_cours") {
+      var tag = ms.length > 1 ? "Animating · part " + Math.min(faits + 1, ms.length) + " of " + ms.length : "Animating with Kling…";
+      if (still) media(h("img", { src: still, alt: "" }), tag); else vide("i-video", tag, "", "run");
+      foot.hidden = false; foot.textContent = "Kling is moving your picture like your video. This usually takes a few minutes.";
+    } else if (st === "incomplet") {
+      if (still) media(h("img", { src: still, alt: "" }), "Some parts failed"); else vide("i-alert", "Some parts failed", "", "err");
+    }
+    if (st === "file") { acts.hidden = false; acts.appendChild(bouton("Cancel and refund", "sx-alt", "annule")); }
+    if (st === "incomplet") {
+      parts.hidden = false;
+      ms.forEach(function(m){
+        if (m.statut !== "failed" && m.statut !== "original") return;
+        var row = h("div", { class: "sx-part " + m.statut }, [h("span", { text: "Part " + (m.i + 1) + ": " + (m.message || m.statut) })]);
+        if (m.relanceGratuite || m.rejouable) { var r = h("button", { type: "button", class: "rbtn", "data-acte": "reessaie", "data-i": m.i, text: "Retry (free)" }); row.appendChild(r); }
+        parts.appendChild(row);
+      });
+      acts.hidden = false; acts.appendChild(bouton("Finish now", "sx-alt", "termine"));
+      foot.hidden = false; foot.textContent = (e && e.message) || "";
+    }
+  }
+  $("sxCands").addEventListener("click", function(ev){ var b = ev.target.closest("button[data-k]"); if (!b) return; X.vu = Number(b.getAttribute("data-k")); image(X.vu); peint(); });
+  $("sxActs").addEventListener("click", function(ev){
+    var b = ev.target.closest("[data-acte]"); if (!b) return;
+    var a = b.getAttribute("data-acte");
+    if (a === "regenere") { var c = candidats().filter(function(x){ return x.k === X.vu; })[0] || candidats()[candidats().length - 1]; if (c && X.cible == null) X.cible = c.cible; creeApercu(); }
+    else if (a === "utilise") { X.choisi = X.vu; peint(); try { $("sxGo").focus({ preventScroll: true }); } catch (e) {} if (window.matchMedia && window.matchMedia("(max-width:960px)").matches) try { $("sxEtape3").scrollIntoView({ block: "center", behavior: "smooth" }); } catch (e) {} }
+    else if (a === "annule") api("/studio/swap/" + X.id + "/abandonne", "POST", {}).then(function(r){ X.etat = r; peint(); chargeCredit(); })["catch"](function(e){ erreur("Not cancelled: " + e.message); });
+    else if (a === "termine") { b.disabled = true; api("/studio/swap/" + X.id + "/termine", "POST", {}).then(function(r){ X.etat = r; peint(); suis(); })["catch"](function(e){ erreur("Not finished: " + e.message); }); }
+  });
+  $("sxParts").addEventListener("click", function(ev){
+    var b = ev.target.closest("[data-acte=reessaie]"); if (!b) return;
+    b.disabled = true;
+    api("/studio/swap/" + X.id + "/reessaie/" + b.getAttribute("data-i"), "POST", {}).then(function(r){ X.etat = r; peint(); suis(); })["catch"](function(e){ b.disabled = false; erreur("Not retried: " + e.message); });
+  });
+
+  /* ---- le depart : rien n'est demande avant que la section approche de l'ecran ---- */
+  var parti = false;
+  function demarre(){ if (parti) return; parti = true; chargeVue(); chargeCredit(); }
+  /* au telephone, la barre de prompt du Studio se retire tant que la section est a l'ecran */
+  if ("IntersectionObserver" in window) new IntersectionObserver(function(es){ es.forEach(function(x){ document.documentElement.classList.toggle("swap-vue", x.isIntersecting); }); }, { rootMargin: "-35% 0px -35% 0px" }).observe($("swap"));
+  peint();
+  if (location.hash === "#swap" || !("IntersectionObserver" in window)) demarre();
+  else {
+    var io = new IntersectionObserver(function(es){ if (es.some(function(x){ return x.isIntersecting; })) { io.disconnect(); demarre(); } }, { rootMargin: "300px 0px" });
+    io.observe($("swap"));
+  }
+  /* la session change (connexion sur la page ou dans la bulle portefeuille) : tout se relit */
+  var dernierJeton = jeton();
+  setInterval(function(){
+    var j = jeton(); if (j === dernierJeton) return;
+    dernierJeton = j; arreteSuivi(); X = neuf(); CREDIT = null;
+    if (parti) { chargeVue(); chargeCredit(); } else peint();
+  }, 2000);
 })();
 </script>
 

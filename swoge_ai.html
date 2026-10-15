@@ -38,7 +38,7 @@
  * une fois par session pour savoir si le serveur en a une plus recente.
  * Sans ca, un joueur garde des semaines une version corrigee depuis
  * longtemps. `node cache_marqueur.test.js` donne la valeur a ecrire. */
-var MARQUE_PAGE = '690ddf78';
+var MARQUE_PAGE = '2bfef022';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -860,7 +860,8 @@ th:last-child,td:last-child{padding-right:18px}
       <div class="ch"><h2 data-t="tMirPos">Your mirror · open positions</h2><span class="r"><span class="tag" id="mirPosN">—</span></span></div>
       <div class="cb"><div id="gxMiroirPositions"><div class="mir"><p class="mir-note" data-t="vMirPos">Sign in and create a mirror wallet to see your positions here.</p></div></div></div>
     </div>
-    <div id="cAg" class="card" data-pan="agents">
+    <!-- 15/10/2026 : le tableau des agents est cache (demande du proprietaire) ; le cerveau les montre deja. -->
+    <div id="cAg" class="card" data-pan="agents" hidden>
       <div class="ch"><h2 data-t="tAgents">Agents</h2><span class="sub" id="agN"></span></div>
       <div class="tw"><table><thead><tr><th data-t="hAgent">Agent</th><th class="c4" data-t="hRole">Role</th><th class="n" data-t="hVus">Seen</th><th class="n" data-t="hBloques">Vetoed</th></tr></thead><tbody id="agents"></tbody></table></div>
     </div>

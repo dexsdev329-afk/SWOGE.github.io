@@ -25,7 +25,7 @@ let chromium = null; try { chromium = require('playwright').chromium; } catch (e
 let n = 0, rates = 0;
 const ok = (c, m) => { n++; if (c) console.log('  ok   ' + m); else { rates++; console.log('  RATE ' + m); } };
 const T = { '.html': 'text/html', '.js': 'text/javascript', '.json': 'application/json', '.jpg': 'image/jpeg', '.png': 'image/png', '.ico': 'image/x-icon' };
-const PROMPT = 'Replace the singer in @video_1 with the character of @image_1 (body: huge muscular shirtless Swole Doge, cream-beige fur everywhere, furry dog paws with black pads instead of hands), with exactly the face of @image_2: the classic Doge meme face, pale cream-beige fur (not orange, not red), white cheeks and muzzle, small dark eyes glancing sideways, raised eyebrows, mouth closed in a slight smirk that only opens to lip-sync the words, the head proportionally small on a thick neck. Keep the other person, the camera, the background and the original audio unchanged.';
+const PROMPT = 'Replace the singer in @video_1 with the exact 3D character of @image_1 and @image_2: SWOGE, a huge bodybuilder Shiba Inu with thick fluffy cream-white fur on the chest, belly and arms and orange-tan fur on the head and back, the round friendly Doge face of @image_2 with white cheeks, small dark eyes and a smiling mouth that opens to lip-sync the words, furry dog paws with dark pads instead of hands, wearing plain black gym shorts, much bigger and more muscular than the original person, with nothing left of the original person (no hair, glasses, clothes or accessories). Keep the other person, the camera, the background and the original audio unchanged.';
 let ID = 'e'.repeat(24);   /* let : la section 7b fait une SECONDE passe dans la meme page */
 
 (async () => {
@@ -102,7 +102,7 @@ let ID = 'e'.repeat(24);   /* let : la section 7b fait une SECONDE passe dans la
   const refs0 = await p.$$eval('#tRefs .ref', (l) => l.map((x) => ({ src: x.querySelector('img').getAttribute('src'), t: x.textContent, l: x.querySelector('img').naturalWidth })));
   ok(refs0.length === 2 && refs0[0].src === '/img/site/swoge_swole_ref.jpg' && /@image_1 · SWOGE body \(default\)/.test(refs0[0].t) && refs0[0].l === 832
      && refs0[1].src === '/img/site/swoge_face_ref.jpg' && /@image_2 · SWOGE face \(default\)/.test(refs0[1].t) && refs0[1].l === 768, 'deux references : le corps en @image_1, le visage en @image_2 (chargees)');
-  ok(/with exactly the face of @image_2/.test(await p.inputValue('#tPrompt')), 'le texte prend le visage de @image_2');
+  ok(/Doge face of @image_2/.test(await p.inputValue('#tPrompt')), 'le texte prend le visage de @image_2');
   ok(await p.isDisabled('#tPlan') && !(await p.isVisible('#tLancer')) && !(await p.isVisible('#tLien')) && !(await p.isVisible('#tVideo')), 'Plan ferme sans video ; ni lancement, ni video, ni lien de telechargement');
   ok(/Cap \$15\.000 per run, 2 parts at a time/.test(await p.textContent('#tPlanInfo')), 'le plafond et le parallele du serveur sont dits [' + await p.textContent('#tPlanInfo') + ']');
 

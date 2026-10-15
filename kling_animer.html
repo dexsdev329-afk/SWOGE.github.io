@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Animate a picture — owner only</title>
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/img/site/icone-32.png">
+<link rel="apple-touch-icon" href="/img/site/icone-180.png">
+<!-- ==================================================================
+ * ANIMER UNE IMAGE, LE MODE SIMPLE (15 octobre 2026, proprietaire seulement)
+ *
+ * Le proprietaire trouve kling_essai.html trop charge (« il y a des options
+ * partout »). Il veut : anime cette image, prends le son de la video, mets-le
+ * par-dessus, meme duree. Cette page ne fait QUE ca, avec deux entrees :
+ *   1. l'image (par defaut la sienne, faite avec ChatGPT :
+ *      img/site/swoge_epicerie_still.jpg ; « Change picture » pour une autre) ;
+ *   2. la video (MP4) : sa duree est lue dans la page (boite mvhd, meme lecture
+ *      que kling_essai.html et que le serveur).
+ * Tout le reste est fixe ici : un clip seul jusqu'a `clipMaxS` (10 s,
+ * ?mode=anime-clip), au-dela la video entiere en morceaux enchaines
+ * (?mode=anime) ; 720p ; aucune direction en plus (le texte du serveur, tel
+ * quel). Des que l'image et la video sont la, la page planifie (gratuit) et
+ * montre le prix au pire du SERVEUR sur le seul bouton ; cliquer ce bouton est
+ * la confirmation du paiement : il renvoie ce prix en `confirmeUsd`, que le
+ * serveur recompare au sien.
+ *
+ * Aucune logique serveur nouvelle : memes routes, memes champs que le bloc
+ * « Animate my still » de kling_essai.html (kling_entier.js, server.js). Le
+ * serveur reverifie AI_OWNER a chaque geste et n'agit que pour la session ;
+ * le resultat ne sort qu'avec la session (blob:), jamais par une adresse
+ * publique. Hors moteurs (noindex), hors menus : un outil du proprietaire.
+ * ================================================================== -->
+<style>
+:root{ --fond:#EEF3FB; --carte:#fff; --encre:#0B1B36; --pale:#5a6b85; --bleu:#1652f0; --ligne:#E1E9F6; --ok:#0a7d3e; --err:#b3261e; --errFond:#fdecea; }
+*{ box-sizing:border-box; }
+body{ margin:0; background:var(--fond); color:var(--encre); font:16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
+main{ max-width:560px; margin:0 auto; padding:16px 16px 48px; }
+a{ color:var(--bleu); }
+.retour{ margin:0 0 10px; font-size:14px; font-weight:600; }
+h1{ font-size:24px; margin:0 0 4px; }
+h2{ font-size:17px; margin:0 0 10px; display:flex; align-items:center; gap:8px; }
+.num{ display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:50%; background:var(--bleu); color:#fff; font-size:14px; flex:none; }
+.carte{ background:var(--carte); border:1px solid var(--ligne); border-radius:14px; padding:14px 16px; margin:14px 0; min-width:0; }
+.pale{ color:var(--pale); font-size:14px; }
+[hidden]{ display:none !important; }
+/* un champ fichier invisible mais atteignable au clavier ; son etiquette fait le bouton */
+.cache{ position:absolute; width:1px; height:1px; margin:-1px; padding:0; border:0; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; opacity:0; }
+.bouton2{ display:flex; align-items:center; justify-content:center; width:100%; min-height:44px; margin-top:10px; padding:10px 16px; border-radius:999px; background:var(--ligne); color:var(--encre); font-weight:700; cursor:pointer; text-align:center; }
+.cache:focus-visible + .bouton2{ outline:3px solid var(--bleu); outline-offset:2px; }
+.cache:disabled + .bouton2{ opacity:.45; cursor:default; }
+img.apercu{ display:block; max-width:100%; max-height:320px; margin:0 auto; border-radius:10px; background:var(--fond); }
+.info{ margin:8px 0 0; font-weight:600; overflow-wrap:anywhere; }
+.info:empty{ display:none; }
+button{ font:inherit; font-weight:700; border:0; border-radius:999px; cursor:pointer; }
+button[disabled]{ opacity:.45; cursor:default; }
+.gros{ display:flex; align-items:center; justify-content:center; width:100%; min-height:56px; padding:14px 18px; margin-top:16px; border-radius:16px; background:var(--bleu); color:#fff; font-size:18px; font-weight:800; text-align:center; text-decoration:none; overflow-wrap:anywhere; }
+.petit{ background:var(--ligne); color:var(--encre); min-height:44px; padding:10px 18px; margin-top:10px; }
+#faireInfo{ text-align:center; margin:6px 0 0; }
+#progres{ min-height:24px; font-weight:700; margin:14px 0 0; overflow-wrap:anywhere; }
+#progres.ok{ color:var(--ok); }
+#progres.travail::before{ content:""; display:inline-block; width:10px; height:10px; margin-right:8px; border-radius:50%; background:var(--bleu); vertical-align:middle; animation:pulse 1.2s ease-in-out infinite; }
+@keyframes pulse{ 0%,100%{ opacity:.25; } 50%{ opacity:1; } }
+@media (prefers-reduced-motion: reduce){ #progres.travail::before{ animation:none; } }
+#progresDetail{ margin:4px 0 0; overflow-wrap:anywhere; }
+.erreur{ margin:14px 0 0; padding:12px 14px; border-radius:12px; background:var(--errFond); color:var(--err); }
+.erreur b{ display:block; font-size:16px; }
+.erreur code{ display:block; margin-top:6px; font:13px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--encre); white-space:pre-wrap; overflow-wrap:anywhere; }
+.erreur .rang{ display:flex; flex-wrap:wrap; gap:8px; }
+.erreur .rang > *{ flex:1 1 140px; min-width:0; }
+#resultat video{ display:block; width:100%; max-height:70vh; margin-top:14px; border-radius:12px; background:#000; }
+#telecharge{ background:var(--ok); }
+</style>
+</head>
+<body>
+<main>
+  <p class="retour"><a href="kling_essai.html" id="toutLien">← All Kling tools</a></p>
+  <h1>Animate a picture</h1>
+  <p class="pale">Your picture moves like the video, with the video's own sound, at the same length. Owner only; paid by the owner's Kling account.</p>
+
+  <div class="carte" id="porte"><p id="acces" style="margin:0">Checking access…</p><p style="margin:10px 0 0"><button type="button" id="seConnecter" style="min-height:44px;padding:0 18px;border-radius:10px;border:0;background:#1B5FE0;color:#fff;font-weight:700;cursor:pointer">Sign in with your wallet</button></p></div>
+
+  <div id="outil" hidden>
+    <div class="carte">
+      <h2><span class="num">1</span> Picture</h2>
+      <img id="image" class="apercu" alt="The picture to animate" hidden>
+      <p class="info" id="imageInfo"></p>
+      <input class="cache" id="imageFichier" type="file" accept="image/png,image/jpeg">
+      <label class="bouton2" for="imageFichier" id="imageChange">Change picture</label>
+    </div>
+
+    <div class="carte">
+      <h2><span class="num">2</span> Video (MP4)</h2>
+      <p class="pale" style="margin:0">Its motion and its sound are used. 3 s to 3 min.</p>
+      <p class="info" id="videoInfo"></p>
+      <input class="cache" id="videoFichier" type="file" accept="video/mp4,video/quicktime">
+      <label class="bouton2" for="videoFichier" id="videoChoix">Choose a video</label>
+    </div>
+
+    <button type="button" class="gros" id="faire" disabled>Make the video</button>
+    <p class="pale" id="faireInfo">Choose a video first.</p>
+    <p id="progres" role="status" aria-live="polite"></p>
+    <p class="pale" id="progresDetail"></p>
+    <div class="erreur" id="erreur" role="alert" hidden>
+      <b id="erreurPhrase"></b>
+      <code id="erreurDetail"></code>
+      <div class="rang"><button type="button" class="petit" id="reessaie" hidden>Try again</button><button type="button" class="petit" id="annule" hidden>Cancel this video</button></div>
+    </div>
+    <div id="resultat" hidden>
+      <video id="video" controls playsinline></video>
+      <a class="gros" id="telecharge" href="#" download="swoge_animated.mp4">Download</a>
+    </div>
+  </div>
+</main>
+<script>
+(function(){
+  "use strict";
+  var $ = function(id){ return document.getElementById(id); };
+  /* `?server=` : un serveur LOCAL seulement (les essais) — la page envoie le jeton de session. */
+  function serveur(){
+    try { var q = new URLSearchParams(location.search).get("server"); if (q) { var u = new URL(String(q).replace(/^ws/, "http")); if (/^(127\.0\.0\.1|localhost|\[::1\])$/.test(u.hostname)) return u.origin; } } catch (e) {}
+    return "https://web-production-220a3.up.railway.app";
+  }
+  function jeton(){ try { return localStorage.getItem("swogeSession"); } catch (e) { return null; } }
+  /* une reponse refusee garde la raison EXACTE du serveur (ou de Kling) */
+  function lit(r){ return r.json().catch(function(){ return {}; }).then(function(o){ if (!r.ok || o.ok === false) throw new Error(o.raison || ("error " + r.status)); return o; }); }
+  function api(chemin, methode, corps){
+    return fetch(serveur() + chemin, { method: methode || "GET", cache: "no-store",
+      headers: { "content-type": "application/json", authorization: "Bearer " + jeton() }, body: corps ? JSON.stringify(corps) : undefined }).then(lit);
+  }
+  /* « $0.756 », « $1.26 » : le prix du serveur, sans zero inutile (jamais arrondi : c'est lui qu'on confirme) */
+  function dollars(x){ var t = Number(x).toFixed(3); return "$" + (/\.\d\d0$/.test(t) ? t.slice(0, -1) : t); }
+  function secondes(s){ return s < 60 ? s.toFixed(1) + " s" : Math.floor(s / 60) + " min " + Math.round(s % 60) + " s"; }
+  function minutes(s){ return s < 90 ? Math.round(s) + " s" : Math.round(s / 60) + " min"; }
+
+  /* La duree d'un MP4 (copie de kling_essai.html, meme lecture que le serveur) :
+     ftyp en premier, moov > mvhd v0/v1 ; un MP4 fragmente (mvex) ne se lit que
+     par mehd. null quand on ne sait pas : le serveur juge alors. */
+  function dureeMp4(tampon){
+    var v = new DataView(tampon), n = v.byteLength;
+    function boite(pos, fin){
+      if (pos + 8 > fin) return null;
+      var taille = v.getUint32(pos), entete = 8, type = "";
+      for (var i = 4; i < 8; i++) type += String.fromCharCode(v.getUint8(pos + i));
+      if (taille === 1) { if (pos + 16 > fin) return null; taille = v.getUint32(pos + 8) * 4294967296 + v.getUint32(pos + 12); entete = 16; }
+      else if (taille === 0) taille = fin - pos;
+      if (taille < entete || pos + taille > fin) return null;
+      return { type: type, debut: pos + entete, fin: pos + taille };
+    }
+    function cherche(debut, fin, type){
+      for (var p = debut; p < fin;) { var b = boite(p, fin); if (!b) return null; if (b.type === type) return b; p = b.fin; }
+      return null;
+    }
+    var premiere = boite(0, n);
+    if (!premiere || premiere.type !== "ftyp") return null;
+    var moov = cherche(0, n, "moov"); if (!moov) return null;
+    var mvhd = cherche(moov.debut, moov.fin, "mvhd"); if (!mvhd) return null;
+    var d = mvhd.debut, echelle, duree, inconnue;
+    if (d + 1 > mvhd.fin) return null;
+    if (v.getUint8(d) === 1) {
+      if (d + 32 > mvhd.fin) return null;
+      echelle = v.getUint32(d + 20); duree = v.getUint32(d + 24) * 4294967296 + v.getUint32(d + 28);
+      inconnue = v.getUint32(d + 24) === 4294967295 && v.getUint32(d + 28) === 4294967295;
+    } else {
+      if (d + 20 > mvhd.fin) return null;
+      echelle = v.getUint32(d + 12); duree = v.getUint32(d + 16); inconnue = duree === 4294967295;
+    }
+    if (!echelle) return null;
+    var mvex = cherche(moov.debut, moov.fin, "mvex");
+    if (mvex) {
+      var mehd = cherche(mvex.debut, mvex.fin, "mehd"), m = mehd && mehd.debut;
+      duree = 0; inconnue = false;
+      if (mehd && m + 1 <= mehd.fin) {
+        if (v.getUint8(m) === 1 && m + 12 <= mehd.fin) {
+          duree = v.getUint32(m + 4) * 4294967296 + v.getUint32(m + 8);
+          inconnue = v.getUint32(m + 4) === 4294967295 && v.getUint32(m + 8) === 4294967295;
+        } else if (v.getUint8(m) === 0 && m + 8 <= mehd.fin) { duree = v.getUint32(m + 4); inconnue = duree === 4294967295; }
+      }
+    }
+    return !duree || inconnue ? null : duree / echelle;
+  }
+
+  /* ---- l'etat de la page ----
+   * Fixe ici, sans reglage : 720p, aucune direction en plus. Le mode suit la duree. */
+  var RESOLUTION = "720p";
+  var ACTIFS = ["decoupe", "en_cours", "assemblage", "file"];
+  var A = { vue: null, still: null, stillL: 0, stillH: 0, fichier: null, dureeS: null, mode: null, id: null, etat: null, suivi: null, blob: null, blobDe: null, occupe: false, lancement: false };
+  function limites(){
+    var e = A.vue || {}, a = e.anime || {};
+    return { clipMaxS: a.clipMaxS || 10, minS: e.dureeMinS || 3, maxS: e.dureeEntierMaxS || 180, octets: e.octetsMax || 100 * 1024 * 1024, still: a.stillOctetsMax || 6 * 1024 * 1024 };
+  }
+  function prix(){ return A.etat && A.etat.prixPire ? A.etat.prixPire[RESOLUTION] : null; }
+  function enCours(){ return !!(A.lancement || (A.etat && (ACTIFS.indexOf(A.etat.statut) >= 0 || A.etat.statut === "incomplet"))); }
+
+  function progres(t, genre, detail){ var p = $("progres"); p.textContent = t || ""; p.className = genre || ""; $("progresDetail").textContent = detail || ""; }
+  /* une erreur : une phrase claire, et dessous le message EXACT du serveur ou de Kling */
+  function erreur(phrase, detail, gestes){
+    $("erreur").hidden = !phrase; $("erreurPhrase").textContent = phrase || ""; $("erreurDetail").textContent = detail || ""; $("erreurDetail").hidden = !detail;
+    gestes = gestes || {};
+    $("reessaie").hidden = !gestes.reessaie; $("reessaie").textContent = gestes.reessaieTexte || "Try again";
+    $("annule").hidden = !gestes.annule;
+    A.gestes = gestes;
+    if (phrase) progres("");
+  }
+
+  /* le seul bouton : ferme tant qu'il manque quelque chose, sinon il porte le prix au pire */
+  function peint(){
+    var e = A.etat, p = prix(), b = $("faire"), info = $("faireInfo"), travail = enCours();
+    $("imageFichier").disabled = $("videoFichier").disabled = travail || A.occupe;
+    b.hidden = !!(e && e.statut === "fini");
+    info.hidden = b.hidden;
+    if (!A.fichier && !(e && e.statut !== "pret")) { b.disabled = true; b.textContent = "Make the video"; info.textContent = A.still ? "Choose a video first." : "Choose a picture and a video first."; return; }
+    if (A.occupe && !e) { b.disabled = true; b.textContent = "Checking the video…"; info.textContent = "Nothing is paid yet."; return; }
+    if (e && e.statut === "decoupe") { b.disabled = true; b.textContent = "Checking the video…"; info.textContent = "Nothing is paid yet."; return; }
+    if (e && e.statut === "pret" && p != null) {
+      var trop = p > e.plafondUsd + 1e-9, n = e.morceaux.length;
+      b.textContent = "Make the video — " + dollars(p) + " max";
+      b.disabled = trop || !A.still || A.lancement;
+      info.textContent = trop ? "Too long: the worst case is over the " + dollars(e.plafondUsd) + " cap per video. Use a shorter video."
+        : !A.still ? "Choose a picture first."
+        : (n === 1 ? "One clip" : n + " parts, one after another") + " · 720p · original sound · paid by the Kling account. Clicking confirms this price.";
+      return;
+    }
+    if (travail) { b.disabled = true; b.textContent = "Making the video…"; info.textContent = "You can leave this page open; it follows the video."; return; }
+    b.disabled = true; b.textContent = "Make the video"; info.textContent = !A.still ? "Choose a picture first." : "";
+  }
+
+  /* ---- 1. l'image : celle par defaut (ChatGPT du proprietaire), ou un fichier choisi ---- */
+  var STILL_DEFAUT = "img/site/swoge_epicerie_still.jpg", NOM_DEFAUT = "swoge_shop_still.jpg";
+  function prendImage(f){
+    var lim = limites();
+    if (!/^image\/(png|jpeg)$/.test(f.type)) { erreur("This picture can't be used.", "The picture must be a JPG or PNG."); return; }
+    if (f.size > lim.still) { erreur("This picture is too large.", (f.size / 1048576).toFixed(1) + " MB — " + Math.round(lim.still / 1048576) + " MB at most."); return; }
+    var r = new FileReader();
+    r.onload = function(){
+      var d = String(r.result), im = new Image();
+      im.onload = function(){
+        var l = im.naturalWidth, h = im.naturalHeight, p = Math.min(l, h), g = Math.max(l, h);
+        /* les bornes de Kling (300 px, forme 1:2.5 a 2.5:1), redites par le serveur */
+        if (p < 300 || g / p > 2.5) { erreur("This picture can't be used.", "Kling needs 300 px at least per side and a shape between 1:2.5 and 2.5:1 — this one is " + l + "×" + h + "."); return; }
+        A.still = d; A.stillL = l; A.stillH = h;
+        var vu = $("image"); vu.src = d; vu.hidden = false;
+        A.imageTexte = (f.name === NOM_DEFAUT ? "SWOGE in the shop (default)" : f.name) + " · " + l + "×" + h;
+        erreur("");
+        peintForme();
+        /* l'image change apres une video faite (ou un plan rate) : on replanifie la meme video */
+        if (A.fichier && (!A.etat || ["fini", "erreur", "abandon"].indexOf(A.etat.statut) >= 0)) planifie();
+        else peint();
+      };
+      im.onerror = function(){ erreur("This picture can't be read.", f.name); };
+      im.src = d;
+    };
+    r.readAsDataURL(f);
+  }
+  function imageParDefaut(){
+    fetch(STILL_DEFAUT).then(function(r){ return r.ok ? r.blob() : null; }).then(function(b){
+      if (!b || A.still) return;
+      prendImage(new File([b], NOM_DEFAUT, { type: "image/jpeg" }));
+    })["catch"](function(){});
+  }
+  $("imageFichier").addEventListener("change", function(){
+    var f = $("imageFichier").files && $("imageFichier").files[0];
+    $("imageFichier").value = "";
+    if (f) prendImage(f);
+  });
+  /* une image d'une autre forme que la video : Kling suit l'image, le resultat est cadre dans la video */
+  function peintForme(){
+    var s = A.etat && A.etat.source;
+    var autre = A.stillL && s && s.largeur && Math.abs(Math.log((A.stillL / A.stillH) / (s.largeur / s.hauteur))) > 0.02;
+    $("imageInfo").setAttribute("data-forme", autre ? "autre" : "meme");
+    $("imageInfo").textContent = (A.imageTexte || "") + (autre ? " — not the video's shape (" + s.largeur + "×" + s.hauteur + "); it will be fitted into it." : "");
+  }
+
+  /* ---- 2. la video : sa duree dite tout de suite, puis le plan (gratuit) ---- */
+  $("videoFichier").addEventListener("change", function(){
+    var f = $("videoFichier").files && $("videoFichier").files[0];
+    $("videoFichier").value = "";
+    if (!f) return;
+    var lim = limites();
+    A.fichier = null; A.dureeS = null; erreur("");
+    if (f.size > lim.octets) { $("videoInfo").textContent = ""; erreur("This video is too large.", (f.size / 1048576).toFixed(1) + " MB — " + Math.round(lim.octets / 1048576) + " MB at most."); peint(); return; }
+    f.arrayBuffer().then(function(b){
+      var d = dureeMp4(b);
+      if (d != null && d < lim.minS) { $("videoInfo").textContent = f.name + " · " + d.toFixed(1) + " s"; erreur("This video is too short.", "It is " + d.toFixed(2) + " s long — " + lim.minS + " s at least."); peint(); return; }
+      if (d != null && d > lim.maxS) { $("videoInfo").textContent = f.name + " · " + secondes(d); erreur("This video is too long.", "It is " + d.toFixed(1) + " s long — " + lim.maxS + " s at most."); peint(); return; }
+      A.fichier = f; A.dureeS = d;
+      /* un clip seul jusqu'a clipMaxS, sinon la video entiere ; une duree illisible : la video entiere (le serveur coupe s'il faut) */
+      A.mode = d != null && d <= lim.clipMaxS ? "anime-clip" : "anime";
+      $("videoInfo").textContent = f.name + " · " + (d != null ? secondes(d) : "length unknown (the server will read it)") + " · " + (f.size / 1048576).toFixed(1) + " MB";
+      planifie();
+    });
+  });
+
+  /* ---- le plan : la video BRUTE, ?mode=anime-clip ou ?mode=anime ; rien n'est paye ---- */
+  function planifie(){
+    if (!A.fichier || !A.still || enCours()) { peint(); return; }
+    if (A.suivi) clearTimeout(A.suivi);
+    A.occupe = true; A.etat = null; A.id = null; $("resultat").hidden = true; erreur("");
+    peint();
+    progres("Uploading the video (" + (A.fichier.size / 1048576).toFixed(1) + " MB)…", "travail");
+    fetch(serveur() + "/studio/kling/entier?mode=" + A.mode, { method: "POST", cache: "no-store", headers: { "content-type": "video/mp4", authorization: "Bearer " + jeton() }, body: A.fichier })
+      .then(lit)
+      .then(function(o){ A.id = o.id; suis(); })
+      ["catch"](function(e){ A.occupe = false; erreur("The server refused this video.", e.message); peint(); });
+  }
+
+  /* ---- le suivi : une ligne simple ---- */
+  function reste(e){
+    var faits = e.morceaux.filter(function(m){ return m.statut === "done" && m.secondes != null; });
+    var n = e.morceaux.filter(function(m){ return m.statut !== "done"; }).length;
+    if (!faits.length || !n) return "";
+    var moy = faits.reduce(function(a, m){ return a + m.secondes; }, 0) / faits.length;
+    return "Parts so far took " + minutes(moy) + " each: about " + minutes(moy * n) + " left.";
+  }
+  function suis(){
+    if (A.suivi) clearTimeout(A.suivi);
+    if (!A.id) return;
+    api("/studio/kling/entier/" + A.id).then(function(e){
+      A.etat = e; peintForme();
+      var ms = e.morceaux || [], n = ms.length;
+      if (e.statut === "decoupe") { progres("Reading the video…", "travail"); }
+      else if (e.statut === "pret") { A.occupe = false; progres(""); peint(); return; }
+      else if (e.statut === "erreur") { A.occupe = false; erreur("The server could not use this video.", e.message || "no reason given"); peint(); return; }
+      else if (e.statut === "file") { progres("Waiting for a free slot…", "travail"); }
+      else if (e.statut === "en_cours") {
+        var k = ms.filter(function(m){ return m.statut === "done"; }).length;
+        var cur = ms[Math.min(k, n - 1)] || {};
+        /* « Kling is busy, waiting 30 s » : dit sous la ligne, ce n'est pas une erreur */
+        var note = cur.statut === "waiting" && cur.message ? cur.message : "";
+        if (n > 1) progres("Part " + (k + 1) + " of " + n + "…", "travail", [reste(e), note].filter(Boolean).join(" "));
+        else progres("Kling is animating your picture…", "travail", note || "This usually takes a few minutes.");
+      }
+      else if (e.statut === "assemblage") { progres("Putting the sound back…", "travail"); }
+      else if (e.statut === "incomplet") {
+        A.occupe = false;
+        var rate = ms.filter(function(m){ return m.statut === "failed"; })[0];
+        if (rate) erreur(n > 1 ? "Kling could not make part " + (rate.i + 1) + " of " + n + "." : "Kling could not animate this video.", rate.message || e.message || "no reason given",
+          rate.rejouable ? { reessaie: { chemin: "/reessaie/" + rate.i }, annule: true } : { annule: true });
+        else erreur("The sound could not be put back.", e.message || "no reason given", { reessaie: { chemin: "/recolle" }, annule: true });
+        peint(); return;
+      }
+      else if (e.statut === "fini") {
+        A.occupe = false; erreur("");
+        progres("Done: " + secondes(e.dureeFinale || (e.source && e.source.duree) || 0) + ", with the video's sound.", "ok", "Kept 48 h on the server. Change the picture or the video to make another.");
+        if (A.blobDe !== e.id) montre(e.video, e.id)["catch"](function(err){ erreur("The finished video could not be loaded.", err.message); });
+        peint(); return;
+      }
+      else if (e.statut === "abandon") { A.occupe = false; progres(""); erreur("This video was cancelled.", e.message || ""); peint(); return; }
+      peint();
+      A.suivi = setTimeout(suis, 5000);
+    })["catch"](function(err){ progres("Lost contact with the server — trying again…", "travail", err.message); A.suivi = setTimeout(suis, 15000); });
+  }
+  /* le resultat, lu AVEC la session (blob:), rattache a SA passe */
+  function montre(chemin, id){
+    return fetch(serveur() + chemin, { cache: "no-store", headers: { authorization: "Bearer " + jeton() } })
+      .then(function(r){ if (!r.ok) throw new Error("error " + r.status); return r.blob(); })
+      .then(function(b){
+        if (A.blob) URL.revokeObjectURL(A.blob);
+        A.blob = URL.createObjectURL(b); A.blobDe = id;
+        var v = $("video"); v.src = A.blob; $("telecharge").href = A.blob; $("resultat").hidden = false;
+        try { var j = v.play(); if (j && j["catch"]) j["catch"](function(){}); } catch (e) {}
+      });
+  }
+
+  /* ---- le bouton : la confirmation du paiement (le prix montre, renvoye tel quel) ---- */
+  $("faire").addEventListener("click", function(){
+    var p = prix(); if (p == null || !A.id || !A.still || !A.etat || A.etat.statut !== "pret") return;
+    A.lancement = true; erreur(""); peint(); progres("Sending to Kling…", "travail");
+    api("/studio/kling/entier/" + A.id + "/lance", "POST", { still: A.still, resolution: RESOLUTION, confirmeUsd: p })
+      .then(function(e){ A.lancement = false; A.etat = e; peint(); suis(); })
+      ["catch"](function(e){ A.lancement = false; erreur("The video was not started.", e.message); peint(); });
+  });
+  $("reessaie").addEventListener("click", function(){
+    var g = A.gestes && A.gestes.reessaie; if (!g || !A.id) return;
+    $("reessaie").disabled = true;
+    api("/studio/kling/entier/" + A.id + g.chemin, "POST", {})
+      .then(function(e){ $("reessaie").disabled = false; erreur(""); A.etat = e; peint(); suis(); })
+      ["catch"](function(e){ $("reessaie").disabled = false; erreur("Not tried again.", e.message, A.gestes); });
+  });
+  $("annule").addEventListener("click", function(){
+    if (!A.id) return;
+    api("/studio/kling/entier/" + A.id + "/abandonne", "POST", {})
+      .then(function(){ if (A.suivi) clearTimeout(A.suivi); A.etat = null; A.id = null; erreur(""); progres("Cancelled. Choose a video to start again."); A.fichier = null; $("videoInfo").textContent = ""; peint(); })
+      ["catch"](function(e){ erreur("Not cancelled.", e.message, A.gestes); });
+  });
+
+  /* ---- l'acces : proprietaire seulement (le serveur le reverifie a chaque geste) ---- */
+  function charge(){
+    if (!jeton()) { $("acces").textContent = "Sign in with your wallet (button below)."; return; }
+    api("/studio/kling").then(function(o){
+      if (!o.proprietaire) { $("acces").textContent = "This page is for the owner only."; return; }
+      if (!o.actif) { $("acces").textContent = "Kling is not set up yet: add KLING_API_KEY on Railway."; return; }
+      if (!o.entier || !o.entier.anime) { $("acces").textContent = "The server does not offer \"Animate a picture\" yet."; return; }
+      A.vue = o.entier;
+      $("porte").hidden = true; $("outil").hidden = false;
+      imageParDefaut();
+      peint();
+      /* une video en cours (ou finie) de cette session reprend apres un rechargement */
+      if (A.vue.passeAnime && !A.id) {
+        api("/studio/kling/entier/" + A.vue.passeAnime).then(function(e){
+          if (A.id || ["en_cours", "assemblage", "incomplet", "file", "fini"].indexOf(e.statut) < 0) return;
+          A.id = e.id; A.etat = e; suis();
+        })["catch"](function(){});
+      }
+    })["catch"](function(e){ $("acces").textContent = "Access check failed: " + e.message; });
+  }
+  charge();
+})();
+</script>
+<!-- Le bouton de connexion, comme kling_essai.html : le formulaire qui signe est celui de
+     stakebubble.js (window.swogeConnexion), charge AU CLIC seulement ; une fois le jeton
+     swogeSession pose, la page se recharge et relit l'acces au serveur. -->
+<script>
+(function(){
+  var b = document.getElementById("seConnecter");
+  function jeton(){ try { return localStorage.getItem("swogeSession"); } catch (e) { return null; } }
+  var avant = jeton(), suivi = null;
+  if (avant && b) b.textContent = "Switch wallet";
+  function ouvre(){ window.swogeConnexion.ouvre(); if (!suivi) suivi = setInterval(function(){ var j = jeton(); if (j && j !== avant) location.reload(); }, 1500); }
+  if (b) b.addEventListener("click", function(){
+    if (window.swogeConnexion && typeof window.swogeConnexion.ouvre === "function") return ouvre();
+    b.disabled = true; b.textContent = "Loading…";
+    var s = document.createElement("script"); s.src = "stakebubble.min.js?v=a481bde5";
+    s.onload = function(){ b.disabled = false; b.textContent = "Sign in with your wallet"; if (window.swogeConnexion) ouvre(); };
+    s.onerror = function(){ b.disabled = false; b.textContent = "Sign-in could not load — reload the page"; };
+    document.body.appendChild(s);
+  });
+})();
+</script>
+</body>
+</html>

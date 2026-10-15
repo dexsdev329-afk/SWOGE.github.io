@@ -57,6 +57,19 @@
  *     la video comme reference de scene (premiere_image.js).
  *   Les images du proprietaire se lisent avec la session (blob:), jamais par une
  *   adresse publique.
+ *
+ * 15 OCTOBRE 2026 (soir) — « ANIMATE MY STILL ». L'edition (base_video) a rate
+ * 4 fois ce jour-la : mauvaise personne, corps humain, mauvaise tete. Le
+ * proprietaire fait lui-meme l'image 0 de son clip avec SWOGE en place ; Kling O1
+ * l'anime (first_frame) d'apres le mouvement du clip (feature_video, kling.js
+ * lanceAnime). Un selecteur de mode en tete de la carte : « Edit the person
+ * (current) » garde tout ce qui precede tel quel ; « Animate my still (new) »
+ * montre l'image fixe (apercu), un clip (3-10 s, un morceau) ou une video entiere
+ * (morceaux ENCHAINES : chacun part de la derniere image du precedent, donc un
+ * seul a la fois — la page le dit, avec une estimation tiree des temps reels des
+ * morceaux deja faits), le prix au pire du serveur avant de payer, Run, le
+ * resultat lu avec la session et son telechargement. Memes routes que la video
+ * entiere, ?mode=anime-clip / ?mode=anime ; le texte envoye est celui du serveur.
  * ================================================================== -->
 <style>
 :root{ --fond:#EEF3FB; --carte:#fff; --encre:#0B1B36; --pale:#5a6b85; --bleu:#1652f0; --ligne:#E1E9F6; --ok:#0a7d3e; --err:#b3261e; }
@@ -110,6 +123,14 @@ a.telecharge{ display:inline-block; margin-top:8px; font-weight:700; color:var(-
 .cand img{ width:66px; height:88px; object-fit:cover; border-radius:7px; background:var(--fond); }
 .vue .actions{ display:flex; flex-wrap:wrap; gap:6px; }
 .vue .actions button{ padding:4px 10px; min-height:36px; font-size:13px; }
+.modes{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
+.modes .mode{ flex:1 1 150px; min-width:0; margin-top:0; background:var(--ligne); color:var(--encre); }
+.modes .mode[aria-pressed="true"]{ background:var(--bleu); color:#fff; }
+img.apercu{ display:block; max-width:100%; max-height:280px; border-radius:10px; margin-top:8px; }
+details.texte{ margin-top:8px; font-size:13.5px; } details.texte summary{ cursor:pointer; font-weight:700; min-height:32px; }
+#aStatut{ min-height:22px; font-weight:600; margin-top:10px; overflow-wrap:anywhere; }
+#aStatut.err{ color:var(--err); } #aStatut.ok{ color:var(--ok); }
+.part.bloque{ opacity:.6; }
 img.vign{ width:64px; height:64px; object-fit:cover; border-radius:10px; vertical-align:middle; margin-right:8px; }
 </style>
 </head>
@@ -151,6 +172,11 @@ img.vign{ width:64px; height:64px; object-fit:cover; border-radius:10px; vertica
   </div>
 
   <div class="carte" id="edition" hidden>
+    <div class="modes" role="group" aria-label="Mode">
+      <button type="button" class="mode" id="modeEditer" aria-pressed="true">Edit the person (current)</button>
+      <button type="button" class="mode" id="modeAnimer" aria-pressed="false">Animate my still (new)</button>
+    </div>
+    <div id="blocEditer">
     <h2 style="font-size:18px;margin:0 0 4px">Edit a clip (replace a person)</h2>
     <p class="pale">Kling O1 redraws one person in a short clip from a reference picture. MP4, 3 to 10 s, 700 to 2160 px per side.</p>
     <label for="eClip">Clip (MP4, 3–10 s)</label>
@@ -223,6 +249,37 @@ img.vign{ width:64px; height:64px; object-fit:cover; border-radius:10px; vertica
     <video id="tVideo" controls playsinline hidden></video>
     <a id="tLien" class="telecharge" href="#" download="swoge_whole.mp4" hidden>Download the result</a>
     </div>
+    </div>
+
+    <div id="blocAnimer" hidden>
+    <h2 style="font-size:18px;margin:0 0 4px">Animate my still</h2>
+    <p class="pale" id="aAide">Make the first frame of your clip yourself, with SWOGE already in it (ChatGPT or any picture editor). Kling O1 starts exactly from that still and copies the motion, gestures, timing and camera of your clip. Nobody is replaced: what is in your still is what moves. The server puts the clip's original sound back and keeps its exact length.</p>
+    <label for="aStill">Your still (JPG or PNG: the first frame of the clip, SWOGE in it)</label>
+    <input id="aStill" type="file" accept="image/png,image/jpeg">
+    <img id="aStillVue" class="apercu" alt="Your still" hidden>
+    <p class="pale" id="aStillInfo"></p>
+    <label for="aQuoi">Length</label>
+    <select id="aQuoi"><option value="clip" selected>One clip (3–10 s)</option><option value="entier">Whole video (parts, one after another)</option></select>
+    <p class="pale" id="aQuoiInfo"></p>
+    <label for="aClip">Clip (MP4)</label>
+    <input id="aClip" type="file" accept="video/mp4,video/quicktime">
+    <p class="pale" id="aClipInfo"></p>
+    <label for="aNote">Extra direction (optional)</label>
+    <textarea id="aNote" maxlength="400" placeholder="Optional, e.g. He smiles at the end."></textarea>
+    <details class="texte"><summary>Text sent to Kling</summary><p class="pale" id="aTexte"></p></details>
+    <div class="rang">
+      <div><label for="aResolution">Resolution</label><select id="aResolution"><option value="720p">720p</option><option value="1080p">1080p</option></select></div>
+    </div>
+    <p class="pale" id="aPrix"></p>
+    <button id="aPlan" type="button" disabled>Plan (upload, nothing is paid)</button>
+    <p class="pale" id="aPlanInfo"></p>
+    <button id="aLancer" type="button" hidden disabled>Run</button>
+    <p id="aStatut" role="status"></p>
+    <div class="grille" id="aGrille"></div>
+    <button class="pale2" id="aAbandon" type="button" hidden>Abandon this video</button>
+    <video id="aVideo" controls playsinline hidden></video>
+    <a id="aLien" class="telecharge" href="#" download="swoge_animated.mp4" hidden>Download the result</a>
+    </div>
   </div>
 
   <div class="carte" id="historique" hidden><b>Recent tests</b><div id="liste"></div></div>
@@ -281,6 +338,8 @@ img.vign{ width:64px; height:64px; object-fit:cover; border-radius:10px; vertica
       $("edition").hidden = !((o.actif && E.vue) || (E.wan && E.wan.actif));
       peintReglages(); peintEdition(); peintEntier(); peintHistorique(o.essais);
       if (T.vue && T.vue.passe && !T.id) { T.id = T.vue.passe; tSuis(); }
+      peintAnime();
+      if (T.vue && T.vue.passeAnime && !A.id) { A.id = T.vue.passeAnime; aSuis(); }
     })["catch"](function(e){ $("acces").textContent = "Access check failed: " + e.message; });
   }
   function suis(id, depart){
@@ -802,6 +861,193 @@ img.vign{ width:64px; height:64px; object-fit:cover; border-radius:10px; vertica
   }
   var EP = Premiere("e", function(){ return E.clip ? { video: E.clip } : null; });
   var TP = Premiere("t", function(){ return T.id && T.etat && T.etat.statut === "pret" ? { entier: T.id } : null; });
+
+  /* ---- LE MODE (15/10/2026) : « Edit the person » (tout ce qui precede) ou « Animate my still ».
+   * Le choix est garde dans ce navigateur seulement (localStorage, jamais necessaire). */
+  function choisitMode(m){
+    var anime = m === "anime";
+    $("blocEditer").hidden = anime; $("blocAnimer").hidden = !anime;
+    $("modeEditer").setAttribute("aria-pressed", anime ? "false" : "true");
+    $("modeAnimer").setAttribute("aria-pressed", anime ? "true" : "false");
+    try { localStorage.setItem("klingMode", anime ? "anime" : "editer"); } catch (e) {}
+  }
+  $("modeEditer").addEventListener("click", function(){ choisitMode("editer"); });
+  $("modeAnimer").addEventListener("click", function(){ choisitMode("anime"); });
+  (function(){ var m = null; try { m = localStorage.getItem("klingMode"); } catch (e) {} choisitMode(m === "anime" ? "anime" : "editer"); })();
+
+  /* ---- ANIMATE MY STILL : l'image fixe (data-URL, verifiee ici puis par le serveur), un clip
+   * (?mode=anime-clip : un morceau, 3-10 s) ou une video entiere (?mode=anime : morceaux
+   * enchaines, un a la fois). Meme suivi que la video entiere ; le prix montre est celui du
+   * serveur (pire cas), renvoye au clic. Le resultat ne sort qu'avec la session (blob). */
+  var A = { still: null, stillL: 0, stillH: 0, fichier: null, dureeS: null, id: null, etat: null, suivi: null, blob: null, blobDe: null, occupe: false };
+  function aStatut(t, g){ var s = $("aStatut"); s.textContent = t || ""; s.className = g || ""; }
+  function aVue(){ return T.vue && T.vue.anime ? T.vue.anime : null; }
+  function aMode(){ return $("aQuoi").value === "entier" ? "anime" : "anime-clip"; }
+  function minutes(s){ return s < 90 ? Math.round(s) + " s" : Math.round(s / 60) + " min"; }
+  function aPrixPlan(){ return A.etat && A.etat.prixPire ? A.etat.prixPire[$("aResolution").value] : null; }
+  function aTexte(){
+    var v = aVue(); if (!v) return "";
+    var n = $("aNote").value.replace(/[\u0000-\u001f]/g, " ").trim();
+    return v.texte + (n ? " " + n : "");
+  }
+  function peintAnime(){
+    var v = aVue();
+    /* un serveur sans ce mode : le selecteur s'efface, l'edition reste visible */
+    $("modeAnimer").hidden = !v;
+    if (!v) { $("blocAnimer").hidden = true; $("blocEditer").hidden = false; $("modeEditer").setAttribute("aria-pressed", "true"); return; }
+    $("aTexte").textContent = aTexte();
+    var e = A.etat, enCours = e && ["decoupe", "en_cours", "assemblage", "incomplet"].indexOf(e.statut) >= 0;
+    var clip = aMode() === "anime-clip";
+    $("aQuoiInfo").textContent = clip
+      ? "One clip of 3 to " + v.clipMaxS + " s: sent to Kling in one piece."
+      : "Whole video: cut into parts of 3 to 9.5 s. Part 1 starts from your still; every next part starts from the LAST frame of the part before, so the parts run one after another (never two at once). Works best on one continuous shot.";
+    $("aPlan").disabled = !A.fichier || A.occupe || !!enCours;
+    $("aQuoi").disabled = $("aClip").disabled = !!enCours || A.occupe;
+    var p = aPrixPlan();
+    var pps = T.vue && T.vue.prixParSeconde ? T.vue.prixParSeconde[$("aResolution").value] : null;
+    if (!e && clip && A.dureeS && pps) $("aPrix").textContent = "About $" + (pps * Math.ceil(A.dureeS - 1e-9)).toFixed(3) + " on your Kling account (Kling O1 with a video, every started second counts). Plan to confirm it.";
+    else if (!e) $("aPrix").textContent = "";
+    if (e && e.statut === "pret" && p != null) {
+      var ds = e.morceaux.map(function(m){ return m.duree.toFixed(1) + " s"; });
+      var trop = p > e.plafondUsd + 1e-9;
+      var forme = "";
+      if (A.stillL && e.source && e.source.largeur && Math.abs(Math.log((A.stillL / A.stillH) / (e.source.largeur / e.source.hauteur))) > 0.02)
+        forme = " Your still is " + A.stillL + "×" + A.stillH + " and the clip " + e.source.largeur + "×" + e.source.hauteur + ": not the same shape — Kling may follow the still's shape, and the result is fitted into the clip's frame.";
+      $("aPlanInfo").textContent = (e.morceaux.length === 1 ? "1 part: " : e.morceaux.length + " parts, one after another: ") + ds.join(", ")
+        + ". Worst case " + dollars(p) + " at " + $("aResolution").value + " (cap " + dollars(e.plafondUsd) + " per run)."
+        + (e.morceaux.length > 1 ? " Time: " + e.morceaux.length + " times one part's wait at Kling, in a row — the O1 wait is not measured yet; the page shows each part's real time." : "")
+        + forme + (trop ? " Over the cap: use 720p or a shorter video." : "");
+      $("aLancer").hidden = false; $("aLancer").disabled = trop || A.occupe || !A.still;
+      $("aLancer").textContent = (A.still ? "Run — " : "Choose your still first — ") + dollars(p) + " worst case";
+    } else if (!e || e.statut !== "decoupe") {
+      $("aLancer").hidden = true;
+      if (!e) $("aPlanInfo").textContent = "Nothing is paid before Run.";
+    }
+    $("aResolution").disabled = !!(e && e.statut !== "pret" && e.statut !== "erreur");
+    peintAGrille();
+  }
+  function peintAGrille(){
+    var g = $("aGrille"); g.innerHTML = "";
+    var e = A.etat; if (!e || !e.morceaux) return;
+    e.morceaux.forEach(function(m){
+      var bloque = !!m.bloque;
+      var c = document.createElement("div"); c.className = "part " + m.statut + (bloque ? " bloque" : ""); c.setAttribute("data-statut", m.statut);
+      var t = document.createElement("b"); t.textContent = "Part " + (m.i + 1) + " · " + (bloque ? "waits for part " + m.i : m.statut === "waiting" && m.i > 0 ? "waits for part " + m.i : ETIQ[m.statut]);
+      var d = document.createElement("div"); d.textContent = mmss(m.debut) + " · " + m.duree.toFixed(1) + " s" + (m.secondes != null ? " · took " + minutes(m.secondes) : "");
+      c.appendChild(t); c.appendChild(d);
+      if (m.message) { var x = document.createElement("div"); x.textContent = m.message; c.appendChild(x); }
+      if (m.rejouable) {
+        var b = document.createElement("button"); b.type = "button"; b.textContent = "Retry part " + (m.i + 1);
+        b.addEventListener("click", function(){
+          b.disabled = true;
+          api("/studio/kling/entier/" + A.id + "/reessaie/" + m.i, "POST", {}).then(function(r){ A.etat = r; peintAnime(); aSuis(); })
+            ["catch"](function(err){ aStatut("Retry refused: " + err.message, "err"); b.disabled = false; });
+        });
+        c.appendChild(b);
+      }
+      g.appendChild(c);
+    });
+    $("aAbandon").hidden = ["en_cours", "incomplet", "pret"].indexOf(e.statut) < 0;
+  }
+  /* Ce qui reste, d'apres les temps REELS des morceaux deja faits (rien avant le premier). */
+  function aReste(e){
+    var faits = e.morceaux.filter(function(m){ return m.statut === "done" && m.secondes != null; });
+    var reste = e.morceaux.filter(function(m){ return m.statut !== "done"; }).length;
+    if (!faits.length || !reste) return "";
+    var moy = faits.reduce(function(a, m){ return a + m.secondes; }, 0) / faits.length;
+    return " Parts so far took " + minutes(moy) + " each: about " + minutes(moy * reste) + " left.";
+  }
+  function aMontre(chemin, id){
+    return fetch(serveur() + chemin, { cache: "no-store", headers: { authorization: "Bearer " + jeton() } })
+      .then(function(r){ if (!r.ok) throw new Error("error " + r.status); return r.blob(); })
+      .then(function(b){ if (A.blob) URL.revokeObjectURL(A.blob); A.blob = URL.createObjectURL(b); A.blobDe = id;
+        var v = $("aVideo"); v.src = A.blob; v.hidden = false; $("aLien").href = A.blob; $("aLien").hidden = false; });
+  }
+  function aSuis(){
+    if (A.suivi) clearTimeout(A.suivi);
+    if (!A.id) return;
+    api("/studio/kling/entier/" + A.id).then(function(e){
+      A.etat = e; peintAnime();
+      var n = e.morceaux ? e.morceaux.length : 0, faits = e.morceaux ? e.morceaux.filter(function(m){ return m.statut === "done"; }).length : 0;
+      if (e.statut === "decoupe") { aStatut(n > 1 || aMode() === "anime" ? "Cutting the video into parts…" : "Reading the clip…"); }
+      else if (e.statut === "pret") { aStatut("Plan ready: check the price, then run.", "ok"); A.occupe = false; peintAnime(); return; }
+      else if (e.statut === "erreur") { aStatut("Not planned: " + (e.message || "error"), "err"); A.occupe = false; peintAnime(); return; }
+      else if (e.statut === "en_cours") { aStatut(n > 1 ? "Animating: " + faits + " of " + n + " parts done, one at a time." + aReste(e) : "Kling is animating your still…"); }
+      else if (e.statut === "assemblage") { aStatut("Done at Kling — putting the original sound back…"); }
+      else if (e.statut === "incomplet") { aStatut(e.message || "A part failed: retry it.", "err"); return; }
+      else if (e.statut === "fini") {
+        aStatut("Done: " + (e.dureeFinale || e.source.duree).toFixed(1) + " s, original sound. Kept 48 h on the server.", "ok");
+        if (A.blobDe !== e.id) aMontre(e.video, e.id)["catch"](function(err){ aStatut("Result not loaded: " + err.message, "err"); });
+        return;
+      }
+      else if (e.statut === "abandon") { aStatut("Abandoned.", "err"); return; }
+      A.suivi = setTimeout(aSuis, 5000);
+    })["catch"](function(err){ aStatut("Follow-up failed: " + err.message, "err"); A.suivi = setTimeout(aSuis, 15000); });
+  }
+  $("aStill").addEventListener("change", function(){
+    var f = $("aStill").files && $("aStill").files[0];
+    A.still = null; A.stillL = A.stillH = 0; $("aStillVue").hidden = true; $("aStillInfo").textContent = "";
+    var v = aVue(), max = (v && v.stillOctetsMax) || 6 * 1024 * 1024;
+    if (!f) { peintAnime(); return; }
+    if (!/^image\/(png|jpeg)$/.test(f.type)) { aStatut("The still must be a JPG or PNG picture.", "err"); peintAnime(); return; }
+    if (f.size > max) { aStatut("Still too large: " + (f.size / 1048576).toFixed(1) + " MB (" + Math.round(max / 1048576) + " MB at most).", "err"); peintAnime(); return; }
+    var r = new FileReader();
+    r.onload = function(){
+      var d = String(r.result), im = new Image();
+      im.onload = function(){
+        var l = im.naturalWidth, h = im.naturalHeight, p = Math.min(l, h), g = Math.max(l, h);
+        if (p < 300 || g / p > 2.5) { aStatut("Kling needs 300 px at least per side and a shape between 1:2.5 and 2.5:1 — this still is " + l + "×" + h + ".", "err"); peintAnime(); return; }
+        A.still = d; A.stillL = l; A.stillH = h;
+        var vu = $("aStillVue"); vu.src = d; vu.hidden = false;
+        $("aStillInfo").textContent = f.name + " · " + l + "×" + h + " · " + (f.size / 1048576).toFixed(1) + " MB — this is the first frame of the result.";
+        aStatut(""); peintAnime();
+      };
+      im.onerror = function(){ aStatut("This picture could not be read.", "err"); peintAnime(); };
+      im.src = d;
+    };
+    r.readAsDataURL(f);
+  });
+  $("aClip").addEventListener("change", function(){
+    var f = $("aClip").files && $("aClip").files[0];
+    A.fichier = null; A.dureeS = null; $("aClipInfo").textContent = ""; aStatut("");
+    var max = (T.vue && T.vue.octetsMax) || 100 * 1024 * 1024, v = aVue();
+    if (!f) { peintAnime(); return; }
+    if (f.size > max) { aStatut("Video too large: " + (f.size / 1048576).toFixed(1) + " MB (" + Math.round(max / 1048576) + " MB at most).", "err"); peintAnime(); return; }
+    f.arrayBuffer().then(function(b){
+      var d = dureeMp4(b);
+      /* un clip seul : 3 a 10 s, refuse ici avant d'envoyer ; une duree illisible : le serveur juge */
+      if (aMode() === "anime-clip" && d != null && (d < 3 || d > ((v && v.clipMaxS) || 10))) { aStatut("This clip is " + d.toFixed(2) + " s long: one clip is 3 to " + ((v && v.clipMaxS) || 10) + " s (pick Whole video for a longer one).", "err"); peintAnime(); return; }
+      A.fichier = f; A.dureeS = d;
+      $("aClipInfo").textContent = f.name + " · " + (f.size / 1048576).toFixed(1) + " MB" + (d != null ? " · " + d.toFixed(2) + " s" : "");
+      peintAnime();
+    });
+  });
+  $("aQuoi").addEventListener("change", function(){ A.fichier = null; A.dureeS = null; $("aClip").value = ""; $("aClipInfo").textContent = ""; A.etat = null; A.id = null; peintAnime(); });
+  $("aResolution").addEventListener("change", peintAnime);
+  $("aNote").addEventListener("input", function(){ $("aTexte").textContent = aTexte(); });
+  $("aPlan").addEventListener("click", function(){
+    if (!A.fichier) return;
+    if (A.suivi) clearTimeout(A.suivi);
+    A.occupe = true; A.etat = null; A.id = null; $("aVideo").hidden = true; $("aLien").hidden = true; peintAnime();
+    aStatut("Uploading (" + (A.fichier.size / 1048576).toFixed(1) + " MB)…");
+    fetch(serveur() + "/studio/kling/entier?mode=" + aMode(), { method: "POST", cache: "no-store", headers: { "content-type": "video/mp4", authorization: "Bearer " + jeton() }, body: A.fichier })
+      .then(function(r){ return r.json().catch(function(){ return {}; }).then(function(o){ if (!r.ok || o.ok === false) throw new Error(o.raison || ("error " + r.status)); return o; }); })
+      .then(function(o){ A.id = o.id; aSuis(); })
+      ["catch"](function(e){ aStatut("Not planned: " + e.message, "err"); A.occupe = false; peintAnime(); });
+  });
+  $("aLancer").addEventListener("click", function(){
+    var p = aPrixPlan(); if (p == null || !A.id || !A.still) return;
+    A.occupe = true; $("aLancer").disabled = true; aStatut("Sending to Kling…");
+    var corps = { still: A.still, resolution: $("aResolution").value, confirmeUsd: p };
+    var n = $("aNote").value.trim(); if (n) corps.note = n;
+    api("/studio/kling/entier/" + A.id + "/lance", "POST", corps)
+      .then(function(e){ A.etat = e; A.occupe = false; peintAnime(); aSuis(); })
+      ["catch"](function(e){ aStatut("Not sent: " + e.message, "err"); A.occupe = false; peintAnime(); });
+  });
+  $("aAbandon").addEventListener("click", function(){
+    api("/studio/kling/entier/" + A.id + "/abandonne", "POST", {}).then(function(e){ if (A.suivi) clearTimeout(A.suivi); A.etat = e.statut === "supprime" ? null : e; A.id = null; peintAnime(); aStatut("Abandoned: the parts were deleted.", "err"); })
+      ["catch"](function(e){ aStatut("Not abandoned: " + e.message, "err"); });
+  });
 
   charge();
 })();

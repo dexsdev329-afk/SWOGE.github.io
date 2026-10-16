@@ -135,7 +135,10 @@ const PREUVE_W = { adresse: A('61'), participations: [
     const u = q.url.split('?')[0];
     const vue = { '/api/ai/smart': VUE, '/long/ai/smart': LONG, '/off/ai/smart': OFF, '/demarre/ai/smart': DEMARRE, '/perime/ai/smart': PERIME, '/echec/ai/smart': ECHEC, '/api/ai/smart/wallet': PREUVE_W }[u];
     if (vue) { r.writeHead(200, { 'content-type': 'application/json' }); return r.end(JSON.stringify(vue)); }
-    if (u === '/panne/ai/smart') { r.writeHead(503); return r.end(); }
+    if (u === '/panne/ai/smart' || u === '/panne/ai/smart/alertes') { r.writeHead(503); return r.end(); }
+    /* 16/10 : la section « Live alerts » lit /ai/smart/alertes ; son essai est smart_alertes_page.test.js.
+       Ici le public est eteint : les verifications de cette suite gardent leur sens (« owner only »). */
+    if (/\/ai\/smart\/alertes$/.test(u)) { r.writeHead(200, { 'content-type': 'application/json' }); return r.end(JSON.stringify({ actif: false, raison: 'public alerts off', alertes: [], vivantes: [], bilan: null })); }
     if (/\/vitrine\.json$/.test(u)) { r.writeHead(200, { 'content-type': 'application/json' }); return r.end('{}'); }
     const f = path.join(SITE, decodeURIComponent(u));
     if (!f.startsWith(SITE)) { r.writeHead(403); return r.end(); }
@@ -164,6 +167,7 @@ const PREUVE_W = { adresse: A('61'), participations: [
       passe: [...document.querySelectorAll('#passe .ds-kpi')].map((k) => k.textContent),
       liens: [...document.querySelectorAll('main a[href]')].map((a) => a.getAttribute('href')),
       boutons: [...document.querySelectorAll('main button, main form, main input')].length,
+      liveOff: (document.querySelector('#liveStatut') || {}).textContent,
       achats: [...document.querySelectorAll('main a, main button')].filter((e) => /\b(buy|trade|swap|ape in)\b/i.test(e.textContent)).map((e) => e.textContent),
       pirate: window.pirate, imgs: document.querySelectorAll('main img').length,
       texte: document.body.innerText, notes: t('#walletsNote') + ' ' + t('#createursNote') };
@@ -240,6 +244,7 @@ const PREUVE_W = { adresse: A('61'), participations: [
   ok(sur && r.liens.length > 20, 'liens : DexScreener, Blockscout et GeckoTerminal seulement (' + r.liens.length + '), adresses et hashes valides');
   ok(!r.liens.some((h) => /javascript:|pas-une-adresse/.test(h)), 'une adresse invalide ne devient jamais un lien');
   ok(r.boutons === 0, 'aucun bouton, aucun formulaire dans la page');
+  ok(/Public alerts are off on the server/.test(r.liveOff || ''), 'alertes publiques eteintes : la section « Live alerts » le dit');
   ok(r.achats.length === 0, 'aucun lien ni bouton qui invite a acheter, echanger ou trader' + (r.achats.length ? ' : ' + r.achats.join(' | ') : ''));
   const FR = /\b(le|les|des|une|est|pour|avec|sans|jetons?|portefeuilles?|aucun|lecture|seule|achat|vente|gagnant|perdant|createur|derni[eè]re?)\b|[éèêàùç]/i;
   const fr = r.texte.split('\n').filter((l) => FR.test(l));

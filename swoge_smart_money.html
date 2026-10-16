@@ -326,6 +326,69 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 #sm .ds-table td.mots{ overflow-wrap:anywhere; min-width:96px; }
 .sm-fil{ font-size:13px; color:var(--ds-pale); margin:0 0 10px; }
 .sm-fil a{ color:var(--ds-bleu); text-decoration:none; }
+/* ==================== LES ALERTES EN DIRECT (16/10/2026) ====================
+   Une carte par alerte : verdict, titre, adresse complete, les faits du gabarit,
+   et une rangee de cinq cases (+5 ... +120 min) qui se remplissent. Les
+   rafraichissements ne touchent que le texte qui change : rien ne clignote.
+   Tout tient a 320 px : grilles en minmax(0,1fr), adresses coupees n'importe ou. */
+.sm-live{ position:relative; overflow:hidden; }
+.sm-live::before{ content:""; position:absolute; inset:0 0 auto 0; height:3px; background:linear-gradient(90deg,var(--ds-vert),var(--ds-bleu),var(--ds-violet)); }
+.sm-live .ds-tete{ align-items:flex-start; }
+.sm-pouls{ display:inline-block; width:9px; height:9px; border-radius:50%; background:var(--ds-vert); margin:0 8px 2px 0; box-shadow:0 0 0 0 rgba(14,138,79,.45); animation:sm-pouls 2.4s ease-out infinite; vertical-align:middle; }
+.sm-live.eteint .sm-pouls{ background:#9AA6BA; animation:none; }
+@keyframes sm-pouls{ 0%{ box-shadow:0 0 0 0 rgba(14,138,79,.45); } 70%{ box-shadow:0 0 0 8px rgba(14,138,79,0); } 100%{ box-shadow:0 0 0 0 rgba(14,138,79,0); } }
+@media (prefers-reduced-motion:reduce){ .sm-pouls{ animation:none; } }
+a.sm-tg{ display:inline-flex; align-items:center; gap:7px; font:800 12.5px/1 Inter,system-ui,sans-serif; color:#fff; background:#229ED9; border-radius:999px; padding:10px 14px; text-decoration:none; white-space:nowrap; box-shadow:0 6px 16px rgba(34,158,217,.25); }
+a.sm-tg:hover{ background:#1c8cc2; }
+.sm-avis{ margin:0 0 6px; padding:10px 12px; border-radius:12px; background:#FFF4E0; border:1px solid #F2D9A8; color:#7A4600; font:600 13px/1.45 Inter,system-ui,sans-serif; }
+.sm-h3{ font:800 13px/1.3 Inter,system-ui,sans-serif !important; letter-spacing:.06em; text-transform:uppercase; color:var(--ds-pale); margin:16px 0 8px !important; }
+.sm-bilan{ display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:8px; }
+.sm-cat{ border:1px solid var(--ds-ligne); border-radius:12px; padding:10px 11px; background:var(--ds-fond); min-width:0; }
+.sm-cat small{ display:block; font:700 10.5px/1.3 Inter,system-ui,sans-serif; letter-spacing:.06em; text-transform:uppercase; color:var(--ds-pale); }
+.sm-cat b{ display:block; font:800 18px/1.25 Inter,system-ui,sans-serif; margin:4px 0 1px; font-variant-numeric:tabular-nums; }
+.sm-cat span{ display:block; font-size:12px; color:var(--ds-pale); line-height:1.4; overflow-wrap:anywhere; }
+.sm-cat.attente b{ color:#9AA6BA; }
+.sm-cat.tout{ background:var(--ds-blanc); border-color:#CFDBF3; }
+.sm-cat.rouge{ background:#FFF8F7; }
+.sm-flux{ list-style:none; margin:0; padding:0; display:grid; gap:10px; }
+/* large ecran : deux cartes par rangee, la section reste courte (capture du 16/10 : huit cartes pleine largeur
+   faisaient 2 900 px) ; chaque carte garde ses faits sur une colonne */
+@media (min-width:1100px){ .sm-flux{ grid-template-columns:repeat(2,minmax(0,1fr)); align-items:start; } .sm-flux .sm-al-faits{ grid-template-columns:minmax(0,1fr); } }
+.sm-al{ border:1px solid var(--ds-ligne); border-left:4px solid #E3B341; border-radius:14px; padding:12px 13px; background:var(--ds-blanc); min-width:0; }
+.sm-al.vert{ border-left-color:var(--ds-vert); } .sm-al.rouge{ border-left-color:var(--ds-rouge); }
+.sm-al-tete{ display:flex; gap:9px; align-items:flex-start; min-width:0; }
+.sm-al-em{ font-size:18px; line-height:1.2; flex:0 0 auto; }
+.sm-al-titre{ min-width:0; flex:1 1 auto; }
+.sm-al-titre b{ font:800 14.5px/1.35 Inter,system-ui,sans-serif; overflow-wrap:anywhere; }
+.sm-al-sym{ display:inline-block; font:800 12px/1 Inter,system-ui,sans-serif; color:var(--ds-bleu); background:#E9F0FF; border-radius:7px; padding:3px 6px; margin-left:4px; vertical-align:1px; }
+.sm-al-meta{ display:block; font-size:12px; color:var(--ds-pale); margin-top:2px; }
+.sm-al-adr{ font:600 11.5px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--ds-encre); overflow-wrap:anywhere; word-break:break-all; margin:7px 0 0; }
+.sm-al-liens{ font-size:12.5px; margin:3px 0 0; }
+.sm-al-liens a{ font-weight:700; text-decoration:none; }
+.sm-al-faits{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:4px 14px; margin:9px 0 0; font-size:12.5px; line-height:1.45; }
+.sm-al-faits div{ min-width:0; }
+.sm-al-faits dt{ display:inline; font-weight:700; color:var(--ds-encre); }
+.sm-al-faits dd{ display:inline; margin:0; color:#33415C; overflow-wrap:anywhere; }
+.sm-al-faits .large{ grid-column:1 / -1; }
+.sm-al-faits a{ font:600 11.5px ui-monospace,SFMono-Regular,Menlo,monospace; text-decoration:none; }
+.sm-res{ display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:5px; margin:10px 0 0; }
+.sm-res div{ border-radius:9px; background:#F2F5FA; padding:6px 4px; text-align:center; min-width:0; }
+.sm-res small{ display:block; font:700 10px/1.2 Inter,system-ui,sans-serif; color:var(--ds-pale); letter-spacing:.03em; }
+.sm-res b{ display:block; font:800 13px/1.35 Inter,system-ui,sans-serif; font-variant-numeric:tabular-nums; color:#9AA6BA; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.sm-res div.up{ background:#E6F5EC; } .sm-res div.up b{ color:var(--ds-vert); }
+.sm-res div.down{ background:#FDECEB; } .sm-res div.down b{ color:var(--ds-rouge); }
+.sm-res div.nul b{ color:var(--ds-encre); }
+.sm-res div.manque b{ font-weight:600; font-size:11.5px; }
+.sm-res-pied{ font-size:11.5px; color:var(--ds-pale); margin:5px 0 0; overflow-wrap:anywhere; }
+.sm-anciennes{ margin-top:10px; }
+.sm-anciennes > summary{ cursor:pointer; color:var(--ds-bleu); font-weight:700; font-size:13px; list-style:none; padding:6px 0; }
+.sm-anciennes > summary::-webkit-details-marker{ display:none; }
+.sm-anciennes > summary::before{ content:"\25B8  "; }
+.sm-anciennes[open] > summary::before{ content:"\25BE  "; }
+@media (max-width:620px){ .sm-al-faits{ grid-template-columns:minmax(0,1fr); } .sm-bilan{ grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media (max-width:420px){ .sm-live{ padding:16px 12px; } .sm-al{ padding:11px 10px; } .sm-res{ gap:3px; } .sm-res div{ padding:6px 1px; } .sm-res b{ font-size:11.5px; letter-spacing:-.02em; } .sm-res small{ font-size:9.5px; letter-spacing:0; } .sm-cat b{ font-size:16px; } a.sm-tg{ padding:9px 12px; } }
+@media (max-width:360px){ .sm-live{ padding:16px 10px; } .sm-al{ padding:10px 8px; } .sm-res b{ font-size:11px !important; } }
+
 /* Revue du 13/10 : l'etat perime se VOIT (pastille ambre, P4) ; chaque ligne a
    sa preuve (P2), depliee a la demande (details : ni bouton ni formulaire) ;
    les sources « Not verified » sont des liens (P3). */
@@ -563,13 +626,33 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
       <p class="ds-sous" id="depuis"></p>
     </div>
     <div class="ds-faits">
-      <div class="ds-fait"><i>&#128274;</i><div><b>No key, nothing bought</b><span>The detector only reads the chain and two public price sources. Alerts go to the owner; no trade follows.</span></div></div>
+      <div class="ds-fait"><i>&#128274;</i><div><b>No key, nothing bought</b><span>The detector only reads the chain and two public price sources. Alerts go out as messages; no trade follows.</span></div></div>
       <div class="ds-fait"><i>&#9878;&#65039;</i><div><b>A base rate first</b><span>Buying early on a token that later passed $1M often looks like a win. Each wallet is compared with every early buyer of the same tokens.</span></div></div>
       <div class="ds-fait"><i>&#128202;</i><div><b>Every number says where it comes from</b><span>Verified = read on chain, with its block and transaction. Not verified = an outside price or an estimate.</span></div></div>
     </div>
   </section>
   <p class="sm-bandeau" id="bandeau" hidden></p>
   <p class="ds-statut statut" id="statut" role="status">Loading the detector&hellip;</p>
+
+  <!-- LES ALERTES EN DIRECT (16/10/2026) : /ai/smart/alertes, le flux public et
+       la mesure apres chaque alerte (smart_public.js). Voir le script. -->
+  <section class="ds-carte sm-live" id="live" aria-labelledby="t-live">
+    <div class="ds-tete">
+      <div>
+        <h2 id="t-live"><span class="sm-pouls" aria-hidden="true"></span>Live alerts</h2>
+        <p id="liveNote">Every alert the detector sends, the moment it fires &mdash; then what the price did 5, 15, 30, 60 and 120 minutes later. Refreshed every 30 seconds.</p>
+      </div>
+      <span id="liveTg"></span>
+    </div>
+    <p class="sm-avis" role="note">&#9888;&#65039; Not financial advice. Most alerts lose; a few big winners carry the result.</p>
+    <p class="ds-statut" id="liveStatut" role="status">Loading the live alerts&hellip;</p>
+    <h3 class="sm-h3">Track record by kind</h3>
+    <div class="sm-bilan" id="liveBilan"></div>
+    <p class="sm-sous" id="bilanNote"></p>
+    <h3 class="sm-h3">Latest alerts</h3>
+    <ol class="sm-flux" id="liveFlux"></ol>
+    <details class="sm-anciennes" id="liveAnciennes" hidden><summary id="liveAnciennesTxt"></summary><ol class="sm-flux" id="liveFlux2"></ol></details>
+  </section>
 
   <section aria-label="Detector status">
     <div class="ds-kpis quatre" id="kpis"></div>
@@ -710,7 +793,7 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
     st_off: "The detector is off on the server: nothing is read and no alert is sent. The last results are not shown while it is off.",
     st_start: "The detector is on and opening its database. The first pass reads the sources, then the chain.",
     st_down: "The detector could not be read right now. Retrying every minute.",
-    st_ok: function(m){ return m === "observe" ? "Observing: results are computed and kept, no alert is sent yet." : "Alerts go to the owner only. Nothing is ever bought."; },
+    st_ok: function(m, pub){ return m === "observe" ? "Observing: results are computed and kept, no alert is sent yet." : pub ? "Alerts go to the owner and to the live feed below. Nothing is ever bought." : "Alerts go to the owner only. Nothing is ever bought."; },
     st_stale: function(v, p){ return "The numbers below are old: last successful watch " + v + ", last complete pass " + p + ". The detector may be stopped or refused by the node."; },
     st_failing: function(e){ return "The last pass did not finish: " + e + ". The numbers below come from earlier passes."; },
     depuis: function(t){ return "Last chain read " + t + "."; },
@@ -782,7 +865,31 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
     p_sources_s: "GeckoTerminal · DexScreener",
     p_veille_s: function(c, a, f){ return c + " pools born · " + a + " alert" + (a === 1 ? "" : "s") + " · ended " + f; },
     s_ok: "complete", s_budget: "stopped at its budget", s_abandon: "stopped (node refused)", s_erreur: "error",
-    pool_v: function(v){ return v ? "Uniswap v" + v : "pool"; }
+    pool_v: function(v){ return v ? "Uniswap v" + v : "pool"; },
+    /* les alertes en direct (16/10) */
+    l_load: "Loading the live alerts…",
+    l_off: "Public alerts are off on the server: nothing is published right now.",
+    l_down: "The live alerts could not be read right now. Retrying every 30 seconds.",
+    l_vide: "No alert yet. They appear here the moment the detector fires.",
+    l_ok: function(n, t){ return n + " alert" + (n === 1 ? "" : "s") + " shown · updated " + t + "."; },
+    l_tg: "Join the Telegram channel",
+    l_cat: { dev: "Known dev", pons: "Pons launch", ignition: "IGNITION", copie: "Wallet copy", rebond: "Bounce", analyste: "Analyst", smart: "Smart wallets", rouge: "Red flags", tout: "All alerts" },
+    l_rose: function(p){ return p + "% rose"; },
+    l_rose_s: function(m, b){ return "at +30 min · median " + m + " · best " + b; },
+    l_n: function(n30, n){ return n + " sent · " + n30 + " measured"; },
+    l_pas_assez: function(n, s){ return "not enough alerts yet (" + n + " of " + s + ")"; },
+    l_rouge_s: "avoid / exit alerts: here, rising means the warning was wrong",
+    bilanNote: function(s, p){ return "Share of alerts whose price was higher " + p + " minutes after the alert than at the alert, and the median change. No figure under " + s + " measured alerts: a handful of tokens is luck, not a result. Green and yellow alerts only; red ones (avoid, exit) have their own tile."; },
+    l_age: function(min){ return min < 1 ? "just now" : min < 120 ? Math.round(min) + " min ago" : min < 2880 ? Math.round(min / 60) + " h ago" : Math.round(min / 1440) + " d ago"; },
+    l_etat: "Age and state", l_qui: "Who", l_promo: "DexScreener promo", l_risque: "Main risk", l_plan: "Plan",
+    l_plan_s: function(p){ return "entry " + p.entree + "; stop " + p.stop + "; target " + p.objectif; },
+    l_qui_vide: "no tracked wallet or known dev",
+    l_palier: function(x){ return "+" + x + " min"; },
+    l_attente: "…", l_manque: "missed",
+    l_ref: function(prix, src, retard){ return "Price at alert " + prix + " (" + (src === "curve" ? "Pons curve, read on chain" : "DexScreener, not verified") + (retard > 0 ? ", read " + Math.round(retard) + " s after" : "") + ")"; },
+    l_sansref: "No price could be read at the alert: not measured.",
+    l_extremes: function(b, w, n){ return "best " + b + " · worst " + w + " over " + n + " reading" + (n === 1 ? "" : "s"); },
+    l_anciennes: function(n){ return "Older alerts (" + n + ")"; }
   };
   function ph(k){ var v = PH[k]; if (v == null) return k; return typeof v === "function" ? v.apply(null, [].slice.call(arguments, 1)) : v; }
 
@@ -1121,7 +1228,7 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
     else if (!d.pret) { s.textContent=ph("st_start"); pt.className="ds-badge"; tx.textContent=ph("starting"); }
     else if (perime(d)) { s.className="ds-statut statut err"; s.textContent=ph("st_stale", heure(d.veille_ok && d.veille_ok.fin), heure(d.passe_ok && d.passe_ok.fin)); pt.className="ds-badge vieux"; tx.textContent=ph("stale"); }
     else if (d.passe && d.passe.statut !== "ok") { s.textContent=ph("st_failing", ph("s_" + (["budget","abandon"].indexOf(d.passe.statut) >= 0 ? d.passe.statut : "erreur"))) + " " + ph("st_ok", d.mode); pt.className="ds-badge vieux"; tx.textContent=ph("failing"); }
-    else { s.textContent=ph("st_ok", d.mode); pt.className="ds-badge vif"; tx.textContent=ph("live"); }
+    else { s.textContent=ph("st_ok", d.mode, !!(live.d && live.d.actif)); pt.className="ds-badge vif"; tx.textContent=ph("live"); }
     $("depuis").textContent = d.actif && d.pret ? ph("depuis", heure(d.t)) : "";
     peintKpis(d); peintTables(d, d.actif ? ph("vide") : ph("vide_off")); peintPasse(d);
   }
@@ -1135,10 +1242,141 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
       if (!etat.d) peintTables({ regles: {} }, ph("vide_down"));
     });
   }
+  /* ==================== LES ALERTES EN DIRECT (16/10/2026) ====================
+   * /ai/smart/alertes?depuis=<id> toutes les 30 s : les nouvelles alertes, et la
+   * mesure de celles deja montrees. Chaque carte est construite UNE fois (cle :
+   * son id) ; un rafraichissement ne change que le texte et la classe des cases
+   * qui bougent — rien n'est vide puis refait, rien ne clignote. Le bilan dit
+   * « not enough alerts yet (n of N) » sous le seuil du serveur. */
+  var live = { cartes: {}, ordre: [], dernier: 0, d: null, MONTRE: 6, MAX: 30 };
+  var TME = /^https:\/\/t\.me\/[A-Za-z0-9_+][A-Za-z0-9_+\/-]{0,63}$/;
+  function pct(x){ if (x == null || !isFinite(x)) return null; var a = Math.abs(x); var t = a >= 1000 ? (a / 1000).toFixed(1) + "k" : a >= 100 ? Math.round(a) : a.toFixed(1); return (x > 0 ? "+" : x < 0 ? "−" : "") + t + "%"; }
+  function prixTxt(p){ if (p == null || !isFinite(p)) return "--"; return "$" + (p >= 1 ? p.toFixed(4) : p.toPrecision(3)); }
+  function setTxt(e, t){ if (e.textContent !== t) e.textContent = t; }
+  function setCls(e, c){ if (e.className !== c) e.className = c; }
+  function lienAdr(a, txt){ return ADR.test(a) ? lien("adresse", a, txt || court(a)) : el("span", null, court(a)); }
+  function fait(dl, k, v, large){ var d = el("div", large ? "large" : null); d.appendChild(el("dt", null, k + ": ")); var dd = el("dd"); if (typeof v === "string") dd.textContent = v; else dd.appendChild(v); d.appendChild(dd); dl.appendChild(d); return dd; }
+  function carte(a){
+    var f = a.fiche || {}, v = ["vert","jaune","rouge"].indexOf(a.verdict) >= 0 ? a.verdict : "jaune";
+    var li = el("li", "sm-al " + v); li.setAttribute("data-id", a.id);
+    var tete = el("div", "sm-al-tete");
+    tete.appendChild(el("span", "sm-al-em", { vert: "🟢", jaune: "🟡", rouge: "🔴" }[v]));
+    var ti = el("div", "sm-al-titre");
+    ti.appendChild(el("b", null, String(f.titre || "")));
+    if (f.symbole) ti.appendChild(el("span", "sm-al-sym", "$" + String(f.symbole).replace(/^\$/, "")));
+    var meta = el("span", "sm-al-meta"); ti.appendChild(meta);
+    tete.appendChild(ti); li.appendChild(tete);
+    if (ADR.test(f.jeton || "")) {
+      li.appendChild(el("div", "sm-al-adr", f.jeton));
+      var ls = el("div", "sm-al-liens");
+      ls.appendChild(lien("dex", f.jeton, "DexScreener")); texte(ls, " · "); ls.appendChild(lien("adresse", f.jeton, "Explorer"));
+      li.appendChild(ls);
+    }
+    var dl = el("dl", "sm-al-faits");
+    fait(dl, ph("l_etat"), String(f.etat || ""), true);
+    var qui = el("span");
+    if (!(f.qui || []).length) qui.textContent = ph("l_qui_vide");
+    (f.qui || []).forEach(function(q, i){ if (i) texte(qui, "; "); texte(qui, String(q.nom || "") + " "); qui.appendChild(lienAdr(q.adresse)); if (q.detail) texte(qui, " (" + q.detail + ")"); });
+    fait(dl, ph("l_qui"), qui, true);
+    fait(dl, ph("l_risque"), String(f.risque || ""));
+    fait(dl, ph("l_promo"), String(f.promo || ""));
+    if (f.plan) fait(dl, ph("l_plan"), ph("l_plan_s", f.plan), true);
+    li.appendChild(dl);
+    var res = el("div", "sm-res"); res.setAttribute("aria-label", "Price change after the alert");
+    var cases = {};
+    ((live.d && live.d.paliers) || [5, 15, 30, 60, 120]).forEach(function(x){ var c = el("div"); c.appendChild(el("small", null, ph("l_palier", x))); c.appendChild(el("b", null, ph("l_attente"))); res.appendChild(c); cases[x] = c; });
+    li.appendChild(res);
+    var pied = el("p", "sm-res-pied"); li.appendChild(pied);
+    var c = { li: li, meta: meta, cases: cases, pied: pied, a: a };
+    mesure(c, a.mesure);
+    return c;
+  }
+  function mesure(c, m){
+    if (!m) return;
+    c.m = m;
+    Object.keys(c.cases).forEach(function(x){
+      var box = c.cases[x], b = box.lastChild, p = m.paliers && m.paliers[x];
+      if (p && p.manque) { setCls(box, "manque"); setTxt(b, ph("l_manque")); box.title = ""; }
+      else if (p && p.pct != null) { setCls(box, p.pct > 0 ? "up" : p.pct < 0 ? "down" : "nul"); setTxt(b, pct(p.pct)); box.title = "read " + p.min + " min after the alert"; }
+      else { setCls(box, ""); setTxt(b, ph("l_attente")); }
+    });
+    var t = m.ref ? ph("l_ref", prixTxt(m.ref.prix), m.ref.source, m.ref.retard_s || 0) + (m.meilleur_pct != null && m.pire_pct != null ? " · " + ph("l_extremes", pct(m.meilleur_pct), pct(m.pire_pct), m.releves) : "") : (m.fini || (live.d && live.d.t - c.a.t > 180) ? ph("l_sansref") : "");
+    setTxt(c.pied, t);
+  }
+  function metaTxt(c){
+    var cat = (PH.l_cat[c.a.categorie] || "");
+    var now = (live.d && live.d.t) || Math.floor(Date.now() / 1000);
+    setTxt(c.meta, cat + " · " + ph("l_age", (now - c.a.t) / 60));
+  }
+  function peintBilan(d){
+    var z = $("liveBilan"), b = d.bilan || {};
+    var cles = ["tout", "dev", "pons", "ignition", "copie", "rebond", "analyste", "smart", "rouge"];
+    if (z.children.length !== cles.length) { z.textContent = ""; cles.forEach(function(k){ var t = el("div", "sm-cat"); t.appendChild(el("small", null, PH.l_cat[k])); t.appendChild(el("b")); t.appendChild(el("span")); t.appendChild(el("span")); z.appendChild(t); }); }
+    cles.forEach(function(k, i){
+      var t = z.children[i], x = b[k] || { n: 0, n30: 0, assez: false, seuil: d.seuil };
+      var cls = "sm-cat" + (k === "tout" ? " tout" : k === "rouge" ? " rouge" : "") + (x.assez ? "" : " attente");
+      setCls(t, cls);
+      if (x.assez) { setTxt(t.children[1], ph("l_rose", x.part_montee30)); setTxt(t.children[2], ph("l_rose_s", pct(x.mediane30) || "--", pct(x.meilleur_pct) || "--")); }
+      else { setTxt(t.children[1], "—"); setTxt(t.children[2], ph("l_pas_assez", x.n30 || 0, x.seuil || d.seuil || 40)); }
+      setTxt(t.children[3], k === "rouge" ? ph("l_rouge_s") : ph("l_n", x.n30 || 0, x.n || 0));
+    });
+    setTxt($("bilanNote"), ph("bilanNote", d.seuil || 40, d.palier_bilan || 30));
+  }
+  function range(){
+    /* les MONTRE plus recentes en vue, les autres repliees ; au plus MAX gardees */
+    while (live.ordre.length > live.MAX) { var id = live.ordre.pop(); var c = live.cartes[id]; if (c && c.li.parentNode) c.li.parentNode.removeChild(c.li); delete live.cartes[id]; }
+    var f1 = $("liveFlux"), f2 = $("liveFlux2");
+    live.ordre.forEach(function(id, i){
+      var c = live.cartes[id], cible = i < live.MONTRE ? f1 : f2, avant = i < live.MONTRE ? i : i - live.MONTRE;
+      if (c.li.parentNode !== cible || cible.children[avant] !== c.li) cible.insertBefore(c.li, cible.children[avant] || null);
+    });
+    var n2 = Math.max(0, live.ordre.length - live.MONTRE);
+    $("liveAnciennes").hidden = n2 === 0;
+    setTxt($("liveAnciennesTxt"), ph("l_anciennes", n2));
+  }
+  function peintLive(d){
+    live.d = d;
+    var sec = $("live"), st = $("liveStatut");
+    if (!d.actif) {
+      sec.classList.add("eteint"); setTxt(st, ph("l_off")); st.className = "ds-statut";
+      if (etat.d) peint();
+      return;
+    }
+    sec.classList.remove("eteint");
+    /* le lien du canal, s'il est servi et de la bonne forme */
+    var tg = $("liveTg"), lienTg = d.tg && TME.test(String(d.tg.lien || "")) ? d.tg.lien : null;
+    var a0 = tg.querySelector("a");
+    if (lienTg && !a0) { var a = el("a", "sm-tg", "✈️ " + ph("l_tg")); a.href = lienTg; a.target = "_blank"; a.rel = "noopener"; tg.appendChild(a); }
+    else if (!lienTg && a0) tg.removeChild(a0);
+    else if (lienTg && a0 && a0.getAttribute("href") !== lienTg) a0.href = lienTg;
+    (d.alertes || []).slice().reverse().forEach(function(a){
+      if (!a || !isFinite(a.id)) return;
+      if (live.cartes[a.id]) { mesure(live.cartes[a.id], a.mesure); return; }
+      live.cartes[a.id] = carte(a);
+      live.ordre.push(a.id);
+    });
+    live.ordre.sort(function(x, y){ return y - x; });
+    (d.vivantes || []).forEach(function(m){ var c = m && live.cartes[m.id]; if (c) mesure(c, m); });
+    live.ordre.forEach(function(id){ metaTxt(live.cartes[id]); });
+    range();
+    if (d.dernier_id > live.dernier) live.dernier = d.dernier_id;
+    peintBilan(d);
+    st.className = "ds-statut";
+    setTxt(st, live.ordre.length ? ph("l_ok", live.ordre.length, heure(d.t)) : ph("l_vide"));
+    if (etat.d) peint();
+  }
+  function chargeLive(){
+    fetch(BASE + "/ai/smart/alertes?depuis=" + live.dernier, { cache: "no-store" }).then(function(r){ if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(function(d){ peintLive(d || {}); })
+      ["catch"](function(){ var st = $("liveStatut"); st.className = "ds-statut err"; setTxt(st, ph("l_down")); });
+  }
+
   if (ignore) { $("bandeau").hidden = false; $("bandeau").textContent = ph("ignore"); }
   $("pastilleTxt").textContent=ph("connecting");
   charge();
   setInterval(charge, 60000);
+  chargeLive();
+  setInterval(chargeLive, 30000);
 })();
 </script>
 

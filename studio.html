@@ -801,6 +801,99 @@ footer b{color:var(--navy)}
 }
 @media (max-width:440px){ .sx-chars{grid-template-columns:minmax(0,1fr)} }
 @media (max-width:380px){ .swapx-head h2{font-size:27px} }
+/* ======================================================================
+   L'ONGLET VOICE (section #vox, 16/10/2026) — voix off et musique ElevenLabs. Meme charte que
+   SWOGE Swap (carte a etapes, bouton bleu au prix dedans, resultat a droite). La section prend
+   la place du composeur seulement quand l'onglet Voice est choisi ET que le serveur l'a allumee.
+   ====================================================================== */
+#vox{display:none}
+html.son-on[data-onglet="voice"] #vox{display:block}
+html.son-on[data-onglet="voice"] .work{display:none}
+.vox{margin-top:6px;scroll-margin-top:84px}
+.vx-work{margin-top:0}
+.vx-outils{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 14px 6px;flex-wrap:wrap}
+.vx-seg button{display:inline-flex;align-items:center;gap:7px;padding:0 16px}
+.vx-seg .ic{width:16px;height:16px}
+.vx-seg button[aria-pressed="true"] .ic{color:var(--blue)}
+.vx-par{font:800 10.5px/1 var(--f);letter-spacing:1.4px;text-transform:uppercase;color:var(--dim2)}
+.vx-outil[hidden]{display:none}
+textarea.vx-ta{display:block;height:auto;min-height:118px;padding:12px 14px;resize:vertical;font:500 15.5px/1.5 var(--f);margin-top:0}
+#vxPrompt{min-height:86px}
+.vx-compte{display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px 12px;margin:7px 2px 0;font:600 12px/1.4 var(--f);color:var(--dim)}
+.vx-compte .trop{color:var(--red)}
+.vx-voix{display:grid;grid-template-columns:repeat(auto-fill,minmax(178px,1fr));gap:8px;max-height:330px;overflow-y:auto;padding:3px;margin:-3px;scrollbar-width:thin}
+.vx-v{position:relative;display:flex;align-items:center;gap:10px;min-height:60px;padding:8px 10px 8px 8px;border:1px solid var(--line);border-radius:16px;background:#fff;cursor:pointer;min-width:0;text-align:left;outline-offset:2px}
+.vx-v:hover{border-color:var(--line2)}
+.vx-v[aria-checked="true"]{border-color:var(--blue);box-shadow:0 0 0 3px rgba(27,95,224,.16)}
+.vx-v > span{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}
+.vx-v b{font:750 14px/1.2 var(--f);color:var(--navy);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vx-v small{font:600 11.5px/1.3 var(--f);color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vx-v .vx-ok{flex:0 0 auto;width:20px;height:20px;border-radius:999px;background:var(--blue);color:#fff;display:none;place-items:center}
+.vx-v .vx-ok .ic{width:12px;height:12px;stroke-width:3}
+.vx-v[aria-checked="true"] .vx-ok{display:grid}
+.vx-ecoute{flex:0 0 auto;width:40px;height:40px;border-radius:12px;border:0;background:var(--blue-soft);color:var(--blue);display:grid;place-items:center;cursor:pointer}
+.vx-ecoute .ic{width:14px;height:14px}
+.vx-ecoute:hover{background:#DCE8FF}
+.vx-ecoute[aria-pressed="true"]{background:var(--blue);color:#fff}
+.vx-ecoute:disabled{background:var(--field);color:var(--dim2);cursor:default}
+.vx-vide{grid-column:1 / -1;margin:0;padding:14px;border:1.5px dashed var(--line2);border-radius:16px;font:500 13px/1.45 var(--f);color:var(--dim);text-align:center}
+.vx-ligne{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.vx-ligne .seg.sx-seg{flex:1 1 300px}
+.vx-lang select{max-width:140px}
+.swapx .seg.sx-seg button .vx-p{font-weight:800;color:var(--blue);margin-left:6px;font-variant-numeric:tabular-nums}
+.swapx .seg.sx-seg button[aria-pressed="true"]{background:#fff;color:var(--navy);box-shadow:var(--sh-on)}
+.vx-idees{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.vx-idees button{min-height:30px;padding:4px 12px;border-radius:999px;border:1px solid var(--line);background:var(--field);font:650 12px/1.3 var(--f);color:var(--text2);text-align:left}
+.vx-idees button:hover{border-color:var(--blue);color:var(--blue)}
+.vx-go-step{grid-template-columns:minmax(0,1fr)}
+.vx-go-body{grid-column:1;margin-top:0}
+.vx-go-body .sx-err .lnk{display:inline;margin-left:4px;border:0;background:none;padding:0;font:750 13px/1.45 var(--f);color:#7A1F18;text-decoration:underline;text-underline-offset:2px;cursor:pointer}
+.vx-stage{position:relative;min-height:320px;border-radius:18px;background:var(--field);border:1.5px dashed var(--line2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:26px 22px;text-align:center;overflow:hidden}
+.vx-stage > .ic{width:32px;height:32px;color:var(--dim2)}
+.vx-stage b{font:800 15px/1.3 var(--f);color:var(--navy)}
+.vx-stage small{font:500 12.5px/1.45 var(--f);color:var(--dim);max-width:280px}
+.vx-stage.run{border-style:solid;border-color:var(--line);background:linear-gradient(100deg,#EEF3FB 30%,#F8FAFE 50%,#EEF3FB 70%);background-size:200% 100%;animation:shim 1.8s linear infinite}
+.vx-stage.run b{color:var(--blue)}
+.vx-stage.fini{border:0;align-items:stretch;justify-content:flex-start;text-align:left;gap:6px;padding:18px 18px 16px;background:radial-gradient(120% 90% at 100% 0%,#2C5FD0 0%,rgba(44,95,208,0) 60%),linear-gradient(165deg,#0A1F44 0%,#12306A 100%);color:#fff}
+.vx-tete{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.vx-pill{display:inline-flex;align-items:center;gap:6px;font:800 10.5px/1 var(--f);letter-spacing:1.2px;text-transform:uppercase;color:#fff;background:rgba(255,255,255,.14);padding:6px 9px;border-radius:999px}
+.vx-pill .ic{width:13px;height:13px}
+.vx-stage.fini .vx-quand{font:600 11.5px/1 var(--f);color:rgba(255,255,255,.7)}
+.vx-stage.fini b{color:#fff;font:800 17px/1.3 var(--f);margin-top:10px;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.vx-stage.fini small{color:rgba(255,255,255,.78);max-width:none}
+.vx-onde{display:flex;align-items:center;gap:3px;height:76px;margin:12px 0 8px}
+.vx-onde i{flex:1 1 0;min-width:2px;border-radius:3px;background:linear-gradient(180deg,#F2C868,#E6A537);opacity:.92}
+.vx-stage audio{width:100%;height:40px;margin-top:2px;border-radius:999px}
+.vx-acts{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.vx-acts > *{flex:1 1 auto;min-width:0;justify-content:center}
+.vx-acts a.gen{text-decoration:none;height:44px;font-size:14px}
+.vx-acts a.gen[aria-disabled="true"]{pointer-events:none;background:#E4EBF6;color:#5A6B85;box-shadow:inset 0 0 0 1px #D3DEEF}
+.vx-stage.err{border:1.5px solid var(--red-line);background:var(--red-soft)}
+.vx-stage.err b,.vx-stage.err small{color:#7A1F18}
+.vx-mes{margin:16px 4px 4px}
+.vx-mes ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.vx-r{display:flex;align-items:center;gap:10px;width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:14px;background:#fff;text-align:left;cursor:pointer;min-width:0}
+.vx-r:hover{border-color:var(--line2)}
+.vx-r[aria-current="true"]{border-color:var(--blue);background:var(--blue-tint)}
+.vx-r .vx-ri{flex:0 0 auto;width:32px;height:32px;border-radius:10px;background:var(--blue-soft);color:var(--blue);display:grid;place-items:center}
+.vx-r .vx-ri .ic{width:15px;height:15px}
+.vx-r > span{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+.vx-r b{font:700 13px/1.25 var(--f);color:var(--navy);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vx-r small{font:600 11.5px/1.3 var(--f);color:var(--dim)}
+@media (max-width:720px){
+  .vox{margin-top:0}
+  .vx-outils{padding:12px 8px 4px}
+  .vx-outils .seg{flex:1 1 100%;display:flex}
+  .vx-outils .seg button{flex:1;justify-content:center}
+  .vx-par{display:none}
+  .vx-voix{grid-template-columns:repeat(auto-fill,minmax(138px,1fr));max-height:300px}
+  .vx-ecoute{width:36px;height:36px}
+  .vx-ligne .seg.sx-seg{flex:1 1 100%}
+  .vx-lang{width:100%;justify-content:space-between}
+  .vx-lang select{max-width:none;flex:1;text-align:right}
+  .vx-stage{min-height:260px}
+  .vx-idees button:nth-child(n+3){display:none}
+}
 @media (prefers-reduced-motion:reduce){ *{transition:none!important;animation:none!important} }
 .sx-marque{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--mut,#5b6478);cursor:pointer;margin:0 0 10px}.sx-marque input{width:16px;height:16px;accent-color:#2563eb;margin:0}
 </style>
@@ -812,6 +905,8 @@ footer b{color:var(--navy)}
   <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3.5"/><circle cx="9" cy="9.6" r="1.7"/><path d="M3.5 17.5l5-4.8 3.8 3.6 3-2.8 5.2 4.6"/></symbol>
   <symbol id="i-video" viewBox="0 0 24 24"><rect x="2.8" y="5.5" width="13.4" height="13" rx="3"/><path d="M16.2 10.3l5-3v9.4l-5-3z"/></symbol>
   <symbol id="i-voice" viewBox="0 0 24 24"><path d="M4 10.5v3M8 7.5v9M12 4.5v15M16 8v8M20 10.5v3"/></symbol>
+  <symbol id="i-music" viewBox="0 0 24 24"><path d="M9 17.5V5.5l10-2v12"/><circle cx="6.5" cy="17.5" r="2.5"/><circle cx="16.5" cy="15.5" r="2.5"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14" stroke-width="3"/></symbol>
   <symbol id="i-avatar" viewBox="0 0 24 24"><circle cx="12" cy="8.8" r="3.8"/><path d="M4.8 19.5c1.4-3.4 4.1-5.2 7.2-5.2s5.8 1.8 7.2 5.2"/></symbol>
   <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
   <symbol id="i-chev" viewBox="0 0 24 24"><path d="M6.5 9.5l5.5 5.5 5.5-5.5"/></symbol>
@@ -973,6 +1068,102 @@ footer b{color:var(--navy)}
   <!-- LE RESULTAT : vide, en cours (progression reelle pour une video), fini, ou refuse avec la raison du serveur. -->
   <aside class="result vide" id="result" aria-live="polite" aria-label="Result"><div class="stage" id="resStage"></div><div class="rfoot" id="resFoot" hidden></div></aside>
   </div>
+
+  <!-- ============ L'ONGLET VOICE (16/10/2026) — /studio/son/catalogue, /studio/son/voix, /studio/son/musique ============
+       Voix off et musique ElevenLabs, au credit en dollars. Montree a la place du composeur quand
+       l'onglet Voice est choisi ET que le serveur l'a allumee (html.son-on[data-onglet="voice"]).
+       La page MONTRE et ENVOIE : prix, voix permises, bornes, refus — tout est decide au serveur. -->
+  <section class="swapx vox" id="vox" aria-label="Voice and music">
+    <div class="swapx-work vx-work">
+      <div class="sx-card">
+        <div class="vx-outils">
+          <div class="seg vx-seg" id="vxOutils" role="group" aria-label="Tool">
+            <button type="button" data-outil="vo" aria-pressed="true"><svg class="ic"><use href="#i-voice"/></svg>Voice-over</button>
+            <button type="button" data-outil="mus" aria-pressed="false"><svg class="ic"><use href="#i-music"/></svg>Music</button>
+          </div>
+          <span class="vx-par">by ElevenLabs</span>
+        </div>
+
+        <!-- Voice-over -->
+        <div class="vx-outil" id="vxVo">
+          <div class="sx-step">
+            <span class="sx-n"><span>1</span><svg class="ic"><use href="#i-check"/></svg></span>
+            <div class="sx-h"><p class="sx-t">Your script</p><p class="sx-d">What the voice reads, word for word.</p></div>
+            <div class="sx-body">
+              <label class="sr" for="vxTexte">Script</label>
+              <textarea class="sx-in vx-ta" id="vxTexte" rows="5" maxlength="5000" spellcheck="true" placeholder="Welcome to SWOGE World. Lift heavy, stay swole — and see you at the tables."></textarea>
+              <p class="vx-compte"><span id="vxCompte">0 characters</span><span id="vxParMille"></span></p>
+            </div>
+          </div>
+          <div class="sx-step">
+            <span class="sx-n"><span>2</span><svg class="ic"><use href="#i-check"/></svg></span>
+            <div class="sx-h"><p class="sx-t">Voice</p><p class="sx-d">Built-in ElevenLabs voices only. Press play to hear a sample.</p></div>
+            <div class="sx-body">
+              <div class="vx-voix" id="vxVoix" role="radiogroup" aria-label="Voice"></div>
+            </div>
+          </div>
+          <div class="sx-step">
+            <span class="sx-n"><span>3</span><svg class="ic"><use href="#i-check"/></svg></span>
+            <div class="sx-h"><p class="sx-t">Model</p><p class="sx-d">Quality sounds more natural; Fast costs half.</p></div>
+            <div class="sx-body">
+              <div class="vx-ligne">
+                <div class="seg sx-seg" id="vxModeles" role="group" aria-label="Model"></div>
+                <label class="ctl vx-lang" id="vxLangueL"><small>Language</small>
+                  <select id="vxLangue" aria-label="Language"></select><svg class="ic chev"><use href="#i-chev"/></svg>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Music -->
+        <div class="vx-outil" id="vxMus" hidden>
+          <div class="sx-step">
+            <span class="sx-n"><span>1</span><svg class="ic"><use href="#i-check"/></svg></span>
+            <div class="sx-h"><p class="sx-t">Describe the music</p><p class="sx-d">Genre, mood, tempo, instruments — never an artist or a song title.</p></div>
+            <div class="sx-body">
+              <label class="sr" for="vxPrompt">Music description</label>
+              <textarea class="sx-in vx-ta" id="vxPrompt" rows="3" maxlength="600" spellcheck="true" placeholder="Upbeat synthwave for a gym montage, punchy drums, 120 bpm"></textarea>
+              <div class="vx-idees" id="vxIdees" aria-label="Ideas"></div>
+            </div>
+          </div>
+          <div class="sx-step">
+            <span class="sx-n"><span>2</span><svg class="ic"><use href="#i-check"/></svg></span>
+            <div class="sx-h"><p class="sx-t">Length</p><p class="sx-d" id="vxParMinute">Priced by the second.</p></div>
+            <div class="sx-body">
+              <div class="seg sx-seg" id="vxDurees" role="group" aria-label="Length"></div>
+              <label class="sx-case"><input type="checkbox" id="vxInstru" checked><span>Instrumental only — no vocals</span></label>
+            </div>
+          </div>
+        </div>
+
+        <div class="sx-step vx-go-step">
+          <div class="sx-body vx-go-body">
+            <div class="sx-go">
+              <button class="gen" type="button" id="vxGo" disabled><svg class="ic"><use href="#i-spark"/></svg><span class="gl" id="vxGoL">Loading prices…</span><span class="gd" id="vxGoD" hidden>·</span><span class="gp" id="vxGoP"></span></button>
+              <p id="vxGoNote">Paid from your dollar credit. Nothing is charged if ElevenLabs refuses or fails.</p>
+            </div>
+            <div class="sx-cr" id="vxCr" hidden><span id="vxCrTxt"></span><button class="gold" type="button" id="vxCrTop"><svg class="ic"><use href="#i-plus"/></svg>Top up</button></div>
+            <p class="sx-err" id="vxErr" role="alert" hidden></p>
+          </div>
+        </div>
+      </div>
+
+      <aside class="sx-res" aria-label="Voice and music result" aria-live="polite">
+        <div class="vx-stage" id="vxScene"></div>
+        <div class="vx-mes" id="vxMes" hidden>
+          <p class="sx-l">Your last 48 hours</p>
+          <ul id="vxListe"></ul>
+        </div>
+      </aside>
+    </div>
+    <ul class="sx-rules" aria-label="Rules">
+      <li><svg class="ic"><use href="#i-voice"/></svg>Built-in ElevenLabs voices only</li>
+      <li><svg class="ic"><use href="#i-ban"/></svg>No voice cloning</li>
+      <li><svg class="ic"><use href="#i-ban"/></svg>No imitation of a real artist</li>
+      <li><svg class="ic"><use href="#i-clock"/></svg>Kept 48 h, visible only to your wallet</li>
+    </ul>
+  </section>
 
   <!-- ============ LES MODELES (du catalogue du serveur) ============ -->
   <section class="block" aria-labelledby="mTitle">
@@ -1193,7 +1384,7 @@ footer b{color:var(--navy)}
     <div class="tcard nope">
       <div class="ti"><svg class="ic"><use href="#i-ban"/></svg></div>
       <h3>Not allowed here</h3>
-      <p>SWOGE and the characters you invent — never someone real. These are our rules of use. SWOGE runs no filter of its own; when a provider refuses a request, nothing is charged. No real person’s face is ever put on anyone, and there is no voice cloning here. SWOGE Swap only puts SWOGE, or a character you upload and we check first, into a video you own.</p>
+      <p>SWOGE and the characters you invent — never someone real. These are our rules of use. SWOGE runs no filter of its own; when a provider refuses a request, nothing is charged. No real person’s face is ever put on anyone. Voices are ElevenLabs’ built-in voices only — no voice cloning — and music never imitates a real artist. SWOGE Swap only puts SWOGE, or a character you upload and we check first, into a video you own.</p>
       <div class="nolist">
         <span><svg class="ic"><use href="#i-x"/></svg>Face swap</span>
         <span><svg class="ic"><use href="#i-x"/></svg>Voice cloning</span>
@@ -1355,7 +1546,7 @@ footer b{color:var(--navy)}
        $SWOGE (rien ne la note, game.studioReserve) — la page ne promet donc rien de plus. */
     inacheve: "an unfinished request is refunded; if the server restarted meanwhile, your balance shows what happened",
     garde: "If it was charged, your balance shows it.",
-    voix: "Voice-over is coming soon — nothing to generate or pay yet. Character voices already speak inside Series & Ads scenes (Video tab), included in the scene price.",
+    voix: "Voice-over and music are coming soon — nothing to generate or pay yet. Character voices already speak inside Series & Ads scenes (Video tab), included in the scene price.",
     avatar: "Talking avatars and lipsync are coming soon — nothing to generate or pay yet. Only SWOGE and characters you invent, never a real person.",
     /* Seulement face a un serveur qui ne publie pas encore video.credit (catalogue) : il refuserait le credit. */
     videoSwoge: "Video is paid in $SWOGE for now.",
@@ -1403,7 +1594,8 @@ footer b{color:var(--navy)}
             { id: "kling26", nom: "Kling 2.6", by: "Kuaishou", img: "doge_roulette.webp", desc: "Video without sound." },
             { id: "veo", nom: "Veo 3.1", by: "Google", img: "monde.webp", desc: "Video with sound." },
             { id: "motion", nom: "Motion control", by: "SWOGE Studio", img: "doge_arcade.webp", pos: "50% 24%", desc: "Your character moves the way a reference clip moves." }],
-    voice: [{ id: "vo", nom: "Voice-over", by: "SWOGE Studio", img: "accueil/agents.webp", desc: "Turn a script into narration." }],
+    voice: [{ id: "vo", nom: "Voice-over", by: "ElevenLabs", img: "accueil/agents.webp", desc: "Turn a script into narration." },
+            { id: "mus", nom: "Music", by: "ElevenLabs", img: "doge_arcade.webp", pos: "50% 30%", desc: "A soundtrack from a short description." }],
     avatar: [{ id: "talk", nom: "Talking avatar", by: "SWOGE Studio", img: "accueil/wallet.webp", desc: "SWOGE or a character you invented reads your script." },
              { id: "lips", nom: "Lipsync", by: "SWOGE Studio", img: "accueil/jeux.webp", desc: "Sync your character's mouth to a voice track." }]
   };
@@ -1423,7 +1615,7 @@ footer b{color:var(--navy)}
   var REFUS = {
     image: { nom: "Real people", desc: "Not allowed: real people or public figures, minors, sexual content. These are our rules of use; SWOGE runs no filter of its own, and a request a provider refuses costs nothing." },
     video: { nom: "Real faces", desc: "Not allowed: a real person's face in a video. Animate SWOGE or characters you invent." },
-    voice: { nom: "Voice cloning", desc: "Not offered: only the built-in voices, never a copy of someone's voice." },
+    voice: { nom: "Voice cloning", desc: "Not offered: only ElevenLabs' built-in voices, never a copy of someone's voice — and no music imitating a real artist." },
     avatar: { nom: "Real faces & voices", desc: "Not offered: no avatar, lipsync or voice of a real person." }
   };
   var ONGLETS = {
@@ -1756,6 +1948,10 @@ footer b{color:var(--navy)}
       l.push({ id: mo.cle, live: !f, pause: f, on: sel && sel.cle === mo.cle, nom: mo.fnom, v: mo.nom, by: PAR[mo.f] || (t === "video" ? "xAI" : null),
         img: fi.img || "doge_muscle.webp", pos: fi.pos, desc: fi.desc || "Priced by the server, like every model here.", prix: prix });
     });
+    /* L'onglet Voice en service (section #vox, script a part : window.swogeSon) : ses deux outils,
+       au prix du catalogue /studio/son/catalogue. Sinon, les cartes « Coming soon » de BIENTOT. */
+    var son = t === "voice" && window.swogeSon && window.swogeSon.cartes ? window.swogeSon.cartes() : null;
+    if (son) son.forEach(function(c){ l.push(c); });
     if (t === "voice") {
       var noms = (PROD.cat && PROD.cat.voix || []).map(function(v){ return v.nom; });
       var lien = h("button", { type: "button", class: "lnk", "data-vers-serie": "1" }, ["Open Series & Ads", ico("arrow")]);
@@ -1763,7 +1959,7 @@ footer b{color:var(--navy)}
         desc: (noms.length ? noms.join(", ") + " speak" : "The built-in voices speak") + " inside your Series & Ads scenes.",
         prix: { amt: "Included", unit: "in the scene price", alt: "Live in Series & Ads videos" }, lien: lien });
     }
-    (BIENTOT[t] || []).forEach(function(b){ l.push({ id: b.id, soon: true, nom: b.nom, by: b.by, img: b.img, pos: b.pos, desc: b.desc }); });
+    (BIENTOT[t] || []).forEach(function(b){ if (!(son && (b.id === "vo" || b.id === "mus"))) l.push({ id: b.id, soon: true, nom: b.nom, by: b.by, img: b.img, pos: b.pos, desc: b.desc }); });
     if (REFUS[t]) l.push({ refus: true, voix: t !== "image", nom: REFUS[t].nom, desc: REFUS[t].desc });
     return l;
   }
@@ -1817,6 +2013,8 @@ footer b{color:var(--navy)}
   function choisisOnglet(t, garde){
     if (!ONGLETS[t]) t = "image";
     etat.onglet = t;
+    /* La section Voice (#vox) prend la place du composeur quand le serveur l'a allumee (html.son-on). */
+    document.documentElement.setAttribute("data-onglet", t);
     [].forEach.call(document.querySelectorAll(".tab"), function(b){ b.setAttribute("aria-selected", String(b.getAttribute("data-tab") === t)); });
     /* L'image jointe ne change pas de role en douce : une reference d'image n'est pas une image a animer. */
     if (etat.jointe) { etat.jointe = null; peintRef(); }
@@ -2792,6 +2990,7 @@ footer b{color:var(--navy)}
       else if (c.classList.contains("paused")) toast((c.querySelector(".pz") || {}).textContent || (nom + " is paused."));
       return;
     }
+    if (etat.onglet === "voice" && window.swogeSon && window.swogeSon.choisit) { window.swogeSon.choisit(id); return; }
     if (etat.onglet !== "image" && etat.onglet !== "video") return;
     etat.sel[etat.onglet] = id; ecrisLocal("swogeStudioChoix", etat.sel);
     peintGrille(); peintPrix();
@@ -2943,7 +3142,9 @@ footer b{color:var(--navy)}
       window.swogeFil.ecoute(function(m){ if (m && m.type === "balance" && m.balance != null && jeton()) { etat.swoge = Number(m.balance); peintSoldes(); } });
   });
   /* Ce que la section SWOGE Swap (#swap) reprend de la page : la connexion, la recharge, le credit. */
-  window.swogeStudio = { ouvreConnexion: ouvreConnexion, ouvreRecharge: ouvreRecharge, chargeCredit: chargeCredit, credit: function(){ return etat.credit; } };
+  window.swogeStudio = { ouvreConnexion: ouvreConnexion, ouvreRecharge: ouvreRecharge, chargeCredit: chargeCredit, credit: function(){ return etat.credit; },
+    /* L'onglet Voice (#vox) : repeindre la grille quand son catalogue arrive, ou que l'outil change. */
+    grille: function(){ peintGrille(); majBarre(); }, onglet: function(){ return etat.onglet; }, toast: toast };
   var dep = (location.hash || "").replace("#", "");
   PROD.brouillon = nouveau("serie");
   choisisOnglet(dep === "series" ? "video" : (ONGLETS[dep] ? dep : "image"), dep === "swap");
@@ -3439,6 +3640,381 @@ footer b{color:var(--navy)}
     dernierJeton = j; arreteSuivi(); X = neuf(); CREDIT = null;
     if (parti) { chargeVue(); chargeCredit(); } else peint();
   }, 2000);
+})();
+</script>
+
+<script>
+/* ==========================================================================
+ * L'ONGLET VOICE (section #vox, 16/10/2026) — LA PAGE MONTRE ET ENVOIE ; LE SERVEUR DECIDE.
+ *
+ * Voix off et musique ElevenLabs (server : studio_son.js). Ce que la page fait :
+ *   - lit GET /studio/son/catalogue (public, sans jeton) : en service ou non, prix au joueur,
+ *     voix de la bibliotheque (avec leur echantillon), modeles, langues, durees ;
+ *   - allume l'onglet Voice (retire « Soon ») seulement si le serveur dit `actif` ; sinon
+ *     l'onglet reste « Soon » et la page dit « coming soon » ;
+ *   - montre le prix sur le bouton AVANT le clic (caracteres × prix / 1 000 du catalogue, ou le
+ *     prix de la duree), l'envoie en `confirmeUsd` : le serveur le recalcule et refuse un ecart ;
+ *   - lit le MP3 AVEC la session (blob:), le joue et le donne a telecharger ; liste les
+ *     resultats encore gardes (48 h) de la session.
+ * Aucune adresse n'est envoyee ; tout texte venu du serveur passe par textContent.
+ * ======================================================================== */
+(function(){
+  "use strict";
+  var vox = document.getElementById("vox"); if (!vox) return;
+  var $ = function(id){ return document.getElementById(id); };
+  function serveur(){
+    try { var q = new URLSearchParams(location.search).get("server"); if (q) { var u = new URL(String(q).replace(/^ws/, "http")); if (/^(127\.0\.0\.1|localhost|\[::1\])$/.test(u.hostname)) return u.origin; } } catch (e) {}
+    return "https://web-production-220a3.up.railway.app";
+  }
+  function jeton(){ try { return localStorage.getItem("swogeSession"); } catch (e) { return null; } }
+  function lis(r){ return r.json()["catch"](function(){ return {}; }).then(function(o){ if (!r.ok || o.ok === false) { var e = new Error(o.raison || ("error " + r.status)); e.code = r.status; e.corps = o; throw e; } return o; }); }
+  function api(chemin, methode, corps){
+    var hd = { authorization: "Bearer " + jeton() }; if (corps) hd["content-type"] = "application/json";
+    return fetch(serveur() + chemin, { method: methode || "GET", cache: "no-store", headers: hd, body: corps ? JSON.stringify(corps) : undefined }).then(lis);
+  }
+  function h(tag, a, kids){
+    var e = document.createElement(tag);
+    if (a) Object.keys(a).forEach(function(k){ var v = a[k]; if (v == null || v === false) return; if (k === "class") e.className = v; else if (k === "text") e.textContent = v; else e.setAttribute(k, v === true ? "" : String(v)); });
+    (kids || []).forEach(function(c){ if (c == null || c === false) return; e.appendChild(typeof c === "string" ? document.createTextNode(c) : c); });
+    return e;
+  }
+  function ico(id){ var s = document.createElementNS("http://www.w3.org/2000/svg", "svg"); s.setAttribute("class", "ic"); s.setAttribute("aria-hidden", "true"); var u = document.createElementNS("http://www.w3.org/2000/svg", "use"); u.setAttribute("href", "#i-" + id); s.appendChild(u); return s; }
+  /* Un prix : au moins deux decimales, jusqu'a quatre (0,0057 $ ; 0,1125 $ ; 0,45 $). */
+  function usd(x){
+    var n = Number(x); if (!isFinite(n)) return "—";
+    var t = n.toFixed(4).replace(/0+$/, ""); if (/\.\d$/.test(t)) t += "0"; if (/\.$/.test(t)) t += "00";
+    return "$" + t;
+  }
+  function lisLocal(k, d){ try { var v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } }
+  function ecrisLocal(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  var studio = function(){ return window.swogeStudio || {}; };
+  function nombreTxt(n){ return Number(n).toLocaleString("en-US"); }
+  function duree(s){ return s < 60 ? s + " s" : (s % 60 ? Math.floor(s / 60) + " min " + (s % 60) + " s" : (s / 60) + " min"); }
+
+  /* ---- l'etat ---- */
+  var CAT = null, CAT_EMPREINTE = "";
+  var choix = lisLocal("swogeStudioSon", {});
+  var V = { outil: choix.outil === "mus" ? "mus" : "vo", voix: typeof choix.voix === "string" ? choix.voix : null, modele: choix.modele === "rapide" ? "rapide" : "qualite",
+            langue: typeof choix.langue === "string" ? choix.langue : "auto", duree: Number(choix.duree) || 30, instru: true };
+  var RES = null;          /* le resultat montre : { st: "run"|"done", genre, o (vue du serveur), blob } */
+  var MES = [];            /* les resultats gardes de la session */
+  var BLOBS = {};          /* id -> blob: deja lu (avec la session) */
+  var occupe = false, ERR = null, CREDIT = null, dernierJeton = jeton();
+  var garde = function(){ ecrisLocal("swogeStudioSon", { outil: V.outil, voix: V.voix, modele: V.modele, langue: V.langue, duree: V.duree }); };
+  var IDEES = ["Upbeat synthwave for a gym montage, punchy drums, 120 bpm", "Lo-fi hip hop beat, warm vinyl crackle, relaxed", "Epic orchestral trailer, big drums, rising strings",
+    "Funky casino lounge jazz, walking bass, brushed drums"];
+
+  function on(){ return !!(CAT && CAT.actif); }
+  function modele(){ var l = (CAT && CAT.voix && CAT.voix.modeles) || []; return l.filter(function(m){ return m.id === V.modele; })[0] || l[0] || null; }
+  function voixListe(){ return (CAT && CAT.voix && CAT.voix.voix) || []; }
+  function voixChoisie(){ var l = voixListe(); return l.filter(function(v){ return v.id === V.voix; })[0] || null; }
+  function texte(){ return $("vxTexte").value.trim(); }
+  function invite(){ return $("vxPrompt").value.trim().replace(/\s+/g, " "); }
+  /* Le prix d'une voix off, comme le serveur le calcule (studio_son.js, prixClient) : caracteres
+     (longueur UTF-16) × prix au joueur pour 1 000, plancher 0,001 $, au 1/10 000 $ superieur. */
+  function prixVoix(){
+    var m = modele(); if (!m) return null;
+    var f = Math.max(0.001, texte().length * Number(m.parMilleUsd) / 1000);
+    return Math.ceil(Math.round(f * 1e8) / 1e4 - 1e-9) / 1e4;
+  }
+  function prixMusique(){ var p = CAT && CAT.musique && CAT.musique.prixUsd; return p && p[V.duree] != null ? Number(p[V.duree]) : null; }
+
+  /* ---- le catalogue ---- */
+  function chargeCat(){
+    return fetch(serveur() + "/studio/son/catalogue", { cache: "no-store" })
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(c){ applique(c && c.ok !== false && typeof c === "object" ? c : null); })
+      ["catch"](function(){ applique(CAT); });
+  }
+  function applique(c){
+    var e = JSON.stringify(c || null), change = e !== CAT_EMPREINTE;
+    CAT = c; CAT_EMPREINTE = e;
+    var a = on();
+    document.documentElement.classList.toggle("son-on", a);
+    /* L'onglet : « Soon » tant que le serveur ne l'a pas allume. */
+    var t = $("t-voice");
+    if (t) {
+      var s = t.querySelector(".soon");
+      if (a) { t.removeAttribute("aria-disabled"); if (s) s.remove(); }
+      else { t.setAttribute("aria-disabled", "true"); if (!s) t.appendChild(h("span", { class: "soon", text: "Soon" })); }
+    }
+    if (a) {
+      var dl = (CAT.musique && CAT.musique.durees) || [];
+      if (dl.indexOf(V.duree) < 0) V.duree = dl.indexOf(30) >= 0 ? 30 : dl[0];
+      if (V.voix && !voixChoisie()) V.voix = null;
+      if (!V.voix && voixListe().length) V.voix = voixListe()[0].id;
+    }
+    if (change) { peintVoix(); peintCommandes(); if (studio().grille) studio().grille(); }
+    peint();
+  }
+
+  /* ---- les cartes de la grille (lues par la page : swogeStudio.grille -> cartesOnglet) ---- */
+  function cartes(){
+    if (!on()) return null;
+    var ms = (CAT.voix && CAT.voix.modeles) || [], q = ms[0], r = ms[1];
+    var pv = !CAT.voix || !CAT.voix.actif ? (CAT.voix && CAT.voix.note) || "Voice-over is paused right now." : null;
+    var pz = CAT.pause ? (CAT.note || "Paused right now.") : null;
+    return [
+      { id: "vo", live: !(pz || pv), pause: pz || pv, on: V.outil === "vo", nom: "Voice-over", v: "Text to speech", by: "ElevenLabs", img: "accueil/agents.webp",
+        desc: "Turn a script into narration with a built-in voice — Quality or Fast.",
+        prix: { amt: q ? usd(Math.min.apply(null, ms.map(function(m){ return m.parMilleUsd; }))) : "—", unit: "/ 1,000 characters",
+          alt: q ? q.nom + " " + usd(q.parMilleUsd) + (r ? " · " + r.nom + " " + usd(r.parMilleUsd) : "") + " · from your dollar credit" : "" } },
+      { id: "mus", live: !pz, pause: pz, on: V.outil === "mus", nom: "Music", v: "Text to music", by: "ElevenLabs", img: "doge_arcade.webp", pos: "50% 30%",
+        desc: "A soundtrack from a short description: genre, mood, tempo, instruments.",
+        prix: { amt: usd(CAT.musique.parMinuteUsd), unit: "/ minute", alt: "billed by the second · " + duree(CAT.musique.durees[0]) + " for " + usd(CAT.musique.prixUsd[CAT.musique.durees[0]]) } }
+    ];
+  }
+  function choisit(id){
+    if (id !== "vo" && id !== "mus") return;
+    V.outil = id; garde(); ERR = null;
+    peintCommandes(); peint();
+    if (studio().grille) studio().grille();
+  }
+
+  /* ---- les voix ---- */
+  var ECOUTE = { audio: null, id: null };
+  function arreteEcoute(){ if (ECOUTE.audio) { try { ECOUTE.audio.pause(); } catch (e) {} } ECOUTE = { audio: null, id: null }; peintEcoute(); }
+  function ecoute(v){
+    if (ECOUTE.id === v.id) { arreteEcoute(); return; }
+    arreteEcoute();
+    if (!v.apercu) return;
+    var a = new Audio(v.apercu);
+    ECOUTE = { audio: a, id: v.id };
+    a.addEventListener("ended", arreteEcoute);
+    a.addEventListener("error", function(){ if (ECOUTE.audio === a) { arreteEcoute(); if (studio().toast) studio().toast("This sample could not be played."); } });
+    var p = a.play(); if (p && p["catch"]) p["catch"](function(){ if (ECOUTE.audio === a) arreteEcoute(); });
+    peintEcoute();
+  }
+  function peintEcoute(){
+    [].forEach.call(document.querySelectorAll("#vxVoix .vx-ecoute"), function(b){
+      var x = b.getAttribute("data-voix") === ECOUTE.id;
+      b.setAttribute("aria-pressed", String(x));
+      b.setAttribute("aria-label", (x ? "Stop the sample of " : "Play a sample of ") + b.getAttribute("data-nom"));
+      b.textContent = ""; b.appendChild(ico(x ? "pause" : "play"));
+    });
+  }
+  function peintVoix(){
+    var box = $("vxVoix"); box.textContent = "";
+    var l = voixListe();
+    if (!l.length) { box.appendChild(h("p", { class: "vx-vide", text: on() ? ((CAT.voix && CAT.voix.note) || "No voice is available right now.") : "Voices appear here when voice-over is switched on." })); return; }
+    l.forEach(function(v){
+      var b = h("button", { type: "button", class: "vx-ecoute", "data-voix": v.id, "data-nom": v.nom, "aria-pressed": "false", disabled: !v.apercu, title: v.apercu ? null : "No sample for this voice" });
+      b.addEventListener("click", function(ev){ ev.stopPropagation(); ecoute(v); });
+      var c = h("div", { class: "vx-v", role: "radio", tabindex: "0", "data-voix": v.id, "aria-checked": String(v.id === V.voix) }, [
+        b, h("span", null, [h("b", { text: v.nom }), h("small", { text: (v.traits || []).slice(0, 2).join(" · ") || "Built-in voice", title: (v.traits || []).join(" · ") || null })]), h("span", { class: "vx-ok", "aria-hidden": "true" }, [ico("check")])]);
+      c.addEventListener("click", function(){ V.voix = v.id; garde(); ERR = null; peint(); });
+      c.addEventListener("keydown", function(ev){ if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); c.click(); } });
+      box.appendChild(c);
+    });
+    peintEcoute();
+  }
+
+  /* ---- les commandes (modeles, langues, durees) ---- */
+  function peintCommandes(){
+    $("vxVo").hidden = V.outil !== "vo"; $("vxMus").hidden = V.outil !== "mus";
+    [].forEach.call($("vxOutils").querySelectorAll("button"), function(b){ b.setAttribute("aria-pressed", String(b.getAttribute("data-outil") === V.outil)); });
+    var ms = (CAT && CAT.voix && CAT.voix.modeles) || [];
+    var box = $("vxModeles"); box.textContent = "";
+    ms.forEach(function(m){
+      var b = h("button", { type: "button", "data-modele": m.id, "aria-pressed": String(m.id === V.modele) }, [m.nom, h("span", { class: "vx-p", text: usd(m.parMilleUsd) + "/1k" })]);
+      b.addEventListener("click", function(){ V.modele = m.id; garde(); ERR = null; peintCommandes(); peint(); });
+      box.appendChild(b);
+    });
+    var m = modele(), sel = $("vxLangue"), langues = (CAT && CAT.voix && CAT.voix.langues) || [{ id: "auto", nom: "Auto" }];
+    if (sel.options.length !== langues.length) { sel.textContent = ""; langues.forEach(function(x){ sel.appendChild(h("option", { value: x.id, text: x.nom })); }); }
+    if (!langues.some(function(x){ return x.id === V.langue; })) V.langue = "auto";
+    sel.value = V.langue;
+    $("vxLangueL").hidden = !(m && m.langue);
+    $("vxTexte").maxLength = (m && m.maxCaracteres) || (CAT && CAT.voix && CAT.voix.texteMax) || 2500;
+    var dl = (CAT && CAT.musique && CAT.musique.durees) || [10, 30, 60, 120], db = $("vxDurees"); db.textContent = "";
+    dl.forEach(function(s){
+      var p = CAT && CAT.musique && CAT.musique.prixUsd ? CAT.musique.prixUsd[s] : null;
+      var b = h("button", { type: "button", "data-duree": String(s), "aria-pressed": String(s === V.duree) }, [duree(s), p != null ? h("span", { class: "vx-p", text: usd(p) }) : null]);
+      b.addEventListener("click", function(){ V.duree = s; garde(); ERR = null; peintCommandes(); peint(); });
+      db.appendChild(b);
+    });
+    $("vxParMinute").textContent = CAT && CAT.musique ? usd(CAT.musique.parMinuteUsd) + " per minute, billed by the second." : "Priced by the second.";
+  }
+
+  /* ---- le devis du bouton ---- */
+  function devis(){
+    if (!CAT) return { off: true, l: "Loading prices…" };
+    if (!on()) return { off: true, l: "Coming soon", note: CAT.note || "Voice and music are coming soon." };
+    if (CAT.pause) return { off: true, l: "Paused", note: CAT.note };
+    var vo = V.outil === "vo";
+    if (vo && !(CAT.voix && CAT.voix.actif)) return { off: true, l: "Paused", note: (CAT.voix && CAT.voix.note) || "Voice-over is paused right now." };
+    var l = vo ? "Generate voice-over" : "Generate music";
+    if (!jeton()) return { signin: true, l: "Sign in to generate" };
+    if (occupe) return { off: true, l: vo ? "Creating voice-over…" : "Composing…" };
+    if (vo) {
+      var n = texte().length, max = $("vxTexte").maxLength;
+      if (!n) return { off: true, l: l, note: "Write your script first — the price follows its length." };
+      if (n > max) return { off: true, l: l, note: "Your script is " + nombreTxt(n) + " characters — " + nombreTxt(max) + " at most." };
+      if (!voixChoisie()) return { off: true, l: l, note: "Pick a voice." };
+      var pv = prixVoix(), m = modele();
+      return { l: l, prix: pv, note: nombreTxt(n) + " characters · " + voixChoisie().nom + " · " + m.nom + " · paid from your dollar credit. Nothing is charged if ElevenLabs refuses or fails." };
+    }
+    var q = invite();
+    if (!q) return { off: true, l: l, note: "Describe the music first: genre, mood, tempo, instruments." };
+    if (q.length > CAT.musique.promptMax) return { off: true, l: l, note: "Your description is " + q.length + " characters — " + CAT.musique.promptMax + " at most." };
+    var pm = prixMusique();
+    return { l: l, prix: pm, note: duree(V.duree) + (V.instru ? " · instrumental" : " · may include vocals") + " · paid from your dollar credit. Nothing is charged if ElevenLabs refuses or fails." };
+  }
+
+  /* ---- la peinture ---- */
+  function peint(){
+    var d = devis(), g = $("vxGo");
+    g.classList.toggle("go", !!d.signin);
+    $("vxGoL").textContent = d.l;
+    var avecPrix = d.prix != null && !d.off;
+    $("vxGoD").hidden = !avecPrix; $("vxGoP").textContent = avecPrix ? usd(d.prix) : "";
+    var court = d.prix != null && CREDIT != null && CREDIT + 1e-9 < d.prix && !!jeton();
+    g.disabled = !!d.off || court;
+    g.setAttribute("aria-label", d.l + (avecPrix ? " · " + usd(d.prix) : ""));
+    $("vxGoNote").textContent = d.note || (d.signin ? "Sign in with your wallet. The price is on the button before you click." : "");
+    $("vxCr").hidden = !court;
+    if (court) $("vxCrTxt").textContent = "Your dollar credit is " + usd(CREDIT) + " — this needs " + usd(d.prix) + ". Top up with one wallet signature.";
+    /* les voix choisies */
+    [].forEach.call(document.querySelectorAll("#vxVoix .vx-v"), function(c){ c.setAttribute("aria-checked", String(c.getAttribute("data-voix") === V.voix)); });
+    var n = texte().length, max = $("vxTexte").maxLength, m = modele();
+    var ct = $("vxCompte"); ct.textContent = nombreTxt(n) + " / " + nombreTxt(max) + " characters"; ct.classList.toggle("trop", n > max);
+    $("vxParMille").textContent = m ? usd(m.parMilleUsd) + " per 1,000 characters (" + m.nom + ")" : "";
+    var e = $("vxErr"); e.textContent = ""; e.hidden = !ERR;
+    if (ERR) {
+      e.appendChild(document.createTextNode(ERR.texte));
+      if (ERR.suggestion) {
+        e.appendChild(document.createTextNode(" ElevenLabs suggests: “" + ERR.suggestion + "”."));
+        var u = h("button", { type: "button", class: "lnk", text: "Use it" });
+        u.addEventListener("click", function(){ $("vxPrompt").value = ERR.suggestion.slice(0, 600); ERR = null; peint(); });
+        e.appendChild(u);
+      }
+    }
+    peintScene(); peintMes();
+  }
+  function onde(id){
+    /* une onde decorative, toujours la meme pour un meme fichier */
+    var w = h("div", { class: "vx-onde", "aria-hidden": "true" }), x = 0;
+    for (var i = 0; i < String(id).length; i++) x = (x * 31 + String(id).charCodeAt(i)) >>> 0;
+    for (var k = 0; k < 44; k++) { x = (x * 1103515245 + 12345) >>> 0; var hgt = 18 + (x % 82) * (0.55 + 0.45 * Math.sin(k / 44 * Math.PI)); var b = h("i"); b.style.height = Math.min(100, Math.round(hgt)) + "%"; w.appendChild(b); }
+    return w;
+  }
+  function peintScene(){
+    var g = $("vxScene"); g.textContent = ""; g.className = "vx-stage";
+    var vo = V.outil === "vo";
+    if (RES && RES.st === "run") {
+      g.classList.add("run");
+      g.appendChild(h("b", { text: RES.genre === "music" ? "Composing your track…" : "Creating your voice-over…" }));
+      g.appendChild(h("div", { class: "rprog ind" }, [h("i")]));
+      g.appendChild(h("small", { text: RES.genre === "music" ? "A track can take a minute. Keep this page open." : "A few seconds. Keep this page open." }));
+      return;
+    }
+    if (RES && RES.st === "done" && RES.o) {
+      var o = RES.o, mus = o.genre === "music";
+      g.classList.add("fini");
+      g.appendChild(h("div", { class: "vx-tete" }, [h("span", { class: "vx-pill" }, [ico(mus ? "music" : "voice"), mus ? "Music" : "Voice-over"]),
+        h("span", { class: "vx-quand", text: "Kept until " + new Date(o.expire).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) })]));
+      g.appendChild(h("b", { text: o.titre || (mus ? "Your track" : "Your voice-over") }));
+      var meta = mus ? [duree(o.secondes || 0), o.prixUsd != null ? usd(o.prixUsd) : null] : [o.voix, o.modele === "rapide" ? "Fast" : "Quality", o.caracteres ? nombreTxt(o.caracteres) + " characters" : null, o.prixUsd != null ? usd(o.prixUsd) : null];
+      g.appendChild(h("small", { text: meta.filter(Boolean).join(" · ") }));
+      g.appendChild(onde(o.id));
+      var b = BLOBS[o.id];
+      if (b) g.appendChild(h("audio", { controls: true, preload: "metadata", src: b }));
+      else g.appendChild(h("small", { text: RES.erreur ? RES.erreur : "Loading the audio…" }));
+      var nom = "swoge-" + (mus ? "music" : "voice") + "-" + String(o.id).slice(0, 8) + ".mp3";
+      var dl = h("a", { class: "gen", href: b || null, download: b ? nom : null, "aria-disabled": b ? null : "true" }, [ico("download"), h("span", { class: "gl", text: "Download MP3" })]);
+      $("vxScene").appendChild(h("div", { class: "vx-acts" }, [dl]));
+      return;
+    }
+    g.appendChild(ico(vo ? "voice" : "music"));
+    g.appendChild(h("b", { text: vo ? "Your voice-over appears here" : "Your track appears here" }));
+    g.appendChild(h("small", { text: !on() ? "Coming soon — nothing to generate or pay yet." : "The price is on the button before you click. Kept 48 h, visible only to your wallet." }));
+  }
+  function peintMes(){
+    var box = $("vxMes"), ul = $("vxListe"); ul.textContent = "";
+    var l = jeton() && on() ? MES.slice(0, 8) : [];
+    box.hidden = !l.length;
+    l.forEach(function(o){
+      var mus = o.genre === "music";
+      var left = Math.max(0, Math.round((o.expire - Date.now()) / 3600000));
+      var b = h("button", { type: "button", class: "vx-r", "aria-current": RES && RES.o && RES.o.id === o.id ? "true" : null }, [h("span", { class: "vx-ri" }, [ico(mus ? "music" : "voice")]),
+        h("span", null, [h("b", { text: o.titre || (mus ? "Track" : "Voice-over") }), h("small", { text: (mus ? "Music · " + duree(o.secondes || 0) : "Voice · " + (o.voix || "")) + " · " + (left < 1 ? "less than 1 h left" : left + " h left") })])]);
+      b.addEventListener("click", function(){ montre(o); });
+      ul.appendChild(h("li", null, [b]));
+    });
+  }
+
+  /* ---- le resultat, lu avec la session ---- */
+  function lisAudio(o){
+    if (BLOBS[o.id]) return Promise.resolve(BLOBS[o.id]);
+    return fetch(serveur() + o.url, { cache: "no-store", headers: { authorization: "Bearer " + jeton() } })
+      .then(function(r){ if (!r.ok) throw new Error(r.status === 404 ? "This file is no longer kept (48 h)." : "The audio could not be loaded."); return r.blob(); })
+      .then(function(b){ BLOBS[o.id] = URL.createObjectURL(b); return BLOBS[o.id]; });
+  }
+  function montre(o){
+    RES = { st: "done", genre: o.genre, o: o }; peint();
+    lisAudio(o).then(function(){ if (RES && RES.o === o) peint(); })["catch"](function(e){ if (RES && RES.o === o) { RES.erreur = e.message; peint(); } });
+  }
+  function chargeMes(){
+    if (!jeton() || !on()) { MES = []; peintMes(); return; }
+    api("/studio/son/mes").then(function(o){ MES = Array.isArray(o.fichiers) ? o.fichiers : []; peintMes(); })["catch"](function(){});
+  }
+
+  /* ---- l'envoi ---- */
+  function envoie(){
+    var d = devis();
+    if (d.signin) { if (studio().ouvreConnexion) studio().ouvreConnexion(); return; }
+    if (d.off || occupe || d.prix == null) return;
+    var vo = V.outil === "vo", corps;
+    if (vo) { var m = modele(); corps = { texte: texte(), voix: V.voix, modele: V.modele, confirmeUsd: d.prix }; if (m && m.langue && V.langue !== "auto") corps.langue = V.langue; }
+    else corps = { prompt: invite(), secondes: V.duree, instrumental: !!$("vxInstru").checked, confirmeUsd: d.prix };
+    occupe = true; ERR = null; arreteEcoute();
+    var avant = RES;
+    RES = { st: "run", genre: vo ? "voice" : "music" }; peint();
+    api(vo ? "/studio/son/voix" : "/studio/son/musique", "POST", corps).then(function(o){
+      occupe = false;
+      if (o.creditUsd != null) CREDIT = Number(o.creditUsd);
+      MES = [o].concat(MES.filter(function(x){ return x.id !== o.id; }));
+      montre(o);
+      /* au telephone, le resultat est sous la carte : on l'amene a l'ecran */
+      if (window.matchMedia && window.matchMedia("(max-width:960px)").matches) { try { $("vxScene").scrollIntoView({ behavior: "smooth", block: "start" }); } catch (x) {} }
+      if (studio().chargeCredit) studio().chargeCredit();
+    })["catch"](function(e){
+      occupe = false; RES = avant;
+      var c = e.corps || {};
+      if (e.code === 401) ERR = { texte: "Sign in with your wallet first." };
+      else if (e.code === 409 && c.prixUsd != null) { ERR = { texte: "The price changed to " + usd(c.prixUsd) + " — nothing was charged. Check it and press again." }; chargeCat(); }
+      else if (e.code === 402) ERR = { texte: e.message };
+      else ERR = { texte: e.message || "Connection lost — nothing was charged.", suggestion: typeof c.suggestion === "string" ? c.suggestion : null };
+      if (!(e.code > 0)) ERR = { texte: "Connection lost. If it went through, it shows in your last 48 hours below; otherwise nothing was charged." };
+      peint();
+      if (e.code === 402 && studio().chargeCredit) studio().chargeCredit();
+      if (!(e.code > 0)) setTimeout(chargeMes, 2000);
+    });
+  }
+
+  /* ---- branchements ---- */
+  [].forEach.call($("vxOutils").querySelectorAll("button"), function(b){ b.addEventListener("click", function(){ choisit(b.getAttribute("data-outil")); }); });
+  $("vxTexte").addEventListener("input", function(){ ERR = null; peint(); });
+  $("vxPrompt").addEventListener("input", function(){ ERR = null; peint(); });
+  $("vxInstru").addEventListener("change", function(){ V.instru = this.checked; peint(); });
+  $("vxLangue").addEventListener("change", function(){ V.langue = this.value; garde(); });
+  $("vxGo").addEventListener("click", envoie);
+  $("vxCrTop").addEventListener("click", function(){ if (studio().ouvreRecharge) studio().ouvreRecharge(); });
+  IDEES.forEach(function(t){ var b = h("button", { type: "button", text: t }); b.addEventListener("click", function(){ $("vxPrompt").value = t; ERR = null; peint(); }); $("vxIdees").appendChild(b); });
+  window.addEventListener("swoge:studio-credit", function(e){ if (e && e.detail && e.detail.credit != null) { CREDIT = Number(e.detail.credit); peint(); } });
+  /* la session change (connexion, deconnexion, autre compte) : rien de l'ancien ne reste montre */
+  setInterval(function(){
+    var j = jeton(); if (j === dernierJeton) return;
+    dernierJeton = j; RES = null; MES = []; ERR = null; CREDIT = null;
+    Object.keys(BLOBS).forEach(function(k){ URL.revokeObjectURL(BLOBS[k]); }); BLOBS = {};
+    peint(); chargeMes();
+  }, 2000);
+  setInterval(function(){ if (document.visibilityState !== "hidden") chargeCat(); }, 5 * 60 * 1000);
+
+  window.swogeSon = { cartes: cartes, choisit: choisit };
+  peintVoix(); peintCommandes(); peint();
+  CREDIT = studio().credit ? studio().credit() : null;
+  chargeCat().then(chargeMes);
 })();
 </script>
 

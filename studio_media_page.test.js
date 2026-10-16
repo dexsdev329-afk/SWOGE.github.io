@@ -171,6 +171,9 @@ const FR = /[àâçéèêëîïôûùüÿœ]|\b(les|des|une|est|pour|avec|vous|v
       if (/^\/studio\/production\/image\//.test(u.pathname)) return r.fulfill({ status: 200, contentType: 'image/png', body: PNG });
       S.lectures.push(e);
       if (u.pathname === '/studio/media/catalogue') { S.catLectures++; return json(200, S.cat); }
+      /* Le catalogue de l onglet Voice (studio_son.js, 16/10) : public lui aussi. Absent ici (404, comme un
+         serveur d avant) : Voice reste « Soon » — studio_son_page.test.js essaie l onglet allume. */
+      if (u.pathname === '/studio/son/catalogue') return json(404, { ok: false, raison: 'unknown route' });
       S.envois.push(e);
       if (auth !== SESSION) return json(401, { ok: false, raison: 'sign in with your wallet first' });
       if (u.pathname === '/studio/chat/solde') return json(200, { ok: true, adresse: ADDR, solde: S.solde || '182400.52' });
@@ -273,7 +276,7 @@ const FR = /[àâçéèêëîïôûùüÿœ]|\b(les|des|une|est|pour|avec|vous|v
     await p.fill('#prompt', 'a buff doge');
     await p.click('#gen'); await p.waitForTimeout(300);
     eq(S.envois.length, 0, 'aucune requete au serveur hors catalogue, meme apres le clic');
-    ok(S.lectures.length >= 1 && S.lectures.every((e) => e.chemin === '/studio/media/catalogue' && !e.auth), 'seul le catalogue public est demande, sans jeton');
+    ok(S.lectures.length >= 1 && S.lectures.every((e) => /^\/studio\/(media|son)\/catalogue$/.test(e.chemin) && !e.auth), 'seuls les catalogues publics (images/videos, Voice) sont demandes, sans jeton');
     ok(/Sign in/.test(await p.textContent('#resStage')), 'la carte resultat dit de se connecter');
     ok(/\$0\.03/.test(await p.textContent('#priceNote')), 'et le prix se lit quand meme, avant tout clic');
     await ferme(p);

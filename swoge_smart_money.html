@@ -1276,7 +1276,7 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
     fait(dl, ph("l_etat"), String(f.etat || ""), true);
     var qui = el("span");
     if (!(f.qui || []).length) qui.textContent = ph("l_qui_vide");
-    (f.qui || []).forEach(function(q, i){ if (i) texte(qui, "; "); texte(qui, String(q.nom || "") + " "); qui.appendChild(lienAdr(q.adresse)); if (q.detail) texte(qui, " (" + q.detail + ")"); });
+    (f.qui || []).forEach(function(q, i){ if (i) texte(qui, "; "); texte(qui, String(q.nom || "")); if (q.adresse) { texte(qui, " "); qui.appendChild(lienAdr(q.adresse)); }  /* 16/10 : noms neutres, sans adresse (decision du proprietaire) */ if (q.detail) texte(qui, " (" + q.detail + ")"); });
     fait(dl, ph("l_qui"), qui, true);
     fait(dl, ph("l_risque"), String(f.risque || ""));
     fait(dl, ph("l_promo"), String(f.promo || ""));

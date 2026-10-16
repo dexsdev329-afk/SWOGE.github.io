@@ -44,8 +44,8 @@ const mesure = (id, paliers, o) => Object.assign({ id, ref: { prix: 0.00000123, 
 const alerte = (id, minAgo, f, m) => ({ id, t: T0 - minAgo * 60, categorie: f.categorie, verdict: f.verdict, fiche: f, texte: f.titre + '\nNot financial advice.', mesure: m });
 
 /* dix alertes (8 visibles, 2 repliees), dont une verte de dev connu, une rouge, une piegee */
-const F1 = fiche(1, { categorie: 'dev', verdict: 'vert', titre: 'Known dev launch (CrawlScan)', symbole: 'JUDGEBOT', jeton: '0xa922cdff00000000000000000000000000000001', age_min: 0.5,
-  courbe: { eth: 0.0234, seuil_eth: 4.2, gradue: false }, etat: '30 s old · curve 0.023 / 4.20 ETH (1%)', qui: [{ nom: 'Known dev CrawlScan', adresse: '0x58ea497c16422a344a50785f6f23ca92082e2e03', detail: 'dev buy 0.028 ETH' }], plan: PLAN_V });
+const F1 = fiche(1, { categorie: 'dev', verdict: 'vert', titre: 'Known dev launch (Known dev #1)', symbole: 'JUDGEBOT', jeton: '0xa922cdff00000000000000000000000000000001', age_min: 0.5,
+  courbe: { eth: 0.0234, seuil_eth: 4.2, gradue: false }, etat: '30 s old · curve 0.023 / 4.20 ETH (1%)', qui: [{ nom: 'Known dev #1', adresse: null, detail: 'dev buy 0.028 ETH' }], plan: PLAN_V });
 const P = (pct, min) => ({ pct, min, source: 'curve' });
 const MESURES_VUE = {
   10: [{ 5: P(-8.1, 5.2) }, { meilleur_pct: 4.2, pire_pct: -8.1, releves: 2 }],
@@ -156,10 +156,10 @@ const VUE = { actif: true, pret: true, mode: 'envoi', t: T0, maintenant: T0,
   await p.evaluate(() => { document.querySelector('#liveAnciennes').open = true; });
   r = await lit(p);
   const c1 = r.anciennes.find((c) => c.id === 1), c2 = r.anciennes.find((c) => c.id === 2), c3 = r.anciennes.find((c) => c.id === 3), c4 = r.anciennes.find((c) => c.id === 4);
-  ok(c1.titre === 'Known dev launch (CrawlScan)' && c1.sym === '$JUDGEBOT' && /sm-al vert/.test(c1.cls) && /^Known dev · 70 min ago$/.test(c1.meta), 'carte : titre, symbole, verdict vert, categorie et age (' + c1.meta + ')');
+  ok(c1.titre === 'Known dev launch (Known dev #1)' && c1.sym === '$JUDGEBOT' && /sm-al vert/.test(c1.cls) && /^Known dev · 70 min ago$/.test(c1.meta), 'carte : titre, symbole, verdict vert, categorie et age (' + c1.meta + ')');
   ok(c1.adr === '0xa922cdff00000000000000000000000000000001', 'carte : l\'adresse COMPLETE du jeton');
   ok(c1.liens.includes('https://dexscreener.com/robinhood/0xa922cdff00000000000000000000000000000001') && c1.liens.includes('https://robinhoodchain.blockscout.com/address/0xa922cdff00000000000000000000000000000001'), 'carte : liens DexScreener et explorateur');
-  ok(/Age and state: 30 s old · curve 0\.023 \/ 4\.20 ETH \(1%\)/.test(c1.faits) && /Who: Known dev CrawlScan 0x58ea…2e03 \(dev buy 0\.028 ETH\)/.test(c1.faits), 'carte : age et courbe ; qui (nom court, adresse, achat du dev)');
+  ok(/Age and state: 30 s old · curve 0\.023 \/ 4\.20 ETH \(1%\)/.test(c1.faits) && /Who: Known dev #1 \(dev buy 0\.028 ETH\)/.test(c1.faits) && !/null|undefined|0x58ea/.test(c1.faits), 'carte : age et courbe ; qui (nom court, adresse, achat du dev)');
   ok(/Main risk: Most launches fall/.test(c1.faits) && /DexScreener promo: no paid profile/.test(c1.faits) && /Plan: entry small fixed stake; stop 30% trailing stop; target sell 75% at 2x/.test(c1.faits), 'carte : risque, promo, plan');
   ok(c1.res.map((x) => x.l).join() === '+5 min,+15 min,+30 min,+60 min,+120 min', 'les cinq paliers : +5, +15, +30, +60, +120 min');
   ok(c1.res[0].t === '+50.0%' && /up/.test(c1.res[0].cls) && c1.res[1].t === 'missed' && /manque/.test(c1.res[1].cls) && c1.res.slice(2).every((x) => x.t === '…'), 'id 1 : +5 = +50.0 % (vert), +15 = « missed », le reste en attente');

@@ -2778,7 +2778,7 @@ main{ min-width:0; }
     <div class="pscroll">
     <div class="ptitle pt-deposit">Deposit</div>
     <div class="note2">In your wallet: <b id="depSwoge">…</b> $SWOGEBET · <b id="depEth">…</b> ETH (RH)</div>
-    <div class="note2" id="depOu">No $SWOGEBET yet? <a class="vif" href="https://dexscreener.com/robinhood/0xc12943975def537dace9d62d4762a8250501924e" target="_blank" rel="noopener">Buy it on DexScreener &#8599;</a> — this vault takes $SWOGEBET only.</div>
+    <div class="note2" id="depOu">No $SWOGEBET yet? <a class="vif" href="https://dexscreener.com/robinhood/0xc12943975def537dace9d62d4762a8250501924e" target="_blank" rel="noopener">Buy it on DexScreener &#8599;</a> — this button takes $SWOGEBET only. Or deposit SOL, USDC, USDT or ETH below.</div>
     <label>Amount</label>
     <input id="depAmt" inputmode="decimal" placeholder="e.g. 100" value="100">
     <div class="pcts">
@@ -2786,6 +2786,10 @@ main{ min-width:0; }
       <button class="pct dpct imgpct p50" data-pct="50">50%</button><button class="pct dpct imgpct pmax" data-pct="100">MAX</button>
     </div>
     <div class="brow bcol"><button class="abtn aimg a-dep" id="depGo">Deposit</button><button class="abtn sec closeimg" data-close>Close</button></div>
+    <!-- SOL, USDC, USDT ou ETH sans $SWOGEBET en poche : une adresse de depot a usage unique, convertie en
+         $SWOGEBET livres au coffre des paris, 95 % de ce qui arrive au solde de paris (credit_depot.js,
+         mode « bet » ; bet_depot.js du serveur, 17/10). Le chemin du portefeuille ci-dessus reste. -->
+    <div data-credit-depot="bet"></div>
     </div>
   </div>
   <div class="box" id="box-wd">
@@ -2974,6 +2978,10 @@ main{ min-width:0; }
      mise : un joueur qui lit 5 000 $SWOGE en haut croirait pouvoir les jouer. */
   function setBalance(b){ balance=parseFloat(b||0); }
   function setBetBalance(b){ betBalance=parseFloat(b||0); balEl.textContent=fmtBal(betBalance); majUsdBet(); }
+  /* Un depot SOL/USDC/USDT/ETH credite (credit_depot.js, mode « bet ») : le solde que le serveur vient de
+     rendre. Le message WebSocket betDeposit dit la meme chose ; le premier arrive gagne, l autre ne
+     change rien. */
+  window.addEventListener("swoge:betdeposit", function(e){ if(e&&e.detail&&e.detail.betBalance!=null) setBetBalance(e.detail.betBalance); });
 
   /* ==================== CE QUE LE SOLDE VAUT, EN DOLLARS ====================
    *
@@ -4607,6 +4615,7 @@ function renderBonus(b){ if(!b) return; bonusData=b;
      Le marqueur de cache est celui de `version.json` : sans lui, un navigateur
      garderait l ancien menu apres la prochaine correction. -->
 <script src="swogeprofil.js?v=aa21d613" defer></script>
+<script src="credit_depot.js?v=c5cf39cf" defer></script>
 <!-- ==================== LE BANDEAU NE TOURNE QUE S IL EST VU ==================== -->
 <script>
 (function(){

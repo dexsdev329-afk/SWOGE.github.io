@@ -17,6 +17,14 @@
  * Usage : un element `<div data-credit-depot></div>` dans le dialogue de
  * recharge ; ce script s'y monte tout seul. Quand un depot est credite :
  * l'evenement `swoge:credit` (detail.balanceUsd) part sur `window`.
+ *
+ * ---- LE DEPOT AUX PARIS (17 octobre 2026) ----
+ * `<div data-credit-depot="bet"></div>` monte le meme panneau sur
+ * /bet/deposit (bet_depot.js du serveur) : SOL, USDC, USDT ou ETH convertis en
+ * $SWOGEBET livres au coffre des paris, 95 % de CE QUI ARRIVE au solde de
+ * paris (le frais vient du serveur, jamais de la page). Credite :
+ * l'evenement `swoge:betdeposit` (detail.betBalance). Le reste — liste du
+ * serveur, une requete {origin, amountUsd}, aucun stockage — est le meme.
  * ======================================================================== */
 (function(){
   "use strict";
@@ -30,6 +38,33 @@
   }
   function jeton(){ try { return localStorage.getItem("swogeSession"); } catch (e) { return null; } }
   function dollars(x){ var n = Number(x); return isFinite(n) ? "$" + n.toFixed(2) : "—"; }
+  /* Un montant de jetons rendu en texte decimal par le serveur → entier groupe (« 370,500 »). */
+  function jetons(x){ var n = Number(String(x == null ? "" : x).split(".")[0]); return isFinite(n) ? n.toLocaleString("en-US") : "—"; }
+  function pourcent(f){ var n = Number(f); return isFinite(n) ? (Math.round(n * 100) / 100) + "%" : "?"; }
+  /* Les deux panneaux : le credit en dollars (defaut) et le depot aux paris. Les phrases vivent ici. */
+  var MODES = {
+    credit: {
+      route: "/credit/deposit",
+      ouvre: "Pay with SOL or USDT instead (no signature)",
+      intro: "Send SOL or USDT from any wallet to a one-time address. It is converted to USDC and you are credited what actually arrives.",
+      indispo: "Paying with SOL or USDT is not available right now.",
+      estime: function(c){ return "Estimate: about " + dollars(c.estimateUsd) + " credited. You are credited what actually arrives in USDC, after network and conversion fees."; },
+      recu: "Payment seen - converting to USDC…",
+      fait: function(d){ return "Done: " + dollars(d.creditedUsd) + " added. Your credit: " + dollars(d.balanceUsd) + "."; },
+      annonce: function(d){ return new CustomEvent("swoge:credit", { detail: { balanceUsd: d.balanceUsd } }); }
+    },
+    bet: {
+      route: "/bet/deposit",
+      ouvre: "Deposit with SOL, USDC, USDT or ETH (no $SWOGEBET needed)",
+      intro: "Send SOL, USDC, USDT or ETH from any wallet or exchange to a one-time address. It is swapped to $SWOGEBET and added to your bet balance.",
+      regles: function(d){ return [pourcent(d.feePercent) + " deposit fee", "Credited in $SWOGEBET - exactly what arrives after the swap"]; },
+      indispo: "Depositing with SOL, USDC, USDT or ETH is not available right now.",
+      estime: function(c){ return "Estimate: about " + jetons(c.estimateCreditedSwogebet) + " $SWOGEBET after the " + pourcent(c.feePercent) + " deposit fee. You are credited exactly what arrives after the swap, minus the fee - the estimate is not a promise."; },
+      recu: "Payment seen - swapping to $SWOGEBET…",
+      fait: function(d){ return "Done: " + jetons(d.creditedSwogebet) + " $SWOGEBET added (" + pourcent(d.feePercent) + " fee: " + jetons(d.feeSwogebet) + "). Bet balance: " + jetons(d.betBalance) + " $SWOGEBET."; },
+      annonce: function(d){ return new CustomEvent("swoge:betdeposit", { detail: { betBalance: d.betBalance } }); }
+    }
+  };
   function el(tag, attrs, kids){
     var e = document.createElement(tag);
     if (attrs) for (var k in attrs) {
@@ -67,18 +102,21 @@
     if (!racine || racine.getAttribute("data-cdp-monte")) return;
     racine.setAttribute("data-cdp-monte", "1");
     styles();
+    var X = MODES[racine.getAttribute("data-credit-depot")] || MODES.credit;
     var S = { origines: [], choix: null, commande: null, minuteur: null };
     var boite = el("div", { cls: "cdp" });
-    var ouvre = el("button", { type: "button", cls: "cdp-ouvre", "aria-expanded": "false", text: "Pay with SOL or USDT instead (no signature)" });
+    var ouvre = el("button", { type: "button", cls: "cdp-ouvre", "aria-expanded": "false", text: X.ouvre });
     var corps = el("div", { hidden: "" });
-    var intro = el("p", { cls: "cdp-dim", text: "Send SOL or USDT from any wallet to a one-time address. It is converted to USDC and you are credited what actually arrives." });
+    var intro = el("p", { cls: "cdp-dim", text: X.intro });
+    /* Les regles du depot aux paris (frais, monnaie creditee), ecrites des que le serveur les donne. */
+    var regles = el("ul", { cls: "cdp-regles", hidden: "" });
     var choix = el("div", { cls: "cdp-l", role: "group", "aria-label": "Network and token" });
     var montant = el("input", { type: "number", inputmode: "decimal", min: "2", max: "50", step: "1", value: "10", "aria-label": "Amount in dollars" });
     var bornes = el("span", { cls: "cdp-dim" });
     var go = el("button", { type: "button", cls: "cdp-go", text: "Get a deposit address" });
     var carte = el("div", { cls: "cdp-carte", hidden: "" });
     var st = el("p", { cls: "cdp-st", role: "status", "aria-live": "polite" });
-    corps.appendChild(intro); corps.appendChild(choix);
+    corps.appendChild(intro); corps.appendChild(regles); corps.appendChild(choix);
     corps.appendChild(el("div", { cls: "cdp-m" }, [el("span", { text: "Amount $" }), montant, bornes]));
     corps.appendChild(go); corps.appendChild(carte); corps.appendChild(st);
     boite.appendChild(ouvre); boite.appendChild(corps);
@@ -110,10 +148,15 @@
     }
     function charge(){
       statut("");
-      return api("/credit/deposit").then(function(d){
+      return api(X.route).then(function(d){
         if (!d.ok) { statut(d.raison || "Not available right now.", true); go.disabled = true; return; }
         S.origines = d.origins || [];
-        if (!d.available || !S.origines.length) { choix.textContent = ""; go.disabled = true; statut("Paying with SOL or USDT is not available right now.", true); return; }
+        if (X.regles && d.feePercent != null) {
+          regles.textContent = "";
+          X.regles(d).forEach(function(t){ regles.appendChild(el("li", null, [el("b", { text: t })])); });
+          regles.hidden = false;
+        }
+        if (!d.available || !S.origines.length) { choix.textContent = ""; go.disabled = true; statut(X.indispo, true); return; }
         if (!S.choix) S.choix = S.origines[0].id;
         go.disabled = false; peintChoix();
         /* Une commande encore ouverte de cette session : on la remontre plutot que d'en ouvrir une autre. */
@@ -130,7 +173,7 @@
       var usd = Math.round(Number(montant.value) * 100) / 100;
       if (!(usd >= o.minUsd && usd <= o.maxUsd)) { statut("Choose an amount between $" + o.minUsd + " and $" + o.maxUsd + " for " + o.token + " on " + o.network + ".", true); return; }
       go.disabled = true; statut("Getting a one-time deposit address…");
-      api("/credit/deposit", { origin: o.id, amountUsd: usd }).then(function(d){
+      api(X.route, { origin: o.id, amountUsd: usd }).then(function(d){
         go.disabled = false;
         if (!d.ok) { statut(d.raison || "No address right now - nothing was charged.", true); return; }
         statut(""); montre(d);
@@ -154,22 +197,22 @@
       carte.appendChild(el("ul", null, [
         el("li", null, [el("b", { text: "Send only " + c.token + " on " + c.network + "." }), " Another token or another network is lost."]),
         el("li", { text: "Send this amount or more: less is refunded, more is converted too. This address is for this one payment only." }),
-        el("li", { text: "Estimate: about " + dollars(c.estimateUsd) + " credited. You are credited what actually arrives in USDC, after network and conversion fees." }),
+        el("li", { text: X.estime(c) }),
         el("li", { text: "Send from your own wallet. If the conversion fails, the payment goes back to the address that sent it - a withdrawal from an exchange may not come back on its own." }),
         heure ? el("li", { text: "Send within 30 minutes (by " + heure + "): the price of the estimate moves." }) : null
       ]));
       suit();
     }
-    var TEXTE = { waiting: "Waiting for your payment… (you can close this; it is credited when it arrives)", processing: "Payment seen - converting to USDC…" };
+    var TEXTE = { waiting: "Waiting for your payment… (you can close this; it is credited when it arrives)", processing: X.recu };
     function suit(){
       clearTimeout(S.minuteur);
       var c = S.commande; if (!c) return;
-      api("/credit/deposit/" + encodeURIComponent(c.id)).then(function(d){
+      api(X.route + "/" + encodeURIComponent(c.id)).then(function(d){
         if (!d.ok) { statut(d.raison || "Could not read the deposit status.", true); S.minuteur = setTimeout(suit, 15000); return; }
         if (d.status === "credited") {
-          statut("Done: " + dollars(d.creditedUsd) + " added. Your credit: " + dollars(d.balanceUsd) + ".");
+          statut(X.fait(d));
           S.commande = null;
-          try { window.dispatchEvent(new CustomEvent("swoge:credit", { detail: { balanceUsd: d.balanceUsd } })); } catch (e) {}
+          try { window.dispatchEvent(X.annonce(d)); } catch (e) {}
           return;
         }
         if (TEXTE[d.status]) { statut(TEXTE[d.status]); S.minuteur = setTimeout(suit, window.SWOGE_DEPOT_MS || 5000); return; }

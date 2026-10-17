@@ -2385,6 +2385,11 @@ main{ min-width:0; }
          vendre ce montant le ferait bouger lui-meme. -->
     <span class="chip swusd" id="betUsd" hidden
           title="Roughly what your bet balance is worth, at the pool price"></span>
+    <!-- ---- LA RECHARGE SE VOIT EN HAUT A DROITE (17/10) ----
+         « je vois pas le bouton top up en haut a droite » : le depot SOL/USDC/USDT/ETH
+         vivait au fond du dialogue Deposit, deux clics et un defilement plus loin. Le
+         bouton ouvre ce dialogue et amene le panneau Relay sous les yeux. -->
+    <button class="sw-b sw-b-or vif" id="topUpBtn" type="button" title="Deposit SOL, USDC, USDT or ETH">+ TOP UP</button>
   </nav>
   <!-- ---- LA RANGEE DE CONNEXION ENTRE DANS L EN-TETE ----
        Elle vivait sous la barre, et se collait en haut a droite au-dessus de
@@ -4453,6 +4458,12 @@ function renderBonus(b){ if(!b) return; bonusData=b;
   $("wcClaim").onclick=function(){ send({type:"claimWelcome"}); };
   $("stkClaim").onclick=function(){ send({type:"claimStreak"}); };
   $("acDeposit").onclick=function(){ openPanel("dep"); };
+  $("topUpBtn").onclick=function(){
+    openPanel("dep");
+    if(!authed) return;
+    var p=document.querySelector('[data-credit-depot="bet"]');
+    if(p) setTimeout(function(){ p.scrollIntoView({behavior:"smooth",block:"start"}); },60);
+  };
   $("acCopy").onclick=function(){ try{ navigator.clipboard.writeText(myAddr||""); toast("Address copied"); }catch(e){} };
   // ---- send $SWOGE / ETH to another address ----
   function sendMsg(t,c){ var e=$("sendMsg"); if(!e)return; e.textContent=t; e.style.color=c==="warn"?"#E0443E":c==="ok"?"#0E7C3E":"#6B7C99"; }

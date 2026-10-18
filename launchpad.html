@@ -141,6 +141,7 @@ video{ max-width:100%; }
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
 <script src="lance_v4.js?v=6f7f9ced"></script>
 <script src="lance_v5.js?v=deb498e0"></script>
+<script src="echange_v5.js?v=8fe06129"></script>
 <!-- 14/10/2026 : le paquet UMD de WalletConnect 2.13.3 lit « process » (une variable de Node,
      absente d'un navigateur) et plante au chargement : « process is not defined », mesure sur une
      page vide, disparu avec ce shim. -->
@@ -1494,6 +1495,24 @@ var VEN = {
     naissance:76000000 /* = NAISSANCE_V4, declaree plus bas */, part:"50% creator / 50% SWOGE treasury", pool:"ETH pool" };
 })();
 var V4_IDS=["v4s","v4e"].filter(function(k){ return !!VEN[k]; });
+/* 18/10/2026 : UN JETON SWOGE V5. « Failed · execution reverted: unknown » en achetant SWAI : la boite
+   envoyait l ordre au SwapRouter02 d Uniswap v3, alors qu un jeton V5 vit dans un pool Uniswap v4 a hook
+   (fee 0, tickSpacing 200, SwogeHookV5). Chaque jeton V5 a SA cotation (ETH, USDG, $SWOGE ou une action) :
+   l entree VEN.v5 est reecrite a l ouverture de chaque fiche V5, depuis ce que le noyau dit (echange_v5.js). */
+var V5I=null;            /* le jeton V5 ouvert : cle du pool, cotation, decimales (SwogeV5Echange.info) */
+function venueV5(I){
+  var J=(window.SwogeV5Echange&&window.SwogeV5Echange._etat.J)||{}, sw=I.quote.toLowerCase()===SWOGE_TOKEN.toLowerCase();
+  VEN.v5={ id:"v5", addr:J.core, naissance:(J.blocks&&J.blocks.core)||NAISSANCE_V4, v5:true, curve:false,
+    abi:["event Created(address indexed token, address indexed creator, string name, string symbol)",
+      "event Meta(address indexed token, string telegram, string twitter, string website, string logo)",
+      "function instant(address) view returns (address token, address creator, address pool, uint256 lpTokenId, bool exists)"],
+    quote: sw?SWOGE_TOKEN:I.quote, native:I.natif, dec:I.dec, sym: I.natif?"ETH (RH)":(sw?"SWOGE":I.sym), mult:I.mult,
+    part:"1% base fee (75% creator / 25% SWOGE) + creator tax, taken by the V5 hook on the "+(I.natif?"ETH":I.sym)+" side" };
+  return VEN.v5;
+}
+/* Le taux en dollars d une cotation V5 : ETH et $SWOGE comme les autres jetons ; une autre cotation (USDG,
+   une action) n a pas de taux lu par cette page : la fiche reste dans l unite de la cotation, nommee. */
+function tauxV5(){ var V=VEN.v5; if(!V) return null; if(V.native) return ethUsdCache; if(V.quote===SWOGE_TOKEN) return swogeUsdCache; return null; }
 /* Cote en $SWOGE ? (le V3 et le V4 « pool $SWOGE ») — c'est ce qui choisit le taux en dollars. */
 function enSwoge(v){ return venue(v).quote===SWOGE_TOKEN; }
 function venue(v){ return VEN[v] || VEN[2]; }
@@ -1538,6 +1557,8 @@ function rpcProvider(){ return new ethers.providers.StaticJsonRpcProvider(CHAIN.
 var _lecteur=null;
 function lecteur(){ return _lecteur || (_lecteur = rpcProvider()); }
 function readFun(v){ var V=venue(v), c=new ethers.Contract(V.addr, V.abi, lecteur()); c.__naissance=V.naissance; return c; }
+/* 18/10/2026 : l echange des jetons V5 (pool Uniswap v4 a hook) lit par le meme noeud ; il ne signe que par le portefeuille. */
+if(window.SwogeV5Echange) window.SwogeV5Echange.initialise({ lecteur:lecteur });
 /* ---------- LE NOEUD NE LIT PLUS L'HISTORIQUE D'UN SEUL COUP (mesure du 30/09/2026) ----------
    « query spans 76531054 blocks (0 to 76531053), but only 10000000 are allowed » : toute
    lecture de journaux depuis le bloc 0 etait refusee. La page affichait « aucun jeton »,
@@ -2806,6 +2827,22 @@ async function runPool(items, conc, fn){
   var i=0; async function w(){ while(i<items.length){ var k=i++; await fn(items[k], k); } }
   var ws=[]; for(var c=0;c<conc;c++) ws.push(w()); await Promise.all(ws);
 }
+/* La carte d un jeton V5 cree par ce portefeuille : frais du createur lus chez Holders et dans le hook. */
+function carteV5(r){
+  var Q=r.qsym||"?", t=r.tauxUsd, moi=r.dest&&account&&r.dest.toLowerCase()===account.toLowerCase();
+  var f=function(x){ return x==null ? "not read" : (t!=null ? fmtUsd(x*t)+' <small>'+fmtQty(x)+' '+esc(Q)+'</small>' : fmtQty(x)+' '+esc(Q)); };
+  var kv=function(a,b){ return '<div class="kv"><span class="k">'+a+'</span><span class="v">'+b+'</span></div>'; };
+  return '<div class="card" style="cursor:default;margin-top:8px" data-v5card="'+esc(r.addr)+'"><div class="top"><div style="display:flex;align-items:center;gap:10px">'+logoImg(r.addr)+'<div><span class="nm">'+esc(r.name||"?")+'</span> <span class="sy">$'+esc(r.sym||"?")+'</span> <span class="badge v5b">V5</span></div></div>'+lockChip()+'</div>'
+    +kv("Quoted in", esc(Q)+(r.prixQ!=null?' · 1 token = '+esc(pq(r.prixQ))+' '+esc(Q):''))
+    +kv(moi?"Ready to withdraw":"Ready for the fee recipient", f(r.fraisPret))
+    +kv("Waiting in the hook (distribute)", f(r.fraisAttente))
+    +(r.dest&&!moi?kv("Fee recipient", adrA(r.dest)):'')
+    +'<div class="btnrow" style="margin-top:8px"><button class="btn" data-open="'+esc(r.addr)+'" style="padding:5px 10px;font-size:12px">📈 Open</button>'
+    +'<a class="btn dexlink" href="https://dexscreener.com/robinhood/'+esc(r.addr.toLowerCase())+'" target="_blank" style="padding:5px 10px;font-size:12px">📊 Dex</a>'
+    +(r.fraisAttente>0?'<button class="btn" data-v5dist="'+esc(r.addr)+'" style="padding:5px 10px;font-size:12px">⚙️ Distribute</button>':'')
+    +(moi&&r.fraisPret>0?'<button class="btn primary" data-v5wd="'+esc(r.addr)+'" style="padding:5px 10px;font-size:12px">💰 Withdraw</button>':'')+'</div>'
+    +'<div class="note" data-cnote="'+esc(r.addr)+'" style="margin-top:6px"></div></div>';
+}
 async function loadMine(){
   var host=$("#mineList");
   if(!account){ host.innerHTML='<div class="note">Connect your wallet to see your holdings, launches & burns.</div>'; $("#mineInfo").textContent=""; return; }
@@ -2849,9 +2886,16 @@ async function loadMine(){
          C'est de l'argent qui attend, il doit se voir. */
       if(tk.v===3){ try{ tk.pend=+ethers.utils.formatEther(await readFun(3).pendingRewards(tk.addr,account)); }catch(e){} }
     });
+    /* 18/10/2026 : les jetons V5 (noyau V5, evenements LaunchedV5 depuis son bloc de deploiement) :
+       detenus = balanceOf sur la liste de tous les LaunchedV5 ; crees = LaunchedV5 au createur indexe.
+       Valeur au prix du pool v4 (StateView.getSlot0) ; dollars pour ETH et $SWOGE seulement. */
+    var v5=null;
+    if(window.SwogeV5Echange){ try{ v5=await window.SwogeV5Echange.portefeuille(account, { usd:function(I){ return I.natif?eu:(I.quote.toLowerCase()===SWOGE_TOKEN.toLowerCase()?su:null); } }); }catch(e){ v5=null; } }
+    if(v5){ v5.detenus.concat(v5.crees).forEach(function(L){ var k=L.addr.toLowerCase(); if(L.meta && !metaMap[k]) metaMap[k]=L.meta; });
+      v5.detenus.forEach(function(L){ held.push(L); }); }
     /* On classe en dollars quand on peut : sans ca, un avoir cote en $SWOGE
        passerait devant un avoir cote en ETH par simple effet d'unite. */
-    function valUsd(t){ var r=rate(t.v); return (t.valQ!=null&&r!=null)?t.valQ*r:null; }
+    function valUsd(t){ if(t.v5) return t.usd; var r=rate(t.v); return (t.valQ!=null&&r!=null)?t.valQ*r:null; }
     held.sort(function(a,b){ return (valUsd(b)||0)-(valUsd(a)||0) || (b.valQ||0)-(a.valQ||0); });
     var holdUsd=held.reduce(function(s,t){ return s+(valUsd(t)||0); },0);
     var holdKnown=held.some(function(t){ return valUsd(t)!=null; });
@@ -2863,8 +2907,8 @@ async function loadMine(){
       if(pendTotal>0) holdHtml+='<div class="kv" style="border:0"><span class="k">Unclaimed holder rewards</span><span class="v" style="color:var(--signal)">'+fmtQty(pendTotal)+' $SWOGE</span></div>';
       held.forEach(function(t){
         var dexUrl=t.pool?("https://dexscreener.com/robinhood/"+t.pool):("https://dexscreener.com/search?q="+t.addr);
-        holdHtml+='<div class="card" style="cursor:pointer;margin-top:8px" data-open="'+t.addr+'"><div class="top"><div style="display:flex;align-items:center;gap:10px">'+logoImg(t.addr)+'<div><span class="nm">'+esc(t.name||"?")+'</span> <span class="sy">$'+esc(t.sym||"?")+'</span></div></div>'
-          +'<span class="v" style="text-align:right;font-family:\'Space Mono\',monospace;font-size:12px">'+fmtNum(t.bal)+' '+esc(t.sym||"")+'<br><span style="color:var(--signal)">'+(valUsd(t)!=null?fmtUsd(valUsd(t)):(t.valQ!=null?fmtQty(t.valQ)+" "+venue(t.v).sym:""))+'</span></span></div>'
+        holdHtml+='<div class="card" style="cursor:pointer;margin-top:8px" data-open="'+t.addr+'"><div class="top"><div style="display:flex;align-items:center;gap:10px">'+logoImg(t.addr)+'<div><span class="nm">'+esc(t.name||"?")+'</span> <span class="sy">$'+esc(t.sym||"?")+'</span>'+(t.v5?' <span class="badge v5b">V5</span>':'')+'</div></div>'
+          +'<span class="v" style="text-align:right;font-family:\'Space Mono\',monospace;font-size:12px">'+fmtNum(t.bal)+' '+esc(t.sym||"")+'<br><span style="color:var(--signal)">'+(valUsd(t)!=null?fmtUsd(valUsd(t)):(t.valQ!=null?fmtQty(t.valQ)+" "+esc(t.v5?t.qsym:venue(t.v).sym):""))+'</span></span></div>'
           +(t.pend>0?'<div class="kv"><span class="k">Your holder rewards</span><span class="v">'+fmtQty(t.pend)+' $SWOGE</span></div>'
                     +'<div class="btnrow" style="margin-top:6px"><button class="btn primary" data-claim="'+t.addr+'" style="padding:5px 10px;font-size:12px">💰 Claim</button></div>'
                     +'<div class="note" data-rnote="'+t.addr+'" style="margin-top:6px"></div>':'')
@@ -2918,6 +2962,7 @@ async function loadMine(){
         });
       }catch(x){}
     });
+    if(v5) v5.crees.forEach(function(L){ L.yours=0; L.creator=account; madeRows.push(L); });
     var totalYours=madeRows.reduce(function(a,t){ return a+t.yours; },0);
     var totalTxt = totalYoursUsd>0 ? fmtUsd(totalYoursUsd) : (totalYours>0? fmtQty(totalYours)+" (quote)" : "—");
     var madeHtml='<div class="panel" style="margin:0 0 12px;background:var(--void)"><h2 style="margin:0 0 10px">⚡ Tokens you created <span class="count">'+madeRows.length+'</span></h2>';
@@ -2930,6 +2975,7 @@ async function loadMine(){
       madeHtml+='<button class="btn primary full" id="claimAllBtn" style="margin:8px 0"'+(totalYours<=1e-9?' disabled':'')+'>💰 Claim all my fees</button>'
         +'<div class="note" id="claimAllNote" style="margin-top:0">One wallet confirmation per token that has fees.</div>';
       madeRows.forEach(function(r){
+        if(r.v5){ madeHtml+=carteV5(r); return; }
         var rr=r.c4?(r.c4.quote===SWOGE_TOKEN?su:eu):rate(r.v), QS=r.c4?r.c4.sym:venue(r.v).sym;
         var claimHtml = r.v===3
           ? (r.pending>0 ? '<div class="kv"><span class="k">Uncollected pool fees</span><span class="v">'+fmtQty(r.pending)+' '+QS+' <small>→ 70% holders / 30% treasury</small></span></div>' : '')
@@ -2997,6 +3043,18 @@ async function loadMine(){
         var row=madeRows.filter(function(x){ return x.addr===addr; })[0]||{};
         if(!boxEl.getAttribute("data-built")){ construitAgentForm(boxEl, { token:addr, pool:row.pool||null, symbole:row.sym, nom:row.name }); boxEl.setAttribute("data-built","1"); }
         boxEl.hidden=false;
+      };
+    });
+    host.querySelectorAll("[data-v5dist],[data-v5wd]").forEach(function(b){
+      b.onclick=async function(ev){
+        ev.stopPropagation();
+        if(!signer){ openWalletPicker(); return; }
+        var dist=b.hasAttribute("data-v5dist"), addr=b.getAttribute(dist?"data-v5dist":"data-v5wd"), note=host.querySelector('[data-cnote="'+addr+'"]');
+        note.className="note"; note.textContent=dist?"Simulating distribute(), then confirm in your wallet…":"Simulating withdraw(), then confirm in your wallet…"; b.disabled=true;
+        try{ await window.SwogeV5Echange[dist?"distribue":"retire"]({ signer:signer, compte:account, token:addr });
+          note.className="note ok"; note.textContent=dist?"Distributed: the creator part is now ready to withdraw 💰":"Withdrawn to your wallet 💰"; loadMine();
+        }catch(e){ note.className="note err"; note.textContent="Failed · "+window.SwogeV5Echange.raison(e); }
+        finally{ b.disabled=false; }
       };
     });
     host.querySelectorAll("[data-collect]").forEach(function(b){
@@ -3088,7 +3146,12 @@ async function openTrade(addr){
      donnerait un mauvais actif de cotation, donc de mauvais prix. */
   var known=allCache.filter(function(r){ return r.addr.toLowerCase()===addr.toLowerCase(); })[0];
   curV = known ? known.v : 0;
-  try{
+  /* Un jeton V5 d abord : getTokenInfo(token).exists sur le noyau V5 (une lecture). */
+  V5I=null;
+  if(!known && window.SwogeV5Echange){ try{ V5I=await window.SwogeV5Echange.info(addr); }catch(e){ V5I=null; } }
+  if(curToken!==addr) return;
+  if(V5I){ venueV5(V5I); curV="v5"; curMode=5; curPool=null; curT0IsQuote=V5I.quoteIs0; }
+  else try{
     if(!curV && v3Live()){ try{ if((await readFun(3).instant(addr)).exists) curV=3; }catch(e){} }
     for(var k4=0; !curV && k4<V4_IDS.length; k4++){ try{ if((await readFun(V4_IDS[k4]).instant(addr)).exists) curV=V4_IDS[k4]; }catch(e){} }
     if(!curV) curV=2;
@@ -3185,6 +3248,22 @@ function blocRepris(b){
   return lire().catch(function(){ return new Promise(function(ok){ setTimeout(ok,700); }).then(lire); })
     .then(function(bl){ return {b:b,t:bl?bl.timestamp:0}; },function(){ return {b:b,t:0}; });
 }
+/* Jeton V5 : les Swap du PoolManager filtres sur son poolId. L echangeur nomme est le routeur : on lit
+   l expediteur des 60 plus recents, comme pour le V3. */
+async function fetchTradesV5(){
+  if(!V5I) return [];
+  var de=(TK&&TK.cree&&TK.cree.bn)||venue("v5").naissance;
+  var evs=(await window.SwogeV5Echange.swaps(V5I, de)).map(function(s){ return { bn:s.bn, li:s.li, tx:s.tx, who:s.sender, type:s.achat?"buy":"sell", eth:s.quote, tokens:s.tokens, mcap:s.prix*1e9 }; });
+  if(!evs.length) return [];
+  evs.sort(function(a,b){ return a.bn-b.bn || a.li-b.li; });
+  var uniq={}; evs.forEach(function(e){ uniq[e.bn]=1; });
+  var stamps=await Promise.all(Object.keys(uniq).map(function(b){ return blocRepris(b); }));
+  var tmap={}; stamps.forEach(function(s){ tmap[s.b]=s.t; blocTs[s.b]=s.t; });
+  evs.forEach(function(e){ e.ts=tmap[e.bn]||0; });
+  var prov=lecteur(), R=window.SwogeV5Echange.ADR.ROUTEUR.toLowerCase();
+  await Promise.all(evs.filter(function(e){ return e.who && e.who.toLowerCase()===R; }).slice(-60).map(function(e){ return prov.getTransaction(e.tx).then(function(t){ if(t&&t.from) e.who=t.from; },function(){}); }));
+  return evs;
+}
 // instant tokens: rebuild trades from the Uniswap pool's Swap events
 async function fetchTradesInstant(){
   if(!curPool) return [];
@@ -3217,7 +3296,7 @@ async function fetchTradesInstant(){
 
 async function loadAndRenderChart(token, eu){
   var my=++chartReq, tr=[];
-  try{ tr = curMode===1 ? await fetchTradesInstant() : await fetchTrades(token); }catch(e){ tr=null; }
+  try{ tr = curMode===5 ? await fetchTradesV5() : curMode===1 ? await fetchTradesInstant() : await fetchTrades(token); }catch(e){ tr=null; }
   if(my!==chartReq) return;                 // a newer request superseded this one
   candleState.token=token; candleState.trades=tr||[]; candleState.ethUsd=eu;
   if(TK && TK.addr===token){
@@ -3253,7 +3332,7 @@ function buildBuyPcts(){
         if(V.native) bal=await (lecteur()).getBalance(account);
         else bal=await (new ethers.Contract(V.quote, ERC20_ABI, lecteur())).balanceOf(account);
         var dec = V.native ? 6 : 4;
-        var s=(+ethers.utils.formatEther(bal.mul(p).div(100))).toFixed(dec).replace(/0+$/,"").replace(/\.$/,"");
+        var s=(+ethers.utils.formatUnits(bal.mul(p).div(100), V.dec||18)).toFixed(dec).replace(/0+$/,"").replace(/\.$/,"");
         $("#buyEth").value=s||"0"; quoteBuy();
       }catch(e){ toast("Couldn't read your "+venue(curV).sym+" balance"); }
     };
@@ -3284,8 +3363,8 @@ async function refreshTrade(){
      second passage le cache est rempli, donc `eu` n'est plus nul.
      Avant ce changement, une seule requete pendante — un bloqueur de
      publicite suffit — laissait la page d'echange figee sur « — ». */
-  var eu = enSwoge(curV) ? swogeUsdCache : ethUsdCache;
-  if(eu==null){
+  var eu = curV==="v5" ? tauxV5() : (enSwoge(curV) ? swogeUsdCache : ethUsdCache);
+  if(eu==null && (curV!=="v5" || V.native || enSwoge(curV))){
     var tokAlors=curToken;
     (enSwoge(curV) ? getSwogeUsd() : getEthUsd()).then(function(v){
       if(v!=null && curToken===tokAlors) refreshTrade();
@@ -3299,7 +3378,20 @@ async function refreshTrade(){
   $("#buyLbl").textContent = "You pay";
   $("#buyEth").placeholder = V.native ? "0.1" : "1000";
 
-  if(curMode===1){
+  $("#tvCollectBtn").style.display = curMode===5 ? "none" : "";
+  if(curMode===5){
+    /* ---- jeton V5 : pool Uniswap v4 a hook, prix lu par StateView.getSlot0(poolId) ---- */
+    $("#tvGradWrap").style.display="none";
+    $("#tvInstantRow").style.display="contents";
+    $("#tvDexBtn").href="https://dexscreener.com/robinhood/"+curToken.toLowerCase();
+    $("#tvBadge").textContent="⚡ live on Uniswap v4 · V5"; $("#tvBadge").className="badge grad";
+    $("#tvLock").innerHTML='<span class="chip lock" title="The liquidity is a PoolManager position of the V5 core; the V5 hook refuses every liquidity removal (beforeRemoveLiquidity reverts)">🔒 LP locked by the V5 hook</span>';
+    $("#tvTradePanel").style.opacity="1";
+    $("#tvRewardRow").style.display="none"; $("#claimBtn").style.display="none";
+    price=null; mcap=null;
+    try{ price=await window.SwogeV5Echange.prix(V5I); mcap=price*1e9; }catch(e){}
+    try{ var f5=await window.SwogeV5Echange.frais(V5I); if(TK && TK.addr===curToken) TK.v5frais=f5; }catch(e){}
+  }else if(curMode===1){
     /* ---- instant token: live Uniswap pool ---- */
     $("#tvGradWrap").style.display="none";
     $("#tvInstantRow").style.display="contents";
@@ -3370,13 +3462,13 @@ async function refreshTrade(){
   $("#tvMcap").setAttribute("data-q", String(mcap));   /* la capitalisation dans l actif de cotation, telle que lue (pool ou courbe) */
   $("#tvLiq").textContent = (dx && dx.liq!=null) ? "liq "+fmtUsd(dx.liq) : (mcUsdV==null ? "no $ rate" : "");
   var hh=function(){ var d=new Date(); return ("0"+d.getUTCHours()).slice(-2)+":"+("0"+d.getUTCMinutes()).slice(-2)+" UTC"; };
-  $("#tvMcapS").textContent = (dx && dx.fdv!=null) ? "DexScreener "+hh()+" · price × total supply" : (mcUsdV!=null ? fmtQty(mcap)+" "+QS+" · "+(curMode===1?"pool slot0":"curve")+" × 1B supply × $ rate · "+hh() : (curMode===1?"pool slot0":"curve")+" × 1B supply · read "+hh());
+  $("#tvMcapS").textContent = (dx && dx.fdv!=null) ? "DexScreener "+hh()+" · price × total supply" : (mcUsdV!=null ? fmtQty(mcap)+" "+QS+" · "+(curMode?"pool slot0":"curve")+" × 1B supply × $ rate · "+hh() : (curMode?"pool slot0":"curve")+" × 1B supply · read "+hh());
   $("#tvMcapT").textContent = (dx && dx.fdv!=null)
     ? "DexScreener's figure for this pool (price in $ × total supply), the same one their page shows. On-chain: "+fmtQty(mcap)+" "+QS+" (pool price × 1B supply)."
     : "Pool price × 1B supply = "+fmtQty(mcap)+" "+QS+(mcUsdV!=null?", converted with the "+QS+" $ rate ("+(enSwoge(curV)?"$SWOGE/WETH reserves × ETH/USD":"ETH/USD")+").":". No $ rate could be read, so no dollar figure is shown.");
   $("#tvPrice").textContent = (prUsdV!=null) ? (prUsdV<0.001?"$"+pxC(prUsdV,4):fmtPrice(prUsdV)) : (price>0?pq(price):"0")+" "+QS;
-  $("#tvPriceS").textContent = (prUsdV!=null ? "$: "+((dx&&dx.usd!=null)?"DexScreener":"pool × $ rate")+" · " : "")+(price>0?pq(price):"—")+" "+QS+": "+(curMode===1?"pool slot0":"bonding curve")+", read "+hh();
-  $("#tvPriceT").textContent = "1 token = "+(price>0?pq(price):"—")+" "+QS+" ("+(curMode===1?"pool slot0":"bonding curve")+"). "+((dx&&dx.usd!=null)?"The $ price is DexScreener's; it keeps the $ price of the last trade. ":"")+"The 24h change is in "+QS+": the price now against the last swap before 24h ago.";
+  $("#tvPriceS").textContent = (prUsdV!=null ? "$: "+((dx&&dx.usd!=null)?"DexScreener":"pool × $ rate")+" · " : "")+(price>0?pq(price):"—")+" "+QS+": "+(curMode?"pool slot0":"bonding curve")+", read "+hh();
+  $("#tvPriceT").textContent = "1 token = "+(price>0?pq(price):"—")+" "+QS+" ("+(curMode?"pool slot0":"bonding curve")+"). "+((dx&&dx.usd!=null)?"The $ price is DexScreener's; it keeps the $ price of the last trade. ":"")+"The 24h change is in "+QS+": the price now against the last swap before 24h ago.";
   if(TK && TK.addr===curToken){ TK.prixQ=price; TK.prixUsd=prUsdV; TK.prixTs=Math.floor(Date.now()/1000); TK.mcUsd=mcUsdV; }
   rBoite(); rHeads(); rMbar();
   loadAndRenderChart(curToken, eu);
@@ -3413,7 +3505,12 @@ function sortie(id, v){
 async function quoteBuy(){
   var raw=amtStr("#buyEth"); if(!parseFloat(raw)||!curToken){ $("#buyQuote").textContent="Quote from the pool once you type an amount."; sortie("#buyOut",null); return; }
   try{
-    if(curMode===1){
+    if(curMode===5){
+      var tok5=curToken, o5=await window.SwogeV5Echange.devis(V5I, true, ethers.utils.parseUnits(raw, V5I.dec));
+      if(tok5!==curToken) return;
+      sortie("#buyOut", +ethers.utils.formatEther(o5));
+      $("#buyQuote").textContent="Uniswap v4 quote (V4Quoter): the V5 hook fee"+feesTxt5(true)+" and price impact included.";
+    }else if(curMode===1){
       var qi=await quoterC().callStatic.quoteExactInputSingle({tokenIn:curQuote(),tokenOut:curToken,amountIn:ethers.utils.parseEther(raw),fee:POOL_FEE,sqrtPriceLimitX96:0});
       sortie("#buyOut", +ethers.utils.formatEther(qi.amountOut));
       $("#buyQuote").textContent="Uniswap QuoterV2 quote: 1% pool fee and price impact included.";
@@ -3422,7 +3519,7 @@ async function quoteBuy(){
       sortie("#buyOut", +ethers.utils.formatEther(q.tokensOut));
       $("#buyQuote").textContent="Curve quote · fee "+(+ethers.utils.formatEther(q.fee)).toFixed(6)+" ETH (RH)";
     }
-  }catch(e){ $("#buyQuote").textContent="No quote: the pool did not answer for this amount."; sortie("#buyOut",null); }
+  }catch(e){ $("#buyQuote").textContent = curMode===5 ? "No quote: "+window.SwogeV5Echange.raison(e) : "No quote: the pool did not answer for this amount."; sortie("#buyOut",null); }
 }
 // live comma → dot on all number fields (mobile FR keyboards type a comma)
 ["#buyEth","#sellTok"].forEach(function(id){
@@ -3442,7 +3539,12 @@ async function quoteSell(){
   var raw=amtStr("#sellTok"); if(!parseFloat(raw)||!curToken){ $("#sellQuote").textContent="Quote from the pool once you type an amount."; sortie("#sellOut",null); return; }
   try{
     var amt = sellUseMax&&curBalWei ? curBalWei : ethers.utils.parseEther(raw);
-    if(curMode===1){
+    if(curMode===5){
+      var tok5=curToken, o5=await window.SwogeV5Echange.devis(V5I, false, amt);
+      if(tok5!==curToken) return;
+      sortie("#sellOut", +ethers.utils.formatUnits(o5, V5I.dec));
+      $("#sellQuote").textContent="Uniswap v4 quote (V4Quoter) in "+curSym()+": the V5 hook fee"+feesTxt5(false)+" and price impact included.";
+    }else if(curMode===1){
       var qi=await quoterC().callStatic.quoteExactInputSingle({tokenIn:curToken,tokenOut:curQuote(),amountIn:amt,fee:POOL_FEE,sqrtPriceLimitX96:0});
       sortie("#sellOut", +ethers.utils.formatEther(qi.amountOut));
       $("#sellQuote").textContent="Uniswap QuoterV2 quote in "+curSym()+": 1% pool fee and price impact included.";
@@ -3451,12 +3553,14 @@ async function quoteSell(){
       sortie("#sellOut", +ethers.utils.formatEther(q.ethOut));
       $("#sellQuote").textContent="Curve quote in ETH (RH) · fee "+(+ethers.utils.formatEther(q.fee)).toFixed(6);
     }
-  }catch(e){ $("#sellQuote").textContent="No quote: the pool did not answer for this amount."; sortie("#sellOut",null); }
+  }catch(e){ $("#sellQuote").textContent = curMode===5 ? "No quote: "+window.SwogeV5Echange.raison(e) : "No quote: the pool did not answer for this amount."; sortie("#sellOut",null); }
 }
 $("#buyBtn").onclick=async function(){
   if(!signer){ openWalletPicker(); return; }
-  var raw=amtStr("#buyEth"); if(!parseFloat(raw)) return toast("Enter an ETH (RH) amount");
+  var raw=amtStr("#buyEth"); if(!parseFloat(raw)) return toast("Enter "+(curMode===5?"a "+curSym():"an ETH (RH)")+" amount");
   var note=$("#tradeNote"); note.className="note"; note.textContent="Confirm in your wallet…";
+  if(curMode===5){ var w5; try{ w5=ethers.utils.parseUnits(raw, V5I.dec); }catch(e){ note.className="note err"; note.textContent="Failed · "+curSym()+" has "+V5I.dec+" decimals: enter fewer digits"; return; }
+    return echangeV5(true, w5, note); }
   try{
     var wei=ethers.utils.parseEther(raw);
     var tx, V=venue(curV);
@@ -3506,6 +3610,7 @@ $("#sellBtn").onclick=async function(){
     var onchainBal=await t.balanceOf(account);
     if(amt.gt(onchainBal)) amt=onchainBal;
     if(amt.isZero()) return toast("No tokens to sell");
+    if(curMode===5) return echangeV5(false, amt, note);
     var V=venue(curV);
     var spender = curMode===1 ? ROUTER : V.addr;
     var allowance=await t.allowance(account,spender);
@@ -3537,6 +3642,26 @@ $("#sellBtn").onclick=async function(){
     note.className="note ok"; note.textContent="Sold ✅"; sellUseMax=false; $("#sellTok").value=""; quoteSell(); refreshTrade();
   }catch(e){ note.className="note err"; note.textContent="Failed · "+String(e.reason||e.message||e).slice(0,140); }
 };
+/* L echange V5 : devis V4Quoter, Permit2 pour un ERC-20 en entree, simulation de l ordre exact, puis
+   la signature (echange_v5.js). Le compte est celui du portefeuille connecte, jamais une autre adresse. */
+function feesTxt5(achat){ var f=TK&&TK.v5frais; if(!f) return ""; return " ("+((achat?f.buyBps:f.sellBps)/100).toFixed(2)+"% now)"; }
+async function echangeV5(achat, montant, note){
+  var tok=curToken, btn=achat?$("#buyBtn"):$("#sellBtn");
+  btn.disabled=true;
+  try{
+    var r=await window.SwogeV5Echange.echange({ signer:signer, compte:account, token:tok, achat:achat, montant:montant,
+      etape:function(t){ var m=/^Swapping… (0x[0-9a-fA-F]{64})$/.exec(t); if(m) note.innerHTML='Swapping… <a href="'+CHAIN.scan+'/tx/'+m[1]+'" target="_blank" rel="noopener">↗</a>'; else note.textContent=t; } });
+    var dec=achat?18:r.I.dec, u=achat?symT():curSym();
+    note.className="note ok";
+    note.innerHTML=(achat?"Bought ✅ ":"Sold ✅ ")+"received "+esc(fmtQ(+ethers.utils.formatUnits(r.recu, dec)))+" "+esc(u)
+      +' · quote '+esc(fmtQ(+ethers.utils.formatUnits(r.devis, dec)))+' · minimum '+esc(fmtQ(+ethers.utils.formatUnits(r.mini, dec)))
+      +' <a href="'+CHAIN.scan+'/tx/'+r.hash+'" target="_blank" rel="noopener">↗</a>';
+    note.setAttribute("data-recu", r.recu.toString()); note.setAttribute("data-devis", r.devis.toString()); note.setAttribute("data-mini", r.mini.toString());
+    if(achat){ $("#buyEth").value=""; quoteBuy(); } else { sellUseMax=false; $("#sellTok").value=""; quoteSell(); }
+    if(curToken===tok) refreshTrade();
+  }catch(e){ note.className="note err"; note.textContent="Failed · "+window.SwogeV5Echange.raison(e); }
+  finally{ btn.disabled=false; }
+}
 $("#tvCollectBtn").onclick=async function(){
   if(!signer){ openWalletPicker(); return; }
   var note=$("#tradeNote"); note.className="note"; note.textContent="Collecting pool fees…";
@@ -3603,7 +3728,7 @@ function lienAdr(a){ return CHAIN.scan+"/address/"+a; }
 function lienTx(t){ return CHAIN.scan+"/tx/"+t; }
 function adrA(a){ return '<a href="'+lienAdr(a)+'" target="_blank" rel="noopener">'+court(a)+'</a>'; }
 function topicAdr(a){ return "0x"+String(a).slice(2).toLowerCase().padStart(64,"0"); }
-function qs(){ return enSwoge(curV) ? "SWOGE" : "ETH"; }               /* actif de cotation, court */
+function qs(){ return enSwoge(curV) ? "SWOGE" : (curV==="v5"&&VEN.v5&&!VEN.v5.native) ? VEN.v5.sym : "ETH"; }               /* actif de cotation, court */
 function symT(){ return TK&&TK.sym ? TK.sym : "token"; }
 /* La partie « n = … » et les heures de lecture passent en --fur : c est la promesse de la fiche. */
 var RX_NR=/\bn = [\d,]+(?: (?:swaps?|trades|addresses|transfers))?|\b(?:read )?(?:\d{1,2} [A-Z][a-z]{2} (?:\d{4} )?)?\d\d:\d\d(?::\d\d)? UTC/g;
@@ -3628,10 +3753,10 @@ async function tsBloc(bn){
 }
 function logoTok(cls){ var u=logoFor(curToken); return u ? '<img src="'+esc(u)+'" alt=""'+(cls?' class="'+cls+'"':'')+' onerror="this.remove()">' : '<span class="ph">'+esc(symT().slice(0,3).toUpperCase())+'</span>'; }
 /* Le signe Ξ est pose par le CSS (::before) : le texte de la pastille reste le nom de l actif seul. */
-function logoQ(){ return enSwoge(curV) ? '<img src="'+SWOGE_LOGO_JPG+'" alt="">' : '<span class="ph ph-eth" aria-hidden="true"></span>'; }
+function logoQ(){ if(curV==="v5"&&VEN.v5&&!VEN.v5.native&&!enSwoge(curV)) return '<span class="ph">'+esc(String(VEN.v5.sym).slice(0,4))+'</span>'; return enSwoge(curV) ? '<img src="'+SWOGE_LOGO_JPG+'" alt="">' : '<span class="ph ph-eth" aria-hidden="true"></span>'; }
 var SWOGE_LOGO_JPG="img/fa05d30cc698.jpg";
-function nomVenue(v){ return v===2?"V2 launchpad":v===3?"V3 launchpad":v==="v4s"?"V4 launchpad · $SWOGE pool":v==="v4e"?"V4 launchpad · ETH pool":"launchpad"; }
-function sourceVenue(v){ return v===2?"contrats/SwogeFunV2.sol":v===3?"contrats/SwogeFunV3.sol":"contrats/SwogeFunV4.sol"; }
+function nomVenue(v){ return v==="v5"?"SWOGE V5 · Uniswap v4":v===2?"V2 launchpad":v===3?"V3 launchpad":v==="v4s"?"V4 launchpad · $SWOGE pool":v==="v4e"?"V4 launchpad · ETH pool":"launchpad"; }
+function sourceVenue(v){ return v==="v5"?"contrats/v5/src/SwogeHookV5.sol":v===2?"contrats/SwogeFunV2.sol":v===3?"contrats/SwogeFunV3.sol":"contrats/SwogeFunV4.sol"; }
 
 /* ---------- ouverture : on repart de zero, puis toutes les lectures partent en parallele ---------- */
 function ficheNeuve(addr){
@@ -3725,6 +3850,9 @@ async function lisPiscine(g){
 /* Les frais du lanceur : FeesCollected / Claimed (filtres sur le jeton), reserve(), et ce qu une
    collecte enverrait maintenant (collect() simule depuis le lanceur, rien n est signe). */
 async function lisFrais(g){
+  /* V5 : les frais du createur sont des creances de Holders (owed) et le seau createur du hook (getPending). */
+  if(curV==="v5"){ var F5=null; try{ F5=await window.SwogeV5Echange.fraisCreateur(V5I); }catch(e){}
+    if(!vivant(g)) return; TK.frais5=F5; rRewards(); rFees(); rPied(); return; }
   var V=venue(curV), F={ lu:false, n:0, aQui:0, auTresor:0, brule:0, dernier:null, claims:0, reclame:0, reserve:null, attente:null };
   var de=(TK.cree&&TK.cree.bn)||V.naissance||NAISSANCE_LANCEUR;
   try{
@@ -3843,14 +3971,14 @@ function rIdentite(){
   $("#tvVenue").textContent=nomVenue(curV);
   $("#tvWho").innerHTML = cr ? avatar(cr)+'created by '+adrA(cr) : "";
   $("#tvAge").textContent = c.ts ? "launched "+jour(c.ts,true)+" · "+Math.floor((maint()-c.ts)/86400)+" days ago" : "";
-  $("#tvPaired").textContent="paired with "+(enSwoge(curV)?"$SWOGE":"ETH");
+  $("#tvPaired").textContent="paired with "+(enSwoge(curV)?"$SWOGE":qs());
   var qi=$("#tvQuoteImg"); if(enSwoge(curV)){ qi.src=SWOGE_LOGO_JPG; qi.style.visibility=""; } else { qi.removeAttribute("src"); qi.style.visibility="hidden"; }
   [].forEach.call(document.querySelectorAll(".nmJ"), function(e){ e.textContent=TK.name||"this token"; });
   $("#tvLinksSrc").textContent = venue(curV).v4 ? "Links set by the creator at launch (on-chain Meta event)" : "Links set by the creator at launch (on-chain Meta event)";
 }
 
 /* ---------- chiffres de tete : volume, variation, detenteurs (prix et capitalisation : refreshTrade) ---------- */
-function rateUsd(){ return enSwoge(curV) ? swogeUsdCache : ethUsdCache; }
+function rateUsd(){ return curV==="v5" ? tauxV5() : enSwoge(curV) ? swogeUsdCache : ethUsdCache; }
 function prixAvant(ts){ var tr=TK&&TK.trades||[], p=null; for(var i=0;i<tr.length;i++){ if(tr[i].ts && tr[i].ts<ts) p=tr[i].mcap/1e9; } return p; }
 function rHeads(){
   if(!TK) return;
@@ -3885,7 +4013,7 @@ function rMbar(){
   if(!TK) return;
   $("#mbPx").textContent = TK.prixQ ? pq(TK.prixQ)+" "+qs() : "—";
   $("#mbSub").innerHTML = TK.ch24!=null ? '<span class="'+(TK.ch24<0?"dn":"up")+'">'+pct(TK.ch24)+'</span> 24h · in '+qs() : (TK.prixUsd?fmtPrice(TK.prixUsd)+" · DexScreener":"");
-  $("#mbSrc").textContent = curMode===1 ? "slot0 · read "+heure(TK.prixTs||maint()) : "bonding curve";
+  $("#mbSrc").textContent = curMode ? "slot0 · read "+heure(TK.prixTs||maint()) : "bonding curve";
 }
 
 /* ---------- graphique : prix du pool apres chaque echange, en escalier ---------- */
@@ -4136,7 +4264,7 @@ function rAgents(){
     var ws=fw.slice(0,3).map(function(w){ return w.n; }).join(", ");
     flow=agentHTML("flow","📊","Flow","market · reads every swap of the pool", sous? sous+" of 4 windows: no call · n &lt; "+fl : "4 windows readable", sous?"no":"yes",
       "Since launch: <b>"+all.n+" trade"+(all.n===1?"":"s")+"</b> ("+all.b+" buys, "+all.s+" sells) by "+all.bw+" buyer wallet"+(all.bw===1?"":"s")+". The 24h, 7d and 30d windows hold "+ws+" trades"+(sous?"; under "+fl+" Flow reads nothing into a window":"")+". Over 7d, the busiest wallet made "+fw[1].top+" of "+fw[1].n+" trades.",
-      tiles, "Source: Robinhood Chain RPC, "+(curMode===1?"Swap logs of pool "+court(curPool):"Buy/Sell logs of the curve")+" · n = "+all.n+" trades · read "+heure(TK.tradesTs||maint()), det);
+      tiles, "Source: Robinhood Chain RPC, "+(curMode===5?"PoolManager Swap logs of V5 pool "+court(V5I&&V5I.poolId):curMode===1?"Swap logs of pool "+court(curPool):"Buy/Sell logs of the curve")+" · n = "+all.n+" trades · read "+heure(TK.tradesTs||maint()), det);
   }
   var H=TK.hold, o=offre();
   if(!H||!H.lu){ crowd=agentHTML("crowd","👥","Crowd","community · reads the holders", H&&H.erreur?"not read":"reading…","mix", H&&H.erreur?"The transfers could not be read ("+esc(H.erreur)+").":"Reading the transfers…","","",""); }
@@ -4181,7 +4309,8 @@ function shieldLectures(){
   else if(!S||S.erreur) add(0,"SWOGE /scan did not answer"+(S&&S.erreur?" ("+String(S.erreur).slice(0,60)+")":"")+": the GoPlus and bytecode facts are not read.","SWOGE server /scan",0,TK.scanTs);
   else if(S.faits&&S.faits.length) S.faits.forEach(function(f){ add(3,"SWOGE /scan: "+f.quoi+".", f.source==="GoPlus"?"Powered by Go+ Security, via SWOGE /scan":"bytecode, via SWOGE /scan",1,TK.scanTs); });
   else add(2,"SWOGE /scan: none of its contract checks fired (can mint, transfers pausable, blacklist, changeable fees, honeypot, creator's earlier honeypot).","GoPlus or bytecode, via SWOGE /scan",1,TK.scanTs);
-  add(1,"Token tax: none in the launchpad's published source ("+sourceVenue(curV)+"); this page does not match that source against the deployed bytecode.",sourceVenue(curV),0);
+  if(curV==="v5"){ var f5=TK.v5frais; add(1,"SWOGE V5 hook fees, on the quote side"+(f5?": buy "+(f5.buyBps/100).toFixed(2)+"%, sell "+(f5.sellBps/100).toFixed(2)+"% now":" (not read)")+" — 1% base fee plus the creator tax (at most 5%, can only go down) plus a falling anti-snipe surcharge on buys.","currentFees() on the V5 core",f5?1:0); }
+  else add(1,"Token tax: none in the launchpad's published source ("+sourceVenue(curV)+"); this page does not match that source against the deployed bytecode.",sourceVenue(curV),0);
   if(curV===3) add(1,"Every transfer calls the launchpad (onMove) to keep the holder-rewards ledger; scanners read it as an external call.","contrats/SwogeFunV3.sol",0);
   if(k){
     if(k.owner==="none") add(2,"No owner: owner() reverts on the token.","eth_call owner() on the token",1);
@@ -4243,6 +4372,16 @@ function rRewards(){
   if(!TK) return;
   var F=TK.frais, V=venue(curV), Q=enSwoge(curV)?"SWOGE":"ETH", pv=partsVenue(), r=rateUsd();
   $("#rwTitle").textContent = curV===3 ? "Paid to holders" : "Paid to the creator";
+  if(curMode===5){
+    var F5=TK.frais5, f5=TK.v5frais, d5=V5I?V5I.dec:18, Q5=qs(), kv5=function(a,b){ return '<div class="kv"><span class="k">'+a+'</span><span class="v">'+b+'</span></div>'; };
+    var h5='<div style="margin-top:0">'+kv5("Hook fee now", f5?"buy "+(f5.buyBps/100).toFixed(2)+"% · sell "+(f5.sellBps/100).toFixed(2)+"%":"not read");
+    if(F5){ h5+=kv5("Ready to withdraw (fee recipient)", fmtQ(+ethers.utils.formatUnits(F5.pret,d5))+" "+esc(Q5))
+      +kv5("Waiting in the hook for distribute()", fmtQ(+ethers.utils.formatUnits(F5.attente,d5))+" "+esc(Q5)+" <small>creator part "+(V5I.split.creator/100)+"%</small>")
+      +kv5("Fee recipient", adrA(F5.dest)); }
+    else h5+='<div class="attente">Reading Holders and the hook…</div>';
+    h5+='</div><div class="src" style="margin-top:8px">SwogeHookV5.getPending(poolId), SwogeHoldersV5.owed(recipient, quote), currentFees() · anyone can call distribute(token); the recipient then calls withdraw · read '+heure(maint())+'.</div>';
+    $("#rwBody").innerHTML=h5; nr($("#rwBody")); return;
+  }
   if(curMode!==1){ $("#rwBody").innerHTML='<div class="note" style="margin-top:0">Bonding-curve token: the curve takes its fee on each trade ('+esc(V.part)+').</div>'; return; }
   if(!F){ $("#rwBody").innerHTML='<div class="attente">Reading the launchpad events…</div>'; return; }
   var kv=function(a,b){ return '<div class="kv"><span class="k">'+a+'</span><span class="v">'+b+'</span></div>'; };
@@ -4267,7 +4406,7 @@ function rFees(){
   var prot=k.feeProtocol!=null?(k.feeProtocol&15):null, pp=prot?1/prot:0, lp=1-pp;
   var P=function(v){ return (v*100).toFixed(3).replace(/0+$/,"").replace(/\.$/,"")+"%"; };
   var row=function(c,a,s,v){ return '<div class="srow"><span><i style="background:'+c+'"></i><span style="display:block">'+a+(s?'<small>'+s+'</small>':'')+'</span></span><b>'+v+'</b></div>'; };
-  var h='<div style="display:flex;align-items:center;gap:12px"><span class="id-logo" style="width:46px;height:46px;border-radius:12px">'+logoTok()+'</span><div><b style="font-family:Anton;font-weight:400;font-size:20px">$'+esc(symT())+'</b><div class="src">'+(curPool?'Uniswap v3 pool '+court(curPool)+' · 1% tier':'bonding curve')+'</div></div></div>';
+  var h='<div style="display:flex;align-items:center;gap:12px"><span class="id-logo" style="width:46px;height:46px;border-radius:12px">'+logoTok()+'</span><div><b style="font-family:Anton;font-weight:400;font-size:20px">$'+esc(symT())+'</b><div class="src">'+(curPool?'Uniswap v3 pool '+court(curPool)+' · 1% tier':curMode===5?'Uniswap v4 pool · SWOGE V5 hook':'bonding curve')+'</div></div></div>';
   if(curMode!==1){ $("#feesBody").innerHTML=h+'<p style="margin-top:12px">'+esc(venue(curV).part)+'</p>'; return; }
   h+='<div class="ftiles"><div class="ftile"><label>On a buy</label><b>1%</b><span>of the '+Q+' you pay stays in the pool</span></div><div class="ftile"><label>On a sell</label><b>1%</b><span>of the tokens you sell stays in the pool</span></div></div>'
     +'<p class="src">The token has no tax of its own in the launchpad\'s published source; this page does not match that source with the deployed bytecode.</p>'
@@ -4311,7 +4450,7 @@ function rPied(){
   var h="";
   if(k.tokenCount!=null) h+=it(ent(k.tokenCount),"Tokens on the "+(curV===2?"V2":"V3")+" launchpad","tokenCount()");
   if(F&&F.lu) h+=it(cmp(F.aQui,1),(enSwoge(curV)?"SWOGE":"ETH")+" paid to "+(curV===3?"holders":"the creator"),F.n+" fee collection"+(F.n===1?"":"s"));
-  if(TK.trades) h+=it(TK.trades.length,"Swaps read",curMode===1?"pool Swap events since launch":"curve Buy/Sell events");
+  if(TK.trades) h+=it(TK.trades.length,"Swaps read",curMode?"pool Swap events since launch":"curve Buy/Sell events");
   if(curPool&&P&&P.lu) h+=it(P.burnLiq,"Liquidity removals","pool Burn events with liquidity");
   $("#piedBand").innerHTML=h; nr($("#piedBand"));
 }
@@ -4339,7 +4478,11 @@ function rBoite(){
   $("#bbGetT").outerHTML='<span class="tokp" id="bbGetT">'+logoTok()+esc(symT())+'</span>';
   $("#bbPayT").outerHTML='<span class="tokp" id="bbPayT">'+logoTok()+esc(symT())+'</span>';
   $("#bbPx").innerHTML = TK.prixQ ? "1 token = "+pq(TK.prixQ)+" "+esc(Q)+"<br>"+(curMode===1?"pool slot0 · "+heure(TK.prixTs||maint()):"bonding curve") : "";
-  $("#bbRoute").textContent = curMode===1 ? "Uniswap v3 · 1% pool · SwapRouter02" : "SWOGE bonding curve · "+venue(curV).part;
+  $("#bbRoute").textContent = curMode===5 ? "Uniswap v4 · SWOGE V5 hook" : curMode===1 ? "Uniswap v3 · 1% pool · SwapRouter02" : "SWOGE bonding curve · "+venue(curV).part;
+  var f5=TK.v5frais;
+  if(curMode===5) $("#bbFee").innerHTML = f5 ? "V5 hook, on the "+esc(Q)+" side: buy <b>"+(f5.buyBps/100).toFixed(2)+"%</b> · sell <b>"+(f5.sellBps/100).toFixed(2)+"%</b>"
+      +(f5.buyBps>f5.sellBps&&f5.snipeEndsAt>maint() ? " (anti-snipe, falling to 0 by "+heure(f5.snipeEndsAt)+")" : "")+' <small>currentFees() · read '+heure(maint())+'</small>' : "V5 hook fee: not read";
+  else $("#bbFee").innerHTML='1%, inside the price · <button type="button" class="lnk" data-open="fees">Fees ›</button>';
   $("#buyBtn").textContent = account ? "Buy $"+symT() : "CONNECT WALLET";
   $("#sellBtn").textContent = account ? "Sell $"+symT() : "CONNECT WALLET";
 }
@@ -4347,7 +4490,7 @@ async function lisSoldeQuote(){
   var el=$("#bbBalQ"); if(!el) return;
   if(!account){ el.textContent="Balance: connect a wallet to read it"; return; }
   try{ var V=venue(curV), bal=V.native?await lecteur().getBalance(account):await (new ethers.Contract(V.quote, ERC20_ABI, lecteur())).balanceOf(account);
-    el.textContent="Balance: "+fmtQ(+ethers.utils.formatEther(bal))+" "+(V.native?V.sym:"SWOGE"); }catch(e){ el.textContent="Balance: not read"; }
+    el.textContent="Balance: "+fmtQ(+ethers.utils.formatUnits(bal, V.dec||18))+" "+(V.native||V.v5?V.sym:"SWOGE"); }catch(e){ el.textContent="Balance: not read"; }
 }
 var placeBoite=null;
 function ouvreFeuille(d){

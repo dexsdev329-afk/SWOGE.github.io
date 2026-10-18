@@ -88,15 +88,19 @@ async function serveur(site, remplace) {
 /* Le RPC public de la chaine est detourne vers le fork ; tout autre https rend 503 (aucun prix, aucun
    service tiers) ; ethers est servi depuis node_modules. */
 /* `sansJournaux` : eth_getLogs rend [] — le launchpad balaie l'historique V2/V3/V4 par tranches de 9 M
-   de blocs, qu'anvil irait chercher sur le vrai noeud ; la section V5 n'en lit aucun. */
+   de blocs, qu'anvil irait chercher sur le vrai noeud ; la section V5 n'en lit aucun.
+   `journauxDe` : sauf pour ces adresses (le noyau V5 et le PoolManager : quelques milliers de blocs
+   depuis le deploiement de V5, lus par l'echange et le portefeuille V5). */
 async function routes(ctx, fork, ethersFichier, opts) {
   const sansJournaux = !!(opts && opts.sansJournaux);
+  const permis = ((opts && opts.journauxDe) || []).map((a) => String(a).toLowerCase());
   await ctx.route('https://**', (r) => r.fulfill({ status: 503, contentType: 'application/json', body: '{}' }));
   await ctx.route('**/ethers*.js', (r) => r.fulfill({ status: 200, contentType: 'application/javascript', body: fs.readFileSync(ethersFichier) }));
   await ctx.route(RPC_CHAINE + '**', async (r) => {
     let corps = r.request().postData() || '{}';
     if (sansJournaux) {
-      const q = JSON.parse(corps), un = (x) => (x && x.method === 'eth_getLogs' ? { jsonrpc: '2.0', id: x.id, result: [] } : null);
+      const q = JSON.parse(corps), un = (x) => (x && x.method === 'eth_getLogs' && !(x.params && x.params[0] && permis.includes(String(x.params[0].address || '').toLowerCase()))
+        ? { jsonrpc: '2.0', id: x.id, result: [] } : null);
       if (!Array.isArray(q) && un(q)) return r.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify(un(q)) });
     }
     const rep = await fetch(fork.url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: corps });

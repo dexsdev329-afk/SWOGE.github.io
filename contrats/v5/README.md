@@ -293,6 +293,23 @@ le hook, se lisent par `currentFees(token)` et sont annoncées dans `LaunchConfi
 Un scanner qui lit le pool (et non le jeton) peut afficher la taxe : c'est voulu. La page doit
 montrer la taxe et la fenêtre en tête de fiche (§4.8).
 
+## Vérification des sources (18/10/2026)
+
+Les six contrats déployés sont publiés sur Sourcify (chaîne 4663) en **correspondance exacte**
+(`exact_match` à la création et au runtime, empreinte de métadonnées comprise) :
+jeton SWAI `0x83aB…5d22`, noyau `0xa661…3DE2`, hook `0x0465…Eacc`, Holders `0x29e8…9E06`,
+Alloc `0x7057…32BE`, déployeur `0xdEDb…c6BC`. Fiches : `https://repo.sourcify.dev/4663/<adresse>`.
+
+Contrôle fait avant l'envoi, pour chaque contrat : le standard JSON input est reconstruit depuis la
+métadonnée solc de `build/v5_artefacts.json` (keccak de chaque source vérifiée), recompilé avec solc
+0.8.26+commit.8a97fa7a ; le code d'init compilé est le préfixe exact de celui des transactions de
+déploiement, et le runtime en chaîne est identique, immuables masqués. Pour le jeton, l'adresse
+CREATE2 recalculée depuis `createToken` (sel, `"SWOGE AI"`, `"SWAI"`, 10⁹ × 10¹⁸) redonne
+`0x83aB…5d22`. Tout futur jeton V5 a le même code d'init (seuls les arguments changent).
+
+Restent à confirmer : Blockscout et Etherscan (relais automatiques de Sourcify) répondent par un
+défi Cloudflare aux appels d'API ; GoPlus disait encore `is_open_source = 0` juste après l'envoi.
+
 ## Compatibilité V4
 
 - Les événements `Created`, `Meta` et `FeesCollected` gardent les mêmes signatures.

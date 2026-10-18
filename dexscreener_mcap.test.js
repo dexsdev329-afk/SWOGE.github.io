@@ -25,6 +25,10 @@ const ctx = {
   console
 };
 const vm=require('vm'); vm.createContext(ctx);
+/* 18/10 : mcText nomme l actif de cotation par symLigne (V5 compris) et l echappe par esc :
+   les deux sont extraits de la page, comme le reste (une ligne chacune). */
+const uneLigne = (debut) => { const i = h.indexOf(debut); if (i < 0) throw new Error('introuvable : ' + debut); return h.slice(i, h.indexOf('\n', i)); };
+vm.runInContext(uneLigne('function esc(s)') + '\n' + uneLigne('function symLigne(r)'), ctx);
 vm.runInContext(src+'\n'+bloc('function enSwoge(v)','function venue(v)')+'\n'+bloc('function usdRate(v)','async function loadMarketCaps'), ctx);
 
 (async()=>{

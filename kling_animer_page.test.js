@@ -97,6 +97,9 @@ const CAPTURES = process.env.CAPTURES || null;
   }
   const ouvre = async ({ largeur, jeton } = {}) => {
     const ctx = await nav.newContext({ viewport: { width: largeur || 1280, height: 900 } });
+    /* Aucune socket vers le VRAI serveur (18/10/2026) : il refuse le faux jeton (resumeFailed) et
+       stakebubble.js efface swogeSession au milieu de l essai (voir chat_page.test.js). */
+    await ctx.addInitScript(() => { window.WebSocket = function(){ return { send(){}, close(){}, addEventListener(){}, readyState: 0 }; }; window.WebSocket.OPEN = 1; });
     await ctx.addInitScript((j) => {
       try { if (j) localStorage.setItem('swogeSession', j); } catch (e) {}
       /* chaque texte de la ligne de progres, dans l'ordre : on lit le chemin parcouru, pas un instant */

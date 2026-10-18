@@ -77,6 +77,9 @@ const TEXTE = 'Start exactly from @image_1: the first frame of the video is @ima
   }
   const ouvre = async ({ largeur, mode } = {}) => {
     const ctx = await nav.newContext({ viewport: { width: largeur || 1280, height: 900 } });
+    /* Aucune socket vers le VRAI serveur (18/10/2026) : il refuse le faux jeton (resumeFailed) et
+       stakebubble.js efface swogeSession au milieu de l essai (voir chat_page.test.js). */
+    await ctx.addInitScript(() => { window.WebSocket = function(){ return { send(){}, close(){}, addEventListener(){}, readyState: 0 }; }; window.WebSocket.OPEN = 1; });
     await ctx.addInitScript((m) => { try { localStorage.setItem('swogeSession', 'jOwner'); if (m) localStorage.setItem('klingMode', m); } catch (e) {} }, mode || null);
     const p = await ctx.newPage();
     p.on('pageerror', (e) => { journal.push({ erreurPage: String(e) }); });

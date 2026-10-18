@@ -129,6 +129,9 @@ function mp4(secondes, { version = 0, echelle = 1000, libre = false, grandMdat =
 
   const ouvre = async ({ session, largeur } = {}) => {
     const ctx = await nav.newContext({ viewport: { width: largeur || 1200, height: 900 } });
+    /* Aucune socket vers le VRAI serveur (18/10/2026) : il refuse le faux jeton (resumeFailed) et
+       stakebubble.js efface swogeSession au milieu de l essai (voir chat_page.test.js). */
+    await ctx.addInitScript(() => { window.WebSocket = function(){ return { send(){}, close(){}, addEventListener(){}, readyState: 0 }; }; window.WebSocket.OPEN = 1; });
     if (session) await ctx.addInitScript((j) => { try { localStorage.setItem('swogeSession', j); } catch (e) {} }, session);
     const p = await ctx.newPage();
     p.on('dialog', (d) => d.accept());

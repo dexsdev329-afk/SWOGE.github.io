@@ -1,0 +1,39 @@
+{
+  "version": "v5",
+  "chainId": 4663,
+  "poolManager": "0x8366a39CC670B4001A1121B8F6A443A643e40951",
+  "deployer": "0xdEDb591eA41EEd84115ed3A3CEFA09165139c6BC",
+  "hook": "0x04656530180E9Ea27A2E75b2139c780cD6a6Eacc",
+  "core": "0xa661188178d6D02DBE08eA14E82dB96B7B793DE2",
+  "holders": "0x29e84Df560f0Df347a1709044d397Db422109E06",
+  "alloc": "0x70578557c06d66E2266B143902d21c76072832BE",
+  "hookSalt": "0x58851e96c172eafdfdeaee77a1a6c196e28c8066bc9b519b069ea50eb57ee3e8",
+  "owner": "0xb67A60ed9B69A85183f47ef4Ff144615F04Ef346",
+  "treasury": "0xb67A60ed9B69A85183f47ef4Ff144615F04Ef346",
+  "launchFeeWei": "500000000000000",
+  "quotes": 198,
+  "listFingerprint": "0x96893f0f6e203a32d1c1744c38baf533b2e16f8bf0b2c047ce8008f41c097d2a",
+  "cotations": {
+    "genere": "2026-10-18T12:28:20.228Z",
+    "bloc": 91768851
+  },
+  "artefacts": {
+    "genere": "2026-10-18T12:51:31.555Z",
+    "compilateur": "0.8.26+commit.8a97fa7a"
+  },
+  "blocks": {
+    "deployer": 91898255,
+    "hook": 91898368,
+    "core": 91898462,
+    "holders": 91898573,
+    "alloc": 91898652
+  },
+  "txs": {
+    "deployer": "0x47a9145115d341dd9114f7048beb877476a72c59501805618fc8eb45f5285231",
+    "hook": "0xd17805e362508361e57d1a2fdfcb57fea4cfabe8f3be9ad576e6b939f42f5235",
+    "core": "0x63cb89bf4af90080d4082487623285702830731aee27d5aa99d5f66e8ad69a63",
+    "holders": "0x526ecd85dee41ff9f0b6575bb3e40179086d7c9cfd203f5598fb6d5b160ce1b0",
+    "alloc": "0xb6bb6d2c7306d36b9fee88b336b6bb12c0863793abdc7cee7178d7359de9551e"
+  },
+  "verified": "2026-10-18"
+}

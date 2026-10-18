@@ -52,7 +52,18 @@ const ADR = '/contrats/v5/adresses_v5.json';
     nav = await chromium.launch();
 
     console.log('-- A. sans adresses_v5.json : la section est eteinte --');
-    ok(!fs.existsSync(path.join(SITE, 'contrats/v5/adresses_v5.json')), 'le depot ne porte pas encore de contrats/v5/adresses_v5.json');
+    /* Reecrit sur son intention le 18/10/2026 : V5 est deploye (chaine 4663, bloc 91 898 255),
+       le depot porte donc adresses_v5.json. L'intention reste : un fichier mal forme ne doit
+       jamais allumer la section, et celui du depot doit etre bien forme. La section eteinte
+       est toujours jouee ci-dessous, la page servie sans le fichier. */
+    {
+      const f = path.join(SITE, 'contrats/v5/adresses_v5.json');
+      if (fs.existsSync(f)) {
+        const J = JSON.parse(fs.readFileSync(f, 'utf8'));
+        ok(J.version === 'v5' && Number(J.chainId) === 4663 && ['core', 'hook', 'holders', 'alloc'].every((k) => /^0x[0-9a-fA-F]{40}$/.test(J[k] || '')),
+          'le adresses_v5.json du depot est bien forme (v5, chaine 4663, quatre adresses)');
+      } else ok(true, 'le depot ne porte pas de adresses_v5.json');
+    }
     {
       const A = await ouvre(null, false);
       await A.pg.waitForFunction(() => /coming soon/i.test((document.querySelector('#v5Panel') || {}).textContent || ''), null, { timeout: 10000 }).catch(() => {});

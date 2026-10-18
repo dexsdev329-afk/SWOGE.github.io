@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>SWOGE Wallet — your keys on Robinhood Chain</title>
-<meta name="description" content="SWOGE Wallet — hold, send and swap $SWOGE and $SWOGEBET on Robinhood Chain. Balances read live on-chain; nothing is written into the page.">
+<title>SWOGE Wallet — Self-Custody Crypto Wallet on Robinhood Chain</title>
+<meta name="description" content="Hold, send, swap and burn $SWOGE and $SWOGEBET on Robinhood Chain from a self-custody wallet. Balances are read live on-chain, never written into the page.">
 <!-- ---- LA PAGE EST MAINTENANT DANS LE MENU DE TOUT LE SITE ----
      Tant qu'on n'y arrivait que par une vignette du hall, ses manques de
      referencement ne coutaient rien. Elle est desormais liee depuis chaque
@@ -15,16 +15,16 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="SWOGE WORLD">
 <meta property="og:locale" content="en_US">
-<meta property="og:title" content="SWOGE Wallet">
-<meta property="og:description" content="Hold, send and swap $SWOGE and $SWOGEBET on Robinhood Chain.">
+<meta property="og:title" content="SWOGE Wallet — Self-Custody Crypto Wallet on Robinhood Chain">
+<meta property="og:description" content="Hold, send, swap and burn $SWOGE and $SWOGEBET on Robinhood Chain from a self-custody wallet. Balances are read live on-chain, never written into the page.">
 <meta property="og:url" content="https://swoleeswoge.dog/swoge_wallet.html">
 <meta property="og:image" content="https://swoleeswoge.dog/img/site/partage.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:site" content="@SwoleDogeSwoge">
-<meta name="twitter:title" content="SWOGE Wallet">
-<meta name="twitter:description" content="Hold, send and swap $SWOGE and $SWOGEBET on Robinhood Chain.">
+<meta name="twitter:title" content="SWOGE Wallet — Self-Custody Crypto Wallet on Robinhood Chain">
+<meta name="twitter:description" content="Hold, send, swap and burn $SWOGE and $SWOGEBET on Robinhood Chain from a self-custody wallet. Balances are read live on-chain, never written into the page.">
 <meta name="twitter:image" content="https://swoleeswoge.dog/img/site/partage.jpg">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="/img/site/icone-32.png">
@@ -68,7 +68,7 @@
      A savoir : cela ne sauve pas la page DEJA en cache chez quelqu'un, qui ne
      contient pas ces lignes. Ce garde-fou vaut a partir de celle-ci. -->
 <script>
-var MARQUE_PAGE = 'b2127829';
+var MARQUE_PAGE = '9540e9b6';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -343,7 +343,8 @@ body{
   flex:0 0 auto; display:flex; align-items:center; gap:12px;
   padding:8px 18px 12px; min-height:46px;
 }
-.wl-tete h1{ margin:0; font:800 19px/1 'Archivo',sans-serif; letter-spacing:.2px; flex:1 }
+/* Un seul h1 par page (17/10/2026) : le titre de chaque ecran est un h2, au meme dessin. */
+.wl-tete h1,.wl-tete h2{ margin:0; font:800 19px/1 'Archivo',sans-serif; letter-spacing:.2px; flex:1 }
 .wl-tete .rond{
   width:34px; height:34px; border-radius:12px; border:1px solid var(--bord);
   background:var(--carte); color:var(--texte); display:flex; align-items:center;
@@ -2237,7 +2238,7 @@ html.wl-encadre .wl-haut{ position:static; height:auto }
   <!-- ============ JETONS ============ -->
   <section class="wl-ecran" id="ecJetons">
     <div class="wl-tete">
-      <h1>Tokens</h1>
+      <h2>Tokens</h2>
     </div>
     <div class="wl-corps">
       <div class="wl-titre">MY TOKENS</div>
@@ -2249,7 +2250,7 @@ html.wl-encadre .wl-haut{ position:static; height:auto }
   <!-- ============ ENVOYER ============ -->
   <section class="wl-ecran" id="ecEnvoyer">
     <div class="wl-tete">
-      <h1>Send</h1>
+      <h2>Send</h2>
     </div>
     <div class="wl-corps">
       <div class="wl-carte">
@@ -2312,7 +2313,7 @@ html.wl-encadre .wl-haut{ position:static; height:auto }
        qu'il fait sans metaphore. -->
   <section class="wl-ecran" id="ecBruler">
     <div class="wl-tete">
-      <h1>Burn</h1>
+      <h2>Burn</h2>
     </div>
     <div class="wl-corps">
       <div class="wl-carte">
@@ -2395,7 +2396,7 @@ html.wl-encadre .wl-haut{ position:static; height:auto }
        coter pareil. -->
   <section class="wl-ecran" id="ecSignaux">
     <div class="wl-tete">
-      <h1>Signals</h1>
+      <h2>Signals</h2>
     </div>
     <div class="wl-corps">
       <p class="wl-note"><b>SWOGE AI trades on paper.</b> It risks nothing, so it cannot be
@@ -2471,7 +2472,7 @@ html.wl-encadre .wl-haut{ position:static; height:auto }
        cotes pour ne rien gagner. -->
   <section class="wl-ecran" id="ecBanc">
     <div class="wl-tete">
-      <h1>Volume bench</h1>
+      <h2>Volume bench</h2>
     </div>
     <div class="wl-corps">
 
@@ -2638,7 +2639,7 @@ html.wl-encadre .wl-haut{ position:static; height:auto }
   <!-- ============ RECEVOIR ============ -->
   <section class="wl-ecran" id="ecRecevoir">
     <div class="wl-tete">
-      <h1>Receive</h1>
+      <h2>Receive</h2>
     </div>
     <div class="wl-corps">
       <div class="wl-qr" id="reQr"></div>
@@ -2657,7 +2658,7 @@ html.wl-encadre .wl-haut{ position:static; height:auto }
   <!-- ============ SWAP ============ -->
   <section class="wl-ecran" id="ecSwap">
     <div class="wl-tete">
-      <h1>Swap</h1>
+      <h2>Swap</h2>
     </div>
     <div class="wl-corps">
       <div class="wl-carte">
@@ -2777,7 +2778,7 @@ html.wl-encadre .wl-haut{ position:static; height:auto }
        elle-meme est devenue rapide. -->
   <section class="wl-ecran" id="ecPont">
     <div class="wl-tete">
-      <h1>Bridge</h1>
+      <h2>Bridge</h2>
     </div>
     <div class="wl-corps">
       <div class="wl-carte">
@@ -2825,7 +2826,7 @@ html.wl-encadre .wl-haut{ position:static; height:auto }
        (comprend la phrase) est dans wallet_assistant.js, teste a part. -->
   <section class="wl-ecran" id="ecAssistant">
     <div class="wl-tete">
-      <h1>Assistant</h1>
+      <h2>Assistant</h2>
     </div>
     <div class="wl-corps">
       <div class="wl-carte">
@@ -2866,7 +2867,7 @@ html.wl-encadre .wl-haut{ position:static; height:auto }
   <!-- ============ CASINO ============ -->
   <section class="wl-ecran" id="ecCasino">
     <div class="wl-tete">
-      <h1>Casino</h1>
+      <h2>Casino</h2>
     </div>
     <div class="wl-corps">
       <!-- ---- DEUX SOLDES, DEUX COFFRES ----
@@ -2939,7 +2940,7 @@ html.wl-encadre .wl-haut{ position:static; height:auto }
   <!-- ============ ACTIVITE ============ -->
   <section class="wl-ecran" id="ecActivite">
     <div class="wl-tete">
-      <h1>Activity</h1>
+      <h2>Activity</h2>
       <button class="rond" id="btActRelire" type="button" aria-label="Reload">&#8635;</button>
     </div>
     <div class="wl-corps" id="acvCorps">
@@ -2950,7 +2951,7 @@ html.wl-encadre .wl-haut{ position:static; height:auto }
   <!-- ============ COMPTE ============ -->
   <section class="wl-ecran" id="ecCompte">
     <div class="wl-tete">
-      <h1>Account</h1>
+      <h2>Account</h2>
     </div>
     <div class="wl-corps">
       <div class="wl-carte" id="cpCarte">
@@ -3064,7 +3065,7 @@ html.wl-encadre .wl-haut{ position:static; height:auto }
   <!-- ============ FICHE D'UN JETON ============ -->
   <section class="wl-ecran" id="ecJeton">
     <div class="wl-tete">
-      <h1 id="fiTitre">Token</h1>
+      <h2 id="fiTitre">Token</h2>
     </div>
     <div class="wl-corps">
       <div class="wl-carte" style="text-align:center">

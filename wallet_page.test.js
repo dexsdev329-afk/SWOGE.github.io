@@ -5145,7 +5145,8 @@ function servir(q, r, f, type) {
     /* Le titre reprend la place laissee : un en-tete vide se remarquerait. */
     const titre = await page.evaluate(() => {
       document.querySelectorAll('.wl-ecran').forEach((s) => s.classList.toggle('on', s.id === 'ecSwap'));
-      const h = document.querySelector('#ecSwap .wl-tete h1');
+      /* 17/10/2026 : le titre d ecran est un h2 (un seul h1 par page) ; l intention reste la meme. */
+      const h = document.querySelector('#ecSwap .wl-tete h2');
       const t = document.querySelector('#ecSwap .wl-tete');
       return h && t ? { x: Math.round(h.getBoundingClientRect().left - t.getBoundingClientRect().left),
                         txt: h.textContent } : null;

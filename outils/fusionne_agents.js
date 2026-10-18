@@ -208,8 +208,41 @@ function store() {
   return { html: '<div class="st-cadre">\n' + prefixeIds(html, 'st-') + '</div>\n', css, js: '<script>\n' + js + '</script>\n' };
 }
 
-const TITRE = 'SWOGE Agents · AI chat and AI agent tasks';
-const RESUME = 'SWOGE Agents: chat with Claude, ChatGPT and Grok, create images and videos, or give an AI agent a task — it reads tokens, the SWOGE AI colony and the web, then answers with sources.';
+/* 17/10/2026 : titre de 50 a 60 signes avec les mots qu on tape, resume sous les 160 signes
+   que Google affiche (referencement.test.js). */
+const TITRE = 'SWOGE Agents — AI Chat, AI Agents and Images, Pay Per Use';
+const RESUME = 'Chat with Claude, ChatGPT and Grok, create images and videos, or give an AI agent a task that answers with sources. No subscription: billed per request at cost.';
+/* Le resume de SwoleMind, remplace EN ENTIER : une reecriture partielle laissait sa fin
+   accrochee a celui d Agents. */
+const RESUME_CHAT = 'SwoleMind: chat with Claude, ChatGPT and Grok, search the web with sources, create images and videos. No subscription: each request billed at its actual cost.';
+
+/* ---- UN SEUL h1 (17/10/2026) ----
+   La page assemblee en portait cinq : celui du hub, et celui de chaque page source (le chat,
+   OSINT, eSIM, Store), chacun legitime chez lui. Ici, seul le hub dit ce qu est la page ; les
+   autres deviennent des h2.t1, et chaque regle qui les dessinait les dessine encore — meme
+   police, meme taille, memes marges (mesure le 17/10 a 390 px : boites identiques au pixel). */
+function unSeulH1(p) {
+  for (const t of ['<h1>What do you want to accomplish?</h1>', '<h1>What can you learn about <em>this</em>?</h1>',
+                   '<h1>Travel eSIM — paid from your wallet</h1>', '<h1>Agent <em>Store</em></h1>'])
+    p = remplace(p, t, t.replace('<h1>', '<h2 class="t1">').replace('</h1>', '</h2>'), 1, 'h1 : ' + t);
+  const R = [
+    ["\nh1{font-family:'Anton',sans-serif;font-size:clamp(30px,8cqi,40px)", "\nh1,h2.t1{font-family:'Anton',sans-serif;font-size:clamp(30px,8cqi,40px)"],
+    ['\nh1 em{font-style:normal;color:var(--gold)}', '\nh1 em,h2.t1 em{font-style:normal;color:var(--gold)}'],
+    ['.top .kick,.top h1,.top .sub', '.top .kick,.top h1,.top h2.t1,.top .sub'],
+    ['.top h1{color:#FFFFFF}', '.top h1,.top h2.t1{color:#FFFFFF}'],
+    ['.top h1 em{color:#FFC53D}', '.top h1 em,.top h2.t1 em{color:#FFC53D}'],
+    ['#modeAgent .accueil h1{', '#modeAgent .accueil h1,#modeAgent .accueil h2.t1{'],
+    ["\n.accueil h1{font-family:'Archivo'", "\n.accueil h1,.accueil h2.t1{font-family:'Archivo'"],
+    ['#modeEsim h1{font-size:22px;', '#modeEsim h1,#modeEsim h2.t1{font-size:22px;'],
+    ['#modeStore h1{font-size:30px;', '#modeStore h1,#modeStore h2.t1{font-size:30px;'],
+    ['#modeStore h1 em{', '#modeStore h1 em,#modeStore h2.t1 em{'],
+    ['@media (max-width:420px){#modeStore h1{font-size:25px;}', '@media (max-width:420px){#modeStore h1,#modeStore h2.t1{font-size:25px;}'],
+    ['#modeChat .accueil > h1,', '#modeChat .accueil > h1,#modeChat .accueil > h2.t1,'],
+    ['#modeEsim h1{font-family:var(--ag-fd)', '#modeEsim h1,#modeEsim h2.t1{font-family:var(--ag-fd)'],
+    ['#modeStore h1{font-family:var(--ag-fd)', '#modeStore h1,#modeStore h2.t1{font-family:var(--ag-fd)']];
+  for (const [x, y] of R) p = remplace(p, x, y, 1, 'h1 : regle ' + x.trim().slice(0, 40));
+  return p;
+}
 const LIEN = '<a href="swoge_agents.html" class="on" aria-current="page"><span class="ic">&#129504;</span>Agents</a>';
 
 /* ---- UN SEUL CHAT, AU GABARIT DU STUDIO (14/10/2026) ----
@@ -438,7 +471,7 @@ function fusionne() {
   tete = remplace(tete, '<title>SwoleMind · AI chat with Claude, ChatGPT and Grok</title>', '<title>' + TITRE + '</title>', 1, 'titre');
   tete = remplace(tete, 'content="SwoleMind · AI chat with Claude, ChatGPT and Grok"', 'content="' + TITRE + '"', 2, 'titres de partage');
   tete = remplace(tete, 'https://swoleeswoge.dog/swolemind.html', 'https://swoleeswoge.dog/' + CIBLE, 2, 'adresse canonique');
-  tete = remplace(tete, 'SwoleMind: chat with Claude, ChatGPT and Grok, search the web with sources, create images and videos.', RESUME, 3, 'resumes');
+  tete = remplace(tete, RESUME_CHAT, RESUME, 3, 'resumes');
   remplace(tete, LIEN, LIEN, 1, 'entree Agents du menu');
   if (/href="swolemind\.html"|href="swogeagentic\.html"/.test(tete)) throw new Error('tete : le menu pointe encore vers une ancienne page');
   /* Archivo avec son axe de largeur (14/10), Inter et JetBrains Mono (15/10, les polices de
@@ -468,7 +501,7 @@ function fusionne() {
   jsChat = remplace(jsChat, '"Paid: your eSIM is being prepared (see SwogeAgentic)."',
     '"Paid: your eSIM is being prepared. It will appear under \u201cYour eSIMs, hires & API keys\u201d, just above the chat."', 1, 'chat : eSIM en preparation');
 
-  return tete +
+  return unSeulH1(tete +
     '<main class="chat-main">\n' +
     '<!-- GENERE par outils/fusionne_agents.js depuis swolemind.html et swogeagentic.html : ne pas editer ici. -->\n' +
     chat.styles.map((s) => '<style>' + s + '</style>\n').join('') +
@@ -487,7 +520,7 @@ function fusionne() {
     ONGLETS_JS + VITRINE_JS +
     jsChat + '\n' +
     js + '\n' + os.js + es.js + st.js +
-    '</main>' + chat.queue;
+    '</main>' + chat.queue);
 }
 
 module.exports = { fusionne, CIBLE };

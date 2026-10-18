@@ -1008,6 +1008,11 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 </style>
 </head>
 <body>
+<!-- CE QUE LA PAGE EST, EN TOUTES LETTRES (17/10/2026). La page se dessine en
+     images et en script : un robot qui lit la page n y trouvait ni titre, ni une
+     phrase pour dire de quoi il s agit. Le bloc est hors de l ecran (rien ne
+     bouge a l oeil) mais lu par les moteurs et les lecteurs d ecran. -->
+<div class="sw-lu" style="position:absolute;width:1px;height:1px;margin:-1px;padding:0;border:0;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap"><p>SWOGE Last Number is a 1v1 duel played with $SWOGE on Robinhood Chain. Both players hide a number from 1 to 100 and put up the same stake. Closest to the draw without going over takes the pot; go over and you are out.</p></div>
 <!-- L ecran de chargement est retire — meme demande que pour swoge_blackjack.html,
      swoge_spin.html, swoge_casino.html, boulier.html et plinko.html :
      « pas d ecran de laodin retire le ». Les feuilles qui suivent n avaient rien
@@ -1359,10 +1364,13 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 <main>
 
   <div class="wrap c4wrap">
-    <h1 class="c4-titre">TIC-TAC<span>-TOE</span></h1>
-    <p class="c4-sous">Three in a row, real $SWOGE. Both players put up the same stake &mdash;
-      <b>the winner takes the pot</b>, minus a <b id="c4Rake">5%</b> house fee.
-      A draw gives both stakes straight back.</p>
+    <!-- L enseigne et la phrase etaient celles du morpion, recopiees telles quelles
+         (« TIC-TAC-TOE », « Three in a row ») : la page annoncait un autre jeu
+         (audit du 17/10/2026). Les regles sont celles du resume de la page. -->
+    <h1 class="c4-titre">LAST <span>NUMBER</span></h1>
+    <p class="c4-sous">Hide a number from 1 to 100, real $SWOGE. Both players put up the same stake &mdash;
+      <b>closest to the draw without going over takes the pot</b>, minus a <b id="c4Rake">5%</b> house fee.
+      Go over and you are out.</p>
 
     <!-- ============ le vestibule : creer une table, ou en rejoindre une ============ -->
     <div class="c4-grid2" id="c4Lobby">

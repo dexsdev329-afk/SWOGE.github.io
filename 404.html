@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Page not found · SWOGE WORLD</title>
+<!-- LA PAGE QUE GITHUB PAGES SERT POUR TOUTE ADRESSE INCONNUE (17/10/2026).
+     Avant elle, une adresse morte (burn.html, supprimee mais encore dans le
+     sitemap) tombait sur la page 404 generique de GitHub : ni marque, ni
+     chemin de retour. Hors des moteurs : elle n a rien a indexer.
+     Elle peut etre servie a N IMPORTE QUELLE profondeur (/a/b/c) : tous les
+     chemins sont donc absolus (« / »), jamais relatifs. Aucun script : elle
+     doit s afficher meme quand tout le reste est casse. -->
+<meta name="robots" content="noindex">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/img/site/icone-32.png">
+<link rel="apple-touch-icon" href="/img/site/icone-180.png">
+<link rel="manifest" href="/site.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+/* Les couleurs de la barre blanche du site (`.sw-haut` de games.html,
+   index.html, swoge_osint.html…), recopiees ici : la page ne charge aucun
+   script commun. */
+:root{ --bleu:#1B5FE0; --encre:#0B1B36; --doux:#6B7C99; --trait:#E1E9F6; --pale:#EEF3FB; --fond:#F6F9FE; }
+*{ box-sizing:border-box; }
+html{ -webkit-text-size-adjust:100%; }
+body{ margin:0; background:var(--fond); color:var(--encre); font:500 15px/1.5 'Inter',system-ui,sans-serif; }
+a{ color:inherit; text-decoration:none; }
+.haut{ display:flex; align-items:center; gap:14px; padding:10px 16px; background:#FFFFFF;
+  border-bottom:1px solid var(--trait); position:sticky; top:0; z-index:3; }
+.marque{ display:flex; align-items:center; gap:9px; }
+.patte{ width:34px; height:34px; border-radius:10px; background:#EAF1FF; display:grid; place-items:center; font-size:19px; }
+.marque b{ display:block; font:800 17px/1 'Inter',system-ui,sans-serif; letter-spacing:.4px; color:var(--bleu); }
+.marque i{ display:block; font:700 9.5px/1.4 'Inter',system-ui,sans-serif; font-style:normal; letter-spacing:2.6px; color:var(--doux); }
+main{ max-width:640px; margin:0 auto; padding:48px 16px 64px; text-align:center; }
+.code{ font:900 clamp(64px,18vw,112px)/1 'Inter',system-ui,sans-serif; letter-spacing:-3px;
+  background:linear-gradient(90deg,#1652F0,#7C3AED); -webkit-background-clip:text; background-clip:text; color:transparent; margin:0; }
+h1{ font:800 clamp(22px,5vw,30px)/1.15 'Inter',system-ui,sans-serif; letter-spacing:-.5px; margin:10px 0 8px; }
+.sous{ color:var(--doux); margin:0 auto 28px; max-width:44ch; }
+.liens{ display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; text-align:left;
+  background:#FFFFFF; border:1px solid var(--trait); border-radius:14px; padding:8px;
+  box-shadow:0 1px 2px rgba(11,27,54,.06), 0 8px 24px rgba(11,27,54,.05); }
+.liens a{ display:flex; align-items:center; gap:11px; padding:12px; border-radius:10px; font:600 14px/1 'Inter',system-ui,sans-serif; min-height:44px; }
+.liens a:hover, .liens a:focus-visible{ background:var(--pale); color:var(--bleu); outline:none; }
+.liens .ic{ width:20px; text-align:center; font-size:16px; }
+.liens a.premier{ background:#EAF1FF; color:var(--bleu); }
+</style>
+</head>
+<body>
+<header class="haut">
+  <a class="marque" href="/">
+    <span class="patte" aria-hidden="true">&#128062;</span>
+    <span><b>SWOGE</b><i>WORLD</i></span>
+  </a>
+</header>
+<main>
+  <p class="code" aria-hidden="true">404</p>
+  <h1>This page does not exist</h1>
+  <p class="sous">The link may be old, or the page has moved. Everything else is still here &mdash; pick where you want to go.</p>
+  <nav class="liens" aria-label="SWOGE pages">
+    <a class="premier" href="/"><span class="ic" aria-hidden="true">&#127968;</span>Home</a>
+    <a href="/games.html"><span class="ic" aria-hidden="true">&#127920;</span>Casino</a>
+    <a href="/swogebet.html"><span class="ic" aria-hidden="true">&#9917;</span>Sports</a>
+    <a href="/swoge_ai.html"><span class="ic" aria-hidden="true">&#129302;</span>AI Trading</a>
+    <a href="/studio.html"><span class="ic" aria-hidden="true">&#127912;</span>Studio</a>
+    <a href="/launchpad.html"><span class="ic" aria-hidden="true">&#128640;</span>Launchpad</a>
+    <a href="/whitepaper.html"><span class="ic" aria-hidden="true">&#128220;</span>Docs</a>
+  </nav>
+</main>
+</body>
+</html>

@@ -3,9 +3,29 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="color-scheme" content="dark">
-<title>SWOGE AI — the colony that learns</title>
-<meta name="description" content="Agents read real Robinhood Chain tokens, score what they see, take paper positions at the real price, and learn from what actually worked. It runs on the server, continuously, and everyone sees the same state.">
+<title>SWOGE AI — AI Trading Agents for Robinhood Chain Tokens</title>
+<meta name="description" content="AI trading agents read real Robinhood Chain tokens, take paper positions at the real price and learn from what worked. Live on the server, same state for all.">
 <link rel="canonical" href="https://swoleeswoge.dog/swoge_ai.html">
+<!-- Donnees structurees (17/10/2026) : ce que la page EST, dans le vocabulaire des moteurs.
+     Pas d `offers` : aucun prix fixe a annoncer, et un prix invente serait faux. -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "SWOGE AI",
+  "url": "https://swoleeswoge.dog/swoge_ai.html",
+  "applicationCategory": "FinanceApplication",
+  "operatingSystem": "Web",
+  "description": "AI trading agents read real Robinhood Chain tokens, take paper positions at the real price and learn from what worked. Live on the server, same state for all.",
+  "inLanguage": "en",
+  "publisher": {
+    "@type": "Organization",
+    "@id": "https://swoleeswoge.dog/#organisation",
+    "name": "SWOGE WORLD",
+    "url": "https://swoleeswoge.dog/"
+  }
+}
+</script>
 
 <!-- ==================== L ICONE ET LE PARTAGE ====================
      Un lien colle dans Telegram, sur X ou dans Discord doit porter titre,
@@ -19,16 +39,16 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="SWOGE WORLD">
 <meta property="og:locale" content="en_US">
-<meta property="og:title" content="SWOGE AI — the colony that learns">
-<meta property="og:description" content="Agents read real Robinhood Chain tokens, score what they see, take paper positions at the real price, and learn from what actually worked. It runs on the server, continuously, and everyone sees the same state.">
+<meta property="og:title" content="SWOGE AI — AI Trading Agents for Robinhood Chain Tokens">
+<meta property="og:description" content="AI trading agents read real Robinhood Chain tokens, take paper positions at the real price and learn from what worked. Live on the server, same state for all.">
 <meta property="og:url" content="https://swoleeswoge.dog/swoge_ai.html">
 <meta property="og:image" content="https://swoleeswoge.dog/img/site/partage.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:site" content="@SwoleDogeSwoge">
-<meta name="twitter:title" content="SWOGE AI — the colony that learns">
-<meta name="twitter:description" content="Agents read real Robinhood Chain tokens, score what they see, take paper positions at the real price, and learn from what actually worked. It runs on the server, continuously, and everyone sees the same state.">
+<meta name="twitter:title" content="SWOGE AI — AI Trading Agents for Robinhood Chain Tokens">
+<meta name="twitter:description" content="AI trading agents read real Robinhood Chain tokens, take paper positions at the real price and learn from what worked. Live on the server, same state for all.">
 <meta name="twitter:image" content="https://swoleeswoge.dog/img/site/partage.jpg">
 
 <script>
@@ -38,7 +58,7 @@
  * une fois par session pour savoir si le serveur en a une plus recente.
  * Sans ca, un joueur garde des semaines une version corrigee depuis
  * longtemps. `node cache_marqueur.test.js` donne la valeur a ecrire. */
-var MARQUE_PAGE = '2bfef022';
+var MARQUE_PAGE = '41faa55a';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;

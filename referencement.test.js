@@ -85,6 +85,33 @@ console.log('\n-- le sitemap --');
   ok(manquantes.length === 0,
      manquantes.length ? `absentes du sitemap : ${manquantes.join(', ')}`
                        : 'et toutes les pages indexables y sont');
+  /* 17/10/2026 : `burn.html` a ete supprimee mais restait dans le sitemap — on
+     tendait aux robots une adresse qui repondait 404. Chaque adresse listee doit
+     designer un fichier du depot. */
+  const fantomes = listees.filter((u) => {
+    const f = u.replace(DOMAINE + '/', '') || 'index.html';
+    return !fs.existsSync(path.join(SITE, f));
+  });
+  ok(fantomes.length === 0,
+     fantomes.length ? `le sitemap liste des fichiers ABSENTS : ${fantomes.join(', ')}`
+                     : 'et chaque adresse listee existe dans le depot');
+  /* Une date par page, lue dans l historique — pas une date du jour recopiee. */
+  const sansDate = (s.match(/<url>[\s\S]*?<\/url>/g) || []).filter((u) => !/<lastmod>\d{4}-\d{2}-\d{2}<\/lastmod>/.test(u));
+  ok(sansDate.length === 0, sansDate.length ? `${sansDate.length} adresse(s) sans <lastmod>` : 'chaque adresse porte sa date');
+}
+
+/* ---- la page des adresses mortes ---- */
+console.log('\n-- la page 404 --');
+{
+  const existe = fs.existsSync(path.join(SITE, '404.html'));
+  ok(existe, '404.html existe (GitHub Pages la sert pour toute adresse inconnue)');
+  const s = existe ? lis('404.html') : '';
+  ok(/name="robots"[^>]*noindex/.test(s), 'elle est hors des moteurs');
+  /* Elle peut etre servie sous /a/b/c : un lien relatif y menerait ailleurs. */
+  const relatifs = [...s.matchAll(/<a[^>]*href="([^"]+)"/g)].map((m) => m[1]).filter((h) => !h.startsWith('/'));
+  ok(relatifs.length === 0, relatifs.length ? `liens relatifs : ${relatifs.join(', ')}` : 'et tous ses liens sont absolus');
+  for (const h of ['/', '/games.html', '/swogebet.html', '/swoge_ai.html', '/studio.html', '/launchpad.html', '/whitepaper.html'])
+    ok(s.includes(`href="${h}"`), `  elle mene a ${h}`);
 }
 
 /* ---- page par page ---- */
@@ -116,10 +143,26 @@ for (const f of pages) {
   ok(titre && titre.trim().length >= 15 && titre.length <= 70,
      `${f} : titre de ${titre ? titre.trim().length : 0} signes — « ${titre ? titre.trim() : ''} »`);
 
+  /* 17/10/2026 : la borne etait 320. Google coupe le resume vers 160 signes :
+     au-dela, la fin — souvent ce qui distingue la page — n est jamais lue.
+     C est la longueur AFFICHEE qui compte, pas celle qu on peut ecrire. */
   const desc = un(s, /<meta name="description" content="([^"]*)"/);
-  ok(desc && desc.length >= 60 && desc.length <= 320,
+  ok(desc && desc.length >= 60 && desc.length <= 160,
      desc ? `${f} : resume de ${desc.length} signes`
           : `${f} : AUCUN resume — c est la ligne que Google affiche sous le titre`);
+
+  /* ---- UN SEUL h1, ET UN VRAI ----
+   * 17/10/2026 : seize pages de jeu n en avaient aucun (le jeu est dessine), le
+   * portefeuille en avait quatorze, et `dernier_chiffre` portait celui du
+   * morpion. Le h1 dit au moteur ce qu est la page : zero, il devine ; deux, il
+   * choisit. On lit le HTML tel qu il est servi, sans les scripts, styles et
+   * commentaires — ce qu un robot lit avant d executer quoi que ce soit. */
+  const nu = s.replace(/<script\b[\s\S]*?<\/script>/gi, '').replace(/<style\b[\s\S]*?<\/style>/gi, '')
+              .replace(/<!--[\s\S]*?-->/g, '');
+  const h1 = [...nu.matchAll(/<h1\b[^>]*>([\s\S]*?)<\/h1>/gi)]
+    .map((m) => m[1].replace(/<[^>]+>/g, ' ').replace(/&[a-z#0-9]+;/gi, ' ').replace(/\s+/g, ' ').trim());
+  ok(h1.length === 1 && h1[0].length >= 3,
+     `${f} : ${h1.length} h1` + (h1.length ? ` — « ${h1.join(' » / « ')} »` : ''));
 
   const canon = un(s, /<link rel="canonical" href="([^"]+)"/);
   const attendue = DOMAINE + '/' + (f === 'index.html' ? '' : f);

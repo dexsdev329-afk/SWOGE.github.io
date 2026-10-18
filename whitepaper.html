@@ -60,7 +60,7 @@ canvas{ touch-action:none; }
 .menubtn{ min-width:44px; min-height:44px; }
 </style>
 
-<title>$SWOGE — White Paper</title>
+<title>$SWOGE White Paper — How the SWOGE Ecosystem Works</title>
 
 <!-- ==================== REFERENCEMENT ET PARTAGE ====================
      Bloc identique sur toutes les pages, pose juste apres le titre.
@@ -84,16 +84,16 @@ canvas{ touch-action:none; }
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="SWOGE WORLD">
 <meta property="og:locale" content="en_US">
-<meta property="og:title" content="$SWOGE — White Paper">
-<meta property="og:description" content="How SWOGE works end to end: user journey, economy, games, staking, burn, launchpad, risks. Every item marked confirmed, proposed or undecided.">
+<meta property="og:title" content="$SWOGE White Paper — How the SWOGE Ecosystem Works">
+<meta property="og:description" content="How SWOGE works end to end on Robinhood Chain: user journey, $SWOGE economy, games, staking, burn, launchpad and risks, each marked confirmed or proposed.">
 <meta property="og:url" content="https://swoleeswoge.dog/whitepaper.html">
 <meta property="og:image" content="https://swoleeswoge.dog/media/og.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:site" content="@SwoleDogeSwoge">
-<meta name="twitter:title" content="$SWOGE — White Paper">
-<meta name="twitter:description" content="How SWOGE works end to end: user journey, economy, games, staking, burn, launchpad, risks. Every item marked confirmed, proposed or undecided.">
+<meta name="twitter:title" content="$SWOGE White Paper — How the SWOGE Ecosystem Works">
+<meta name="twitter:description" content="How SWOGE works end to end on Robinhood Chain: user journey, $SWOGE economy, games, staking, burn, launchpad and risks, each marked confirmed or proposed.">
 <meta name="twitter:image" content="https://swoleeswoge.dog/media/og.jpg">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="/img/site/icone-32.png">
@@ -101,7 +101,7 @@ canvas{ touch-action:none; }
 <link rel="manifest" href="/site.webmanifest">
 <meta name="theme-color" content="#1B5FE0">
 
-<meta name="description" content="How SWOGE works end to end: user journey, economy, games, staking, burn, launchpad, risks. Every item marked confirmed, proposed or undecided.">
+<meta name="description" content="How SWOGE works end to end on Robinhood Chain: user journey, $SWOGE economy, games, staking, burn, launchpad and risks, each marked confirmed or proposed.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -213,11 +213,14 @@ header.top{padding:64px 0 40px;border-bottom:1px solid var(--line)}
   font-family:var(--mono);font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;
   color:var(--gold-ink);margin:0 0 20px;font-weight:700;
 }
-h1{
+/* Un seul h1 par page (17/10/2026) : le titre de la version francaise est un
+   h2.titre-doc, au meme dessin (et sans le `display:flex` des h2 de section). */
+h1,h2.titre-doc{
   font-family:var(--mono);font-weight:700;font-size:clamp(30px,5.4vw,50px);
   line-height:1.08;letter-spacing:-.02em;margin:0 0 18px;text-wrap:balance;
 }
-h1 em{font-style:normal;color:var(--gold)}
+h1 em,h2.titre-doc em{font-style:normal;color:var(--gold)}
+h2.titre-doc{display:block}
 .standfirst{
   font-size:19px;line-height:1.58;color:var(--ink-2);max-width:62ch;margin:0 0 30px;
 }
@@ -3102,6 +3105,8 @@ and it is closing.</p>
     Bet vault <code>0x3E70D325DbcA349e37B2030a2aAcD6147B3Ce398</code><br>
     Robinhood Chain · id 4663 · explorer robinhoodchain.blockscout.com
   </p>
+  <!-- 17/10/2026 : les outils de lecture, relies depuis la documentation (aucune page n y menait). -->
+  <p class="outils">Tools: <a href="swoge_smart_money.html">Smart Money</a> · <a href="swoge_polymarket.html">Polymarket Edge</a> · <a href="swoge_scan.html">Token Scan</a> · <a href="swoge_osint.html">OSINT</a> · <a href="swoge_security.html">Security</a></p>
   <p>
     Figures marked "confirmed" were read from the deployed code or directly from the chain
     on 4 September 2026, and on 29 September 2026 for section 44. Economic parameters are changeable and are not commitments. This
@@ -3115,7 +3120,7 @@ and it is closing.</p>
 
 <header class="top">
   <p class="kicker">White paper · v1.2 · 29 septembre 2026</p>
-  <h1>Swole Doge<br><em>Protocol</em></h1>
+  <h2 class="titre-doc">Swole Doge<br><em>Protocol</em></h2>
   <p class="standfirst">
     Une plateforme de jeu Web3 en production sur Robinhood Chain : vingt jeux à
     équité vérifiable, un livre de paris sportifs joué en $SWOGEBET, un portefeuille
@@ -5437,6 +5442,8 @@ est temporel, et il se referme.</p>
     Coffre des paris <code>0x3E70D325DbcA349e37B2030a2aAcD6147B3Ce398</code><br>
     Robinhood Chain · identifiant 4663 · explorateur robinhoodchain.blockscout.com
   </p>
+  <!-- 17/10/2026 : les outils de lecture, relies depuis la documentation (aucune page n y menait). -->
+  <p class="outils">Outils : <a href="swoge_smart_money.html">Smart Money</a> · <a href="swoge_polymarket.html">Polymarket Edge</a> · <a href="swoge_scan.html">Token Scan</a> · <a href="swoge_osint.html">OSINT</a> · <a href="swoge_security.html">Security</a></p>
   <p>
     Les chiffres marqués « confirmé » ont été lus dans le code déployé ou directement sur
     la chaîne le 4 septembre 2026, et le 29 septembre 2026 pour la section 44. Les paramètres économiques sont modifiables et ne

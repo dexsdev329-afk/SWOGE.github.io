@@ -98,7 +98,7 @@ video{ max-width:100%; }
 .menubtn{ min-width:44px; min-height:44px; }
 </style>
 
-<title>SWOGE Agents · AI chat and AI agent tasks</title>
+<title>SWOGE Agents — AI Chat, AI Agents and Images, Pay Per Use</title>
 
 <!-- ==================== REFERENCEMENT ET PARTAGE ====================
      Bloc identique sur toutes les pages, pose juste apres le titre.
@@ -119,20 +119,20 @@ video{ max-width:100%; }
      versions se font concurrence et aucune ne gagne.
      ================================================================= -->
 <link rel="canonical" href="https://swoleeswoge.dog/swoge_agents.html">
-<meta name="description" content="SWOGE Agents: chat with Claude, ChatGPT and Grok, create images and videos, or give an AI agent a task — it reads tokens, the SWOGE AI colony and the web, then answers with sources. No subscription — each request is billed at its actual cost, from a dollar credit topped up with USDC or from your $SWOGE balance.">
+<meta name="description" content="Chat with Claude, ChatGPT and Grok, create images and videos, or give an AI agent a task that answers with sources. No subscription: billed per request at cost.">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="SWOGE WORLD">
 <meta property="og:locale" content="en_US">
-<meta property="og:title" content="SWOGE Agents · AI chat and AI agent tasks">
-<meta property="og:description" content="SWOGE Agents: chat with Claude, ChatGPT and Grok, create images and videos, or give an AI agent a task — it reads tokens, the SWOGE AI colony and the web, then answers with sources. No subscription — each request is billed at its actual cost, from a dollar credit topped up with USDC or from your $SWOGE balance.">
+<meta property="og:title" content="SWOGE Agents — AI Chat, AI Agents and Images, Pay Per Use">
+<meta property="og:description" content="Chat with Claude, ChatGPT and Grok, create images and videos, or give an AI agent a task that answers with sources. No subscription: billed per request at cost.">
 <meta property="og:url" content="https://swoleeswoge.dog/swoge_agents.html">
 <meta property="og:image" content="https://swoleeswoge.dog/img/site/partage.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:site" content="@SwoleDogeSwoge">
-<meta name="twitter:title" content="SWOGE Agents · AI chat and AI agent tasks">
-<meta name="twitter:description" content="SWOGE Agents: chat with Claude, ChatGPT and Grok, create images and videos, or give an AI agent a task — it reads tokens, the SWOGE AI colony and the web, then answers with sources. No subscription — each request is billed at its actual cost, from a dollar credit topped up with USDC or from your $SWOGE balance.">
+<meta name="twitter:title" content="SWOGE Agents — AI Chat, AI Agents and Images, Pay Per Use">
+<meta name="twitter:description" content="Chat with Claude, ChatGPT and Grok, create images and videos, or give an AI agent a task that answers with sources. No subscription: billed per request at cost.">
 <meta name="twitter:image" content="https://swoleeswoge.dog/img/site/partage.jpg">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="/img/site/icone-32.png">
@@ -181,8 +181,8 @@ body{font-family:'Archivo',system-ui,sans-serif;font-size:14px;line-height:1.55}
 /* header */
 .top{border-bottom:1px solid var(--line);padding-bottom:20px;margin-bottom:24px}
 .kick{font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--dim)}
-h1{font-family:'Anton',sans-serif;font-size:clamp(30px,8cqi,40px);letter-spacing:.01em;text-transform:uppercase;margin:6px 0 0}
-h1 em{font-style:normal;color:var(--gold)}
+h1,h2.t1{font-family:'Anton',sans-serif;font-size:clamp(30px,8cqi,40px);letter-spacing:.01em;text-transform:uppercase;margin:6px 0 0}
+h1 em,h2.t1 em{font-style:normal;color:var(--gold)}
 .sub{color:var(--dim);font-size:13px;margin-top:6px;max-width:560px}
 
 /* input */
@@ -389,7 +389,7 @@ footer{margin-top:44px;font-family:'Space Mono',monospace;font-size:10px;color:v
 .top{position:relative;border-radius:10px;overflow:hidden;padding:34px 30px;margin-bottom:6px;
   background:linear-gradient(90deg,rgba(7,11,20,.92) 0%,rgba(7,11,20,.75) 45%,rgba(7,11,20,.30) 100%),url('img/c6973b275593.jpg');
   background-size:cover;background-position:center right;border:1px solid var(--line)}
-.top .kick,.top h1,.top .sub,.top .bar,.top .state{position:relative;z-index:2}
+.top .kick,.top h1,.top h2.t1,.top .sub,.top .bar,.top .state{position:relative;z-index:2}
 .top .sub{max-width:440px}
 .scandoge{position:absolute;right:-10px;bottom:-10px;width:230px;opacity:.9;z-index:1;
   -webkit-mask-image:linear-gradient(to left,#000 55%,transparent);mask-image:linear-gradient(to left,#000 55%,transparent);
@@ -404,8 +404,8 @@ footer{margin-top:44px;font-family:'Space Mono',monospace;font-size:10px;color:v
  * `--paper`, qui vient de passer au marine — il serait devenu marine sur
  * noir. On le repose ici en clair, explicitement. */
 .top .kick,.top .sub{color:rgba(255,255,255,.74)}
-.top h1{color:#FFFFFF}
-.top h1 em{color:#FFC53D}
+.top h1,.top h2.t1{color:#FFFFFF}
+.top h1 em,.top h2.t1 em{color:#FFC53D}
 .top .state{color:rgba(255,255,255,.74)}
 .top .state.err{color:#FF9C8C}
 .top .bar input{background:#FFFFFF;color:#0B1B36;border-color:#FFFFFF}
@@ -785,7 +785,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 
 /* ---- l'accueil vide : la question, puis les suggestions ---- */
 .accueil{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:26px 0}
-.accueil h1{font-family:'Archivo',sans-serif;font-weight:800;font-size:clamp(24px,5vw,34px);margin:0 0 6px;text-transform:none}
+.accueil h1,.accueil h2.t1{font-family:'Archivo',sans-serif;font-weight:800;font-size:clamp(24px,5vw,34px);margin:0 0 6px;text-transform:none}
 .accueil p{color:var(--dim);font-size:13.5px;margin:0 0 18px;max-width:520px}
 /* `display:flex` l'emporte sur l'attribut `hidden` : sans cette ligne,
    l'accueil restait affiche au-dessus de la premiere reponse. */
@@ -1185,7 +1185,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   border-radius:0 var(--r) var(--r) 0;font-size:13px}
 #modeAgent .etat[hidden]{display:none}
 #modeAgent .accueil{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:26px 0}
-#modeAgent .accueil h1{font-family:'Archivo',sans-serif;font-weight:800;font-size:clamp(24px,5vw,34px);margin:0 0 6px;text-transform:none}
+#modeAgent .accueil h1,#modeAgent .accueil h2.t1{font-family:'Archivo',sans-serif;font-weight:800;font-size:clamp(24px,5vw,34px);margin:0 0 6px;text-transform:none}
 #modeAgent .accueil p{color:var(--dim);font-size:13.5px;margin:0 0 18px;max-width:520px}
 #modeAgent .accueil[hidden]{display:none}
 #modeAgent .suggestions{display:flex;flex-direction:column;gap:6px;width:100%;max-width:520px}
@@ -1435,7 +1435,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 #modeEsim{--fond:#EEF3FB; --carte:#fff; --encre:#0B1B36; --pale:#5a6b85; --bleu:#1652f0; --ligne:#E1E9F6; --ok:#0a7d3e; --err:#b3261e;}
 #modeEsim *{box-sizing:border-box;}
 #modeEsim .es-cadre{max-width:560px; margin:0 auto; padding:20px 16px 40px;}
-#modeEsim h1{font-size:22px; margin:0 0 6px;}
+#modeEsim h1,#modeEsim h2.t1{font-size:22px; margin:0 0 6px;}
 #modeEsim p{margin:6px 0;}
 #modeEsim .carte{background:var(--carte); border:1px solid var(--ligne); border-radius:14px; padding:14px 16px; margin:14px 0;}
 #modeEsim .pale{color:var(--pale); font-size:13.5px;}
@@ -1474,8 +1474,8 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 /* ==== Agent Store, borne a #modeStore (genere) ==== */
 #modeStore{ --fond:#EEF3FB; --carte:#fff; --encre:#0B1B36; --pale:#5a6b85; --bleu:#1652f0; --violet:#5b3df5; --ligne:#E1E9F6; --ok:#0a7d3e; --err:#b3261e; }
 #modeStore main{max-width:1080px; margin:0 auto; padding:18px 16px 48px;}
-#modeStore h1{font-size:30px; margin:6px 0 6px; letter-spacing:-.01em;}
-#modeStore h1 em{font-style:normal; background:linear-gradient(90deg,var(--bleu),var(--violet)); -webkit-background-clip:text; background-clip:text; color:transparent;}
+#modeStore h1,#modeStore h2.t1{font-size:30px; margin:6px 0 6px; letter-spacing:-.01em;}
+#modeStore h1 em,#modeStore h2.t1 em{font-style:normal; background:linear-gradient(90deg,var(--bleu),var(--violet)); -webkit-background-clip:text; background-clip:text; color:transparent;}
 #modeStore .intro{color:var(--pale); max-width:720px; margin:0 0 14px;}
 #modeStore .st-onglets{display:flex; gap:6px; margin:16px 0 10px; border-bottom:1px solid var(--ligne); flex-wrap:wrap;}
 #modeStore .st-onglets button{font:inherit; font-weight:700; border:0; background:none; padding:10px 12px; color:var(--pale); cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px;}
@@ -1515,7 +1515,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 #modeStore .preuves th,#modeStore .preuves td{text-align:left; padding:6px 8px; border-top:1px solid var(--ligne); white-space:nowrap;}
 #modeStore .preuves th{color:var(--pale); font-weight:600; border-top:0;}
 #modeStore .preuves td.tx a{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12.5px;}
-@media (max-width:420px){#modeStore h1{font-size:25px;}
+@media (max-width:420px){#modeStore h1,#modeStore h2.t1{font-size:25px;}
 #modeStore .grille{grid-template-columns:1fr;}
 }
 </style>
@@ -1735,7 +1735,7 @@ body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opa
 /* Le titre et l intro Mission de l accueil redisent ce que dit le heros : ils tombent ici
    (swolemind.html, seule, les garde). Le paragraphe des modeles et des paiements aussi : les cartes
    « What it can do » le disent sous le chat, en images. Reste ce qui sert : les suggestions. */
-#modeChat .accueil > h1,#modeChat .accueil > .mission-intro,#modeChat .accueil > p{display:none}
+#modeChat .accueil > h1,#modeChat .accueil > h2.t1,#modeChat .accueil > .mission-intro,#modeChat .accueil > p{display:none}
 /* Les quatre missions de depart : des tuiles de verre en deux colonnes, une icone dessinee au lieu
    de la cible. Le bouton, son data-sugg et son geste sont ceux de swolemind.html. */
 #modeChat #suggestionsMission{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;max-width:640px}
@@ -1835,11 +1835,11 @@ body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opa
 #modeOsint .wrap{padding-top:14px}
 #modeEsim,#modeStore{--fond:transparent;--carte:rgba(13,22,50,.8);--encre:#E7EDFF;--pale:#97A6CC;--bleu:#5B8CFF;--violet:#A27BFF;--ligne:rgba(120,160,255,.2);--ok:#34E3A0;--err:#FF5C7A;color-scheme:dark}
 #modeEsim .es-cadre{font:15px/1.45 var(--ag-f);color:var(--encre)}
-#modeEsim h1{font-family:var(--ag-fd);text-transform:none;letter-spacing:-.4px;color:#fff}
+#modeEsim h1,#modeEsim h2.t1{font-family:var(--ag-fd);text-transform:none;letter-spacing:-.4px;color:#fff}
 #modeEsim button{text-transform:none;letter-spacing:0}
 #modeEsim button:hover{transform:none;filter:none}
 #modeStore .st-cadre{max-width:1120px;margin:0 auto;font:15px/1.45 var(--ag-f);color:var(--encre)}
-#modeStore h1{font-family:var(--ag-fd);text-transform:none;letter-spacing:-.4px;color:#fff}
+#modeStore h1,#modeStore h2.t1{font-family:var(--ag-fd);text-transform:none;letter-spacing:-.4px;color:#fff}
 #modeStore button{text-transform:none;letter-spacing:0}
 #modeStore button:hover{transform:none;filter:none}
 /* Les pastilles, listes et etiquettes y portaient des fonds clairs ecrits en dur (#f3f6fc, #fff…) :
@@ -1923,7 +1923,7 @@ body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opa
   <div class="etat" id="etat" hidden></div>
 
   <section class="accueil" id="accueil">
-    <h1>What do you want to accomplish?</h1>
+    <h2 class="t1">What do you want to accomplish?</h2>
     <p class="mission-intro">Give SwoleMind an objective. It plans the work, runs the right tools — web search, token and on-chain checks, infrastructure recon — and shows every step it really ran, with what each one cost.</p>
     <div class="suggestions" id="suggestionsMission">
       <button class="suggestion" type="button" data-sugg="m_jeton"><span class="ic">&#127919;</span>Token due diligence</button>
@@ -2886,7 +2886,7 @@ body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opa
 
   <div class="top">
     <div class="kick">OSINT · public sources only · free, no account</div>
-    <h1>What can you learn about <em>this</em>?</h1>
+    <h2 class="t1">What can you learn about <em>this</em>?</h2>
     <!-- Le sous-titre dit ce qu on lit ET ce qu on refuse, dans cet ordre :
          un outil qui n annonce que ce qu il trouve laisse croire qu il trouve tout. -->
     <div class="sub">
@@ -3000,7 +3000,7 @@ body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opa
 </section>
 <section class="ag-mode" id="modeEsim" role="region" aria-label="Travel eSIM" hidden>
 <div class="es-cadre">
-  <h1>Travel eSIM — paid from your wallet</h1>
+  <h2 class="t1">Travel eSIM — paid from your wallet</h2>
   <p class="pale">Mobile data abroad, installed in minutes. No account, no deposit: pick a plan, sign one USDC payment on Base or Solana, get your eSIM. You are charged only if the eSIM is bought.</p>
 
   <div class="carte" id="es-carteRecherche">
@@ -3055,7 +3055,7 @@ body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opa
 </section>
 <section class="ag-mode" id="modeStore" role="region" aria-label="Agent Store" hidden>
 <div class="st-cadre">
-  <h1>Agent <em>Store</em></h1>
+  <h2 class="t1">Agent <em>Store</em></h2>
   <p class="intro">Agents and paid tools that AI agents &mdash; and you &mdash; can use, pay per task, with no subscription. Every number on this page was measured by SWOGE: usage by outside agents, probes of other sellers&rsquo; services. Nothing is rated that was not measured.</p>
   <div class="st-onglets" role="tablist">
     <button type="button" role="tab" id="st-ongletSwoge" aria-selected="true" aria-controls="st-rayonSwoge">SWOGE agents</button>

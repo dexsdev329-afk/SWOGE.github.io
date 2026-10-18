@@ -85,8 +85,14 @@ const T = { '.html': 'text/html', '.js': 'application/javascript', '.json': 'app
     return c ? { sym: c.querySelector('.tsy').textContent, pool: (c.querySelector('.tv4') || {}).textContent || '' } : null; }), JETONS);
   ok(v4[0] && /SWV4TEST/.test(v4[0].sym) && v4[0].pool === '$SWOGE pool', 'le jeton V4 du pool $SWOGE est dans Explore, marque « $SWOGE pool » ' + JSON.stringify(v4[0]));
   ok(v4[1] && /SWV4WTEST/.test(v4[1].sym) && v4[1].pool === 'ETH pool', 'le jeton V4 du pool ETH aussi, marque « ETH pool » ' + JSON.stringify(v4[1]));
-  const premier = await pg.evaluate(() => { const c = document.querySelector('#list .tcard'); return c && c.getAttribute('data-addr'); });
-  ok(JETONS.map((j) => j.toLowerCase()).includes(String(premier).toLowerCase()), 'tri « New » : un V4, le plus recent, passe en tete');
+  /* Reecrit le 18/10/2026 sur son intention (« New » = du plus recent au plus ancien, tous lanceurs
+     melanges). L essai supposait qu un des deux jetons de test du 30/09 etait le dernier lance : faux
+     depuis que d autres jetons V4, puis le premier V5 (SWAI), sont nes apres — il clignotait au gre des
+     lancements. Chaque carte porte desormais son bloc de naissance (data-bloc) : on verifie l ordre. */
+  const blocs = await pg.$$eval('#list .tcard', (cs) => cs.map((c) => +c.getAttribute('data-bloc')));
+  ok(blocs.length >= 10 && blocs.every((b, i) => b > 0 && (i === 0 || b <= blocs[i - 1])), 'tri « New » : les ' + blocs.length + ' cartes vont du plus recent au plus ancien (blocs ' + blocs[0] + ' … ' + blocs[blocs.length - 1] + ')');
+  const v5 = await pg.$$eval('#list .tcard[data-v5]', (cs) => cs.map((c) => c.querySelector('.tsy').textContent));
+  ok(v5.some((t) => /\$SWAI/.test(t) && /V5/.test(t)), 'les jetons V5 sont dans la meme grille, marques V5 : ' + v5.join(', '));
 
   console.log('\n-- un jeton V4 s ouvre dans l echange, cote dans son actif --');
   /* 14/10/2026 (fiche v2) : l actif paye est nomme dans la pastille a cote du montant (#bbPayQ). */

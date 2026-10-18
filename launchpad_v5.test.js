@@ -74,8 +74,13 @@ const ADR = '/contrats/v5/adresses_v5.json';
       const pools = await A.pg.$$eval('.lp-pool', (bs) => bs.map((b) => b.dataset.pool).join(','));
       ok(pools === 'eth,agent,swoge,solana', 'le formulaire V4 est intact : ' + pools);
       ok(/Launch on Uniswap/.test(await A.pg.textContent('#createBtn')), 'le bouton V4 est le meme');
+      /* Reecrit le 18/10/2026 (page simplifiee) : V5 vient d abord, les lanceurs d avant dessous, replies
+         sous « Other launch modes (legacy) ». L intention reste : V5 eteint, le V4 est la et utilisable —
+         le pli s ouvre donc de lui-meme. */
       const ordre = await A.pg.evaluate(() => { const c = document.querySelector('#tab-create'); const k = [...c.children].map((e) => e.id || e.className); return k.join('|'); });
-      ok(/panel\|v5Panel$/.test(ordre), 'la section V5 vient APRES le panneau V4 (' + ordre + ')');
+      ok(ordre === 'v5Panel|lpLegacy', 'la section V5 vient d abord, les lanceurs d avant ensuite (' + ordre + ')');
+      await A.pg.waitForFunction(() => document.querySelector('#lpLegacy').open, null, { timeout: 5000 }).catch(() => {});
+      ok(await A.pg.$eval('#lpLegacy', (d) => d.open) && await A.pg.isVisible('#createBtn'), 'V5 eteint : les lanceurs d avant sont ouverts d office, le bouton V4 visible');
       ok(A.erreurs.length === 0, 'aucune erreur JS' + (A.erreurs.length ? ' : ' + A.erreurs.join(' | ') : ''));
       await A.ctx.close(); A.srv.close();
     }
@@ -108,10 +113,14 @@ const ADR = '/contrats/v5/adresses_v5.json';
     await pg.waitForSelector('#v5Lancer', { timeout: 30000 }).catch(() => {});
     ok(!!(await pg.$('#v5Lancer')), 'adresses valides et relues sur la chaine : le formulaire V5 s affiche');
     ok(/Launch on Uniswap/.test(await pg.textContent('#createBtn')) && (await pg.$$('.lp-pool')).length === 4, 'et le formulaire V4 est toujours la, inchange');
+    ok(!(await pg.$eval('#lpLegacy', (d) => d.open)), 'V5 allume : les lanceurs d avant restent replies');
     ok(new u.Interface(await pg.evaluate(() => window.SwogeV5.ABI_CORE)).getSighash('createToken')
       === new u.Interface(ART.contrats.SwogeLaunchpadV5.abi).getSighash('createToken'), 'le selecteur de createToken de la page = celui de l artefact compile');
 
     console.log('\n-- la liste des monnaies --');
+    /* 18/10/2026 (page simplifiee) : ETH par defaut, la liste est derriere « More pairs ». */
+    ok(await pg.isHidden('#v5QListe'), 'la liste des monnaies est repliee par defaut (ETH choisi)');
+    await pg.click('#v5PlusPaires');
     const lignes = await pg.$$eval('#v5QListe .v5-q', (l) => l.map((b) => b.querySelector('b').textContent + '|' + b.querySelector('span').textContent));
     ok(lignes.length === 198, '198 monnaies proposees');
     ok(lignes[0].startsWith('ETH|') && lignes[1].startsWith('USDG|') && lignes[2].startsWith('SWOGE|'), 'ETH, USDG, $SWOGE en tete');
@@ -171,6 +180,7 @@ const ADR = '/contrats/v5/adresses_v5.json';
 
     console.log('\n-- le prix d ouverture : le curseur montre la FDV --');
     await pg.click('#v5QListe .v5-q[data-i="0"]');
+    ok(await pg.isHidden('#v5QListe') && /ETH/.test(await pg.textContent('#v5PaireNow')), 'un choix referme la liste et s affiche : ' + (await pg.textContent('#v5PaireNow')));
     await pg.waitForFunction(() => /Opening FDV/.test(document.querySelector('#v5Fdv').textContent), null, { timeout: 10000 }).catch(() => {});
     let fdv = await pg.textContent('#v5Fdv');
     ok(/Opening FDV: (1\.00|0\.99)\d* ETH/.test(fdv), 'ETH, decalage 0 : ≈ 1 ETH de FDV — ' + fdv.slice(0, 40));
@@ -185,7 +195,7 @@ const ADR = '/contrats/v5/adresses_v5.json';
     await pg.click('#wpickList .wrow:has-text("Browser wallet")');
     await pg.waitForFunction((m) => (document.querySelector('#walletBtn').textContent || '').toLowerCase().startsWith(m.slice(0, 6).toLowerCase()), MOI, { timeout: 15000 }).catch(() => {});
     ok((await pg.textContent('#walletBtn')).toLowerCase().startsWith(MOI.slice(0, 6).toLowerCase()), 'portefeuille connecte (compte neuf impersonne ' + MOI + ')');
-    await pg.waitForFunction(() => /Launch on V5/.test(document.querySelector('#v5Lancer').textContent), null, { timeout: 10000 }).catch(() => {});
+    await pg.waitForFunction(() => /^🚀 Launch/.test(document.querySelector('#v5Lancer').textContent), null, { timeout: 10000 }).catch(() => {});
 
     const lancement = async (remplir) => {
       await remplir();
@@ -197,6 +207,8 @@ const ADR = '/contrats/v5/adresses_v5.json';
 
     console.log('\n-- lancement 1 : ETH, achat initial 0,03 ETH, taxe 2 %, anti-snipe 20 % / 60 s, LADDER3 --');
     const soldeEth0 = await P.getBalance(MOI), tresor0 = await P.getBalance(TRESOR);
+    /* 18/10/2026 (page simplifiee) : taxe, repartition, anti-snipe et forme sont sous « Advanced settings ». */
+    await pg.click('#v5Avance > summary');
     const r1 = await lancement(async () => {
       await pg.fill('#v5Name', 'Fork Ether Dog'); await pg.fill('#v5Sym', 'fed');
       await pg.fill('#v5Logo', 'https://swoleeswoge.dog/img/site/icone-512.png');
@@ -239,6 +251,7 @@ const ADR = '/contrats/v5/adresses_v5.json';
     const BASE = '0x52c63247e1f47db19d5ce0460030c497f067ca4cebf71ba98eeadabe20bace00';
     await fork.rpc('anvil_setStorageAt', [CRWD, u.keccak256(u.defaultAbiCoder.encode(['address', 'bytes32'], [MOI, BASE])), u.hexZeroPad(u.parseEther('10').toHexString(), 32)]);
     ok((await erc.balanceOf(MOI)).eq(u.parseEther('10')), 'le createur detient 10 jetons CRWD bruts sur le fork');
+    await pg.click('#v5PlusPaires');
     await pg.fill('#v5QRech', 'crowd');
     await pg.click('#v5QListe .v5-q[data-i="' + iC + '"]');
     await pg.waitForFunction(() => /uiMultiplier read now: <b>4<\/b>/.test(document.querySelector('#v5QChoisie').innerHTML), null, { timeout: 10000 }).catch(() => {});

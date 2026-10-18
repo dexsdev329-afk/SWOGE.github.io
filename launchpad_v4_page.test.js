@@ -81,6 +81,11 @@ const gp = (taxe) => ({ is_honeypot: '0', is_mintable: '0', hidden_owner: '0', c
   pg.on('pageerror', (e) => erreurs.push(String(e.message || e)));
   await pg.goto('http://127.0.0.1:' + srv.address().port + '/launchpad.html', { waitUntil: 'load' });
   await pg.waitForTimeout(800);
+  /* 18/10/2026 (page simplifiee) : ces lanceurs sont sous « Other launch modes (legacy) », sous le
+     formulaire V5. Ils s ouvrent d office quand V5 est eteint (ici : aucun noeud, le noyau V5 ne se
+     relit pas) ; sinon le joueur clique le lien. L intention ne change pas : les memes quatre choix. */
+  if (!(await pg.$eval('#lpLegacy', (d) => d.open))) await pg.click('#lpLegacy > summary');
+  ok(await pg.$eval('#lpLegacy', (d) => d.open), 'les lanceurs d avant sont ouverts (lien « Other launch modes (legacy) »)');
 
   console.log('\n-- les choix : ETH, AI Agent Launch (vedette), $SWOGE, Solana (05/10) --');
   const choix = await pg.$$eval('.lp-pool', (bs) => bs.map((b) => ({ p: b.dataset.pool, on: b.getAttribute('aria-checked'), vu: b.offsetParent !== null, t: b.innerText })));

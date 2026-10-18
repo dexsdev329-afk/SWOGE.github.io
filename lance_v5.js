@@ -161,7 +161,10 @@
     host().innerHTML = '<h2>SWOGE V5 <span class="count">coming soon</span></h2>' +
       '<div class="note" id="v5Etat">V5 coming soon — fair launches on Uniswap v4 with your own quote currency (ETH, USDG, $SWOGE or a Robinhood stock token), creator tax, anti-snipe and locked liquidity. ' +
       "The contracts are written and tested, not deployed yet." + (raison ? " " + esc(raison) : "") + "</div>";
+    signale(false);
   }
+  /* launchpad.html ouvre les lanceurs d'avant quand la section V5 reste eteinte (rien a lancer en V5) */
+  function signale(pret) { try { host().setAttribute("data-v5", pret ? "pret" : "eteint"); racine.dispatchEvent(new CustomEvent("swogev5", { detail: { pret: pret } })); } catch (e) {} }
 
   async function monte(o) {
     S.o = o;
@@ -199,109 +202,149 @@
         prixBrutUsd: m.prixJetonBrutUsd != null ? Number(m.prixJetonBrutUsd) : null, multListe: m.uiMultiplier || null, coursDate: m.coursDate || "" };
     });
     dessine();
+    signale(true);
     choisis(0);
   }
 
   /* ============================ le formulaire ============================ */
+  /* 18/10/2026 : « trop d'options, les gens ne s'y retrouvent pas » (le proprietaire). Le formulaire
+     montre quatre champs et un facultatif : nom, symbole, logo, paire (ETH par defaut, les 197 autres
+     derriere « More pairs »), achat initial. Tout le reste (taxe, anti-snipe, limites, repartition,
+     forme, prix d'ouverture, vesting, airdrop, liens) est replie sous « Advanced settings », pre-rempli
+     avec les valeurs d'avant (toutes a zero ou eteintes : aucune n'a encore de mesure qui la fixe).
+     Les identifiants des champs ne changent pas : les bornes, le calcul et l'envoi sont les memes. */
   function styleUneFois() {
     if (document.getElementById("v5Style")) return;
     var st = document.createElement("style"); st.id = "v5Style";
-    st.textContent = ".v5-qliste{max-height:260px;overflow:auto;border:1px solid var(--line);border-radius:10px;margin-top:6px}" +
-      ".v5-q{display:flex;gap:10px;align-items:center;width:100%;text-align:left;padding:8px 10px;border:0;border-bottom:1px solid var(--line);background:transparent;color:var(--cream);cursor:pointer;font:inherit}" +
+    st.textContent = ".v5-qliste{max-height:300px;overflow:auto;border:1px solid var(--line);border-radius:10px;margin-top:6px}" +
+      ".v5-q{display:flex;gap:10px;align-items:center;width:100%;min-height:44px;text-align:left;padding:8px 10px;border:0;border-bottom:1px solid var(--line);background:transparent;color:var(--cream);cursor:pointer;font:inherit}" +
       ".v5-q:last-child{border-bottom:0}.v5-q.on{background:color-mix(in srgb,var(--gold) 12%,transparent)}" +
-      ".v5-q img,.v5-q i{width:24px;height:24px;border-radius:50%;flex:0 0 auto;object-fit:cover;background:var(--void);display:inline-flex;align-items:center;justify-content:center;font-style:normal;font-size:11px;font-weight:800}" +
+      ".v5-q img,.v5-q i,.v5-paire img,.v5-paire i{width:24px;height:24px;border-radius:50%;flex:0 0 auto;object-fit:cover;background:var(--void);display:inline-flex;align-items:center;justify-content:center;font-style:normal;font-size:11px;font-weight:800}" +
       ".v5-q b{min-width:58px}.v5-q span{color:var(--dim);font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}" +
       ".v5-sec{border-top:1px dashed var(--line);margin-top:12px;padding-top:12px}.v5-sec>label.t{font-size:12px;color:var(--cream)}" +
-      ".v5-quatre{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}@media (max-width:560px){.v5-quatre{grid-template-columns:1fr 1fr}}" +
-      "#v5Panel input[type=range]{padding:0}.v5-alerte{border:1px solid var(--danger);color:var(--danger);border-radius:10px;padding:10px 12px;margin:10px 0;font-size:12.5px;line-height:1.5}";
+      ".v5-ex{font-size:12.5px;color:var(--dim);margin:2px 0 8px;line-height:1.45}" +
+      ".v5-quatre{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}@media (max-width:560px){.v5-quatre{grid-template-columns:1fr 1fr}}" +
+      "#v5Panel input[type=range]{padding:0;min-height:32px}#v5Panel input,#v5Panel select{min-height:44px}" +
+      ".v5-alerte{border:1px solid var(--danger);color:var(--danger);border-radius:10px;padding:10px 12px;margin:10px 0;font-size:12.5px;line-height:1.5}" +
+      ".v5-paire{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--void2)}" +
+      ".v5-paire .nom{display:flex;align-items:center;gap:8px;font-weight:700;min-width:0}.v5-paire .lnk{margin-left:auto;min-height:44px;padding:0 6px}" +
+      ".v5-logo{display:flex;align-items:center;gap:10px}.v5-logo img{width:44px;height:44px;border-radius:10px;object-fit:cover;border:1px solid var(--line);flex:0 0 auto}.v5-logo input{flex:1 1 auto;min-width:0}" +
+      ".v5-cout{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-top:14px;font-size:13px;line-height:1.5}" +
+      ".v5-cout .l{display:flex;justify-content:space-between;gap:10px}.v5-cout .l span:first-child{color:var(--dim)}.v5-cout .tot{border-top:1px dashed var(--line);margin-top:6px;padding-top:6px;font-weight:700}" +
+      ".v5-cout .err{color:var(--danger);margin-top:6px}.v5-cout .apres{color:var(--dim);font-size:12px;margin-top:6px}" +
+      "#v5Lancer{font-size:17px;padding:16px;min-height:56px;margin-top:12px}" +
+      ".v5-avance{margin-top:16px;border:1px solid var(--line);border-radius:12px;padding:0 12px}.v5-avance>summary{cursor:pointer;min-height:48px;display:flex;align-items:center;font-weight:700;list-style:none}" +
+      ".v5-avance>summary::-webkit-details-marker{display:none}.v5-avance>summary:after{content:'▾';margin-left:auto;color:var(--dim)}.v5-avance[open]>summary:after{content:'▴'}" +
+      ".v5-avance>summary small{font-weight:400;color:var(--dim);margin-left:8px}.v5-avance[open]{padding-bottom:12px}";
     document.head.appendChild(st);
   }
   function champ(id, lab, attrs) { return '<div class="field"><label for="' + id + '">' + lab + '</label><input id="' + id + '" ' + (attrs || "") + "></div>"; }
+  function ex(t) { return '<div class="v5-ex">' + t + "</div>"; }
   function dessine() {
     styleUneFois();
     var c = S.cfg, h = "";
-    h += '<h2>SWOGE V5 launch <span class="count">Uniswap v4 · ' + S.quotes.length + " quote currencies</span></h2>";
-    h += '<div class="note" style="margin:0 0 10px">One transaction: the token is created, its whole pool is seeded one-sided and locked forever, and your optional initial buy happens before anyone else can trade. ' +
-      "No owner, no admin: every limit below is final, and after launch the tax, anti-snipe and limits can only get friendlier for buyers.</div>";
-    h += '<div class="two">' + champ("v5Name", "Name (1–32 bytes)", 'maxlength="32" placeholder="Swoge Inu"') +
-      champ("v5Sym", "Symbol (1–10 bytes)", 'maxlength="10" placeholder="SWINU" autocapitalize="characters" spellcheck="false" style="text-transform:uppercase"') + "</div>";
-    h += champ("v5Desc", "Description (≤ 256 bytes)", 'maxlength="256" placeholder="What is this token about?"');
-    h += champ("v5Logo", "Logo URL (https, ≤ 256 bytes — stored on-chain in the Meta event)", 'placeholder="https://…/logo.png"');
-    h += '<div class="two">' + champ("v5Web", "Website", 'placeholder="https://…"') + champ("v5Tw", "X / Twitter", 'placeholder="https://x.com/…"') + "</div>";
-    h += champ("v5Tg", "Telegram", 'placeholder="https://t.me/…"');
+    h += '<h2>Launch a token <span class="count">SWOGE V5 · Uniswap v4</span></h2>';
+    h += '<div class="note" style="margin:0 0 12px">One transaction. The whole supply goes into a pool that is locked forever. No owner, no admin.</div>';
+    h += '<div class="two">' + champ("v5Name", "Name", 'maxlength="32" placeholder="Swoge Inu" autocomplete="off"') +
+      champ("v5Sym", "Symbol", 'maxlength="10" placeholder="SWINU" autocapitalize="characters" spellcheck="false" autocomplete="off" style="text-transform:uppercase"') + "</div>";
+    h += '<div class="field"><label for="v5Logo">Logo</label><div class="v5-logo"><img id="v5LogoVu" alt="" hidden>' +
+      '<input id="v5Logo" placeholder="Image link: https://…/logo.png or ipfs://…" spellcheck="false" autocomplete="off"></div>' +
+      '<div class="v5-ex" id="v5LogoNote">Optional. Saved on-chain with your token (256 bytes max), so paste a link to a hosted image.</div></div>';
 
-    h += '<div class="v5-sec"><label class="t">Quote currency — what buyers pay with, frozen at launch</label>' +
-      '<input id="v5QRech" placeholder="🔎 Search ETH, USDG, SWOGE, NVDA, SpaceX… (' + S.quotes.length + ')" autocomplete="off">' +
-      '<div class="v5-qliste" id="v5QListe" role="listbox" aria-label="Quote currency"></div><div class="note" id="v5QChoisie"></div><div id="v5QAlerte"></div></div>';
+    h += '<div class="field"><label>Pair</label><div class="v5-paire"><span class="nom" id="v5PaireNow">ETH</span>' +
+      '<button type="button" class="lnk" id="v5PlusPaires" aria-expanded="false" aria-controls="v5QBox">More pairs ›</button></div>' +
+      '<div class="v5-ex">What buyers pay with. ETH is the simplest; USDG, $SWOGE and ' + (S.quotes.length - 3) + ' stock tokens are under More pairs.</div>' +
+      '<div id="v5QBox" hidden><input id="v5QRech" placeholder="🔎 Search ETH, USDG, SWOGE, NVDA, SpaceX… (' + S.quotes.length + ')" autocomplete="off">' +
+      '<div class="v5-qliste" id="v5QListe" role="listbox" aria-label="Pair"></div><div class="note" id="v5QChoisie"></div></div><div id="v5QAlerte"></div></div>';
 
-    h += '<div class="v5-sec"><label class="t" for="v5Shift">Opening price — shift from the reference (−' + c.MAX_START_SHIFT_TICKS + " … +" + c.MAX_START_SHIFT_TICKS + " ticks, steps of 200)</label>" +
-      '<input type="range" id="v5Shift" min="-' + c.MAX_START_SHIFT_TICKS + '" max="' + c.MAX_START_SHIFT_TICKS + '" step="200" value="0"><div class="note" id="v5Fdv"></div></div>';
+    h += '<div class="field"><label for="v5Achat" id="v5AchatLab">Initial buy (optional)</label>' +
+      '<div style="display:flex;gap:8px"><input id="v5Achat" inputmode="decimal" placeholder="0 (none)" autocomplete="off" style="flex:1 1 auto;min-width:0"><button type="button" class="btn" id="v5AchatMax" style="margin:0">Max</button></div>' +
+      '<div class="v5-ex" id="v5AchatNote"></div></div>';
 
-    h += '<div class="v5-sec"><label class="t" for="v5Shape">Liquidity shape</label><select id="v5Shape"><option value="0">SINGLE — one range of 161,200 ticks above the opening price (like V4)</option>' +
-      '<option value="1">LADDER3 — 30 % / 30 % / 40 % on three ranges</option></select></div>';
+    h += '<div class="v5-cout" id="v5Resume" aria-live="polite"></div>';
+    h += '<button class="btn primary full" id="v5Lancer" type="button">🚀 Launch</button>';
+    h += '<div class="note" id="v5Note"></div><div class="lp-kit" id="v5Kit" hidden></div>';
 
-    h += '<div class="v5-sec"><label class="t" for="v5Tax">Creator tax</label><input type="range" id="v5Tax" min="0" max="' + c.MAX_CREATOR_TAX_BPS + '" step="1" value="0">' +
-      '<div class="note" id="v5TaxNote"></div></div>';
-
-    h += '<div class="v5-sec"><label class="t">Where your creator share goes (fee buckets, total 100 %)</label><div class="v5-quatre">' +
+    h += '<details class="v5-avance" id="v5Avance"><summary>Advanced settings <small>optional · safe defaults are set</small></summary>';
+    h += '<div class="v5-sec"><label class="t">Description and links</label>' + ex("Shown on your token page. Optional.") +
+      champ("v5Desc", "Description", 'maxlength="256" placeholder="What is this token about?"') +
+      '<div class="two">' + champ("v5Web", "Website", 'placeholder="https://…"') + champ("v5Tw", "X / Twitter", 'placeholder="https://x.com/…"') + "</div>" +
+      champ("v5Tg", "Telegram", 'placeholder="https://t.me/…"') + "</div>";
+    h += '<div class="v5-sec"><label class="t" for="v5Tax">Creator tax</label>' + ex("An extra fee on every buy and sell, paid to you. Default 0 %. After launch it can only go down.") +
+      '<input type="range" id="v5Tax" min="0" max="' + c.MAX_CREATOR_TAX_BPS + '" step="1" value="0"><div class="note" id="v5TaxNote"></div></div>';
+    h += '<div class="v5-sec"><label class="t">Fee split</label>' + ex("Where your creator share goes. Default: 100 % to you. Must add up to 100 %.") + '<div class="v5-quatre">' +
       champ("v5SpC", "Creator %", 'inputmode="decimal" value="100"') + champ("v5SpS", "Stakers %", 'inputmode="decimal" value="0"') +
       champ("v5SpL", "LP floor %", 'inputmode="decimal" value="0"') + champ("v5SpB", "Buyback-burn %", 'inputmode="decimal" value="0"') +
       '</div><div class="note" id="v5SpNote"></div></div>';
-
-    h += '<div class="v5-sec"><label class="t">Anti-snipe (buys only, no exemption, decays linearly to 0)</label><div class="two">' +
+    h += '<div class="v5-sec"><label class="t">Anti-snipe</label>' + ex("A surcharge on early buys that fades to 0, to slow down bots. Default off.") + '<div class="two">' +
       champ("v5SnB", "Start surcharge % (0–" + (c.MAX_SNIPE_START_BPS / 100) + ")", 'inputmode="decimal" value="0"') +
       champ("v5SnS", "Window, seconds (0–" + c.MAX_SNIPE_SECONDS + ")", 'inputmode="numeric" value="0"') + '</div><div class="note" id="v5SnNote"></div></div>';
-
-    h += '<div class="v5-sec"><label class="t">Buy limits after opening (0 = off)</label><div class="two">' +
+    h += '<div class="v5-sec"><label class="t">Buy limits</label>' + ex("Caps how much one buyer can take right after opening. Default off (0).") + '<div class="two">' +
       champ("v5LiS", "Max per swap, % of supply (0 or 0.5–100)", 'inputmode="decimal" value="0"') +
       champ("v5LiB", "Max per second, % of supply (0 or 0.5–100)", 'inputmode="decimal" value="0"') + "</div>" +
       champ("v5LiT", "For how long, seconds (0–" + c.MAX_LIMIT_SECONDS + ")", 'inputmode="numeric" value="0"') + '<div class="note" id="v5LiNote"></div></div>';
-
-    h += '<div class="v5-sec"><label class="t">Creator vesting (optional, off-pool)</label><div class="two">' +
+    h += '<div class="v5-sec"><label class="t" for="v5Shape">Liquidity shape</label>' + ex("How the pool spreads your tokens over prices. SINGLE is the default and the simplest.") +
+      '<select id="v5Shape"><option value="0">SINGLE — one range of 161,200 ticks above the opening price</option>' +
+      '<option value="1">LADDER3 — 30 % / 30 % / 40 % on three ranges</option></select></div>';
+    h += '<div class="v5-sec"><label class="t" for="v5Shift">Opening price</label>' + ex("The starting market cap. Default: the reference for this pair (shift 0). Steps of 200 ticks, −" +
+      c.MAX_START_SHIFT_TICKS + " … +" + c.MAX_START_SHIFT_TICKS + ".") +
+      '<input type="range" id="v5Shift" min="-' + c.MAX_START_SHIFT_TICKS + '" max="' + c.MAX_START_SHIFT_TICKS + '" step="200" value="0"><div class="note" id="v5Fdv"></div></div>';
+    h += '<div class="v5-sec"><label class="t">Creator vesting</label>' + ex("Keep up to " + (c.MAX_VEST_BPS / 100) + " % of supply for yourself, unlocked slowly after a cliff. Default 0 %.") + '<div class="two">' +
       champ("v5VeP", "% of supply (0–" + (c.MAX_VEST_BPS / 100) + ")", 'inputmode="decimal" value="0"') +
       champ("v5VeC", "Cliff, days (≥ 30)", 'inputmode="numeric" value="30"') + "</div>" +
       champ("v5VeD", "Duration, days (90–730, longer than the cliff)", 'inputmode="numeric" value="180"') + "</div>";
-    h += '<div class="v5-sec"><label class="t">Airdrop (optional, Merkle, leftovers burned)</label><div class="two">' +
+    h += '<div class="v5-sec"><label class="t">Airdrop</label>' + ex("Set aside up to " + (c.MAX_AIRDROP_BPS / 100) + " % for a Merkle airdrop; unclaimed tokens are burned. Default 0 %.") + '<div class="two">' +
       champ("v5AiP", "% of supply (0–" + (c.MAX_AIRDROP_BPS / 100) + ")", 'inputmode="decimal" value="0"') +
       champ("v5AiJ", "Claim window, days (7–180)", 'inputmode="numeric" value="30"') + "</div>" +
       champ("v5AiR", "Merkle root (bytes32)", 'placeholder="0x…" spellcheck="false"') + "</div>";
-
-    h += '<div class="v5-sec">' + champ("v5Dest", "Fee recipient (receives the creator share; changes take 2 steps + 72 h)", 'placeholder="your connected wallet" spellcheck="false"') + "</div>";
-
-    h += '<div class="v5-sec"><label class="t" for="v5Achat" id="v5AchatLab">Your initial buy (optional, ≤ ' + (c.MAX_INITIAL_BUY_BPS / 100) + " % of supply)</label>" +
-      '<input id="v5Achat" inputmode="decimal" placeholder="0 (none)"><div class="btnrow" style="margin-top:6px"><button type="button" class="btn" id="v5AchatMax">Max</button></div>' +
-      '<div class="note" id="v5AchatNote"></div></div>';
-
-    h += '<div class="note" id="v5Resume"></div>';
-    h += '<button class="btn primary full" id="v5Lancer" style="margin-top:8px">⚡ Launch on V5</button>';
-    h += '<div class="note" id="v5Note"></div><div class="lp-kit" id="v5Kit" hidden></div>';
+    h += '<div class="v5-sec"><label class="t" for="v5Dest">Fee recipient</label>' + ex("Who receives the creator share. Default: your connected wallet. Changing it later takes 2 steps and 72 h.") +
+      '<input id="v5Dest" placeholder="your connected wallet" spellcheck="false"></div>';
+    h += "</details>";
     host().innerHTML = h;
 
     $("v5QRech").addEventListener("input", liste);
+    $("v5Sym").addEventListener("input", function () { var s = $("v5Sym"), n = s.value.replace(/^\$/, "").toUpperCase(); if (n !== s.value) s.value = n; });
     ["v5Name", "v5Sym", "v5Desc", "v5Logo", "v5Web", "v5Tw", "v5Tg", "v5Shift", "v5Shape", "v5Tax", "v5SpC", "v5SpS", "v5SpL", "v5SpB", "v5SnB", "v5SnS",
       "v5LiS", "v5LiB", "v5LiT", "v5VeP", "v5VeC", "v5VeD", "v5AiP", "v5AiJ", "v5AiR", "v5Dest", "v5Achat"].forEach(function (id) {
       $(id).addEventListener("input", maj); $(id).addEventListener("change", maj);
     });
-    $("v5Sym").addEventListener("input", function () { var s = $("v5Sym"), n = s.value.replace(/^\$/, "").toUpperCase(); if (n !== s.value) s.value = n; });
-    $("v5AchatMax").onclick = function () { var m = maxAchatAffiche(); if (m > 0) { $("v5Achat").value = String(+m.toPrecision(6)); maj(); } };
+    ["v5Name", "v5Sym", "v5Achat"].forEach(function (id) { $(id).addEventListener("input", function () { S.touche = true; }); });
+    $("v5Logo").addEventListener("input", apercuLogo);
+    $("v5PlusPaires").onclick = function () { ouvrePaires($("v5QBox").hidden); };
+    $("v5AchatMax").onclick = function () { var m = maxAchatAffiche(); if (m > 0) { $("v5Achat").value = String(+m.toPrecision(6)); S.touche = true; maj(); } };
     $("v5Lancer").onclick = lance;
     liste();
+  }
+  function ouvrePaires(ouvre) {
+    $("v5QBox").hidden = !ouvre; $("v5PlusPaires").setAttribute("aria-expanded", String(!!ouvre));
+    $("v5PlusPaires").textContent = ouvre ? "Close ✕" : "More pairs ›";
+    if (ouvre) try { $("v5QRech").focus({ preventScroll: true }); } catch (e) {}
+  }
+  /* L'apercu du logo : la page montre l'image du lien saisi ; rien n'est televerse. Le champ Meta du
+     noyau garde 256 octets au plus : une image envoyee depuis l'appareil (data:, ~1 Ko meme a 16 px,
+     mesure du 18/10/2026) n'y tiendrait pas — d'ou un lien vers une image hebergee. */
+  function apercuLogo() {
+    var v = String($("v5Logo").value || "").trim(), im = $("v5LogoVu");
+    if (/^https:\/\//i.test(v)) { im.hidden = false; im.onerror = function () { im.hidden = true; }; im.src = v; }
+    else im.hidden = true;
   }
   function liste() {
     var q = String($("v5QRech").value || "").trim().toLowerCase(), h = "";
     S.quotes.forEach(function (x) {
       if (q && (x.symbol + " " + x.nom + " " + (ALIAS[x.symbol] || "") + " " + x.address).toLowerCase().indexOf(q) < 0) return;
-      var img = x.logo ? '<img src="' + esc(x.logo) + '" alt="" loading="lazy" onerror="this.style.visibility=\'hidden\'">' : "<i>" + esc(x.symbol.slice(0, 2)) + "</i>";
+      var img = x.logo ? '<img src="' + esc(x.logo) + '" alt="" loading="lazy" onerror="this.style.visibility=\'hidden\'">' : "<i>" + (x.i === 0 ? "Ξ" : esc(x.symbol.slice(0, 2))) + "</i>";
       h += '<button type="button" role="option" class="v5-q' + (S.q && S.q.i === x.i ? " on" : "") + '" data-i="' + x.i + '" aria-selected="' + (S.q && S.q.i === x.i) + '">' + img +
         "<b>" + esc(x.symbol) + "</b><span>" + esc(x.nom) + (x.action ? " · stock token" : "") + "</span></button>";
     });
     $("v5QListe").innerHTML = h || '<div class="note" style="padding:8px">No match.</div>';
-    [].forEach.call($("v5QListe").querySelectorAll(".v5-q"), function (b) { b.onclick = function () { choisis(+b.getAttribute("data-i")); }; });
+    [].forEach.call($("v5QListe").querySelectorAll(".v5-q"), function (b) { b.onclick = function () { choisis(+b.getAttribute("data-i")); ouvrePaires(false); }; });
   }
   /* Le choix d'une monnaie relit, en direct : decimales, multiplicateur (actions), solde du createur. */
   async function choisis(i) {
-    var x = S.quotes[i]; S.q = x; liste();
+    var x = S.quotes[i]; S.q = x; liste(); S.gaz = null;
     var Et = E();
+    var img = x.logo ? '<img src="' + esc(x.logo) + '" alt="" onerror="this.style.visibility=\'hidden\'">' : "<i>" + (x.i === 0 ? "Ξ" : esc(x.symbol.slice(0, 2))) + "</i>";
+    $("v5PaireNow").innerHTML = img + "<span>" + esc(x.i === 2 ? "$SWOGE" : x.symbol) + (x.action ? ' <small style="font-weight:400;color:var(--dim)">stock token</small>' : "") + "</span>";
     $("v5QChoisie").innerHTML = "Selected: <b>" + esc(x.symbol) + "</b> " + (x.i ? "<code>" + esc(x.address) + "</code>" : "(native ETH)") + " · reading…";
     x.mult = null; x.solde = null;
     try {
@@ -314,7 +357,7 @@
     await litSolde();
     if (S.q !== x) return;
     var unite = x.action ? "shares of " + x.symbol : x.symbol;
-    $("v5AchatLab").textContent = "Your initial buy, in " + unite + " (optional, ≤ " + (S.cfg.MAX_INITIAL_BUY_BPS / 100) + " % of supply)";
+    $("v5AchatLab").textContent = "Initial buy, in " + unite + " (optional, ≤ " + (S.cfg.MAX_INITIAL_BUY_BPS / 100) + " % of supply)";
     $("v5QChoisie").innerHTML = "Selected: <b>" + esc(x.symbol) + "</b>" + (x.nom ? " — " + esc(x.nom) : "") + " " + (x.i ? "<code>" + esc(x.address) + "</code>" : "(native ETH)") +
       (x.action && x.mult ? " · uiMultiplier read now: <b>" + (+Et.utils.formatUnits(x.mult, 18)).toPrecision(8).replace(/\.?0+$/, "") + "</b> (1 token = that many shares)" : "") +
       (x.lectureKo ? ' · <span style="color:var(--danger)">could not read the token: ' + esc(x.lectureKo) + "</span>" : "");
@@ -438,19 +481,59 @@
     var p = params(), e = erreurForm(p), w = S.o.portefeuille() || {};
     var aN = $("v5AchatNote"), achatTxt = "";
     var max = maxAchatAffiche();
-    achatTxt += "Max ≈ " + fmt(max, 6) + " " + (x.action ? "shares" : esc(x.symbol)) + " (" + (c.MAX_INITIAL_BUY_BPS / 100) + " % of supply).";
+    achatTxt += "Be the first buyer, before anyone else can trade. Max ≈ " + fmt(max, 6) + " " + (x.action ? "shares" : esc(x.symbol)) + " (" + (c.MAX_INITIAL_BUY_BPS / 100) + " % of supply).";
     if (p._sortie) achatTxt += " You receive ≈ <b>" + fmt(p._sortie / 1e18) + "</b> tokens (" + (p._sortie / 1e25).toFixed(3) + " % of supply); minTokensOut = " + fmt(+p.minTokensOut / 1e18) + " (−0.5 %). You pay the base fee and the tax, no anti-snipe surcharge.";
     if (p.initialBuy !== "x" && p.initialBuy !== "0" && x.action) achatTxt += " = " + fmt(+Et.utils.formatUnits(p.initialBuy, d), 6) + " raw " + esc(x.symbol) + " tokens.";
     if (x.solde) achatTxt += " Your balance: " + fmt(enAffiche(x, x.solde), 6) + " " + (x.action ? "shares" : esc(x.symbol)) + ".";
     aN.innerHTML = achatTxt;
-    // resume
-    var fee = c.LAUNCH_FEE_WEI, valeur = x.i === 0 && p.initialBuy !== "x" ? fee.add(p.initialBuy) : fee;
-    $("v5Resume").innerHTML = "Launch fee: <b>" + (+Et.utils.formatEther(fee)) + " ETH</b> to the SWOGE treasury · you send <b>" + (+Et.utils.formatEther(valeur)) + " ETH</b>" +
-      (x.i > 0 && p.initialBuy !== "x" && p.initialBuy !== "0" ? " + " + fmt(enAffiche(x, p.initialBuy), 6) + " " + (x.action ? "shares of " : "") + esc(x.symbol) + " (approved first, exact amount)" : "") +
-      " · trading fees: buy " + ((frais() + (sb || 0)) / 100).toFixed(2) + " % at opening, sell " + (frais() / 100).toFixed(2) + " %." +
-      (e ? '<br><span style="color:var(--danger)">' + esc(e) + "</span>" : "");
+    // le cout, en une boite : frais de lancement, achat initial, gaz (estime sur la chaine quand le formulaire est valide)
+    var fee = c.LAUNCH_FEE_WEI, achatOk = p.initialBuy !== "x" && p.initialBuy !== "0", valeur = x.i === 0 && p.initialBuy !== "x" ? fee.add(p.initialBuy) : fee;
+    var cle = e ? null : cleGaz(p), g = S.gaz && S.gaz.cle === cle ? S.gaz : null;
+    var gazTxt = !w.account ? "after you connect" : e ? "—" : !g ? "estimating…" : g.ko ? esc(g.ko) : "≈ " + fmtEth(g.wei) + " ETH";
+    var lignes = '<div class="l"><span title="Paid to the SWOGE treasury">Launch fee</span><b>' + fmtEth(fee) + " ETH</b></div>" +
+      '<div class="l"><span>Initial buy</span><b>' + (achatOk ? fmt(enAffiche(x, p.initialBuy), 6) + " " + (x.action ? "shares of " : "") + esc(x.symbol) : "none") + "</b></div>" +
+      '<div class="l"><span>Network gas</span><b>' + gazTxt + "</b></div>" +
+      '<div class="l tot"><span>You send</span><b>' + fmtEth(valeur) + " ETH" + (x.i > 0 && achatOk ? " + " + fmt(enAffiche(x, p.initialBuy), 6) + " " + (x.action ? "shares of " : "") + esc(x.symbol) : "") +
+      (g && !g.ko ? " + gas" : "") + "</b></div>" +
+      '<div class="apres">After launch, trading fees: buy ' + ((frais() + (sb || 0)) / 100).toFixed(2) + " % at opening, sell " + (frais() / 100).toFixed(2) + " %." +
+      (x.i > 0 && achatOk ? " The " + esc(x.symbol) + " amount is approved first (exact amount)." : "") + "</div>";
+    /* une erreur ne s'affiche qu'une fois le formulaire commence : un formulaire vide n'est pas « faux » */
+    var vide = !$("v5Name").value.trim() && !$("v5Sym").value.trim();
+    if (e) lignes += vide && !S.touche ? '<div class="apres">Enter a name and a symbol to launch.</div>' : '<div class="err">' + esc(e) + "</div>";
+    $("v5Resume").innerHTML = lignes;
     $("v5Lancer").disabled = !!e && !!w.account;
-    if (!w.account) $("v5Lancer").textContent = "Connect wallet to launch on V5"; else $("v5Lancer").textContent = "⚡ Launch on V5";
+    var sym = p.symbol ? " $" + p.symbol : "";
+    $("v5Lancer").textContent = w.account ? "🚀 Launch" + sym : "Connect wallet to launch";
+    if (!e && w.account && !g) estimeGaz(p, cle);
+  }
+  function fmtEth(wei) { var v = +E().utils.formatEther(wei); return v === 0 ? "0" : v >= 0.001 ? String(+v.toFixed(6)) : String(+v.toPrecision(3)); }
+  /* le gaz depend de tout ce qui part, sauf du sel : la cle de l'estimation */
+  function cleGaz(p) { var q = Object.assign({}, p, { salt: "" }); delete q._sortie; return JSON.stringify(q) + "|" + ((S.o.portefeuille() || {}).account || ""); }
+  function tuple(p) {
+    return [p.name, p.symbol, p.salt, [p.meta.description, p.meta.logo, p.meta.website, p.meta.twitter, p.meta.telegram], p.quote, p.shape, p.startShift,
+      p.creatorTaxBps, [p.split.creator, p.split.stakers, p.split.lp, p.split.buyback], [p.snipe.startBps, p.snipe.secs],
+      [p.limits.maxBuyPerSwapBps, p.limits.maxBuyPerBlockBps, p.limits.secs],
+      [p.alloc.creatorVestBps, p.alloc.cliff, p.alloc.duration, p.alloc.airdropBps, p.alloc.merkleRoot, p.alloc.claimSecs], p.feeRecipient, p.initialBuy, p.minTokensOut];
+  }
+  /* Estimation de LECTURE (eth_estimateGas depuis le compte connecte, sel au hasard) : rien n'est signe.
+     Un achat initial dans un ERC-20 pas encore autorise ne s'estime pas : c'est dit, le gaz sera montre a la signature. */
+  var _tGaz = null;
+  function estimeGaz(p, cle) {
+    clearTimeout(_tGaz);
+    _tGaz = setTimeout(async function () {
+      var Et = E(), w = S.o.portefeuille() || {}, x = S.q;
+      if (!w.account) return;
+      if (cleGaz(params()) !== cle) return maj();   /* le formulaire a change pendant l'attente : on repart de lui */
+      var q = Object.assign({}, p, { salt: Et.utils.hexlify(Et.utils.randomBytes(32)) });
+      var valeur = S.cfg.LAUNCH_FEE_WEI.add(x.i === 0 ? q.initialBuy : 0);
+      var r = { cle: cle };
+      try {
+        var gaz = await S.core.estimateGas.createToken(tuple(q), { value: valeur, from: w.account });
+        var prix = await lecteur().getGasPrice();
+        r.wei = prix.mul(gaz); r.gaz = gaz;
+      } catch (err) { r.ko = x.i > 0 && q.initialBuy !== "0" ? "shown at signing (approval first)" : "not estimated: " + String(raison(err)).slice(0, 60); }
+      S.gaz = r; maj();
+    }, 600);
   }
 
   /* ---- les messages du contrat (erreur Bound(string)), lisibles ---- */
@@ -492,10 +575,7 @@
         }
       }
       var cw = new Et.Contract(S.J.core, ABI_CORE, w.signer);
-      var tup = [p.name, p.symbol, p.salt, [p.meta.description, p.meta.logo, p.meta.website, p.meta.twitter, p.meta.telegram], p.quote, p.shape, p.startShift,
-        p.creatorTaxBps, [p.split.creator, p.split.stakers, p.split.lp, p.split.buyback], [p.snipe.startBps, p.snipe.secs],
-        [p.limits.maxBuyPerSwapBps, p.limits.maxBuyPerBlockBps, p.limits.secs],
-        [p.alloc.creatorVestBps, p.alloc.cliff, p.alloc.duration, p.alloc.airdropBps, p.alloc.merkleRoot, p.alloc.claimSecs], p.feeRecipient, p.initialBuy, p.minTokensOut];
+      var tup = tuple(p);
       note.textContent = "Simulating the launch…";
       // la simulation dit la borne exacte qui refuserait, avant toute signature
       await cw.callStatic.createToken(tup, { value: valeur, from: w.account });
@@ -539,7 +619,7 @@
     return r;
   }
   /* launchpad.html appelle ceci quand le portefeuille change : le bouton et le solde suivent */
-  function portefeuilleChange() { if (!S.q) return; litSolde().then(maj); }
+  function portefeuilleChange() { if (!S.q) return; S.gaz = null; litSolde().then(maj); }
 
   racine.SwogeV5 = { monte: demarre, calc: calc, portefeuilleChange: portefeuilleChange, ABI_CORE: ABI_CORE, _etat: S };
 })(typeof window !== "undefined" ? window : this);

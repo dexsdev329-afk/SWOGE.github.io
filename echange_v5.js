@@ -65,6 +65,9 @@
     "function getTokenInfo(address token) view returns ((address creator,address feeRecipient,address pendingRecipient,uint64 recipientReadyAt,uint64 launchedAt,address quote,uint8 shape,bool exists,(uint16 creator,uint16 stakers,uint16 lp,uint16 buyback) split,bytes32 poolId))",
     "function poolInfo(address token) view returns ((address currency0,address currency1,uint24 fee,int24 tickSpacing,address hooks) key,bool quoteIs0,address feeRecipient,(uint16 creator,uint16 stakers,uint16 lp,uint16 buyback) split)",
     "function currentFees(address token) view returns (uint16 buyBps, uint16 sellBps, uint32 snipeEndsAt)",
+    /* SwogeLaunchpadV5.updateMeta : onlyRecipient (le destinataire des frais, pas le createur), chaque champ <= 256 octets
+       (_checkMeta, V5.MAX_META_FIELD), emet MetadataUpdated puis Meta. Ordre du struct relu dans v5_artefacts.json. */
+    "function updateMeta(address token,(string description,string logo,string website,string twitter,string telegram) m)",
     "event Created(address indexed token, address indexed creator, string name, string symbol)",
     "event Meta(address indexed token, string telegram, string twitter, string website, string logo)",
     "event MetadataUpdated(address indexed token, string description, string logo, string website, string twitter, string telegram)",
@@ -233,6 +236,8 @@
     if (n === "TransactionDeadlinePassed") return "The order deadline passed: try again.";
     if (n === "IsPaused") return "The quote token is paused by its issuer: nobody can trade this pool right now.";
     if (n === "Bound") return String(a[0]);
+    if (n === "NotRecipient") return "Only this token's fee recipient can do this (connect that wallet).";
+    if (n === "Unknown") return "This token is not a SWOGE V5 token.";
     return n + (a.length ? "(" + a.map(String).join(", ") + ")" : "");
   }
   /** Une erreur ethers -> une phrase. Un refus dans le portefeuille se dit comme tel. */
@@ -346,10 +351,41 @@
     return attend(tx, quoi);
   }
 
+  /* ============================ logo et liens (updateMeta) ============================ */
+  var MAX_META = 256;   // V5.MAX_META_FIELD (SwogeTypesV5.sol), en octets UTF-8
+  function octets(x) { return new TextEncoder().encode(String(x || "")).length; }
+  /** Le dernier MetadataUpdated du jeton (description comprise : updateMeta remplace les cinq champs). */
+  async function metaActuelle(token) {
+    var J = await adresses(); if (!J) return null;
+    var c = core(), de = (J.blocks && J.blocks.core) || 0;
+    var l = await parFenetres(function (a, b) { return c.queryFilter(c.filters.MetadataUpdated(token), a, b); }, de, FENETRE_NOYAU);
+    l.sort(function (a, b) { return a.blockNumber - b.blockNumber || a.logIndex - b.logIndex; });
+    var e = l[l.length - 1]; if (!e) return { description: "", logo: "", website: "", twitter: "", telegram: "" };
+    return { description: e.args.description, logo: e.args.logo, website: e.args.website, twitter: e.args.twitter, telegram: e.args.telegram };
+  }
+  /** Le miroir de _checkMeta : null, ou le message du contrat. */
+  function verifieMeta(m) {
+    return ["description", "logo", "website", "twitter", "telegram"].some(function (k) { return octets(m[k]) > MAX_META; }) ? "meta field <= 256 bytes" : null;
+  }
+  /** o : { signer, compte, token, meta }. Relit le destinataire, simule (eth_call depuis le compte), puis signe. */
+  async function majMeta(o) {
+    var Et = E(), J = await adresses(); if (!J) throw Object.assign(new Error("SWOGE V5 is not configured."), { v5: true });
+    var m = o.meta, err = verifieMeta(m); if (err) throw Object.assign(new Error(err), { v5: true });
+    var ti = await core().getTokenInfo(o.token);
+    if (!ti.exists) throw Object.assign(new Error("This token is not a SWOGE V5 token."), { v5: true });
+    if (!meme(ti.feeRecipient, o.compte)) throw Object.assign(new Error("Only this token's fee recipient (" + ti.feeRecipient + ") can edit its logo and links."), { v5: true });
+    var data = core().interface.encodeFunctionData("updateMeta", [o.token, [m.description || "", m.logo || "", m.website || "", m.twitter || "", m.telegram || ""]]);
+    await simule({ from: o.compte, to: J.core, data: data }, null, false, true);
+    var tx = await o.signer.sendTransaction({ to: J.core, data: data });
+    var rc = await attend(tx, "update");
+    delete S.infos[String(o.token).toLowerCase()];
+    return rc;
+  }
+
   /* ============================ journaux ============================ */
-  async function parFenetres(lire, depuis) {
-    var fin = await lecteur().getBlockNumber(), plages = [];
-    for (var de = depuis; de <= fin; de += FENETRE) plages.push([de, Math.min(fin, de + FENETRE - 1)]);
+  async function parFenetres(lire, depuis, fenetre, jusqua) {
+    var F = fenetre || FENETRE, fin = jusqua != null ? jusqua : await lecteur().getBlockNumber(), plages = [];
+    for (var de = depuis; de <= fin; de += F) plages.push([de, Math.min(fin, de + F - 1)]);
     var parts = await Promise.all(plages.map(function (p) {
       return lire(p[0], p[1]).catch(function () { return new Promise(function (ok) { setTimeout(ok, 800); }).then(function () { return lire(p[0], p[1]); }); });
     }));
@@ -407,11 +443,49 @@
     return { detenus: lignes.filter(function (L) { return L.bal > 0; }), crees: lignes.filter(function (L) { return L.cree; }), n: tous.length };
   }
 
+  /* ============================ la grille d'Explore ============================ */
+  /* 18/10/2026 : « les jetons V5 doivent apparaitre partout » — Explore ne lisait que V2/V3/V4.
+     Le noyau est lu depuis son bloc de deploiement (adresses_v5.json, blocks.core = 91 898 462) par
+     tranches de 10 000 000 blocs : la plus grande lecture que le noeud accepte (il refuse au-dela,
+     mesure du 30/09/2026, launchpad_v4_frais.test.js). Le noyau emet peu : une tranche suffit
+     aujourd'hui (≈ 110 000 blocs depuis le deploiement). */
+  var FENETRE_NOYAU = 10000000;
+  async function liste() {
+    var J = await adresses(); if (!J) return [];
+    var c = core(), de = (J.blocks && J.blocks.core) || 0;
+    var lus = await Promise.all([
+      parFenetres(function (a, b) { return c.queryFilter(c.filters.LaunchedV5(), a, b); }, de, FENETRE_NOYAU),
+      parFenetres(function (a, b) { return c.queryFilter(c.filters.Created(), a, b); }, de, FENETRE_NOYAU),
+      parFenetres(function (a, b) { return c.queryFilter(c.filters.Meta(), a, b); }, de, FENETRE_NOYAU).catch(function () { return []; }),
+      parFenetres(function (a, b) { return c.queryFilter(c.filters.MetadataUpdated(), a, b); }, de, FENETRE_NOYAU).catch(function () { return []; })
+    ]);
+    var noms = {}, meta = {};
+    lus[1].forEach(function (e) { noms[e.args.token.toLowerCase()] = { name: e.args.name, sym: e.args.symbol }; });
+    lus[2].concat(lus[3]).sort(function (a, b) { return a.blockNumber - b.blockNumber || a.logIndex - b.logIndex; })
+      .forEach(function (e) { meta[e.args.token.toLowerCase()] = { logo: e.args.logo, web: e.args.website, tw: e.args.twitter, tg: e.args.telegram }; });
+    var vus = {}, rows = [];
+    lus[0].forEach(function (e) {
+      var k = e.args.token.toLowerCase(); if (vus[k]) return; vus[k] = 1;
+      rows.push({ addr: e.args.token, name: (noms[k] || {}).name || "?", sym: (noms[k] || {}).sym || "?", quote: e.args.quote, poolId: e.args.poolId,
+        bn: e.blockNumber, li: e.logIndex, meta: meta[k] || {} });
+    });
+    return rows;
+  }
+  /** Le nombre d'echanges de chaque pool V5 entre deux blocs (evenements Swap du PoolManager, poolId en sujet 1). */
+  async function activite(poolIds, de, a) {
+    var J = await adresses(); if (!J || !poolIds.length) return {};
+    var Et = E(), sujet = new Et.utils.Interface([SWAP_PM]).getEventTopic("Swap"), n = {};
+    var logs = await parFenetres(function (x, y) { return lecteur().getLogs({ address: J.poolManager, topics: [sujet, poolIds], fromBlock: x, toBlock: y }); }, de, FENETRE, a);
+    logs.forEach(function (l) { var k = String(l.topics[1]).toLowerCase(); n[k] = (n[k] || 0) + 1; });
+    return n;
+  }
+
   racine.SwogeV5Echange = {
     initialise: initialise, adresses: adresses, info: info, frais: frais, prix: prix, prixDe: prixDe, devis: devis,
     ordre: ordre, corps: corps, echange: echange, simule: simule, raison: raison, decode: decode, fraisCreateur: fraisCreateur,
     distribue: function (o) { return geste(o, "distribute"); }, retire: function (o) { return geste(o, "withdraw"); },
-    swaps: swaps, portefeuille: portefeuille, ERREURS: ERREURS,
+    swaps: swaps, portefeuille: portefeuille, liste: liste, activite: activite, metaActuelle: metaActuelle, verifieMeta: verifieMeta, majMeta: majMeta,
+    MAX_META: MAX_META, ERREURS: ERREURS,
     ADR: { ROUTEUR: ROUTEUR, QUOTEUR: QUOTEUR, ETAT: ETAT, PERMIT2: PERMIT2 }, ACTES: ACTES, V4_SWAP: V4_SWAP, _etat: S
   };
 })(typeof window !== "undefined" ? window : this);

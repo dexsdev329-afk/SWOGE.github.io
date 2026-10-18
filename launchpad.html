@@ -140,8 +140,8 @@ video{ max-width:100%; }
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
 <script src="lance_v4.js?v=6f7f9ced"></script>
-<script src="lance_v5.js?v=deb498e0"></script>
-<script src="echange_v5.js?v=8fe06129"></script>
+<script src="lance_v5.js?v=5af3c890"></script>
+<script src="echange_v5.js?v=c4fc885f"></script>
 <!-- 14/10/2026 : le paquet UMD de WalletConnect 2.13.3 lit « process » (une variable de Node,
      absente d'un navigateur) et plante au chargement : « process is not defined », mesure sur une
      page vide, disparu avec ce shim. -->
@@ -979,6 +979,58 @@ a.chip.plein:hover{background:var(--goldlite);color:#fff}
   .modal > header{padding:12px 14px}.mb{padding:14px}
 }
 @media (max-width:380px){ .bb-l .presets button{padding:4px 6px} .ftiles{grid-template-columns:1fr} .mbar .btn{width:70px} .lp-head .tab{font-size:10px;letter-spacing:0} }
+/* ===== 18/10/2026 : la page simplifiee (« trop d options, les gens ne s y retrouvent pas ») =====
+   Trois onglets ; Launch = V5 en cinq champs, le reste replie ; les lanceurs d avant sous un lien en bas ;
+   Explore = une grille et trois filtres ; la fiche = prix, graphique, echange, securite en une ligne,
+   le reste sous « More details ». Couleurs et polices : celles de la page, rien de neuf. */
+.lp-legacy{margin-top:18px}
+.lp-legacy>summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-height:48px;padding:6px 4px;color:var(--dim);font-size:13.5px;font-weight:600}
+.lp-legacy>summary::-webkit-details-marker{display:none}
+.lp-legacy>summary:before{content:'›';display:inline-block;transition:transform .15s;font-size:16px}
+.lp-legacy[open]>summary:before{transform:rotate(90deg)}
+.lp-legacy>summary small{font-weight:400;font-size:12px}
+.lp-legacy>.panel{margin-top:8px}
+.ex-tete{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px}
+.ex-tete .btn{margin:0;min-width:44px;min-height:44px;padding:0 12px}
+.ex-filtres{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.ex-filtres .sortseg button{min-height:40px}
+.ex-filtres select{width:auto;min-height:40px;margin-left:auto}
+.tv5{display:inline-block;font-family:'Space Mono',monospace;font-size:9.5px;letter-spacing:.06em;padding:1px 6px;border-radius:99px;background:var(--gold);color:#fff;vertical-align:1px}
+.tv-retour{display:inline-flex;align-items:center;min-height:40px;margin:0 0 6px;font-size:13px}
+.tv-sur{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;margin:-6px 0 12px;font-size:12.5px;line-height:1.4}
+.tv-sur>b{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);font-weight:700}
+.tv-sur .s{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border:1px solid var(--line);border-radius:99px;background:var(--void2)}
+.tv-sur .s.ok:before{content:'✓';color:var(--signal);font-weight:800}
+.tv-sur .s.av:before{content:'!';color:var(--danger);font-weight:800}
+.tv-sur .s.nl:before{content:'?';color:var(--dim);font-weight:800}
+.tv-sur a{color:inherit}
+.tv-part{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 16px}
+.tv-part a,.tv-part button{display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:0 12px;border:1px solid var(--line);border-radius:99px;background:var(--void2);color:var(--cream);font:600 12.5px/1 'Inter',system-ui,sans-serif;cursor:pointer;text-decoration:none}
+.tv-plus{margin-top:18px;border:1px solid var(--line);border-radius:16px;background:var(--void2)}
+.tv-plus>summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-height:52px;padding:8px 16px;font-weight:700}
+.tv-plus>summary::-webkit-details-marker{display:none}
+.tv-plus>summary:after{content:'▾';margin-left:auto;color:var(--dim)}
+.tv-plus[open]>summary:after{content:'▴'}
+.tv-plus>summary small{font-weight:400;color:var(--dim);font-size:12px}
+.tv-plus-grille{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:20px;align-items:start;padding:0 16px 16px}
+.tv-plus .pied-band{padding:0 16px 16px}
+.mtabs[hidden]{display:none!important}
+.tv-meta{margin:-6px 0 16px;max-width:560px}
+.tv-meta #tmForm{margin-top:10px;border:1px solid var(--line);border-radius:12px;padding:12px;background:var(--void2)}
+.tm-logo{display:flex;gap:10px;align-items:flex-end}.tm-logo .field{flex:1 1 auto;min-width:0}.tm-logo img{width:48px;height:48px;border-radius:10px;object-fit:cover;border:1px solid var(--line);margin-bottom:12px}
+@media (max-width:1100px){ .tv-plus-grille{grid-template-columns:minmax(0,1fr) 320px} }
+@media (max-width:760px){
+  .lp-head .tab{padding:12px 2px;font-size:12px;min-height:44px}
+  .lp-head .tab:nth-child(4){border-radius:0}
+  .lp-head .tab:nth-child(3){border-radius:0 11px 11px 0}
+  .tv-plus-grille{display:flex;flex-direction:column;gap:14px;padding:0 10px 10px}
+  .ex-filtres select{margin-left:0;flex:1 1 100%}
+  .ex-filtres .sortseg{flex:1 1 100%;display:flex}
+  .ex-filtres .sortseg button{flex:1 1 0;min-height:44px}
+  .ex-filtres select{min-height:44px}
+  .tv-part a,.tv-part button{min-height:44px;flex:1 1 0;justify-content:center}
+  .tv-retour{min-height:44px}
+}
 </style>
 <body>
 <!-- ==================== LA BARRE BLANCHE ====================
@@ -1084,14 +1136,16 @@ a.chip.plein:hover{background:var(--goldlite);color:#fff}
       <img class="logo" id="logo" src="img/fa05d30cc698.jpg" alt="SWOGE">
       <div>
         <h1><span>$SWOGE</span> FUN</h1>
-        <div class="sub">Launchpad · Curve or Instant · Robinhood Chain</div>
+        <div class="sub">Launchpad · Robinhood Chain</div>
       </div>
     </div>
     <div class="tabs">
-      <button class="tab on" data-tab="create"><span class="e">＋ </span>Create</button>
+      <!-- 18/10/2026 : trois onglets seulement (« trop d options ») ; la fiche d un jeton s ouvre depuis
+           Explore, Portfolio ou ?token= : son bouton reste, cache, pour switchTab("trade"). -->
+      <button class="tab on" data-tab="create"><span class="e">🚀 </span>Launch</button>
       <button class="tab" data-tab="explore"><span class="e">🔎 </span>Explore</button>
-      <button class="tab" data-tab="trade"><span class="e">📈 </span>Trade</button>
       <button class="tab" data-tab="mine"><span class="e">👤 </span>Portfolio</button>
+      <button class="tab" data-tab="trade" hidden aria-hidden="true" tabindex="-1">Token</button>
     </div>
   </div>
 
@@ -1103,8 +1157,14 @@ a.chip.plein:hover{background:var(--goldlite);color:#fff}
 
   <!-- ============ CREATE ============ -->
   <section id="tab-create">
+    <!-- 18/10/2026 : SWOGE V5 (lance_v5.js). Inerte sans contrats/v5/adresses_v5.json : « V5 coming soon ». -->
+    <!-- 18/10/2026 : V5 d abord (formulaire simple) ; les lanceurs d avant restent la, intacts, replies.
+         Ouverts d office quand V5 est eteint, ou quand un lien du bot Telegram (?pool=) les vise. -->
+    <div class="panel" id="v5Panel"></div>
+    <details class="lp-legacy" id="lpLegacy">
+      <summary>Other launch modes (legacy) <small>V4 instant, $SWOGE pool, Solana / Pump.fun</small></summary>
     <div class="panel">
-      <h2>AI Agent Launch 🤖</h2>
+      <h2>Legacy launchers <span class="count">V4 instant · $SWOGE pool · Solana</span></h2>
       <!-- 05/10 : l'ancien bouton « Classic (V3) » retire ; chaque jeton se lance avec son agent IA.
            Restent les deux launchpads V4 (deployes et relus sur la chaine le 30/09) : pool $SWOGE ou ETH. -->
       <div class="lp-pools" role="radiogroup" aria-label="Launch pool">
@@ -1164,32 +1224,27 @@ a.chip.plein:hover{background:var(--goldlite);color:#fff}
       <div class="note" id="createNote">Connect a wallet first.</div>
       <div class="lp-kit" id="lpKit" hidden></div>
     </div>
-    <!-- 18/10/2026 : SWOGE V5 (lance_v5.js). Inerte tant que contrats/v5/adresses_v5.json n existe pas :
-         « V5 coming soon », et le formulaire V4 ci-dessus reste exactement celui d avant. -->
-    <div class="panel" id="v5Panel"></div>
+    </details>
   </section>
 
   <!-- ============ EXPLORE ============ -->
   <section id="tab-explore" class="hidden">
-    <div class="panel" id="trendingPanel" style="display:none">
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px">
-        <h2 style="margin:0">🔥 Trending <span class="count">by 24h volume</span></h2>
-        <div class="totvol" id="trendTotVol"></div>
-      </div>
-      <div id="trendingStrip" class="trend-grid"></div>
-    </div>
+    <!-- 18/10/2026 : une seule grille. Le bandeau « Trending » a part est retire : le filtre Trending
+         trie la meme grille par echanges recents. renderTrending() ne trouve plus #trendingStrip et s arrete. -->
     <div class="panel">
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+      <div class="ex-tete">
         <h2 style="margin:0">Explore <span class="count" id="listInfo"></span></h2>
-        <div class="sortseg" id="sortSeg">
-          <button data-sort="vol">🔥 Trending</button>
-          <button data-sort="new" class="on">Newest</button>
-          <button data-sort="mc">Market cap</button>
-          <button data-sort="old">Oldest</button>
-        </div>
+        <button class="btn" id="reload" type="button" aria-label="Reload the list">↻</button>
       </div>
-      <div class="field" style="margin-bottom:10px"><input id="search" placeholder="🔎 Search name, symbol or address…"></div>
-      <div class="btnrow" style="margin-bottom:12px"><button class="btn" id="reload">↻ Reload</button></div>
+      <div class="field" style="margin-bottom:10px"><input id="search" type="search" placeholder="🔎 Search name, symbol or address…" autocomplete="off"></div>
+      <div class="ex-filtres">
+        <div class="sortseg" id="sortSeg" role="group" aria-label="Filter">
+          <button type="button" data-sort="new" class="on">New</button>
+          <button type="button" data-sort="vol">🔥 Trending</button>
+          <button type="button" data-sort="v5">V5 only</button>
+        </div>
+        <select id="sortPlus" aria-label="More sorting"><option value="">More sorts…</option><option value="mc">Market cap</option><option value="old">Oldest first</option></select>
+      </div>
       <div id="list" class="tgrid"></div>
     </div>
   </section>
@@ -1204,6 +1259,7 @@ a.chip.plein:hover{background:var(--goldlite);color:#fff}
       <button class="btn" id="loadTrade">Load token</button>
     </div>
     <div id="tradeView" class="hidden">
+      <button type="button" class="lnk tv-retour" id="tvBack">← Back</button>
       <section class="id">
         <span class="id-logo" id="tvLogo"></span>
         <div style="min-width:0">
@@ -1246,8 +1302,14 @@ a.chip.plein:hover{background:var(--goldlite);color:#fff}
           <div class="tip-pop" id="tvHoldT"></div></div>
       </section>
       <div class="links"><span id="tvSocials"></span><span id="tvLock"></span><span class="src" id="tvLinksSrc"></span></div>
+      <!-- 18/10/2026 : la securite en une ligne (proprietaire, LP, taxe, source verifiee), lue a l ouverture ;
+           le detail (SHIELD, contrat) est sous « More details ». Puis le partage. -->
+      <div class="tv-sur" id="tvSafety" aria-live="polite"><b>Safety</b><span class="attente">reading…</span></div>
+      <div class="tv-part" id="tvShare"></div>
+      <!-- 18/10/2026 : le destinataire des frais d un jeton V5 change son logo et ses liens (updateMeta). -->
+      <div class="tv-meta" id="tvMetaEdit" hidden></div>
 
-      <div class="seg mtabs" id="mtabs"><button class="on" data-m="chart" type="button">CHART</button><button data-m="act" type="button">ACTIVITY</button></div>
+      <div class="seg mtabs" id="mtabs" hidden><button class="on" data-m="chart" type="button">CHART</button><button data-m="act" type="button">ACTIVITY</button></div>
 
       <div class="grille" id="grille">
         <div class="gauche">
@@ -1267,32 +1329,6 @@ a.chip.plein:hover{background:var(--goldlite);color:#fff}
             <div class="ch-leg"><span class="k"><i class="ln"></i>pool price after each swap</span><span class="k"><i style="background:var(--buy)"></i>buy</span><span class="k"><i style="background:var(--sell)"></i>sell</span><span id="chN"></span></div>
             <div id="chart" tabindex="0" role="img" aria-label="Price chart"><div class="ch-tip" id="chTip"></div></div>
             <div class="ch-n" id="chSrc"></div>
-          </section>
-
-          <section class="panel tabscard" id="tvHistPanel">
-            <div class="tc-top">
-              <div class="seg" id="tcSeg"><button class="on" data-t="trades" type="button">TRADES<em></em></button><button data-t="holders" type="button">HOLDERS<em></em></button><button data-t="contract" type="button">CONTRACT</button></div>
-              <div class="seg" id="tradeFilter"><button class="on" data-f="all" type="button">All</button><button data-f="buy" type="button">Buys</button><button data-f="sell" type="button">Sells</button></div>
-            </div>
-            <div id="tvTrades"><div class="attente">Reading the pool swaps…</div></div>
-          </section>
-
-          <section class="panel agents" id="agents">
-            <div class="ag-head">
-              <div>
-                <h2>Agents · what they read on <span class="nmJ"></span></h2>
-                <p>Three readers. Each shows what it sees, its source, how many observations it rests on and when it read. None of them says buy or sell.</p>
-              </div>
-              <button type="button" class="lnk" data-open="how">How the agents work ›</button>
-            </div>
-            <div id="agList"><div class="attente">Reading…</div></div>
-          </section>
-
-          <section class="panel" id="tvAgentPanel">
-            <h2>🧠 This token's AI agent</h2>
-            <div class="note" style="margin-top:0">One agent per token. If you created this token, set it up, pause it, link its X account, and see its activity &amp; spending here — just prove it with a signature (no gas).</div>
-            <button class="btn full" id="tvAgentBtn" type="button" style="margin-top:8px">🧠 Manage this token's agent</button>
-            <div id="tvAgentBox" style="margin-top:10px"></div>
           </section>
         </div>
 
@@ -1341,6 +1377,40 @@ a.chip.plein:hover{background:var(--goldlite);color:#fff}
             <button class="btn full" id="claimBtn" type="button" style="display:none">💰 Claim my holder rewards</button>
             <div class="bb-foot">You sign with your own wallet; SWOGE never holds your keys.</div>
           </section>
+        </div>
+      </div>
+      <!-- 18/10/2026 : le reste de la fiche (echanges et detenteurs, les trois agents, l agent du jeton,
+           la fiche securite detaillee, les frais du createur, l offre) sous un seul pli. Rien n est retire :
+           chaque panneau se remplit comme avant, il est seulement replie. -->
+      <details class="tv-plus" id="tvPlus">
+        <summary>More details <small>trades &amp; holders · agents · security · creator fees · supply</small></summary>
+        <div class="tv-plus-grille">
+          <div class="gauche">
+          <section class="panel tabscard" id="tvHistPanel">
+            <div class="tc-top">
+              <div class="seg" id="tcSeg"><button class="on" data-t="trades" type="button">TRADES<em></em></button><button data-t="holders" type="button">HOLDERS<em></em></button><button data-t="contract" type="button">CONTRACT</button></div>
+              <div class="seg" id="tradeFilter"><button class="on" data-f="all" type="button">All</button><button data-f="buy" type="button">Buys</button><button data-f="sell" type="button">Sells</button></div>
+            </div>
+            <div id="tvTrades"><div class="attente">Reading the pool swaps…</div></div>
+          </section>
+          <section class="panel agents" id="agents">
+            <div class="ag-head">
+              <div>
+                <h2>Agents · what they read on <span class="nmJ"></span></h2>
+                <p>Three readers. Each shows what it sees, its source, how many observations it rests on and when it read. None of them says buy or sell.</p>
+              </div>
+              <button type="button" class="lnk" data-open="how">How the agents work ›</button>
+            </div>
+            <div id="agList"><div class="attente">Reading…</div></div>
+          </section>
+          <section class="panel" id="tvAgentPanel">
+            <h2>🧠 This token's AI agent</h2>
+            <div class="note" style="margin-top:0">One agent per token. If you created this token, set it up, pause it, link its X account, and see its activity &amp; spending here — just prove it with a signature (no gas).</div>
+            <button class="btn full" id="tvAgentBtn" type="button" style="margin-top:8px">🧠 Manage this token's agent</button>
+            <div id="tvAgentBox" style="margin-top:10px"></div>
+          </section>
+          </div>
+          <div class="droite">
           <section class="panel bf" id="bf"><h2>🛡️ Before you trade <span class="who">SHIELD</span></h2><div class="attente">Reading…</div></section>
           <section class="panel rewards" id="rewards">
             <div class="tc-top" style="margin-bottom:12px"><h2 id="rwTitle">Trading fees</h2><button type="button" class="pill-fees" data-open="fees"><i>%</i>Fees ›</button></div>
@@ -1348,9 +1418,10 @@ a.chip.plein:hover{background:var(--goldlite);color:#fff}
             <button class="btn full" id="tvCollectBtn" type="button">💰 Collect fees</button>
           </section>
           <section class="panel supply" id="supply"><h2 style="margin-bottom:12px">Supply &amp; holders</h2><div id="supBody"><div class="attente">Reading the transfers…</div></div></section>
+          </div>
         </div>
-      </div>
-      <div class="pied-band" id="piedBand"></div>
+        <div class="pied-band" id="piedBand"></div>
+      </details>
     </div>
   </section>
 
@@ -1370,9 +1441,9 @@ a.chip.plein:hover{background:var(--goldlite);color:#fff}
     <div class="pied-cols">
       <div>
         <div class="brand"><img class="logo" src="img/fa05d30cc698.jpg" alt="SWOGE"><div><h2><span>$SWOGE</span> FUN</h2></div></div>
-        <p>Instant Uniswap launches on Robinhood Chain, paired with $SWOGE or ETH. The whole supply goes into the pool and the liquidity stays in the launchpad.</p>
+        <p>Uniswap launches on Robinhood Chain, paired with ETH, USDG, $SWOGE or a stock token. The whole supply goes into the pool and the liquidity stays locked.</p>
       </div>
-      <div><h5>Launchpad</h5><button type="button" class="pl" data-go="create">Create</button><button type="button" class="pl" data-go="explore">Explore</button><button type="button" class="pl" data-go="trade">Trade</button><button type="button" class="pl" data-go="mine">Portfolio</button></div>
+      <div><h5>Launchpad</h5><button type="button" class="pl" data-go="create">Launch</button><button type="button" class="pl" data-go="explore">Explore</button><button type="button" class="pl" data-go="mine">Portfolio</button></div>
       <div><h5>SWOGE</h5><a href="index.html">Home</a><a href="games.html">Casino</a><a href="swogebet.html">Sports</a><a href="swoge_ai.html">AI Trading</a><a href="swoge_agents.html">Agents</a></div>
       <div><h5>Read more</h5><a href="whitepaper.html">Docs</a><a href="contrats/SwogeFunV3.sol" target="_blank" rel="noopener">Contract source</a><a href="#" data-open="how">How the agents work</a><a href="token_agents.html">AI Agents</a></div>
       <div><h5>Community</h5><a href="https://x.com/SwoleDogeSwoge" target="_blank" rel="noopener">X</a><a href="https://t.me/swoleswoge" target="_blank" rel="noopener">Telegram</a><a href="https://dexscreener.com/robinhood/0x2dc0fb72d9284228046cc95910eeaabebfe48456" target="_blank" rel="noopener">$SWOGE chart</a></div>
@@ -1606,6 +1677,7 @@ async function connectWith(eth){
     rawEth=eth;
     $("#walletBtn").textContent=account.slice(0,6)+"…"+account.slice(-4);
     if(window.SwogeV5) window.SwogeV5.portefeuilleChange();
+    if(curToken) editeurMeta(curToken);
     /* Le formulaire vise le V3, donc c'est SON adresse qui decide — pas celle
        du V2. Sans cette distinction, connecter un portefeuille reactivait le
        bouton que `updateFeeSummary` venait de desactiver, et le lancement
@@ -1638,6 +1710,7 @@ async function disconnect(){
   account=null; signer=null; provider=null; rawEth=null;
   $("#walletBtn").textContent="Connect wallet";
   if(window.SwogeV5) window.SwogeV5.portefeuilleChange();
+  if(curToken) editeurMeta(curToken);
   $("#createBtn").disabled=true;
   if(curToken) refreshTrade();
   if(!$("#tab-mine").classList.contains("hidden")) loadMine();
@@ -1722,9 +1795,22 @@ document.querySelectorAll(".tab").forEach(function(t){
     [].forEach.call(document.querySelectorAll(".mnav [data-go]"),function(b){ b.classList.toggle("on", b.dataset.go===t.dataset.tab || (b.dataset.go==="create" && /trade|mine/.test(t.dataset.tab))); });
     if(t.dataset.tab!=="trade"){ try{ var u=new URL(location.href); if(u.searchParams.has("token")){ u.searchParams.delete("token"); history.replaceState(null,"",u.toString()); } }catch(e){} }
     else if(curToken){ try{ var u2=new URL(location.href); u2.searchParams.set("token",curToken); history.replaceState(null,"",u2.toString()); }catch(e){} }
+    if(t.dataset.tab!=="trade") ongletAvant=t.dataset.tab;
     if(t.dataset.tab==="explore") loadList();
     if(t.dataset.tab==="mine") loadMine();
   };
+});
+/* 18/10/2026 : la fiche n a plus d onglet ; « ← Back » ramene a l onglet d ou l on venait (Explore par defaut). */
+var ongletAvant="explore";
+$("#tvBack").onclick=function(){ switchTab(ongletAvant==="create"?"explore":ongletAvant); window.scrollTo({ top:0 }); };
+/* Les lanceurs d avant : ouverts d office si V5 est eteint (rien a lancer en V5) ou si un lien les vise (?pool=). */
+window.addEventListener("swogev5",function(e){ if(e.detail && !e.detail.pret) $("#lpLegacy").open=true; });
+try{ if(new URLSearchParams(location.search).has("pool")) $("#lpLegacy").open=true; }catch(e){}
+/* Un lien vers un panneau replie (« 3 agents » → #agents) ouvre d abord « More details ». */
+document.addEventListener("click",function(e){
+  var a=e.target.closest ? e.target.closest('a[href^="#"]') : null; if(!a) return;
+  var cible=document.getElementById(a.getAttribute("href").slice(1));
+  var pli=cible && cible.closest("details"); if(pli && !pli.open){ pli.open=true; setTimeout(function(){ cible.scrollIntoView({ block:"start" }); },0); }
 });
 $("#mineReload").onclick=loadMine;
 
@@ -2495,8 +2581,14 @@ function loadLogos(){
     for(var k in j){ if(k.indexOf("0x")===0) logoMap[k.toLowerCase()]=j[k]; }
   }).catch(function(){});
 }
+/* 18/10/2026 : JETONS DE LA MAISON -> LOGO LOCAL. Seulement les jetons de SWOGE, et seulement quand le logo
+   ecrit sur la chaine ne peut plus etre change. $SWOGEBET est ne sur le launchpad V3 (0xc163…856E, bloc
+   48 657 238) avec un logo televerse : une image webp de 96 px en data: (7 751 octets), floue a l ecran ;
+   le V3 n a aucune fonction pour changer un Meta. Le logo choisi par le proprietaire est servi par le site. */
+var LOGOS_MAISON={ "0xc0aed547862fba5d7d9fbf3cb14204cd756c8bea":"img/tokens/swogebet.png" };
 function logoFor(addr){
   var k=(addr||"").toLowerCase();
+  if(LOGOS_MAISON[k]) return LOGOS_MAISON[k];
   var m=metaMap[k];                       // on-chain logo (Meta event) wins
   if(m && m.logo) return m.logo;
   return logoMap[k] || "";                // logos.json fallback
@@ -2528,7 +2620,7 @@ function socialsHTML(m){
   if(m.web) out+='<a href="'+esc(m.web)+'" target="_blank" rel="noopener">Website ↗</a>';
   return out ? '<div class="socials">'+out+'</div>' : "";
 }
-var exploreEu=null, exploreSu=null, sortMode="new";
+var exploreEu=null, exploreSu=null, sortMode="new", v5Seul=false;
 /* Capitalisation en ACTIF DE COTATION, pas en ETH : un jeton V3 se cote en
    $SWOGE. `quote` vient du lanceur d'origine du jeton. */
 function mcOfToken(pool, addr, quote){
@@ -2604,23 +2696,32 @@ async function dexCharge(pools){
 /* Le taux qui convertit l'actif de cotation en dollars. Null tant qu'il n'est
    pas connu — on affiche alors la quantite brute, jamais un dollar invente. */
 function usdRate(v){ return enSwoge(v) ? exploreSu : exploreEu; }
+/* Une ligne V5 a SA cotation (ETH, $SWOGE, USDG ou une action) : ETH et $SWOGE ont un taux lu ici,
+   les autres non — la carte reste alors dans l unite de la cotation, nommee. */
+function tauxLigne(r){ if(r.v5) return r.qNatif ? exploreEu : (r.qSwoge ? exploreSu : null); return usdRate(r.v); }
+function symLigne(r){ return r.v5 ? (r.qNatif ? "ETH" : (r.qSwoge ? "SWOGE" : (r.qsym||"?"))) : venue(r.v).sym; }
 function mcUsd(r){
   var d=dexLu(r.pool);
   if(d && d.fdv!=null) return d.fdv;              // le chiffre de DexScreener, tel quel
-  var t=usdRate(r.v);
+  var t=tauxLigne(r);
   return (r.mcQuote!=null && t!=null) ? r.mcQuote*t : null;
 }
-function volUsd(r){ var t=usdRate(r.v); return (r.vol24 && t!=null) ? r.vol24*t : 0; }
+function volUsd(r){ var t=tauxLigne(r); return (r.vol24 && t!=null) ? r.vol24*t : 0; }
 function mcText(r){
   var u=mcUsd(r);
   if(u!=null) return fmtUsd(u)+" <small>MC</small>";
   /* PAS DE DOLLARS : on le DIT. Afficher `167.26M SWOGE` a cote d'un `$4.4K`
      ailleurs, c'est donner deux nombres sans dire lequel est en quoi. */
-  if(r.mcQuote!=null) return fmtQty(r.mcQuote)+" "+venue(r.v).sym+" <small>MC (no $ rate)</small>";
+  if(r.mcQuote!=null) return fmtQty(r.mcQuote)+" "+esc(symLigne(r))+" <small>MC (no $ rate)</small>";
   return r.mode===0 ? "on curve" : "<small class='mcpend'>…</small>";
 }
 // fetch market caps in the background with limited concurrency, update cards in place
 async function loadMarketCaps(rows){
+  /* les jetons V5 : prix du pool v4 (StateView.getSlot0) × 10^9 jetons, dans leur cotation */
+  rows.filter(function(r){ return r.v5; }).forEach(async function(r){
+    try{ var I=await window.SwogeV5Echange.info(r.addr); r.qsym=I.sym; r.mcQuote=(await window.SwogeV5Echange.prix(I))*1e9; }catch(e){}
+    var el=document.querySelector('.tcard[data-addr="'+r.addr+'"] .tmc'); if(el) el.innerHTML=mcText(r);
+  });
   var pending=rows.filter(function(r){ return r.pool; }), i=0, CONC=8;
   /* DexScreener d'abord, en un appel pour trente pools : s'il repond, le
      calcul par la chaine ci-dessous ne sert plus qu'a remplir `mcQuote` pour
@@ -2648,13 +2749,22 @@ async function loadVolumes(rows){
     var dt=(b1.timestamp-b0.timestamp)/span || 2;
     var blocks24h=Math.min(tip, Math.floor(86400/Math.max(0.2,dt)));
     var pools=rows.filter(function(r){return r.pool;}).map(function(r){return r.pool;});
+    rows.forEach(function(r){ r.vol24=0; r.swaps24=0; });
+    /* 18/10/2026 : « Trending » = le nombre d echanges des dernieres 24 h (un echange se compte ; un
+       volume se compare mal entre cotations sans taux). Les pools V5 vivent dans le PoolManager v4. */
+    var v5s=rows.filter(function(r){ return r.v5 && r.poolId; });
+    if(v5s.length && window.SwogeV5Echange) window.SwogeV5Echange.activite(v5s.map(function(r){ return r.poolId; }), Math.max(0,tip-blocks24h), tip).then(function(n){
+      v5s.forEach(function(r){ r.swaps24=n[String(r.poolId).toLowerCase()]||0; });
+      if(sortMode==="vol") renderList();
+    }).catch(function(){});
     if(!pools.length) return;
-    var byPool={}; rows.forEach(function(r){ if(r.pool) byPool[r.pool.toLowerCase()]=r; r.vol24=0; });
+    var byPool={}; rows.forEach(function(r){ if(r.pool) byPool[r.pool.toLowerCase()]=r; });
     // raw eth_getLogs — ethers' getLogs wrapper rejects an address array
     var logs=await prov.send("eth_getLogs",[{address:pools, topics:[SWAP_TOPIC],
       fromBlock:ethers.utils.hexValue(Math.max(0,tip-blocks24h)), toBlock:ethers.utils.hexValue(tip)}]);
     logs.forEach(function(l){
       var r=byPool[l.address.toLowerCase()]; if(!r) return;
+      r.swaps24++;
       try{
         var a0=ethers.BigNumber.from("0x"+l.data.slice(2,66)).fromTwos(256);
         var a1=ethers.BigNumber.from("0x"+l.data.slice(66,130)).fromTwos(256);
@@ -2719,6 +2829,20 @@ async function readVenue(v){
   }catch(e){ lanceursRates.push(v); return []; }
 }
 var lanceursRates=[];   /* les lanceurs que la derniere lecture n a pas pu lire (Explore le dit) */
+/* 18/10/2026 : les jetons V5 (LaunchedV5 du noyau, echange_v5.js). Absent ou illisible : liste vide, le reste s affiche. */
+async function readV5(){
+  if(!window.SwogeV5Echange) return [];
+  try{
+    var J=await window.SwogeV5Echange.adresses(); if(!J) return [];
+    var L=await window.SwogeV5Echange.liste();
+    return L.map(function(x){
+      var tk=x.addr.toLowerCase(), q=String(x.quote).toLowerCase();
+      if(x.meta && (x.meta.logo||x.meta.tw||x.meta.tg||x.meta.web)) metaMap[tk]={tg:x.meta.tg,tw:x.meta.tw,web:x.meta.web,logo:x.meta.logo};
+      return { addr:x.addr, v:"v5", v5:true, mode:1, name:x.name, sym:x.sym, pool:null, poolId:x.poolId, mcQuote:null, bn:x.bn,
+               qNatif:/^0x0{40}$/.test(q), qSwoge:q===SWOGE_TOKEN.toLowerCase(), qsym:null, social:metaMap[tk]||{} };
+    });
+  }catch(e){ lanceursRates.push("v5"); return []; }
+}
 async function loadList(){
   if(!CONTRACT_ADDRESS && !V3_ADDRESS){    $("#list").innerHTML='<div class="note">Set the contract address in this file first.</div>'; return; }
   $("#listInfo").innerHTML='<span class="spin"></span>';
@@ -2732,13 +2856,14 @@ async function loadList(){
     getSwogeUsd().then(function(su){ exploreSu=su; if(grilleLue && !$("#tab-explore").classList.contains("hidden")){ renderList(); renderTrending(); } });
 
     lanceursRates=[];
-    var tous=await Promise.all([readVenue(3), readVenue(2)].concat(V4_IDS.map(readVenue)));
+    var tous=await Promise.all([readVenue(3), readVenue(2), readV5()].concat(V4_IDS.map(readVenue)));
     /* Du plus recent au plus ancien, tous les lanceurs melanges ; a egalite de bloc, le plus
-       recent des lanceurs d'abord (V4, puis V3, puis V2). */
-    var rang=function(v){ return v===2?0:v===3?1:2; };
+       recent des lanceurs d'abord (V5, V4, puis V3, puis V2). */
+    var rang=function(v){ return v===2?0:v===3?1:v==="v5"?3:2; };
     var rows=[].concat.apply([], tous).sort(function(a,b){ return b.bn-a.bn || rang(b.v)-rang(a.v); });
     var total=rows.length;
-    rows=rows.slice(0,60);                             // meme plafond qu'avant
+    /* meme plafond qu avant (60), mais chaque jeton V5 est garde : « V5 only » doit tous les montrer */
+    rows=rows.slice(0,60).concat(rows.slice(60).filter(function(r){ return r.v5; }));
     rows.forEach(function(r,k){ r.idx=total-k; });     // pour le tri « Oldest »
     allCache=rows; grilleLue=true; renderList();       // show the grid immediately
     $("#listInfo").textContent=total+" launched"+(lanceursRates.length?" · "+lanceursRates.length+" launchpad"+(lanceursRates.length>1?"s":"")+" not read — Reload":"");
@@ -2756,35 +2881,45 @@ function thumbHTML(addr, sym){
 function renderList(){
   var q=($("#search").value||"").toLowerCase();
   var host=$("#list"); host.innerHTML="";
-  var rows=allCache.filter(function(r){ return !q || r.name.toLowerCase().includes(q)||r.sym.toLowerCase().includes(q)||r.addr.toLowerCase().includes(q); });
+  var rows=allCache.filter(function(r){ return (!v5Seul || r.v5) && (!q || String(r.name||"").toLowerCase().includes(q)||String(r.sym||"").toLowerCase().includes(q)||r.addr.toLowerCase().includes(q)); });
   if(sortMode==="old") rows=rows.slice().sort(function(a,b){ return a.idx-b.idx; });
   /* On trie en dollars : comparer les ETH d'un jeton V2 aux $SWOGE d'un jeton
      V3 melangerait deux unites sans rapport. Sans taux connu, on retombe sur
      la quantite brute plutot que de ne rien trier. */
   else if(sortMode==="mc") rows=rows.slice().sort(function(a,b){ return (mcUsd(b)!=null||mcUsd(a)!=null ? (mcUsd(b)||0)-(mcUsd(a)||0) : (b.mcQuote||0)-(a.mcQuote||0)); });
-  else if(sortMode==="vol") rows=rows.slice().sort(function(a,b){ return volUsd(b)-volUsd(a) || (b.vol24||0)-(a.vol24||0); });
+  else if(sortMode==="vol") rows=rows.slice().sort(function(a,b){ return (b.swaps24||0)-(a.swaps24||0) || volUsd(b)-volUsd(a) || (b.vol24||0)-(a.vol24||0) || b.bn-a.bn; });
   // "new" = default (already newest-first)
-  if(!rows.length){ host.innerHTML='<div class="note">No token matches.</div>'; return; }
+  if(!rows.length){ host.innerHTML='<div class="note">'+(v5Seul&&!q?"No V5 token yet — be the first: open the Launch tab.":"No token matches.")+'</div>'; return; }
   rows.forEach(function(r){
-    var d=document.createElement("div"); d.className="tcard"; d.setAttribute("data-addr", r.addr);
-    var dexUrl = r.pool ? ("https://dexscreener.com/robinhood/"+r.pool) : ("https://dexscreener.com/search?q="+r.addr);
+    var d=document.createElement("div"); d.className="tcard"; d.setAttribute("data-addr", r.addr); d.setAttribute("data-bloc", r.bn);
+    if(r.v5) d.setAttribute("data-v5","1");
+    d.setAttribute("role","link"); d.tabIndex=0;
+    var dexUrl = r.v5 ? ("https://dexscreener.com/robinhood/"+r.addr.toLowerCase()) : r.pool ? ("https://dexscreener.com/robinhood/"+r.pool) : ("https://dexscreener.com/search?q="+r.addr);
     var mcTxt = mcText(r);
     d.innerHTML=thumbHTML(r.addr, r.sym)
       +'<a class="tdex dexlink" href="'+dexUrl+'" target="_blank" title="DexScreener">📊</a>'
       +'<div class="tnm">'+esc(r.name||"?")+'</div>'
-      +'<div class="tsy">$'+esc(r.sym||"?")+(venue(r.v).v4?' <span class="tv4">'+esc(venue(r.v).pool)+'</span>':'')+'</div>'
+      +'<div class="tsy">$'+esc(r.sym||"?")+(r.v5?' <span class="tv5">V5</span>':(venue(r.v).v4?' <span class="tv4">'+esc(venue(r.v).pool)+'</span>':''))+'</div>'
       +'<div class="tmc">'+mcTxt+'</div>'
       +'<div style="display:flex;align-items:center;gap:5px;margin-top:5px;font-family:\'Space Mono\',monospace;font-size:10px;color:var(--dim)"><span>'+shortAddr(r.addr)+'</span>'+copyMini(r.addr)+'</div>';
     d.querySelectorAll(".dexlink").forEach(function(a){ a.onclick=function(ev){ ev.stopPropagation(); }; });
     d.onclick=function(){ openTrade(r.addr); };
+    d.onkeydown=function(ev){ if(ev.key==="Enter"){ ev.preventDefault(); openTrade(r.addr); } };
     host.appendChild(d);
   });
 }
 document.querySelectorAll("#sortSeg button").forEach(function(b){
   b.onclick=function(){
     document.querySelectorAll("#sortSeg button").forEach(function(x){x.classList.remove("on");});
-    b.classList.add("on"); sortMode=b.dataset.sort; renderList();
+    b.classList.add("on");
+    /* « V5 only » filtre (du plus recent au plus ancien) ; New et Trending trient la grille entiere */
+    v5Seul = b.dataset.sort==="v5"; sortMode = v5Seul ? "new" : b.dataset.sort; $("#sortPlus").value=""; renderList();
   };
+});
+$("#sortPlus").addEventListener("change",function(){
+  var v=this.value; if(!v) return;
+  document.querySelectorAll("#sortSeg button").forEach(function(x){x.classList.remove("on");});
+  v5Seul=false; sortMode=v; renderList();
 });
 $("#search").addEventListener("input",renderList);
 $("#reload").onclick=loadList;
@@ -2891,7 +3026,7 @@ async function loadMine(){
        Valeur au prix du pool v4 (StateView.getSlot0) ; dollars pour ETH et $SWOGE seulement. */
     var v5=null;
     if(window.SwogeV5Echange){ try{ v5=await window.SwogeV5Echange.portefeuille(account, { usd:function(I){ return I.natif?eu:(I.quote.toLowerCase()===SWOGE_TOKEN.toLowerCase()?su:null); } }); }catch(e){ v5=null; } }
-    if(v5){ v5.detenus.concat(v5.crees).forEach(function(L){ var k=L.addr.toLowerCase(); if(L.meta && !metaMap[k]) metaMap[k]=L.meta; });
+    if(v5){ v5.detenus.concat(v5.crees).forEach(function(L){ var k=L.addr.toLowerCase(); if(L.meta) metaMap[k]=L.meta; });   /* le dernier Meta du noyau gagne */
       v5.detenus.forEach(function(L){ held.push(L); }); }
     /* On classe en dollars quand on peut : sans ca, un avoir cote en $SWOGE
        passerait devant un avoir cote en ETH par simple effet d'unite. */
@@ -3145,6 +3280,7 @@ async function openTrade(addr){
      interroge le V3 puis le V2. On ne devine pas : un mauvais lanceur
      donnerait un mauvais actif de cotation, donc de mauvais prix. */
   var known=allCache.filter(function(r){ return r.addr.toLowerCase()===addr.toLowerCase(); })[0];
+  if(known && known.v5) known=null;     /* V5 : la cle du pool et la cotation viennent du noyau (SwogeV5Echange.info) */
   curV = known ? known.v : 0;
   /* Un jeton V5 d abord : getTokenInfo(token).exists sur le noyau V5 (une lecture). */
   V5I=null;
@@ -3164,7 +3300,122 @@ async function openTrade(addr){
     }
   }catch(e){ curMode=0; }
   if(TK && TK.addr===addr){ TK.v=curV; lisFiche(); }
+  lisSecurite(addr); partage(addr); editeurMeta(addr);
   await refreshTrade();
+}
+/* ---------- 18/10/2026 : la securite en une ligne ----------
+   Quatre faits, chacun LU ou dit « not read » : proprietaire (owner() sur le jeton : absent ou zero =
+   aucun), liquidite (V5 : le hook refuse tout retrait ; instantane : la position est au launchpad),
+   taxe (V5 : currentFees du noyau, moins le frais de base de getConfig ; avant V5 : aucune taxe dans le
+   jeton, frais de pool 1 %), source verifiee (Sourcify, chaine 4663 : « exact_match » / « match »). */
+var OWNER_SEL="0x8da5cb5b";   /* owner() */
+async function lisSecurite(addr){
+  var el=$("#tvSafety"); if(!el) return;
+  var it={ own:'<span class="s nl">Owner: reading…</span>', lp:"", tax:"", src:'<span class="s nl">Source: reading…</span>' };
+  function dessineS(){ if(curToken!==addr) return; el.innerHTML='<b>Safety</b>'+it.own+it.lp+it.tax+it.src+'<button type="button" class="lnk" id="tvSafetyPlus">Details ›</button>';
+    var b=$("#tvSafetyPlus"); if(b) b.onclick=function(){ $("#tvPlus").open=true; var bf=$("#bf"); if(bf) bf.scrollIntoView({ block:"start" }); }; }
+  if(curMode===5){
+    it.lp='<span class="s ok" title="The V5 hook refuses every liquidity removal">LP locked forever</span>';
+    var taxe='<span class="s nl">Tax: not read</span>';
+    try{ var f=await window.SwogeV5Echange.frais(V5I), cfg=window.SwogeV5&&window.SwogeV5._etat&&window.SwogeV5._etat.cfg;
+      if(cfg && cfg.BASE_FEE_BPS!=null){ var t=Math.max(0,f.sellBps-Number(cfg.BASE_FEE_BPS));
+        taxe='<span class="s '+(t?"av":"ok")+'" title="Creator tax on top of the '+(Number(cfg.BASE_FEE_BPS)/100)+'% base fee · now: buy '+(f.buyBps/100).toFixed(2)+'%, sell '+(f.sellBps/100).toFixed(2)+'%">Tax '+(t/100).toFixed(2)+'%</span>'; }
+      else taxe='<span class="s nl">Fees: buy '+(f.buyBps/100).toFixed(2)+'% · sell '+(f.sellBps/100).toFixed(2)+'%</span>';
+    }catch(e){}
+    it.tax=taxe;
+  } else if(curMode===1){
+    it.lp='<span class="s ok" title="The pool position is held by the launchpad contract, which has no function to withdraw it">LP locked</span>';
+    it.tax='<span class="s ok" title="The token has no tax; trading pays the 1% Uniswap pool fee">No tax · 1% pool fee</span>';
+  } else {
+    it.lp='<span class="s nl">On the bonding curve</span>';
+  }
+  dessineS();
+  try{
+    var r=await lecteur().call({ to:addr, data:OWNER_SEL });
+    var o=(r && r.length>=66) ? "0x"+r.slice(26,66) : null;
+    it.own = (!o || /^0x0{40}$/.test(o)) ? '<span class="s ok">No owner</span>' : '<span class="s av" title="'+esc(o)+'">Owner '+esc(o.slice(0,6)+"…"+o.slice(-4))+'</span>';
+  }catch(e){ it.own = (e && (e.code==="CALL_EXCEPTION" || /revert/i.test(String(e.message||"")+JSON.stringify(e.error||{})))) ?
+    '<span class="s ok" title="The token has no owner() function">No owner</span>' : '<span class="s nl">Owner: not read</span>'; }
+  dessineS();
+  try{
+    var rep=await fetchBorne("https://sourcify.dev/server/v2/contract/4663/"+addr,{},8000);
+    var lien='https://sourcify.dev/#/lookup/'+addr;
+    if(rep.status===404) it.src='<span class="s nl">Source not verified</span>';
+    else if(!rep.ok) it.src='<span class="s nl">Source: not read</span>';
+    else { var j=await rep.json(); it.src=/match/.test(String(j.match||j.runtimeMatch||"")) ? '<span class="s ok"><a href="'+lien+'" target="_blank" rel="noopener">Source verified ↗</a></span>' : '<span class="s nl">Source not verified</span>'; }
+  }catch(e){ it.src='<span class="s nl">Source: not read</span>'; }
+  dessineS();
+}
+/* ---------- 18/10/2026 : changer le logo et les liens d un jeton V5 ----------
+   Le contrat ne le permet qu au DESTINATAIRE DES FRAIS (onlyRecipient), qui est le createur tant qu il ne
+   l a pas transmis : le bouton ne s affiche que pour lui (getTokenInfo relu a l ouverture), et le noyau le
+   revérifie de toute facon. Chaque champ <= 256 octets (_checkMeta). La description n est pas dans le
+   formulaire : updateMeta remplace les cinq champs, la description en cours est donc renvoyee telle quelle. */
+/* SWAI : lance avec le logo « https://ibb.co/99rWG9WW », une PAGE ibb.co et non une image (relu dans son
+   MetadataUpdated le 18/10/2026) : aucun logo ne s affiche. Le formulaire propose le logo choisi par le
+   proprietaire, heberge par le site, tant que le logo en place est celui-la (ou vide). */
+var PREREMPLI_LOGO={ "0x83ab87625404b63f27d8289b9e50ffd3ed2f5d22":{ logo:"https://swoleeswoge.dog/img/tokens/swai.png", remplace:["","https://ibb.co/99rWG9WW"] } };
+async function editeurMeta(addr){
+  var el=$("#tvMetaEdit"); if(!el) return;
+  el.hidden=true; el.innerHTML="";
+  if(curMode!==5 || !V5I || !account || !window.SwogeV5Echange) return;
+  var ti=null; try{ ti=await window.SwogeV5Echange.info(addr); }catch(e){}
+  if(curToken!==addr || !ti) return;
+  var moi=String(account).toLowerCase();
+  if(String(ti.feeRecipient).toLowerCase()!==moi){
+    if(String(ti.creator).toLowerCase()===moi){ el.hidden=false; el.innerHTML='<div class="note">You created this token, but its fee recipient is now '+esc(shortAddr(ti.feeRecipient))+': only that wallet can edit the logo and links.</div>'; }
+    return;
+  }
+  el.hidden=false;
+  el.innerHTML='<button type="button" class="btn" id="tmOuvre">✏️ Edit logo &amp; links</button><div id="tmForm" hidden></div>';
+  $("#tmOuvre").onclick=async function(){
+    var f=$("#tmForm"); if(!f.hidden){ f.hidden=true; return; }
+    f.hidden=false; f.innerHTML='<div class="attente">Reading the current logo and links…</div>';
+    var m=null; try{ m=await window.SwogeV5Echange.metaActuelle(addr); }catch(e){}
+    if(curToken!==addr) return;
+    if(!m){ f.innerHTML='<div class="note err">Could not read the current links. Try again.</div>'; return; }
+    var pre=PREREMPLI_LOGO[addr.toLowerCase()];
+    var logo0=(pre && pre.remplace.indexOf(m.logo||"")>=0) ? pre.logo : (m.logo||"");
+    var ch=function(id,lab,v,ph){ return '<div class="field"><label for="'+id+'">'+lab+'</label><input id="'+id+'" value="'+esc(v)+'" placeholder="'+ph+'" spellcheck="false" autocomplete="off"></div>'; };
+    f.innerHTML='<div class="tm-logo"><img id="tmVu" alt="" hidden>'+ch("tmLogo","Logo (image link)",logo0,"https://…/logo.png")+'</div>'
+      +ch("tmWeb","Website",m.website,"https://…")+ch("tmTw","X / Twitter",m.twitter,"https://x.com/…")+ch("tmTg","Telegram",m.telegram,"https://t.me/…")
+      +'<div class="note">Each field: 256 bytes max. Saved on-chain with one transaction from your wallet (gas only, no fee).</div>'
+      +'<button type="button" class="btn primary full" id="tmEnvoie">Save on-chain</button><div class="note" id="tmNote"></div>';
+    var vu=function(){ var v=$("#tmLogo").value.trim(), im=$("#tmVu"); if(/^https:\/\//i.test(v)||/^img\//.test(v)){ im.hidden=false; im.onerror=function(){ im.hidden=true; }; im.src=v; } else im.hidden=true; };
+    $("#tmLogo").addEventListener("input",vu); vu();
+    $("#tmEnvoie").onclick=async function(){
+      var note=$("#tmNote"), b=this;
+      var nm={ description:m.description||"", logo:$("#tmLogo").value.trim(), website:$("#tmWeb").value.trim(), twitter:$("#tmTw").value.trim(), telegram:$("#tmTg").value.trim() };
+      if(nm.logo && !/^(https|ipfs):\/\//i.test(nm.logo)){ note.className="note err"; note.textContent="Logo: an https:// (or ipfs://) link."; return; }
+      var e0=window.SwogeV5Echange.verifieMeta(nm); if(e0){ note.className="note err"; note.textContent=e0; return; }
+      if(!signer){ openWalletPicker(); return; }
+      b.disabled=true; note.className="note"; note.textContent="Checking the update (simulation)…";
+      try{
+        var tAvant=setTimeout(function(){ note.textContent="Confirm in your wallet…"; },400);
+        await window.SwogeV5Echange.majMeta({ signer:signer, compte:account, token:addr, meta:nm });
+        clearTimeout(tAvant);
+        var k=addr.toLowerCase();
+        metaMap[k]={ tg:nm.telegram, tw:nm.twitter, web:nm.website, logo:nm.logo };
+        allCache.forEach(function(r){ if(r.addr.toLowerCase()===k) r.social=metaMap[k]; });
+        $("#tvLogo").innerHTML=logoTok(); $("#tvSocials").innerHTML=liensJeton(metaMap[k]);
+        var c=document.querySelector('.tcard[data-addr="'+addr+'"] .thumbwrap'); if(c) c.outerHTML=thumbHTML(addr, symT());
+        note.className="note ok"; note.textContent="Saved on-chain. Explore and this page now show the new logo and links.";
+      }catch(err){ note.className="note err"; note.textContent="Failed · "+window.SwogeV5Echange.raison(err); }
+      b.disabled=false;
+    };
+  };
+}
+/* Partager la fiche : X, Telegram, ou copier le lien (launchpad.html?token=). */
+function partage(addr){
+  var el=$("#tvShare"); if(!el) return;
+  var url="https://swoleeswoge.dog/launchpad.html?token="+addr;
+  var txt=function(){ var n=($("#tvSym").textContent||"").trim(); return (n?n+" ":"")+"on SWOGE FUN"; };
+  el.innerHTML='<a id="tvShareX" target="_blank" rel="noopener">Share on X</a><a id="tvShareTg" target="_blank" rel="noopener">Telegram</a><button type="button" id="tvShareCopy">Copy link</button>';
+  $("#tvShareX").onclick=function(){ this.href="https://x.com/intent/tweet?text="+encodeURIComponent(txt())+"&url="+encodeURIComponent(url); };
+  $("#tvShareTg").onclick=function(){ this.href="https://t.me/share/url?url="+encodeURIComponent(url)+"&text="+encodeURIComponent(txt()); };
+  $("#tvShareX").href="https://x.com/intent/tweet?url="+encodeURIComponent(url);
+  $("#tvShareTg").href="https://t.me/share/url?url="+encodeURIComponent(url);
+  $("#tvShareCopy").onclick=function(){ copyText(url).then(function(){ toast("Link copied ✓"); },function(){ toast("Copy failed"); }); };
 }
 /* ---------- les echanges du jeton : la fiche (graphique, Flow, volume) se dessine dessus ---------- */
 var candleState={token:null,trades:[],ethUsd:null};

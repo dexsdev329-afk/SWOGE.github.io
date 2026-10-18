@@ -139,6 +139,7 @@ video{ max-width:100%; }
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+<script src="lecteur_rh.js?v=7ae38e80"></script>
 <script src="lance_v4.js?v=6f7f9ced"></script>
 <script src="lance_v5.js?v=5af3c890"></script>
 <script src="echange_v5.js?v=c4fc885f"></script>
@@ -1613,7 +1614,13 @@ if(CONTRACT_ADDRESS) $("#cfgWarn").classList.add("hidden");
 
 /* ---------- wallet ---------- */
 var provider=null, signer=null, account=null, rawEth=null;
-function rpcProvider(){ return new ethers.providers.StaticJsonRpcProvider(CHAIN.rpc, CHAIN.id); }
+/* 18/10/2026 : le noeud officiel d abord ; sur une panne de transport (le navigateur refuse sa reponse :
+   en-tete CORS en double, « '*,*' » sur chaque eth_getLogs ce jour-la), la meme requete par le relais
+   du serveur (/rpc/rh), 6 eth_getLogs en vol au plus. Voir lecteur_rh.js. */
+function rpcProvider(){
+  if(window.SwogeLecteurRh) return window.SwogeLecteurRh.cree({ ethers:ethers, url:CHAIN.rpc, chainId:CHAIN.id, relais:lpServeur()+"/rpc/rh" });
+  return new ethers.providers.StaticJsonRpcProvider(CHAIN.rpc, CHAIN.id);
+}
 /* ---------- ON LIT PAR LE RPC, ON ECRIT PAR LE PORTEFEUILLE ----------
    Toutes les lectures passaient par « provider sinon RPC », c'est-a-dire
    par le PORTEFEUILLE des qu'il y en avait un. C'est un piege : les

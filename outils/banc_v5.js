@@ -18,6 +18,10 @@ const http = require('http'), fs = require('fs'), path = require('path');
 const { spawn } = require('child_process');
 
 const RPC_CHAINE = 'https://rpc.mainnet.chain.robinhood.com';
+/* Le relais JSON-RPC du serveur (/rpc/rh, relais_rpc.js du serveur), quel que soit l hote. Une expression
+   et non un motif : mesure du 18/10/2026, Playwright 1.56.1 laissait passer vers le reseau des POST que
+   `https://**` aurait du intercepter (web-production-220a3.up.railway.app, example.com). */
+const RELAIS_RE = /^https:\/\/[^/]+\/rpc\/rh(\?.*)?$/;
 const T = { '.html': 'text/html', '.js': 'application/javascript', '.json': 'application/json', '.webp': 'image/webp',
   '.png': 'image/png', '.jpg': 'image/jpeg', '.css': 'text/css', '.ico': 'image/x-icon' };
 
@@ -96,7 +100,7 @@ async function routes(ctx, fork, ethersFichier, opts) {
   const permis = ((opts && opts.journauxDe) || []).map((a) => String(a).toLowerCase());
   await ctx.route('https://**', (r) => r.fulfill({ status: 503, contentType: 'application/json', body: '{}' }));
   await ctx.route('**/ethers*.js', (r) => r.fulfill({ status: 200, contentType: 'application/javascript', body: fs.readFileSync(ethersFichier) }));
-  await ctx.route(RPC_CHAINE + '**', async (r) => {
+  const versFork = async (r) => {
     let corps = r.request().postData() || '{}';
     if (sansJournaux) {
       const q = JSON.parse(corps), un = (x) => (x && x.method === 'eth_getLogs' && !(x.params && x.params[0] && permis.includes(String(x.params[0].address || '').toLowerCase()))
@@ -105,7 +109,11 @@ async function routes(ctx, fork, ethersFichier, opts) {
     }
     const rep = await fetch(fork.url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: corps });
     r.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: await rep.text() });
-  });
+  };
+  await ctx.route(RPC_CHAINE + '**', versFork);
+  /* 18/10/2026 : le lecteur du launchpad (lecteur_rh.js) repasse une lecture ratee par le relais du
+     serveur (/rpc/rh). Il va au MEME fork : sinon une lecture pourrait tomber sur la vraie chaine. */
+  await ctx.route(RELAIS_RE, versFork);
 }
 
 /* Le faux portefeuille : window.ethereum dont chaque requete passe par Node vers anvil. Il commence sur
@@ -167,4 +175,4 @@ async function deploieV5(fork, ethers, site, proprietaire, tresor, fraisWei) {
     cotations: { genere: COT.genere, bloc: COT.bloc }, artefacts: { genere: ART.genere, compilateur: ART.compilateur }, blocks: blocs, txs, verified: 'fork' };
 }
 
-module.exports = { anvil, compteNeuf, serveur, routes, portefeuille, ethersUmd, rpcVers, deploieV5, RPC_CHAINE };
+module.exports = { anvil, compteNeuf, serveur, routes, portefeuille, ethersUmd, rpcVers, deploieV5, RPC_CHAINE, RELAIS_RE };

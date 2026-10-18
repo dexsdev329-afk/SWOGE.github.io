@@ -42,6 +42,8 @@ const ADR = '/contrats/v5/adresses_v5.json';
     else {
       await ctx.route('https://**', (r) => r.fulfill({ status: 503, contentType: 'application/json', body: '{}' }));
       await ctx.route('**/ethers*.js', (r) => r.fulfill({ status: 200, contentType: 'application/javascript', body: fs.readFileSync(ETHERS) }));
+      /* 18/10/2026 : sans chaine, le relais du serveur (/rpc/rh) non plus — lecteur_rh.js y repasse une lecture ratee. */
+      await ctx.route(banc.RELAIS_RE, (r) => r.fulfill({ status: 503, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: '{}' }));
     }
     const pg = await ctx.newPage(), erreurs = [];
     pg.on('pageerror', (e) => erreurs.push(String(e.message || e)));

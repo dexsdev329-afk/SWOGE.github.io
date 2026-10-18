@@ -394,8 +394,8 @@ Ce que couvrent les essais :
 - **Aucun audit externe.** Il est obligatoire et bloquant (§4.7), de préférence deux équipes qui
   ont déjà audité des hooks v4.
 - **Aucun déploiement**, ni sur le réseau principal ni sur un réseau de test.
-- **Aucune page de déploiement** : elle viendra plus tard.
-- Rien n'est modifié dans `lance_v4.js`, `launchpad.html` ni le serveur (§4.8).
+- Rien n'est modifié dans `lance_v4.js` ni le serveur (§4.8). `launchpad.html` porte une section V5
+  **inerte** tant que `contrats/v5/adresses_v5.json` n'existe pas (voir « La page de déploiement »).
 - Pas de vérification Sourcify, pas de bug bounty.
 - Les mesures de §4.9 manquent encore :
   - la part de l'offre achetée au premier bloc sur les V4 de SWOGE ;
@@ -435,9 +435,47 @@ signature se fait sur le matériel ou dans le portefeuille.
    le même déployeur CREATE3. Si `V5_DEPLOYER` n'est pas donné, le script en crée un, dont
    l'adresse dépend du nonce du portefeuille.
 5. **Vérifier chaque module sur Sourcify** (`exact_match`), avec les réglages ci-dessus.
-6. **Faire un premier lancement de contrôle.** Ensuite seulement, ajouter V5 dans `LAUNCHPADS`
-   (`lance_v4.js`), recalculer le marqueur de cache (`node cache_marqueur.test.js`) et l'écrire
-   dans la page **et** dans `version.json`.
+6. **Faire un premier lancement de contrôle.** Ensuite seulement, commiter
+   `contrats/v5/adresses_v5.json` : la section V5 de `launchpad.html` s'allume en le lisant.
+
+### La page de déploiement (18/10/2026) : `v5_deploy.html`
+
+Les étapes 3 et 4 peuvent aussi se faire **dans le navigateur**, sans Foundry : `v5_deploy.html`
+(hors moteurs, hors menus) fait ce que fait `DeployV5.s.sol`, transaction par transaction, chacune
+signée par le portefeuille du propriétaire. La page ne voit aucune clé.
+
+- Elle charge `contrats/v5/build/v5_artefacts.json` (code d'init, ABI, code déployé, place des
+  `immutable`, métadonnées du compilateur — rien de secret) et `script/cotations_v5.json`. Elle
+  affiche la taille et la date de la liste, et **avertit au-delà de 24 h**, avec la commande.
+- Elle relit les 197 jetons de la liste sur la chaîne (code, `symbol()`, `decimals()`), comme
+  `DeployV5.quoteList()`, avant d'autoriser le noyau.
+- Elle mine le sel du hook dans un Web Worker (`v5_mineur.js`) : le même calcul et **le même premier
+  sel** que `HookMiner` (vérifié contre `forge script MineHookSalt.s.sol`).
+- Avant chaque transaction : gaz estimé (`eth_estimateGas`), coût en ETH et en dollars au prix du
+  gaz lu (`eth_gasPrice`). La progression (adresses, empreintes de transaction, sel) est gardée dans
+  `localStorage` : on peut fermer la page et reprendre.
+- Après chaque transaction, elle relit le contrat : code identique au code compilé (octet pour
+  octet, `immutable` masqués), chaque `immutable`, `CREATOR_SHARE_BPS` = 7 500,
+  `MAX_CREATOR_TAX_BPS` = 500, 198 monnaies égales à la liste, drapeaux `0x2ACC`.
+- À la fin, elle affiche le contenu de `contrats/v5/adresses_v5.json`, à copier et commiter.
+
+Les artefacts se régénèrent après tout changement d'une source (l'essai `v5_deploy_page.test.js`
+tombe sinon, et donne la commande) :
+
+```bash
+forge build --root <racine>            # le foundry.toml ci-dessus, sources sous contrats/v5/src
+node contrats/v5/script/artefacts_v5.js <racine>/out
+```
+
+Essais (fork anvil **local**, comptes neufs impersonnés, aucune clé) : `v5_deploy_page.test.js`
+(les cinq transactions par la page, relues) et `launchpad_v5.test.js` (section éteinte sans le
+fichier ; bornes de la page = refus du contrat, mot pour mot ; un lancement en ETH et un en CRWD,
+action au multiplicateur 4, achat saisi en actions). `ANVIL=<chemin d'anvil>` si anvil n'est pas
+dans le `PATH`.
+
+**Les comptes par défaut d'anvil ne conviennent pas aux essais sur fork :** le 18/10/2026, les cinq
+premiers portent sur Robinhood Chain une délégation EIP-7702 (`0xef0100…`) vers un balayeur qui
+renvoie tout l'ETH reçu. Un trésor pris parmi eux ne garde pas le frais de lancement.
 
 Le trésor doit pouvoir recevoir de l'ETH : il reçoit le frais de lancement par `call` dans
 `createToken`, et il retire ses 25 % par `withdraw`.

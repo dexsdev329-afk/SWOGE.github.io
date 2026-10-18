@@ -148,7 +148,9 @@ async function dexPrix(a) {
     const k = d.contractAddress.toLowerCase();
     if (vues.has(k)) { exclues.push({ symbol: a.tokenSymbol, address: d.contractAddress, raison: 'adresse en double dans le registre' }); continue; }
     vues.add(k);
-    candidats.push({ symbol: a.tokenSymbol, nom: a.tokenName, address: d.contractAddress, decimalesRegistre: a.tokenDecimals, multiplicateurRegistre: a.currentMultiplier, multiplicateurEnAttente: a.pendingMultiplier || '' });
+    candidats.push({ symbol: a.tokenSymbol, nom: a.tokenName, address: d.contractAddress, decimalesRegistre: a.tokenDecimals, multiplicateurRegistre: a.currentMultiplier, multiplicateurEnAttente: a.pendingMultiplier || '',
+      // le logo du registre, montre par launchpad.html a cote de chaque action (affichage seulement, jamais lu par un contrat)
+      logo: /^https:\/\//.test(a.logoUrl || '') ? a.logoUrl : '' });
   }
 
   // 2. la chaine, pour chaque action
@@ -250,7 +252,7 @@ async function dexPrix(a) {
     ...retenues.map((c, i) => ({
       index: 3 + i, symbol: c.symbol, nom: c.nom, address: c.address, decimales: c.decimalesChaine, startTick: c.startTick,
       coursActionUsd: c.coursActionUsd, symboleCours: c.symboleCours, uiMultiplier: c.uiMultiplier, prixJetonBrutUsd: c.prixJetonBrutUsd, coursDate: c.coursDate,
-      codeOctets: c.codeOctets, beacon: c.beacon, multiplicateurEnAttente: c.multiplicateurEnAttente,
+      codeOctets: c.codeOctets, beacon: c.beacon, multiplicateurEnAttente: c.multiplicateurEnAttente, logo: c.logo,
     })),
   ];
   for (const q of liste) if (!tickValide(q.startTick)) throw new Error('tick invalide ' + q.symbol + ' ' + q.startTick);

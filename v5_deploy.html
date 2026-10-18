@@ -1,0 +1,655 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>SWOGE V5 deploy — owner tool</title>
+<!-- ==================== HORS DES MOTEURS, HORS DES MENUS ====================
+     Outil du proprietaire : deployer les cinq contrats de SWOGE V5 depuis SON
+     portefeuille. Aucun lien du site n'y mene, le sitemap ne la liste pas,
+     `noindex` + `Disallow` (robots.txt) la tiennent hors des moteurs.
+     La page ne voit aucune cle : chaque transaction est signee dans le
+     portefeuille du navigateur. Elle ne garde dans localStorage que des donnees
+     publiques (adresses, empreintes de transaction, sel du hook).
+     ====================================================================== -->
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/img/site/icone-32.png">
+<link rel="apple-touch-icon" href="/img/site/icone-180.png">
+<style>
+:root{ --bg:#f6f7fb; --card:#fff; --ink:#0b1b36; --mute:#5b6b85; --line:#dfe4ee; --ok:#0f8a4b; --bad:#c62828; --warn:#a15c00;
+  --accent:#1B5FE0; --code:#eef1f7; }
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ --bg:#0d1220; --card:#151c2e; --ink:#e7ecf6; --mute:#9aa7bf;
+  --line:#26304a; --ok:#3fcf8e; --bad:#ff6b6b; --warn:#f0b54a; --accent:#6f9bff; --code:#1d2640; } }
+:root[data-theme="dark"]{ --bg:#0d1220; --card:#151c2e; --ink:#e7ecf6; --mute:#9aa7bf; --line:#26304a; --ok:#3fcf8e; --bad:#ff6b6b;
+  --warn:#f0b54a; --accent:#6f9bff; --code:#1d2640; }
+*{ box-sizing:border-box; }
+body{ margin:0; background:var(--bg); color:var(--ink); font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
+main{ max-width:880px; margin:0 auto; padding:16px; }
+h1{ font-size:22px; margin:8px 0 4px; } h2{ font-size:17px; margin:0 0 10px; }
+.card{ background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; margin:14px 0; }
+.danger{ background:#c62828; color:#fff; border-radius:12px; padding:14px 16px; font-weight:700; font-size:16px; position:sticky; top:0; z-index:5;
+  box-shadow:0 2px 10px rgba(0,0,0,.2); }
+.danger small{ display:block; font-weight:400; font-size:13px; opacity:.95; margin-top:4px; }
+.mute{ color:var(--mute); font-size:13px; }
+.ok{ color:var(--ok); } .bad{ color:var(--bad); } .warn{ color:var(--warn); }
+.alerte{ border:1px solid var(--bad); color:var(--bad); border-radius:10px; padding:10px 12px; margin:10px 0; }
+code,pre{ background:var(--code); border-radius:6px; font:12.5px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace; }
+code{ padding:1px 5px; word-break:break-all; } pre{ padding:10px; overflow:auto; max-height:420px; white-space:pre; }
+label{ display:block; font-size:13px; color:var(--mute); margin:10px 0 4px; }
+input[type=text]{ width:100%; padding:9px 10px; border:1px solid var(--line); border-radius:8px; background:var(--bg); color:var(--ink); font:inherit; }
+button{ font:inherit; padding:9px 14px; border-radius:8px; border:1px solid var(--accent); background:var(--accent); color:#fff; cursor:pointer; }
+button.vide{ background:transparent; color:var(--accent); }
+button:disabled{ opacity:.45; cursor:not-allowed; }
+.rang{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:10px; }
+.etape{ border:1px solid var(--line); border-radius:10px; padding:12px; margin:10px 0; }
+.etape h3{ font-size:15px; margin:0 0 6px; display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; }
+.etat{ font-size:12px; padding:2px 8px; border-radius:20px; border:1px solid var(--line); white-space:nowrap; }
+.etat.fait{ color:var(--ok); border-color:var(--ok); } .etat.encours{ color:var(--warn); border-color:var(--warn); }
+ul.verifs{ margin:6px 0 0; padding-left:18px; font-size:13px; }
+ul.verifs li.ok::marker{ content:"✓ "; } ul.verifs li.bad::marker{ content:"✗ "; }
+table{ border-collapse:collapse; width:100%; font-size:13px; } td,th{ text-align:left; padding:4px 6px; border-bottom:1px solid var(--line); }
+@media (max-width:560px){ main{ padding:12px 16px; } .danger{ font-size:15px; } }
+</style>
+</head>
+<body>
+<main>
+  <div class="danger" id="avisRouge">Unaudited contracts. No admin can fix or pause them after deployment.
+    <small>The owner chose to deploy SWOGE V5 without an external audit (contrats/v5/README.md, open risks). Once deployed, nothing on this page or anywhere else can change, upgrade, pause or repair the hook, the core, Holders or Alloc.</small></div>
+
+  <h1>SWOGE V5 — deploy from your own wallet</h1>
+  <p class="mute">Five transactions, each signed in your browser wallet. This page never sees a private key and never sends anything by itself. It stores only public data in this browser (addresses, transaction hashes, the hook salt), so you can close it and resume.</p>
+
+  <section class="card" id="carteWallet">
+    <h2>1 · Wallet</h2>
+    <div id="walletEtat" class="mute">Not connected.</div>
+    <div class="rang" id="walletChoix"></div>
+  </section>
+
+  <section class="card" id="carteDonnees">
+    <h2>2 · What will be deployed</h2>
+    <div id="artInfo" class="mute">Loading compiled contracts…</div>
+    <div id="cotInfo" class="mute" style="margin-top:8px">Loading the quote list…</div>
+    <div id="cotAge"></div>
+    <div class="rang"><button class="vide" id="btnRelis" disabled>Re-read the 197 quote tokens on-chain</button><span id="relisEtat" class="mute"></span></div>
+  </section>
+
+  <section class="card" id="carteReglages">
+    <h2>3 · Settings (frozen forever in the core)</h2>
+    <label for="inTresor">Treasury — receives the launch fee and 25 % of the base fee; must accept ETH</label>
+    <input type="text" id="inTresor" placeholder="0x…" spellcheck="false" autocomplete="off">
+    <div id="tresorEtat" class="mute"></div>
+    <label for="inFrais">Launch fee, in ETH (paid by each launcher to the treasury)</label>
+    <input type="text" id="inFrais" value="0.0005" inputmode="decimal" spellcheck="false">
+    <div id="fraisEtat" class="mute"></div>
+    <label for="inDeployeur">Existing CREATE3 deployer (optional — leave empty to deploy a new one in step 1)</label>
+    <input type="text" id="inDeployeur" placeholder="0x… (from a rehearsal or an earlier attempt)" spellcheck="false" autocomplete="off">
+    <div id="deployeurEtat" class="mute"></div>
+  </section>
+
+  <section class="card" id="carteEtapes">
+    <h2>4 · The five transactions</h2>
+    <div id="prixEtat" class="mute">Gas price not read yet.</div>
+    <div id="totalEtat" class="mute"></div>
+    <div id="etapes"></div>
+    <div class="rang"><button class="vide" id="btnOublie">Forget saved progress</button><span class="mute">Clears this browser's saved hashes and addresses only. Nothing on-chain changes.</span></div>
+  </section>
+
+  <section class="card" id="carteFin" hidden>
+    <h2>5 · Done — commit this file</h2>
+    <p class="mute">This page cannot write to the repository. Copy this content into <code>contrats/v5/adresses_v5.json</code>, commit it and push: the launchpad turns its V5 section on when it can read this file.</p>
+    <pre id="jsonFin"></pre>
+    <div class="rang"><button id="btnCopie">Copy</button><span id="copieEtat" class="mute"></span></div>
+  </section>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+<script>
+/* ============================================================
+   SWOGE V5 — LA PAGE DE DEPLOIEMENT DU PROPRIETAIRE (18/10/2026)
+
+   Ce que fait DeployV5.s.sol, dans le navigateur, et signe par le portefeuille
+   du proprietaire, transaction par transaction :
+     1. SwogeDeployerV5 (CREATE3), sauf si un deployeur existant est donne ;
+     2. le hook, au sel mine (v5_mineur.js : le meme calcul que HookMiner, le
+        meme premier sel) — l'adresse porte 0x2ACC ;
+     3. le noyau, avec la liste figee de cotations_v5.json (198 monnaies) ;
+     4. Holders ; 5. Alloc.
+   Les adresses sont calculees AVANT (CREATE3 : deployeur, appelant, sel), et
+   chaque module recoit les autres en `immutable`.
+
+   Apres chaque transaction, la page relit la chaine : le code est-il la, est-il
+   celui qu'on a compile (octet par octet, `immutable` masques), et chaque
+   `immutable` vaut-il ce qu'on attend. A la fin, le contenu de
+   contrats/v5/adresses_v5.json, a copier : la page n'ecrit rien dans le depot.
+
+   On lit par le RPC de la chaine, on ecrit par le portefeuille (le motif de
+   launchpad.html) : un portefeuille limite les lectures, et le RPC est le meme
+   pour tout le monde.
+   ============================================================ */
+"use strict";
+var CHAIN = { id: 4663, hex: "0x1237", name: "Robinhood Chain", rpc: "https://rpc.mainnet.chain.robinhood.com", scan: "https://robinhoodchain.blockscout.com" };
+// Uniswap v4 PoolManager de Robinhood Chain, le meme que DeployV5.s.sol (relu le 18/10/2026)
+var PM = "0x8366a39CC670B4001A1121B8F6A443A643e40951";
+var ART_URL = "contrats/v5/build/v5_artefacts.json", COT_URL = "contrats/v5/script/cotations_v5.json";
+var FLAGS = 0x2ACC, MASK = 0x3FFF;
+/* Gaz mesure par DeployV5.s.sol sur fork LOCAL, 198 monnaies, le 18/10/2026 (README, « Essais ») :
+   affiche tant qu'une estimation en direct est impossible (le deployeur n'existe pas encore). */
+var MESURE = { deployer: 271845, hook: 2053271, core: 10974976, holders: 2429770, alloc: 814346 };
+/* La liste suit les prix du jour : au-dela de 24 h, la FDV d'ouverture de reference (≈ 1 ETH)
+   derive, et le lanceur ne peut s'en ecarter que de ×10. Seuil du cahier des charges, 18/10. */
+var AGE_MAX_MS = 24 * 3600 * 1000;
+var ETAPES = [
+  { k: "deployer", nom: "CREATE3 deployer", art: "SwogeDeployerV5" },
+  { k: "hook", nom: "Hook — mined address ending in 0x2ACC", art: "SwogeHookV5" },
+  { k: "core", nom: "Core — launchpad with the frozen quote list", art: "SwogeLaunchpadV5" },
+  { k: "holders", nom: "Holders — fee distribution", art: "SwogeHoldersV5" },
+  { k: "alloc", nom: "Alloc — vesting and airdrop", art: "SwogeAllocV5" }
+];
+var E = window.ethers, U = E && E.utils;
+var $ = function (s) { return document.querySelector(s); };
+function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+function meme(a, b) { return String(a || "").toLowerCase() === String(b || "").toLowerCase(); }
+function lienTx(h) { return '<a href="' + CHAIN.scan + "/tx/" + esc(h) + '" target="_blank" rel="noopener"><code>' + esc(h.slice(0, 10)) + "…</code></a>"; }
+function lienAdr(a) { return '<a href="' + CHAIN.scan + "/address/" + esc(a) + '" target="_blank" rel="noopener"><code>' + esc(a) + "</code></a>"; }
+function attends(ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); }
+
+var S = { art: null, cot: null, eth: null, web3: null, signer: null, owner: null, lecteur: null, ethUsd: null, ethUsdSrc: "",
+  gasPrice: null, prog: null, est: {}, verifs: {}, occupe: false, listeOk: null };
+var SELS = {};
+S.msg = {};
+function msg(k, h) { S.msg[k] = h; var el = $("#msg-" + k); if (el) el.innerHTML = h; }
+function lecteur() { return S.lecteur || (S.lecteur = new E.providers.StaticJsonRpcProvider(CHAIN.rpc, CHAIN.id)); }
+
+/* ---------- la progression : donnees PUBLIQUES seulement, jamais une cle ---------- */
+function cle() { return "swoge_v5_deploy:" + CHAIN.id + ":" + String(S.owner || "").toLowerCase(); }
+function chargeProg() {
+  var p = null;
+  try { p = JSON.parse(localStorage.getItem(cle()) || "null"); } catch (e) { p = null; }
+  S.prog = p && p.v === 1 ? p : { v: 1, owner: S.owner, tx: {}, blocs: {}, addrs: {} };
+}
+function garde() { try { localStorage.setItem(cle(), JSON.stringify(S.prog)); } catch (e) {} }
+
+/* ---------- les donnees : artefacts compiles et liste figee ---------- */
+function charge(url) { return fetch(url, { cache: "no-store" }).then(function (r) { if (!r.ok) throw new Error(url + " : HTTP " + r.status); return r.json(); }); }
+function empreinteListe(c) { return U.keccak256(U.defaultAbiCoder.encode(["address[]", "int24[]"], [c.addresses, c.startTicks])); }
+/* Les controles que fait le constructeur du noyau, faits AVANT de signer : une liste qu'il refuserait
+   ferait echouer une transaction de 11 M de gaz. */
+function controleListe(c) {
+  var err = [];
+  if (Number(c.chainId) !== CHAIN.id) err.push("chainId " + c.chainId + " ≠ 4663");
+  var n = (c.addresses || []).length;
+  if (!n || n !== (c.startTicks || []).length || n !== (c.symbols || []).length || n !== (c.liste || []).length) err.push("lists of different lengths");
+  if (n > 255) err.push(n + " quotes > 255 (uint8 index)");
+  if (n !== c.nombre) err.push("count " + n + " ≠ nombre " + c.nombre);
+  if (!meme(c.addresses[0], E.constants.AddressZero)) err.push("quote 0 is not native ETH");
+  var vus = {};
+  for (var i = 0; i < n; i++) {
+    var t = Number(c.startTicks[i]), a = String(c.addresses[i]).toLowerCase();
+    if (!U.isAddress(a)) err.push("index " + i + " : bad address");
+    if (t % 200 !== 0) err.push("index " + i + " : tick " + t + " not a multiple of 200");
+    if (Math.abs(t) + 23000 + 161200 > 887200) err.push("index " + i + " : tick " + t + " too close to the edge");
+    if (vus[a]) err.push("duplicate " + a); vus[a] = 1;
+  }
+  return err;
+}
+function montreDonnees() {
+  var a = S.art, c = S.cot;
+  if (a) {
+    $("#artInfo").innerHTML = "Compiled with solc <code>" + esc(a.compilateur) + "</code> (" + esc(a.reglages.evmVersion) + ", optimizer " +
+      a.reglages.optimizer.runs + " runs, via-IR) on " + esc(a.genere.slice(0, 10)) + " · runtime sizes: " +
+      ETAPES.map(function (e) { return esc(e.art) + " " + a.contrats[e.art].runtimeOctets.toLocaleString("en-US") + " B"; }).join(", ");
+  }
+  if (c) {
+    var age = Date.now() - Date.parse(c.genere), err = controleListe(c);
+    $("#cotInfo").innerHTML = "<b>" + c.addresses.length + " quote currencies</b> (" + esc(c.symbols.slice(0, 3).join(", ")) + " and " +
+      (c.addresses.length - 3) + " Robinhood stock tokens) · generated <b>" + esc(c.genere) + "</b> at block <b>" + Number(c.bloc).toLocaleString("en-US") +
+      "</b> · ETH = $" + esc(c.ethUsd) + " that day · list fingerprint <code>" + esc(empreinteListe(c).slice(0, 18)) + "…</code>";
+    var h = "";
+    if (err.length) h += '<div class="alerte"><b>The core would refuse this list:</b> ' + esc(err.slice(0, 5).join(" · ")) + "</div>";
+    if (!(age <= AGE_MAX_MS)) {
+      h += '<div class="alerte" id="cotVieille"><b>This list is ' + Math.floor(age / 3600000) + " h old (more than 24 h).</b> Start ticks follow the prices of the day it was generated (opening FDV ≈ 1 ETH in every quote); launchers can only move ×10 from it, forever. Regenerate it, commit, reload this page:<br><code>node contrats/v5/script/genere_cotations.js</code>" +
+        '<label style="color:inherit"><input type="checkbox" id="cotForce"> Deploy with this old list anyway</label></div>';
+    }
+    $("#cotAge").innerHTML = h;
+    var f = $("#cotForce"); if (f) f.onchange = rafraichit;
+  }
+}
+function listeUtilisable() {
+  var c = S.cot; if (!c || controleListe(c).length) return false;
+  var age = Date.now() - Date.parse(c.genere);
+  return age <= AGE_MAX_MS || !!($("#cotForce") && $("#cotForce").checked);
+}
+
+/* ---------- relire chaque monnaie sur la chaine, comme DeployV5.quoteList() ---------- */
+var ERC20 = ["function symbol() view returns (string)", "function decimals() view returns (uint8)"];
+async function relisListe() {
+  var c = S.cot, n = c.addresses.length, faits = 0, fautes = [];
+  $("#btnRelis").disabled = true;
+  var file = []; for (var i = 1; i < n; i++) file.push(i);
+  async function ouvrier() {
+    while (file.length) {
+      var i = file.shift(), a = c.addresses[i];
+      try {
+        var code = await lecteur().getCode(a);
+        if (!code || code === "0x") throw new Error("no code");
+        var t = new E.Contract(a, ERC20, lecteur());
+        var sy = await t.symbol(), de = await t.decimals();
+        if (sy !== c.symbols[i]) throw new Error("symbol() = " + sy);
+        if (Number(de) !== Number(c.liste[i].decimales)) throw new Error("decimals() = " + de);
+      } catch (e) { fautes.push(c.symbols[i] + " (" + String(e.message || e).slice(0, 60) + ")"); }
+      faits++;
+      $("#relisEtat").textContent = faits + " / " + (n - 1) + " read…";
+    }
+  }
+  await Promise.all([ouvrier(), ouvrier(), ouvrier(), ouvrier(), ouvrier(), ouvrier()]);
+  S.listeOk = fautes.length === 0;
+  $("#relisEtat").innerHTML = fautes.length
+    ? '<span class="bad">' + fautes.length + " quote(s) failed: " + esc(fautes.slice(0, 6).join(", ")) + "</span>"
+    : '<span class="ok">All ' + (n - 1) + " quote tokens re-read: code present, symbol() and decimals() match the list.</span>";
+  if (S.listeOk && S.prog) { S.prog.listeRelue = { le: new Date().toISOString(), empreinte: empreinteListe(c) }; garde(); }
+  $("#btnRelis").disabled = false;
+  rafraichit();
+  await reestime();
+}
+/* Chaque etape prete est estimee en direct AVANT qu'on puisse cliquer : le gaz et le prix s'affichent avant la signature. */
+async function reestime() {
+  if (!S.owner || !S.prog) return;
+  await Promise.all(ETAPES.filter(function (e) { return !etapeVerte(e.k) && !S.prog.tx[e.k]; }).map(function (e) { return estime(e.k); }));
+  rafraichit();
+}
+
+/* ---------- les reglages ---------- */
+function tresor() { var v = $("#inTresor").value.trim(); return U.isAddress(v) && !meme(v, E.constants.AddressZero) ? U.getAddress(v) : null; }
+function fraisWei() { try { var v = $("#inFrais").value.trim(); if (!/^\d+(\.\d{1,18})?$/.test(v)) return null; return U.parseEther(v).toString(); } catch (e) { return null; } }
+async function controleTresor() {
+  var t = tresor(), el = $("#tresorEtat");
+  S.tresorOk = false;
+  if (!t) { el.innerHTML = $("#inTresor").value.trim() ? '<span class="bad">Not a valid non-zero address.</span>' : ""; return; }
+  try {
+    var code = await lecteur().getCode(t);
+    /* Le noyau paie le frais au tresor par `call` dans createToken : un tresor qui refuse l'ETH
+       ferait echouer TOUS les lancements, pour toujours. On le simule ici, sans rien envoyer. */
+    if (S.owner) await lecteur().estimateGas({ from: S.owner, to: t, value: 1 });
+    S.tresorOk = true;
+    el.innerHTML = '<span class="ok">Accepts ETH' + (S.owner ? " (simulated, nothing sent)" : "") + ".</span> " + (code && code !== "0x" ? "It is a contract (" + ((code.length - 2) / 2) + " bytes) — make sure it can also call <code>withdraw</code> on Holders." : "It is a plain account.");
+  } catch (e) { el.innerHTML = '<span class="bad">A 1-wei transfer to this address reverts: launches would all fail. Pick another treasury.</span>'; }
+  rafraichit();
+  if (S.tresorOk) await reestime();
+}
+
+/* ---------- les adresses, calculees avant de rien envoyer ---------- */
+var IFACE_DEP = null;
+function sels() {
+  if (!SELS.core) ["core", "holders", "alloc"].forEach(function (k) { SELS[k] = U.keccak256(U.toUtf8Bytes("swoge.v5." + k)); });
+  return SELS;
+}
+function adresseDe(dep, par, sel) {
+  var s = U.keccak256(U.defaultAbiCoder.encode(["address", "bytes32"], [par, sel]));
+  var proxy = U.getAddress("0x" + U.keccak256(U.concat(["0xff", dep, s, U.keccak256("0x67363d3d37363d34f03d5260086018f3")])).slice(26));
+  return U.getAddress("0x" + U.keccak256(U.concat(["0xd694", proxy, "0x01"])).slice(26));
+}
+function calculeAdresses() {
+  var p = S.prog, d = p.deployer;
+  if (!d) return;
+  var s = sels();
+  p.addrs.core = adresseDe(d, S.owner, s.core);
+  p.addrs.holders = adresseDe(d, S.owner, s.holders);
+  p.addrs.alloc = adresseDe(d, S.owner, s.alloc);
+  if (p.hookSalt) p.addrs.hook = adresseDe(d, S.owner, p.hookSalt);
+}
+function mineSel() {
+  return new Promise(function (ok, ko) {
+    var w;
+    try { w = new Worker("v5_mineur.js?v=c6ccb451"); } catch (e) { return ko(e); }
+    w.onmessage = function (ev) {
+      var d = ev.data || {};
+      if (d.essais) { var el = $("#mineEtat"); if (el) el.textContent = "mining the hook salt… " + d.essais.toLocaleString("en-US") + " tries"; return; }
+      if (d.fini) { w.terminate(); if (d.echec) ko(new Error(d.echec)); else ok(d); }
+    };
+    w.onerror = function (e) { w.terminate(); ko(new Error(e.message || "worker error")); };
+    w.postMessage({ deployeur: S.prog.deployer, proprietaire: S.owner });
+  });
+}
+async function assureSel() {
+  var p = S.prog;
+  if (p.hookSalt && p.hookPour === (p.deployer + ":" + S.owner).toLowerCase()) return;
+  var r = await mineSel();
+  // le mineur et ethers doivent dire la meme adresse, et elle doit porter les drapeaux
+  var h = adresseDe(p.deployer, S.owner, r.salt);
+  if (!meme(h, r.hook) || (parseInt(h.slice(-4), 16) & MASK) !== FLAGS) throw new Error("mined salt does not check out");
+  p.hookSalt = r.salt; p.hookI = r.i; p.hookPour = (p.deployer + ":" + S.owner).toLowerCase();
+  calculeAdresses(); garde();
+}
+
+/* ---------- les transactions ---------- */
+function codeInit(k) {
+  var a = S.art.contrats, p = S.prog, x = p.addrs, enc = U.defaultAbiCoder;
+  if (k === "hook") return U.hexConcat([a.SwogeHookV5.bytecode, enc.encode(["address", "address", "address"], [PM, x.core, x.holders])]);
+  if (k === "core") return U.hexConcat([a.SwogeLaunchpadV5.bytecode, enc.encode(
+    ["address", "address", "address", "address", "address", "uint256", "address[]", "int24[]"],
+    [PM, x.hook, x.holders, x.alloc, tresorFige(), fraisFige(), S.cot.addresses, S.cot.startTicks])]);
+  if (k === "holders") return U.hexConcat([a.SwogeHoldersV5.bytecode, enc.encode(["address", "address", "address"], [PM, x.core, x.hook])]);
+  if (k === "alloc") return U.hexConcat([a.SwogeAllocV5.bytecode, enc.encode(["address"], [x.core])]);
+}
+function requete(k) {
+  if (k === "deployer") return { data: S.art.contrats.SwogeDeployerV5.bytecode };
+  IFACE_DEP = IFACE_DEP || new U.Interface(S.art.contrats.SwogeDeployerV5.abi);
+  var sel = k === "hook" ? S.prog.hookSalt : sels()[k];
+  return { to: S.prog.deployer, data: IFACE_DEP.encodeFunctionData("deploy", [sel, codeInit(k)]) };
+}
+/* Le tresor et le frais sont ceux des champs tant que le noyau n'est pas envoye ; ensuite ceux de la progression. */
+function tresorFige() { return (S.prog && S.prog.treasury) || tresor(); }
+function fraisFige() { return (S.prog && S.prog.launchFeeWei) || fraisWei(); }
+function adresseEtape(k) { return k === "deployer" ? S.prog.deployer : S.prog.addrs[k]; }
+function pret(k) {
+  var p = S.prog;
+  if (!S.owner || !S.art || !S.cot) return "connect your wallet first";
+  if (k === "deployer") return null;
+  if (!p.deployer) return "step 1 first";
+  // le hook, le noyau et Holders se designent l'un l'autre : il faut l'adresse du hook, donc son sel
+  if (!p.hookSalt) return "the hook salt is not mined yet";
+  if (k === "core") {
+    if (!p.treasury && !tresor()) return "set the treasury above";
+    if (!p.treasury && !S.tresorOk) return "the treasury must accept ETH";
+    if (!p.launchFeeWei && fraisWei() == null) return "set a valid launch fee";
+    if (!listeUtilisable()) return "the quote list is not usable (see section 2)";
+    if (!(p.listeRelue && p.listeRelue.empreinte === empreinteListe(S.cot))) return "re-read the quote tokens on-chain first (section 2)";
+  }
+  return null;
+}
+async function estime(k) {
+  try {
+    if (pret(k)) return;
+    var g = await lecteur().estimateGas(Object.assign({ from: S.owner }, requete(k)));
+    S.est[k] = g.toNumber();
+  } catch (e) { S.est[k] = { erreur: String(e.reason || e.message || e).slice(0, 140) }; }
+}
+function prixTx(g) {
+  if (!S.gasPrice || typeof g !== "number") return "";
+  var wei = S.gasPrice.mul(g), eth = +U.formatEther(wei);
+  return " ≈ <b>" + eth.toFixed(6) + " ETH</b>" + (S.ethUsd ? " ($" + (eth * S.ethUsd).toFixed(2) + ")" : "");
+}
+async function envoie(k) {
+  if (S.occupe) return;
+  var raison = pret(k); if (raison) { alert(raison); return; }
+  S.occupe = true; rafraichit();
+  try {
+    var cid = await S.eth.request({ method: "eth_chainId" });
+    if (Number(cid) !== CHAIN.id) throw new Error("your wallet is not on Robinhood Chain (4663) — reconnect");
+    var acc = await S.signer.getAddress();
+    if (!meme(acc, S.owner)) throw new Error("the wallet account changed — reconnect");
+    var p = S.prog;
+    if (k === "core") { p.treasury = p.treasury || tresor(); p.launchFeeWei = p.launchFeeWei || fraisWei(); garde(); }
+    await estime(k);
+    if (typeof S.est[k] !== "number") throw new Error("gas estimate failed: " + (S.est[k] && S.est[k].erreur));
+    var r = requete(k);
+    // +20 % au-dessus de l'estimation : un constructeur de 11 M de gaz ne doit pas manquer de gaz a 1 % pres
+    r.gasLimit = E.BigNumber.from(S.est[k]).mul(120).div(100);
+    msg(k, "Confirm in your wallet…");
+    var tx = await S.signer.sendTransaction(r);
+    p.tx[k] = tx.hash; garde();
+    msg(k, "Sent " + lienTx(tx.hash) + " · waiting for the block…");
+    await suit(k);
+  } catch (e) {
+    // un noyau jamais parti ne fige rien : le tresor et le frais redeviennent modifiables
+    if (k === "core" && !S.prog.tx.core) { delete S.prog.treasury; delete S.prog.launchFeeWei; garde(); }
+    msg(k, '<span class="bad">' + esc(String(e && (e.reason || (e.data && e.data.message) || e.message) || e).slice(0, 220)) + "</span>");
+  }
+  S.occupe = false; rafraichit();
+}
+/* Attend le recu d'une transaction deja envoyee (aussi apres une reprise), puis verifie. */
+async function suit(k) {
+  var p = S.prog, h = p.tx[k];
+  var rc = await lecteur().waitForTransaction(h, 1, 600000);
+  if (!rc || rc.status !== 1) { msg(k, '<span class="bad">Transaction ' + lienTx(h) + " failed on-chain. You can send this step again.</span>"); delete p.tx[k]; garde(); return; }
+  msg(k, "");
+  p.blocs[k] = rc.blockNumber;
+  if (k === "deployer") { p.deployer = U.getAddress(rc.contractAddress); calculeAdresses(); }
+  garde();
+  await attendsCode(adresseEtape(k));
+  await verifie(k);
+  if (k === "deployer") await apresDeployeur();
+}
+async function attendsCode(a) {
+  for (var i = 0; i < 10; i++) { var c = await lecteur().getCode(a); if (c && c !== "0x") return c; await attends(1500); }
+  return "0x";
+}
+
+/* ---------- la verification sur la chaine ---------- */
+function codeConforme(code, art) {
+  var a = String(code || "").slice(2).toLowerCase(), b = art.runtime.slice(2).toLowerCase();
+  if (a.length !== b.length) return false;
+  var ra = a.split(""), rb = b.split("");
+  art.immuables.forEach(function (r) { for (var i = 2 * r[0]; i < 2 * (r[0] + r[1]); i++) { ra[i] = "0"; rb[i] = "0"; } });
+  return ra.join("") === rb.join("");
+}
+async function verifie(k) {
+  var p = S.prog, x = p.addrs, a = adresseEtape(k), et = ETAPES.filter(function (e) { return e.k === k; })[0];
+  var art = S.art.contrats[et.art], v = [];
+  function ajoute(nom, bon, detail) { v.push({ nom: nom, ok: !!bon, detail: detail || "" }); }
+  try {
+    var code = await lecteur().getCode(a);
+    ajoute("code present at " + a, code && code !== "0x", ((code.length - 2) / 2) + " bytes");
+    ajoute("on-chain code = compiled " + et.art + (art.immuables.length ? " (immutables masked)" : " (byte for byte)"), codeConforme(code, art));
+    var c = new E.Contract(a, art.abi, lecteur());
+    if (k === "deployer") {
+      var s = sels(), en = await c.addressOf(S.owner, s.core);
+      ajoute("addressOf(owner, core salt) = the address computed here", meme(en, adresseDe(a, S.owner, s.core)), en);
+    }
+    if (k === "hook") {
+      ajoute("address flags = 0x2ACC", (parseInt(a.slice(-4), 16) & MASK) === FLAGS, "0x" + (parseInt(a.slice(-4), 16) & MASK).toString(16).toUpperCase());
+      ajoute("poolManager() = Uniswap v4 PoolManager", meme(await c.poolManager(), PM));
+      ajoute("core() = core address", meme(await c.core(), x.core));
+      ajoute("holders() = Holders address", meme(await c.holders(), x.holders));
+      var dep = new E.Contract(p.deployer, S.art.contrats.SwogeDeployerV5.abi, lecteur());
+      ajoute("deployer.addressOf(owner, hook salt) = hook", meme(await dep.addressOf(S.owner, p.hookSalt), a));
+    }
+    if (k === "core") {
+      ajoute("poolManager()", meme(await c.poolManager(), PM));
+      ajoute("hook()", meme(await c.hook(), x.hook));
+      ajoute("holders()", meme(await c.holders(), x.holders));
+      ajoute("alloc()", meme(await c.alloc(), x.alloc));
+      ajoute("treasury() = " + tresorFige(), meme(await c.treasury(), tresorFige()));
+      ajoute("launchFeeWei() = " + fraisFige() + " wei", (await c.launchFeeWei()).toString() === String(fraisFige()));
+      var g = await c.getConfig();
+      ajoute("BASE_FEE_BPS = 100", g.BASE_FEE_BPS === 100);
+      ajoute("CREATOR_SHARE_BPS = 7500 (75 % creator / 25 % SWOGE)", g.CREATOR_SHARE_BPS === 7500, String(g.CREATOR_SHARE_BPS));
+      ajoute("MAX_CREATOR_TAX_BPS = 500 (5 %)", g.MAX_CREATOR_TAX_BPS === 500, String(g.MAX_CREATOR_TAX_BPS));
+      ajoute("MAX_START_SHIFT_TICKS = 23000", g.MAX_START_SHIFT_TICKS === 23000);
+      var qs = g.quotes, ts = g.startTicks, n = S.cot.addresses.length;
+      ajoute("quote count = " + n, qs.length === n, String(qs.length));
+      var memes = qs.length === n && qs.every(function (q, i) { return meme(q, S.cot.addresses[i]) && Number(ts[i]) === Number(S.cot.startTicks[i]); });
+      ajoute("every quote and start tick = cotations_v5.json", memes);
+      ajoute("tokenCount() = 0 (fresh)", (await c.tokenCount()).toNumber() === 0);
+    }
+    if (k === "holders") {
+      ajoute("poolManager()", meme(await c.poolManager(), PM));
+      ajoute("core()", meme(await c.core(), x.core));
+      ajoute("hook()", meme(await c.hook(), x.hook));
+    }
+    if (k === "alloc") ajoute("core()", meme(await c.core(), x.core));
+  } catch (e) { ajoute("read failed: " + String(e.message || e).slice(0, 120), false); }
+  S.verifs[k] = v;
+  rafraichit();
+  return v.every(function (r) { return r.ok; });
+}
+function etapeVerte(k) { var v = S.verifs[k]; return !!(v && v.length && v.every(function (r) { return r.ok; })); }
+
+async function apresDeployeur() {
+  var p = S.prog;
+  calculeAdresses(); rafraichit();
+  try { await assureSel(); } catch (e) { var m = $("#mineEtat"); if (m) m.innerHTML = '<span class="bad">' + esc(e.message) + "</span>"; return; }
+  rafraichit();
+  await Promise.all(["hook", "core", "holders", "alloc"].map(estime));
+  rafraichit();
+}
+
+/* ---------- reprise : ce que la chaine dit deja ---------- */
+async function reprend() {
+  var p = S.prog;
+  if (p.treasury) { $("#inTresor").value = p.treasury; }
+  if (p.launchFeeWei) { $("#inFrais").value = U.formatEther(p.launchFeeWei); }
+  if (!p.deployer && p.tx.deployer) await suit("deployer");
+  if (p.deployer) {
+    calculeAdresses();
+    if (!(await verifie("deployer"))) { rafraichit(); return; }
+    try { await assureSel(); } catch (e) {}
+    for (var i = 1; i < ETAPES.length; i++) {
+      var k = ETAPES[i].k, a = adresseEtape(k);
+      if (!a) continue;
+      var code = await lecteur().getCode(a);
+      if (code && code !== "0x") await verifie(k);
+      else if (p.tx[k]) { msg(k, "Waiting for " + lienTx(p.tx[k]) + "…"); await suit(k); }
+    }
+    await Promise.all(ETAPES.slice(1).map(function (e) { return S.verifs[e.k] ? null : estime(e.k); }));
+  } else await estime("deployer");
+  rafraichit();
+}
+async function deployeurExistant() {
+  var v = $("#inDeployeur").value.trim(), el = $("#deployeurEtat");
+  if (!v) { el.textContent = ""; return; }
+  if (!U.isAddress(v)) { el.innerHTML = '<span class="bad">Not an address.</span>'; return; }
+  if (S.prog.deployer && !meme(S.prog.deployer, v)) { el.innerHTML = '<span class="bad">Saved progress already uses deployer ' + esc(S.prog.deployer) + ". Forget the saved progress first.</span>"; return; }
+  var code = await lecteur().getCode(v);
+  if (!codeConforme(code, S.art.contrats.SwogeDeployerV5)) { el.innerHTML = '<span class="bad">The code at this address is not SwogeDeployerV5.</span>'; return; }
+  S.prog.deployer = U.getAddress(v); S.prog.deployerReutilise = true; garde();
+  el.innerHTML = '<span class="ok">SwogeDeployerV5 found, byte for byte. Step 1 is skipped.</span>';
+  await verifie("deployer"); await apresDeployeur();
+}
+
+/* ---------- l'affichage ---------- */
+function rafraichit() {
+  var p = S.prog, h = "", tot = 0, totConnu = true;
+  ETAPES.forEach(function (e, i) {
+    var k = e.k, a = p ? adresseEtape(k) : null, v = S.verifs[k], vert = etapeVerte(k);
+    var g = S.est[k], gTxt;
+    if (typeof g === "number") { gTxt = "estimated <b>" + g.toLocaleString("en-US") + "</b> gas" + prixTx(g); if (!vert) tot += g; }
+    else if (g && g.erreur) { gTxt = '<span class="bad">estimate failed: ' + esc(g.erreur) + "</span>"; totConnu = false; }
+    else { gTxt = "measured on a local fork: " + MESURE[k].toLocaleString("en-US") + " gas" + prixTx(MESURE[k]); if (!vert) tot += MESURE[k]; }
+    var raison = p ? pret(k) : "connect your wallet first";
+    var etat = vert ? '<span class="etat fait">deployed · verified</span>' : (p && p.tx[k] && !v ? '<span class="etat encours">sent</span>' : '<span class="etat">to do</span>');
+    if (k === "deployer" && p && p.deployerReutilise && vert) etat = '<span class="etat fait">reused · verified</span>';
+    h += '<div class="etape" id="etape-' + k + '"><h3><span>Step ' + (i + 1) + " · " + esc(e.nom) + "</span>" + etat + "</h3>";
+    h += '<div class="mute">' + esc(e.art) + (a ? " → " + lienAdr(a) : "") + "</div>";
+    if (k === "hook" && p && p.deployer) h += '<div class="mute" id="mineEtat">' + (p.hookSalt ? "salt <code>" + esc(p.hookSalt) + "</code> (try #" + p.hookI + ", same rule as MineHookSalt.s.sol)" : "mining the hook salt…") + "</div>";
+    if (!vert) h += '<div class="mute">' + gTxt + "</div>";
+    if (p && p.tx[k]) h += '<div class="mute">tx ' + lienTx(p.tx[k]) + (p.blocs[k] ? " · block " + p.blocs[k] : "") + "</div>";
+    if (v) h += '<ul class="verifs">' + v.map(function (r) { return '<li class="' + (r.ok ? "ok" : "bad") + '">' + esc(r.nom) + (r.detail ? ' <span class="mute">' + esc(r.detail) + "</span>" : "") + "</li>"; }).join("") + "</ul>";
+    var prec = i === 0 || etapeVerte(ETAPES[i - 1].k);
+    if (!vert) h += '<div class="rang"><button data-envoie="' + k + '"' + (raison || !prec || S.occupe || (p && p.tx[k] && !v) ? " disabled" : "") + ">Send step " + (i + 1) + "</button><span class=\"mute\">" + esc(raison || (!prec ? "previous step first" : "")) + "</span></div>";
+    h += '<div class="mute" id="msg-' + k + '">' + (S.msg[k] || "") + "</div></div>";
+  });
+  $("#etapes").innerHTML = h;
+  [].forEach.call(document.querySelectorAll("[data-envoie]"), function (b) { b.onclick = function () { envoie(b.getAttribute("data-envoie")); }; });
+  $("#prixEtat").innerHTML = S.gasPrice ? "Gas price now: <b>" + (+U.formatUnits(S.gasPrice, "gwei")).toFixed(4) + " gwei</b> (eth_gasPrice)" +
+    (S.ethUsd ? " · ETH = $" + S.ethUsd.toFixed(2) + " (" + esc(S.ethUsdSrc) + ")" : "") : "Gas price not read yet.";
+  $("#totalEtat").innerHTML = tot && S.gasPrice ? "Remaining: about <b>" + tot.toLocaleString("en-US") + "</b> gas" + prixTx(tot) + (totConnu ? "" : " (some estimates failed)") +
+    ". Your wallet may reserve up to twice the gas price; keep a margin." + (S.solde ? " Balance: " + (+U.formatEther(S.solde)).toFixed(6) + " ETH" +
+    (S.solde.lt(S.gasPrice.mul(tot).mul(2)) ? ' <span class="bad">— too low for the remaining steps</span>' : "") : "") : "";
+  $("#btnRelis").disabled = !S.cot || !!S.relisEnCours;
+  var fini = p && ETAPES.every(function (e) { return etapeVerte(e.k); });
+  $("#carteFin").hidden = !fini;
+  if (fini) $("#jsonFin").textContent = jsonFin();
+  if (p && p.treasury && (p.tx.core || S.verifs.core)) { $("#inTresor").disabled = true; $("#inFrais").disabled = true; }
+}
+/* Le fichier que lit launchpad.html (lance_v5.js) pour allumer la section V5. Donnees publiques seulement. */
+function jsonFin() {
+  var p = S.prog;
+  var o = {
+    version: "v5", chainId: CHAIN.id, poolManager: PM,
+    deployer: p.deployer, hook: p.addrs.hook, core: p.addrs.core, holders: p.addrs.holders, alloc: p.addrs.alloc,
+    hookSalt: p.hookSalt, owner: U.getAddress(S.owner), treasury: tresorFige(), launchFeeWei: String(fraisFige()),
+    quotes: S.cot.addresses.length, listFingerprint: empreinteListe(S.cot),
+    cotations: { genere: S.cot.genere, bloc: S.cot.bloc },
+    artefacts: { genere: S.art.genere, compilateur: S.art.compilateur },
+    blocks: p.blocs, txs: p.tx, verified: new Date().toISOString().slice(0, 10)
+  };
+  return JSON.stringify(o, null, 2) + "\n";
+}
+
+/* ---------- prix : gaz (eth_gasPrice, lecture seule) et ETH en dollars ---------- */
+function fetchBorne(u, ms) { return Promise.race([fetch(u, { cache: "no-store" }), attends(ms).then(function () { throw new Error("timeout"); })]); }
+async function litPrix() {
+  try { S.gasPrice = await lecteur().getGasPrice(); } catch (e) {}
+  if (!S.ethUsd) {
+    try { var j = await (await fetchBorne("https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd", 5000)).json();
+      if (j && j.ethereum && j.ethereum.usd) { S.ethUsd = +j.ethereum.usd; S.ethUsdSrc = "CoinGecko, now"; } } catch (e) {}
+  }
+  if (!S.ethUsd && S.cot && S.cot.ethUsd) { S.ethUsd = +S.cot.ethUsd; S.ethUsdSrc = "price in the quote list, " + S.cot.genere.slice(0, 10); }
+  if (S.owner) { try { S.solde = await lecteur().getBalance(S.owner); } catch (e) {} }
+  rafraichit();
+}
+
+/* ---------- le portefeuille : EIP-6963, sinon window.ethereum ; chaine 4663 imposee ---------- */
+var portefeuilles = [];
+window.addEventListener("eip6963:announceProvider", function (e) {
+  var d = e.detail; if (d && d.info && d.provider && !portefeuilles.some(function (w) { return w.info.uuid === d.info.uuid; })) { portefeuilles.push(d); montreChoix(); }
+});
+function montreChoix() {
+  var h = portefeuilles.map(function (w, i) { return '<button data-w="' + i + '">' + esc(w.info.name || "Wallet") + "</button>"; }).join("");
+  if (!portefeuilles.length && window.ethereum) h = '<button data-w="-1">Connect browser wallet</button>';
+  if (!h) h = '<span class="bad">No browser wallet found. Open this page in a browser with your wallet extension.</span>';
+  $("#walletChoix").innerHTML = S.owner ? "" : h;
+  [].forEach.call(document.querySelectorAll("[data-w]"), function (b) {
+    b.onclick = function () { var i = +b.getAttribute("data-w"); connecte(i < 0 ? window.ethereum : portefeuilles[i].provider); };
+  });
+}
+async function connecte(eth) {
+  try {
+    await eth.request({ method: "eth_requestAccounts" });
+    var cid = await eth.request({ method: "eth_chainId" });
+    if (Number(cid) !== CHAIN.id) {
+      try { await eth.request({ method: "wallet_switchEthereumChain", params: [{ chainId: CHAIN.hex }] }); }
+      catch (sw) {
+        if (!sw || sw.code !== 4902) throw sw;
+        await eth.request({ method: "wallet_addEthereumChain", params: [{ chainId: CHAIN.hex, chainName: CHAIN.name,
+          nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 }, rpcUrls: [CHAIN.rpc], blockExplorerUrls: [CHAIN.scan] }] });
+      }
+      cid = await eth.request({ method: "eth_chainId" });
+      if (Number(cid) !== CHAIN.id) throw new Error("the wallet did not switch to Robinhood Chain (4663)");
+    }
+    S.eth = eth; S.web3 = new E.providers.Web3Provider(eth, "any"); S.signer = S.web3.getSigner();
+    S.owner = U.getAddress(await S.signer.getAddress());
+    $("#walletEtat").innerHTML = "Connected: " + lienAdr(S.owner) + " on Robinhood Chain (4663). This account signs the five transactions and is part of every CREATE3 address.";
+    if (eth.on && !eth.__v5) { eth.__v5 = true; eth.on("accountsChanged", function () { location.reload(); }); eth.on("chainChanged", function () { location.reload(); }); }
+    montreChoix();
+    chargeProg();
+    S.prog.owner = S.owner; garde();
+    litPrix();
+    controleTresor();
+    await reprend();
+  } catch (e) { $("#walletEtat").innerHTML = '<span class="bad">' + esc(String(e && e.message || e).slice(0, 160)) + "</span>"; }
+}
+
+/* ---------- demarrage ---------- */
+$("#btnRelis").onclick = function () { S.relisEnCours = true; relisListe().then(function () { S.relisEnCours = false; rafraichit(); }); };
+$("#inTresor").oninput = function () { clearTimeout(controleTresor._t); controleTresor._t = setTimeout(controleTresor, 400); };
+$("#inFrais").oninput = function () { var w = fraisWei(); $("#fraisEtat").innerHTML = w == null ? '<span class="bad">Not a valid ETH amount.</span>' : "= " + w + " wei, frozen in the core (immutable)."; rafraichit();
+  clearTimeout(reestime._t); if (w != null) reestime._t = setTimeout(reestime, 500); };
+$("#inDeployeur").onchange = function () { if (S.prog) deployeurExistant(); };
+$("#btnOublie").onclick = function () {
+  if (!S.owner) return;
+  if (!confirm("Forget the saved progress for " + S.owner + "? Deployed contracts stay on-chain; the page re-detects them from their addresses only if the same deployer is used.")) return;
+  try { localStorage.removeItem(cle()); } catch (e) {}
+  location.reload();
+};
+$("#btnCopie").onclick = function () {
+  var t = $("#jsonFin").textContent;
+  (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(function () { $("#copieEtat").textContent = "Copied."; },
+    function () { $("#copieEtat").textContent = "Select the text above and copy it."; });
+};
+(async function () {
+  if (!E) { $("#walletEtat").innerHTML = '<span class="bad">ethers did not load — check your connection and reload.</span>'; return; }
+  $("#inFrais").oninput();
+  try { window.dispatchEvent(new Event("eip6963:requestProvider")); } catch (e) {}
+  setTimeout(montreChoix, 300);
+  try { S.art = await charge(ART_URL); } catch (e) { $("#artInfo").innerHTML = '<span class="bad">Could not load ' + esc(ART_URL) + ": " + esc(e.message) + "</span>"; }
+  try { S.cot = await charge(COT_URL); } catch (e) { $("#cotInfo").innerHTML = '<span class="bad">Could not load ' + esc(COT_URL) + ": " + esc(e.message) + "</span>"; }
+  montreDonnees();
+  litPrix();
+  setInterval(litPrix, 30000);
+  rafraichit();
+})();
+</script>
+</body>
+</html>

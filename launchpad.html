@@ -140,6 +140,7 @@ video{ max-width:100%; }
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
 <script src="lance_v4.js?v=6f7f9ced"></script>
+<script src="lance_v5.js?v=deb498e0"></script>
 <!-- 14/10/2026 : le paquet UMD de WalletConnect 2.13.3 lit « process » (une variable de Node,
      absente d'un navigateur) et plante au chargement : « process is not defined », mesure sur une
      page vide, disparu avec ce shim. -->
@@ -1162,6 +1163,9 @@ a.chip.plein:hover{background:var(--goldlite);color:#fff}
       <div class="note" id="createNote">Connect a wallet first.</div>
       <div class="lp-kit" id="lpKit" hidden></div>
     </div>
+    <!-- 18/10/2026 : SWOGE V5 (lance_v5.js). Inerte tant que contrats/v5/adresses_v5.json n existe pas :
+         « V5 coming soon », et le formulaire V4 ci-dessus reste exactement celui d avant. -->
+    <div class="panel" id="v5Panel"></div>
   </section>
 
   <!-- ============ EXPLORE ============ -->
@@ -1580,6 +1584,7 @@ async function connectWith(eth){
     account=await signer.getAddress();
     rawEth=eth;
     $("#walletBtn").textContent=account.slice(0,6)+"…"+account.slice(-4);
+    if(window.SwogeV5) window.SwogeV5.portefeuilleChange();
     /* Le formulaire vise le V3, donc c'est SON adresse qui decide — pas celle
        du V2. Sans cette distinction, connecter un portefeuille reactivait le
        bouton que `updateFeeSummary` venait de desactiver, et le lancement
@@ -1611,6 +1616,7 @@ async function disconnect(){
   try{ if(rawEth && typeof rawEth.disconnect==="function") await rawEth.disconnect(); }catch(e){}
   account=null; signer=null; provider=null; rawEth=null;
   $("#walletBtn").textContent="Connect wallet";
+  if(window.SwogeV5) window.SwogeV5.portefeuilleChange();
   $("#createBtn").disabled=true;
   if(curToken) refreshTrade();
   if(!$("#tab-mine").classList.contains("hidden")) loadMine();
@@ -4430,6 +4436,10 @@ $("#mtabs").addEventListener("click",function(e){ var b=e.target.closest("button
 (function(){
   try{ var q=new URLSearchParams(location.search), a=q.get("token")||q.get("t"); if(/^0x[0-9a-fA-F]{40}$/.test(a||"")) openTrade(a); }catch(e){}
 })();
+/* 18/10/2026 : la section V5. Elle lit le portefeuille choisi ici (le meme signataire que le V4) et le RPC
+   de la page ; elle ne touche a rien du V4. Sans contrats/v5/adresses_v5.json, elle dit « coming soon ». */
+if(window.SwogeV5) window.SwogeV5.monte({ hote:$("#v5Panel"), lecteur:lecteur, ethUsd:getEthUsd, connecte:openWalletPicker,
+  portefeuille:function(){ return { signer:signer, account:account, eth:rawEth }; } });
 })();
 </script>
 </html>

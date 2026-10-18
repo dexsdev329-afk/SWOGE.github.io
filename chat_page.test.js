@@ -64,6 +64,10 @@ const sse = (evs) => evs.map(([t, d]) => 'event: ' + t + '\ndata: ' + JSON.strin
      depend ni du reseau ni du vrai serveur. */
   const ouvre = async ({ session, cat, rep, largeur, reprise, adresses, histo, journal, requete, portefeuille, mode, agent, local } = {}) => {
     const ctx = await nav.newContext({ viewport: { width: largeur || 1200, height: 900 } });
+    /* Aucune socket vers le VRAI serveur (18/10/2026) : il refuse le faux jeton (resumeFailed) et la
+       bulle de mise (stakebubble.js) efface alors swogeSession au milieu de l essai — mesure : la
+       session lue a l envoi valait null, d ou « Sign in » et l attente de 30 s au paragraphe 11. */
+    await ctx.addInitScript(() => { window.WebSocket = function(){ return { send(){}, close(){}, addEventListener(){}, readyState: 0 }; }; window.WebSocket.OPEN = 1; });
     /* Ces scenarios portent sur le CHAT : un nouveau visiteur arrive en Mission depuis le 29/09. */
     if (mode !== false) await ctx.addInitScript((m) => { try { if (localStorage.getItem('swogeStudioMode') === null) localStorage.setItem('swogeStudioMode', JSON.stringify(m)); } catch (e) {} }, mode || 'chat');
     if (local) await ctx.addInitScript((o) => { try { Object.keys(o).forEach((k) => { if (localStorage.getItem(k) === null) localStorage.setItem(k, JSON.stringify(o[k])); }); } catch (e) {} }, local);

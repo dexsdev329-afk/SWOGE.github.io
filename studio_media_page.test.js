@@ -981,7 +981,8 @@ const FR = /[àâçéèêëîïôûùüÿœ]|\b(les|des|une|est|pour|avec|vous|v
     ok(!/0x[0-9a-fA-F]{40}/.test(html), 'aucune adresse ecrite dans la page');
     /* Les prix du catalogue ne sont ecrits nulle part dans le code (commentaires retires). */
     const code = [...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g)].map((m) => m[1]).join('\n').replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:"'])\/\/.*$/gm, '$1');
-    const durs = [...new Set([].concat(...catReel().image.fournisseurs.map((f) => f.modeles.map((m) => [m.parImageUsd, m.parImageSwoge])), ...catReel().video.modeles.map((m) => [m.parSecondeSwoge, m.typiqueSwoge])).flat().concat([0.03, 0.06, 0.3102, 0.31, 710, 1419, 7335, 1774, 2838, 10641, 17026, 28376, 0.72, 1.2, 0.84, 0.63, 0.042, 0.32]))];
+    /* Les gratuits (18/10) valent 0 : un zero n est pas un prix recopie, et le code en a partout. */
+    const durs = [...new Set([].concat(...catReel().image.fournisseurs.map((f) => f.modeles.filter((m) => !m.gratuit).map((m) => [m.parImageUsd, m.parImageSwoge])), ...catReel().video.modeles.map((m) => [m.parSecondeSwoge, m.typiqueSwoge])).flat().concat([0.03, 0.06, 0.3102, 0.31, 710, 1419, 7335, 1774, 2838, 10641, 17026, 28376, 0.72, 1.2, 0.84, 0.63, 0.042, 0.32]))];
     const trouves = durs.filter((x) => new RegExp('(^|[^0-9.])' + String(x).replace('.', '\\.') + '(?![0-9])').test(code));
     ok(trouves.length === 0, 'aucun prix du catalogue ecrit en dur dans le code' + (trouves.length ? ' [' + trouves.join(', ') + ']' : ''));
     ok(!/AI-generated label|Labelled AI-generated|every result carries/i.test(html.replace(/<!--[\s\S]*?-->/g, '')), 'aucune promesse d etiquette « AI-generated » sur chaque resultat');

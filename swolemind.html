@@ -1139,6 +1139,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       <div class="seg" id="fournisseur" role="group" aria-label="Image model">
         <button type="button" data-f="grok" aria-pressed="true">Grok Imagine</button>
         <button type="button" data-f="openai" aria-pressed="false">ChatGPT Image</button>
+        <button type="button" data-f="gratuit" aria-pressed="false" title="Free open models: one image per request, a daily limit, a small watermark on Fast">Free</button>
       </div>
       <div class="seg" id="vitesse" role="group" aria-label="Speed or quality">
         <button type="button" data-v="rapide" aria-pressed="false">Speed</button>
@@ -1257,6 +1258,10 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   }
   var $ = function(id){ return document.getElementById(id); };
   var TXT = {
+    /* Les gratuits (18/10/2026) : servis par des tiers sans cle — on le dit, avec le plafond du jour. */
+    gratuitChat: "Free \u00b7 up to {n} answers a day \u00b7 open model run by a third party that may log prompts: don't paste keys or personal info",
+    gratuitImage: "Free \u00b7 1 image per request, up to {n} a day \u00b7 run by a third party that may log prompts \u00b7 no photo editing",
+    gratuitReste: "Free \u00b7 {n} left today",
     signin: "Sign in with your wallet (top right) to start chatting.",
     ferme: "AI Chat is warming up.",
     reflexion: "Thinking…",
@@ -1385,6 +1390,8 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       if (!mm) return;
       if (etat.mode === "image") {
         var n = etat.jointe ? etat.reg.nombre + 1 : etat.reg.nombre;
+        /* Le gratuit (18/10) : une image par demande, un plafond par jour, pas de retouche. */
+        if (mm.gratuit) { p.textContent = nomMedia(mm) + " \u00b7 " + TXT.gratuitImage.replace("up to {n} a day", (etat.media.image && etat.media.image.gratuitJour) ? "up to " + etat.media.image.gratuitJour + " a day" : "a daily limit"); return; }
         if (payeur() !== "swoge" && mm.parImageUsd != null) p.textContent = nomMedia(mm) + " \u00b7 ~" + dollars(mm.parImageUsd) + " per image" + (mm.estime ? " (estimate)" : "") + (n > 1 ? " \u00b7 \u2248 " + dollars(mm.parImageUsd * n) + " in all" : "") + " \u00b7 you pay the real cost" + commentPayer();
         else p.textContent = nomMedia(mm) + " \u00b7 ~" + nombre(mm.parImageSwoge) + " $SWOGE per image" + (mm.estime ? " (estimate)" : "") + (n > 1 ? " \u00b7 \u2248 " + nombre(mm.parImageSwoge * n) + " in all" : "") + " \u00b7 you pay the real cost";
       } else {
@@ -1404,6 +1411,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     $("modeleNom").textContent = m ? m.nom : "Model";
     $("web").hidden = !(m && m.recherche);
     if (!m) return;
+    if (m.gratuit) { $("prixq").textContent = m.nom + " \u00b7 " + TXT.gratuitChat.replace("up to {n} answers a day", etat.cat.gratuitJour ? "up to " + etat.cat.gratuitJour + " answers a day" : "a daily limit"); return; }
     $("prixq").textContent = m.nom + " · ~" + (enDollars() ? dollars(m.typiqueUsd) + " per question (max " + dollars(m.maxUsd) + ")" : nombre(m.typiqueSwoge) + " $SWOGE per question (max " + nombre(m.maxSwoge) + ")") + " · you pay only what the answer uses" + commentPayer();
   }
   function peintBoutons(){
@@ -1459,7 +1467,8 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     $("reglages").hidden = m === "chat" || m === "mission";
     $("fournisseur").hidden = m !== "image";
     Array.prototype.forEach.call(document.querySelectorAll("#fournisseur button"), function(b){ b.setAttribute("aria-pressed", String(b.getAttribute("data-f") === etat.reg.fournisseur)); });
-    $("nombre").hidden = m !== "image";
+    /* Le gratuit : une image par demande, le compte se cache. */
+    $("nombre").hidden = m !== "image" || (fournisseurImage() || {}).id === "gratuit";
     $("duree").hidden = m !== "video"; $("resolution").hidden = m !== "video";
     $("prodBtn").hidden = m !== "video";
     peintEssaiBtn();
@@ -1468,6 +1477,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     Array.prototype.forEach.call(document.querySelectorAll("#vitesse button"), function(b){ b.setAttribute("aria-pressed", String(b.getAttribute("data-v") === etat.reg.vitesse)); });
     var lm = m === "image" ? (fournisseurImage() || {}).modeles : (etat.media && etat.media.video && etat.media.video.modeles);
     if (lm && lm[1]) $("qualiteNom").textContent = lm[1].nom;
+    var vr = document.querySelector('#vitesse [data-v="rapide"]'); if (vr && lm && lm[0]) vr.textContent = lm[0].nom;
     $("nombre").textContent = "\ud83d\uddbc\ufe0f \u00d7" + etat.reg.nombre;
     $("duree").textContent = "\u23f1\ufe0f " + etat.reg.duree + " s";
     $("resolution").textContent = etat.reg.resolution;
@@ -1498,7 +1508,8 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       var coche = etat.compare ? etat.choix.indexOf(m.id) >= 0 : m.id === (modeleCourant() || {}).id;
       b.innerHTML = '<span class="coche">' + (coche ? "&#10003;" : "") + '</span>'
         + '<span><div class="nom">' + echappe(m.nom) + '</div><div class="desc">' + echappe(m.actif === false ? "Not switched on yet" : m.note) + '</div></span>'
-        + '<span class="prix">~' + (enDollars() ? echappe(dollars(m.typiqueUsd)) : nombre(m.typiqueSwoge) + ' $SWOGE') + '<br>per question</span>';
+        + (m.gratuit ? '<span class="prix">Free<br>daily limit</span>'
+          : '<span class="prix">~' + (enDollars() ? echappe(dollars(m.typiqueUsd)) : nombre(m.typiqueSwoge) + ' $SWOGE') + '<br>per question</span>');
       b.addEventListener("click", function(){
         if (m.actif === false) return;
         if (etat.compare) {
@@ -1627,7 +1638,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     ajouteCartes(d, data.jetons);
     if (data.sources && data.sources.length) d.appendChild(sourcesEl(data.sources));
     var nom = nomModele || ((etat.cat && etat.cat.modeles.filter(function(x){ return x.id === data.modele; })[0]) || {}).nom || "AI";
-    var meta = nom + " \u00b7 " + (data.payeur === "credit" ? dollars(data.factureUsd) : nombre(data.factureSwoge) + " $SWOGE") + (data.usage && data.usage.recherches ? " \u00b7 " + data.usage.recherches + " web search" + (data.usage.recherches > 1 ? "es" : "") : "");
+    var meta = nom + " \u00b7 " + (data.gratuit ? TXT.gratuitReste.replace("{n}", data.gratuitRestant) : data.payeur === "credit" ? dollars(data.factureUsd) : nombre(data.factureSwoge) + " $SWOGE") + (data.usage && data.usage.recherches ? " \u00b7 " + data.usage.recherches + " web search" + (data.usage.recherches > 1 ? "es" : "") : "");
     var mt = document.createElement("div"); mt.className = "meta"; mt.textContent = meta; d.appendChild(mt);
     d.appendChild(actionsEl(texte));
     etat.conv.messages.push(Object.assign({ role: "assistant", content: texte, sources: data.sources || [], meta: meta }, data.jetons && data.jetons.length ? { jetons: data.jetons } : {}, extra || {}));
@@ -2586,10 +2597,10 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     etat.occupe = true; peintBoutons(); dit("");
     var d = ajouteMsg("assistant", ""), corps = d.querySelector(".corps");
     var etape = document.createElement("div"); etape.className = "etape";
-    etape.textContent = mode === "image" ? (jointe ? "Editing your photo\u2026" : "Creating " + (reg.nombre > 1 ? reg.nombre + " images" : "the image") + "\u2026") : "Starting the video\u2026";
+    etape.textContent = mode === "image" ? (jointe ? "Editing your photo\u2026" : "Creating " + (reg.nombre > 1 && (fournisseurImage() || {}).id !== "gratuit" ? reg.nombre + " images" : "the image") + "\u2026") : "Starting the video\u2026";
     d.insertBefore(etape, corps);
     var corpsReq = { rid: rid, modele: reg.vitesse, prompt: q, format: fmt, image: jointe || undefined };
-    if (mode === "image") { corpsReq.payeur = payeurServeur(); corpsReq.n = reg.nombre; corpsReq.fournisseur = (fournisseurImage() || {}).id || "grok"; if (contexte.length) corpsReq.contexte = contexte; }
+    if (mode === "image") { corpsReq.payeur = payeurServeur(); corpsReq.fournisseur = (fournisseurImage() || {}).id || "grok"; corpsReq.n = corpsReq.fournisseur === "gratuit" ? 1 : reg.nombre; if (contexte.length) corpsReq.contexte = contexte; }
     else { corpsReq.duree = reg.duree; corpsReq.resolution = reg.resolution; }
     function fin(){ etat.occupe = false; peintBoutons(); if (etape.parentNode) etape.remove(); }
     /* La demande non servie ne reste pas dans le fil enregistre. */
@@ -2618,7 +2629,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
      `place` : le message d'attente d'une video, complete sur place. */
   function finMedia(d, mode, res, nomModele, fmt, place){
     var meta = nomModele + (mode === "image" ? " \u00b7 \u00d7" + (res.urls || []).length : " \u00b7 " + res.duree + " s \u00b7 " + res.resolution)
-      + (fmt && fmt !== "auto" ? " \u00b7 " + fmt : "") + " \u00b7 " + (res.payeur === "credit" ? dollars(res.factureUsd) : nombre(res.factureSwoge) + " $SWOGE");
+      + (fmt && fmt !== "auto" ? " \u00b7 " + fmt : "") + " \u00b7 " + (res.gratuit ? TXT.gratuitReste.replace("{n}", res.gratuitRestant) : res.payeur === "credit" ? dollars(res.factureUsd) : nombre(res.factureSwoge) + " $SWOGE");
     var m = place || { role: "assistant", genre: mode };
     m.content = mode === "image" ? "[image]" : "[video]"; m.urls = res.urls; m.url = res.url; m.meta = meta; delete m.enCours;
     if (res.compris) m.compris = String(res.compris).slice(0, 1500);

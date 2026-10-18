@@ -54,6 +54,9 @@ const CAT = { ouvert: true, note: null, monnaie: '$SWOGE', defaut: 'opus-5-5', e
   let polls = 0;
   const ouvre = async (page, cat, session) => {
     const ctx = await nav.newContext({ viewport: { width: 1200, height: 900 } });
+    /* Aucune socket vers le VRAI serveur (18/10/2026) : il refuse le faux jeton (resumeFailed) et
+       stakebubble.js efface swogeSession — l image ne partait plus (voir chat_page.test.js). */
+    await ctx.addInitScript(() => { window.WebSocket = function(){ return { send(){}, close(){}, addEventListener(){}, readyState: 0 }; }; window.WebSocket.OPEN = 1; });
     if (session) await ctx.addInitScript((j) => { try { localStorage.setItem('swogeSession', j); } catch (e) {} }, session);
     /* Ces scenarios partent du chat (un nouveau visiteur arrive en Mission depuis le 29/09). */
     await ctx.addInitScript(() => { try { if (localStorage.getItem('swogeStudioMode') === null) localStorage.setItem('swogeStudioMode', '"chat"'); } catch (e) {} });

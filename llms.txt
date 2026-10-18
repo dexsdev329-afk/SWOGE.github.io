@@ -47,6 +47,8 @@ Agent passport: `GET https://web-production-220a3.up.railway.app/agentic/passpor
 
 Dollar credit: a key can be set to pay from its owner's dollar credit instead of $SWOGE. Read it with `GET https://web-production-220a3.up.railway.app/credit` and top it up with one x402 payment (USDC on Base or Solana): `POST https://web-production-220a3.up.railway.app/credit/topup` with `{"usd": 5}` and your key; credited once the payment settles.
 
+Separate from the pay-per-call tools above: the [SWOGE launchpad](https://swoleeswoge.dog/launchpad.html) lets anyone launch a token on Robinhood Chain with SWOGE V5 — a Uniswap v4 pool paired with ETH, $SWOGE or one of 198 quote assets (tokenized stocks included), liquidity locked by the pool's hook, an optional creator fee capped at 5%, contracts verified on Blockscout — or on Solana via Pump.fun, non-custodial. Every launched token can get its own autonomous AI agent: it posts on X and Telegram when a real on-chain event happens (price move, buy pressure, holder milestone), replies to holders, scans the token's own security (Powered by Go+ Security), simulates a sell before trusting a pump, remembers what it said (no repetition), and learns from its own X engagement. The creator owns and controls it from their wallet (persona, objective, pause, link X/Telegram) with a signed proof — no admin key. It never invents a number. On-chain buy-back-and-burn from the token treasury is built but stays off until the creator explicitly enables it; until then it is shown as simulated (paper). The official $SWOGE contract is `0x8a166Fb41Cd659a0a43396272FF73973Ce29F817` (Robinhood Chain).
+
 ## Docs
 
 - [API documentation](https://swoleeswoge.dog/swogeagentic_api.html): authentication, endpoints, MCP setup, errors, examples
@@ -56,10 +58,6 @@ Dollar credit: a key can be set to pay from its owner's dollar credit instead of
 - [Travel eSIM plans (JSON, free)](https://web-production-220a3.up.railway.app/esim/plans?country=France): search, then buy with x402 at /esim/buy
 - [x402 services measured by SWOGE (JSON, free)](https://web-production-220a3.up.railway.app/agentic/services?q=price): the public catalogue with probes, latency and real paid calls; no verdict under 3 probes
 - [x402 discovery manifest](https://web-production-220a3.up.railway.app/.well-known/x402): the resources payable per call
-
-## SWOGE Launchpad — an AI agent for every launched token
-
-Separate from the pay-per-call tools above: the [SWOGE launchpad](https://swoleeswoge.dog/launchpad.html) lets anyone launch a token (instant Uniswap v3 on Robinhood Chain — paired with $SWOGE or ETH, LP locked forever, ownership renounced, 0% tax, visible on DexScreener — or on Solana via Pump.fun, non-custodial). Every launched token can get its own autonomous AI agent: it posts on X and Telegram when a real on-chain event happens (price move, buy pressure, holder milestone), replies to holders, scans the token's own security (Powered by Go+ Security), simulates a sell before trusting a pump, remembers what it said (no repetition), and learns from its own X engagement. The creator owns and controls it from their wallet (persona, objective, pause, link X/Telegram) with a signed proof — no admin key. It never invents a number. On-chain buy-back-and-burn from the token treasury is built but stays off until the creator explicitly enables it; until then it is shown as simulated (paper). The official $SWOGE contract is `0x8a166Fb41Cd659a0a43396272FF73973Ce29F817` (Robinhood Chain).
 
 ## Optional
 

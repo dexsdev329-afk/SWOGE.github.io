@@ -1533,6 +1533,9 @@ textarea.vx-ta{display:block;height:auto;min-height:118px;padding:12px 14px;resi
   }
 
   var TXT = {
+    /* Les images gratuites (18/10/2026, studio_gratuit.js du serveur) : des tiers sans cle, dit tel quel. */
+    gratuitTiers: "run by a third party that may log prompts — don't include personal info",
+    gratuitPhoto: "Free models can't edit a photo — remove it, or pick Grok Imagine or ChatGPT Image.",
     signin: "Sign in with your wallet to generate. Nothing is charged before you click.",
     signinHaut: "Use Sign in at the top of the page — your wallet signs once, nothing is charged.",
     catCharge: "Loading the price list…",
@@ -1581,10 +1584,12 @@ textarea.vx-ta{display:block;height:auto;min-height:118px;padding:12px 14px;resi
     "grok:qualite": { img: "accueil/hero.webp", desc: "Finer detail for the version you keep." },
     "openai:rapide": { img: "accueil/economie.webp", desc: "OpenAI's image model at medium quality. Billed on the tokens it really uses." },
     "openai:qualite": { img: "accueil/cta.webp", desc: "OpenAI's image model at high quality. Billed on the tokens it really uses." },
+    "gratuit:rapide": { img: "accueil/ia.webp", desc: "Free, about 5 seconds, with a small pollinations.ai watermark. One image per request." },
+    "gratuit:qualite": { img: "accueil/hero.webp", desc: "Free Stable Diffusion XL, about a minute, checked by a safety model first. One image per request." },
     "video:rapide": { img: "cinema/s2_ep2.webp", pos: "50% 36%", desc: "Short clips from a prompt, or bring a picture to animate." },
     "video:qualite": { img: "cinema/saga_ep6.webp", pos: "50% 30%", desc: "Powers Series & Ads: the same character pictures and voices go with every scene." }
   };
-  var PAR = { grok: "xAI", openai: "OpenAI" };
+  var PAR = { grok: "xAI", openai: "OpenAI", gratuit: "Pollinations · OVHcloud" };
   /* Ce qui n'existe pas encore : AUCUN prix (aucun ne vient du serveur ; Kling 3.0 attend le choix
      fal.ai / cle directe). Ces cartes ne se choisissent pas et le bouton ne les envoie jamais. */
   var BIENTOT = {
@@ -1725,6 +1730,8 @@ textarea.vx-ta{display:block;height:auto;min-height:118px;padding:12px 14px;resi
   function openaiMesure(m){ return m && (m.mesures != null ? Number(m.mesures) > 0 : m.id === OPENAI_MESURE.modele); }
   function mesureTexte(m){ var k = m && m.mesures != null ? Number(m.mesures) : OPENAI_MESURE.n; return k + " measured image" + (k === 1 ? "" : "s") + (m && m.mesures != null ? "" : " (" + OPENAI_MESURE.qualite + " quality)"); }
   function mesuresImages(){ var x = etat.cat && etat.cat.mesure; return !!(x && Number(x.images) > 0); }
+  /* Le plafond gratuit du jour, tel que le serveur le publie (jamais un chiffre de la page). */
+  function parJour(){ var nj = etat.cat && etat.cat.image && etat.cat.image.gratuitJour; return nj ? "up to " + nj + " a day" : "a daily limit"; }
   function devis(){
     var t = etat.onglet;
     if (t === "voice" || t === "avatar") return { off: true, bouton: "Coming soon", note: [t === "voice" ? TXT.voix : TXT.avatar] };
@@ -1738,6 +1745,14 @@ textarea.vx-ta{display:block;height:auto;min-height:118px;padding:12px 14px;resi
       var ref = etat.jointe ? "jointe" : (nommeSwoge() ? "swoge" : null), n = etat.n;
       var quoi = ref === "swoge" ? "the SWOGE reference" : "your reference picture";
       d.ref = ref;
+      if (m.gratuit) {
+        /* Gratuit : une image par demande, sans photo jointe ; la reference SWOGE n'y part pas
+           (studio_media.js, imageGratuite). Le plafond du jour est celui que le serveur publie. */
+        if (etat.jointe) return { off: true, bouton: "No photo editing", note: [TXT.gratuitPhoto], mo: mo };
+        d.usd = 0; d.sw = 0; d.gratuit = true; d.bouton = "Free";
+        d.note = [{ b: "Free", suite: " — 1 image per request, " + parJour() }, mo.fnom + " " + mo.nom, TXT.gratuitTiers];
+        return d;
+      }
       if (m.estime) {
         /* ChatGPT Image : une ESTIMATION par image (6 893 jetons de sortie mesures, studio_media.js,
            OPENAI_MESURE_SORTIE). Le texte du prompt (2 000 jetons comptes par le serveur dans sa
@@ -1935,7 +1950,8 @@ textarea.vx-ta{display:block;height:auto;min-height:118px;padding:12px 14px;resi
       var m = mo.m, fi = FICHES[mo.cle] || {}, prix;
       if (t === "image") {
         var usd = m.parImageUsd != null;
-        if (mo.f === "openai" && !openaiMesure(m)) prix = { amt: "Priced on use", unit: "", alt: "billed on the tokens it really uses · not measured yet at this quality" };
+        if (m.gratuit) prix = { amt: "Free", unit: "", alt: parJour() + " · open model run by a third party" };
+        else if (mo.f === "openai" && !openaiMesure(m)) prix = { amt: "Priced on use", unit: "", alt: "billed on the tokens it really uses · not measured yet at this quality" };
         else prix = { amt: "~" + (usd ? dollars(m.parImageUsd) : nombre(m.parImageSwoge)), unit: (usd ? "" : "$SWOGE ") + "/ image · estimate",
           alt: (usd && m.parImageSwoge != null ? "≈ " + nombre(m.parImageSwoge) + " $SWOGE · " : "")
             + (mo.f === "openai" ? "from " + mesureTexte(m) : "from xAI's list price" + (mesuresImages() ? "" : ", not yet checked against a bill")) };
@@ -1995,7 +2011,9 @@ textarea.vx-ta{display:block;height:auto;min-height:118px;padding:12px 14px;resi
     if (c && c.image) {
       var nb = c.image.nombres || [1];
       if (nb.indexOf(etat.n) < 0) etat.n = nb[0];
-      segment($("segN"), nb, etat.n, "n", function(v){ return "×" + v; });
+      /* Un modele gratuit : une image par demande (le choix du joueur reste pour les payants). */
+      var mg = modeleChoisi(), libre = !!(mg && mg.m && mg.m.gratuit);
+      segment($("segN"), libre ? [1] : nb, libre ? 1 : etat.n, "n", function(v){ return "×" + v; });
       var fi = c.image.formats || ["auto"]; if (fi.indexOf(etat.formatI) < 0) etat.formatI = fi[0];
     }
     if (c && c.video) {
@@ -2287,10 +2305,11 @@ textarea.vx-ta{display:block;height:auto;min-height:118px;padding:12px 14px;resi
     var t = etat.onglet, mo = d.mo, q = $("prompt").value.trim();
     var corps = { modele: mo.id, prompt: avecStyle(q), format: t === "video" ? etat.formatV : etat.formatI };
     if (etat.jointe) corps.image = etat.jointe;
-    if (t === "image") { corps.fournisseur = mo.f; corps.n = etat.n; corps.payeur = d.pay; }
+    var ni = d.gratuit ? 1 : etat.n;
+    if (t === "image") { corps.fournisseur = mo.f; corps.n = ni; corps.payeur = d.pay; }
     else { corps.duree = etat.duree; corps.resolution = etat.res; corps.payeur = d.pay; }
-    var info = { genre: t, prompt: avecStyle(q).slice(0, 300), nom: (mo.chip || mo.fnom) + " · " + mo.nom + (t === "image" ? " · ×" + etat.n : " · " + etat.duree + " s · " + etat.res),
-                 payeur: d.pay, n: etat.n, prix: d.bouton };
+    var info = { genre: t, prompt: avecStyle(q).slice(0, 300), nom: (mo.chip || mo.fnom) + " · " + mo.nom + (t === "image" ? " · ×" + ni : " · " + etat.duree + " s · " + etat.res),
+                 payeur: d.pay, n: ni, prix: d.bouton };
     envoie(corps, info);
   }
   function envoie(corps, info){
@@ -2355,6 +2374,7 @@ textarea.vx-ta{display:block;height:auto;min-height:118px;padding:12px 14px;resi
     peintResultat(); montreResultat();
   }
   function cout(res){
+    if (res.gratuit) return "Free" + (res.gratuitRestant != null ? " · " + res.gratuitRestant + " left today" : "");
     if (res.payeur === "credit") return res.factureUsd != null ? dollars(res.factureUsd) : "";
     return res.factureSwoge != null ? nombre(res.factureSwoge) + " $SWOGE" : "";
   }
@@ -2993,7 +3013,7 @@ textarea.vx-ta{display:block;height:auto;min-height:118px;padding:12px 14px;resi
     if (etat.onglet === "voice" && window.swogeSon && window.swogeSon.choisit) { window.swogeSon.choisit(id); return; }
     if (etat.onglet !== "image" && etat.onglet !== "video") return;
     etat.sel[etat.onglet] = id; ecrisLocal("swogeStudioChoix", etat.sel);
-    peintGrille(); peintPrix();
+    peintGrille(); peintCommandes(); peintPrix();
   });
   $("grid").addEventListener("keydown", function(ev){
     if ((ev.key === "Enter" || ev.key === " ") && (ev.target.classList.contains("live") || ev.target.classList.contains("serie"))) { ev.preventDefault(); ev.target.click(); }

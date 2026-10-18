@@ -40,7 +40,8 @@ interface IAllocV5 {
    cree le jeton (CREATE2, sel mele a l'appelant), puis, dans UNE transaction
    et un seul `unlock` du PoolManager v4 :
      1. initialise le pool (frais LP 0, espacement 200, hook V5) au prix de
-        depart fige pour la monnaie de cotation choisie ;
+        depart de reference de la cotation choisie, decale au plus de
+        ±23 000 ticks (≈ ×10) si le lanceur le demande ;
      2. y place toute l'offre restante, d'un seul cote (jeton seul) ;
      3. execute l'achat du createur s'il en a demande un (≤ 5 % de l'offre,
         frais de base et taxe payes, jetons envoyes a l'appelant seulement).
@@ -69,7 +70,8 @@ contract SwogeLaunchpadV5 is IUnlockCallback {
     /// Frais de lancement, en ETH, paye au tresor (exactement : `msg.value` = frais + achat initial en ETH).
     uint256 public immutable launchFeeWei;
 
-    /// Monnaies de cotation et prix de depart (tick « cotation par jeton », multiple de 200), figes au deploiement.
+    /// Monnaies de cotation et prix de depart de REFERENCE (tick « cotation par jeton », multiple de 200), figes
+    /// au deploiement. Le lanceur peut s'en ecarter de ±V5.MAX_START_SHIFT_TICKS (`LaunchParams.startShift`).
     address[] internal _quotes;
     int24[] internal _startTicks;
 
@@ -150,20 +152,34 @@ contract SwogeLaunchpadV5 is IUnlockCallback {
                 && _treasury != address(0),
             "zero"
         );
-        require(quotes_.length >= 1 && quotes_.length <= 16 && quotes_.length == startTicks_.length, "quotes");
+        require(
+            quotes_.length >= 1 && quotes_.length <= V5.MAX_QUOTES && quotes_.length == startTicks_.length, "quotes"
+        );
         require(quotes_[0] == address(0), "quote 0 = ETH");
         for (uint256 i; i < quotes_.length; ++i) {
             int24 s = startTicks_[i];
             require(s % V5.TICK_SPACING == 0, "tick spacing");
-            // la plage entiere doit tenir dans les ticks utilisables, dans les deux ordres de devises
-            require(
-                int256(s) - V5.RANGE_TICKS >= -int256(887_200) && int256(s) + V5.RANGE_TICKS <= int256(887_200),
-                "tick range"
-            );
-            for (uint256 j; j < i; ++j) {
-                require(quotes_[j] != quotes_[i], "duplicate");
+            // la plage entiere doit tenir dans les ticks utilisables, dans les deux ordres de devises,
+            // y compris au decalage maximal que le lanceur peut demander
+            int256 far = (s < 0 ? -int256(s) : int256(s)) + V5.MAX_START_SHIFT_TICKS + V5.RANGE_TICKS;
+            require(far <= 887_200, "tick range");
+            // doublons : un ensemble en stockage transitoire (EIP-1153), O(n) pour 255 entrees au plus.
+            // La cle est l'adresse elle-meme : elle ne peut pas valoir LOCK_SLOT (un hachage de 256 bits).
+            address q = quotes_[i];
+            uint256 seen;
+            assembly {
+                seen := tload(q)
+                tstore(q, 1)
             }
-            if (i > 0) require(quotes_[i].code.length > 0, "quote code");
+            require(seen == 0, "duplicate");
+            if (i > 0) require(q.code.length > 0, "quote code");
+        }
+        // on vide l'ensemble : rien ne doit survivre au constructeur dans la transaction de deploiement
+        for (uint256 i; i < quotes_.length; ++i) {
+            address q = quotes_[i];
+            assembly {
+                tstore(q, 0)
+            }
         }
         poolManager = _pm;
         hook = _hook;
@@ -202,7 +218,7 @@ contract SwogeLaunchpadV5 is IUnlockCallback {
             IAllocV5(alloc).register(token, msg.sender, p.alloc);
         }
 
-        int24 start = _startTicks[p.quote];
+        int24 start = _startTicks[p.quote] + p.startShift;
         poolManager.unlock(
             abi.encode(key, quoteIs0, start, p.shape, V5.TOTAL_SUPPLY - offPool, p.initialBuy, p.minTokensOut, msg.sender)
         );
@@ -238,6 +254,8 @@ contract SwogeLaunchpadV5 is IUnlockCallback {
         _checkMeta(p.meta);
         if (p.quote >= _quotes.length) revert Bound("quote: index in getConfig().quotes");
         if (p.shape > V5.SHAPE_LADDER3) revert Bound("shape: 0 SINGLE, 1 LADDER3");
+        if (p.startShift % V5.TICK_SPACING != 0 || p.startShift > V5.MAX_START_SHIFT_TICKS
+            || p.startShift < -V5.MAX_START_SHIFT_TICKS) revert Bound("startShift: multiple of 200, |x| <= 23000");
         if (p.creatorTaxBps > V5.MAX_CREATOR_TAX_BPS) revert Bound("creatorTaxBps <= 500");
         Split calldata sp = p.split;
         if (uint256(sp.creator) + sp.stakers + sp.lp + sp.buyback != 10_000) revert Bound("split: sum = 10000");
@@ -566,6 +584,7 @@ contract SwogeLaunchpadV5 is IUnlockCallback {
         uint16 MAX_AIRDROP_BPS;
         uint32 RECIPIENT_DELAY;
         uint256 LAUNCH_FEE_WEI;
+        int24 MAX_START_SHIFT_TICKS;
         address treasury;
         address hook;
         address holders;
@@ -588,6 +607,7 @@ contract SwogeLaunchpadV5 is IUnlockCallback {
             V5.MAX_AIRDROP_BPS,
             V5.RECIPIENT_DELAY,
             launchFeeWei,
+            V5.MAX_START_SHIFT_TICKS,
             treasury,
             hook,
             holders,

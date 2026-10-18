@@ -11,7 +11,7 @@ Robinhood Chain.
 
 | Contrat | Rôle | Runtime (octets) | Marge EIP-170 |
 |---|---|---|---|
-| `SwogeLaunchpadV5` (noyau) | bornes, jeton CREATE2, `unlock` : initialize + liquidité d'un seul côté + achat du créateur ; registre, métadonnées, cliquets, destinataire en deux étapes, vues, compatibilité V4 | 22 906 | 1 670 |
+| `SwogeLaunchpadV5` (noyau) | bornes, jeton CREATE2, `unlock` : initialize + liquidité d'un seul côté + achat du créateur ; registre, métadonnées, cliquets, destinataire en deux étapes, vues, compatibilité V4 ; liste des 198 monnaies en stockage | 23 168 | 1 408 |
 | `SwogeHookV5` (hook unique) | frais de base, taxe créateur, anti-snipe dégressif, plafonds d'achat, garde du pool (LP verrouillée), comptabilité des seaux | 9 019 | 15 557 |
 | `SwogeHoldersV5` | distribution en *pull* : crédits créateur / trésor, staking, mur LP, rachat-burn, retraits | 10 786 | 13 790 |
 | `SwogeAllocV5` | vesting du créateur et airdrop Merkle (reliquat brûlé) | 3 327 | 21 249 |
@@ -64,7 +64,8 @@ faudrait déployer un V5.1.
 |---|---|---|
 | `name` / `symbol` | 1 à 32 octets / 1 à 10 octets | figés |
 | `meta` (description, logo, site, X, Telegram) | chaque champ ≤ 256 octets | modifiable par le destinataire (`updateMeta`, événements `MetadataUpdated` et `Meta`) |
-| `quote` | indice dans la liste figée au déploiement | figé |
+| `quote` | indice dans la liste figée au déploiement (198 monnaies, indices 0 à 197) | figé |
+| `startShift` | décalage du prix de départ depuis la référence de la cotation : multiple de 200, \|x\| ≤ 23 000 ticks (`MAX_START_SHIFT_TICKS`, facteur ≈ 10 dans chaque sens) ; 0 = la référence | figé |
 | `shape` | `0` SINGLE (161 200 ticks, l'amplitude de V4) ; `1` LADDER3 (30 % / 30 % / 40 % sur [0, 40 000), [40 000, 100 000), [100 000, 161 200]) | figé |
 | offre | 10⁹ × 10¹⁸, **non paramétrable** | — |
 | frais de base | 1 % (`BASE_FEE_BPS` = 100), **non paramétrable** ; frais LP du pool = 0 | figé |
@@ -106,23 +107,154 @@ le plafond d'achat initial de 5 %.
 
 ## La liste des monnaies de cotation (figée au constructeur)
 
-Chaque adresse a été relue sur Robinhood Chain (4663) le 18/10/2026 au bloc ≈ 91 710 000 :
-`eth_getCode`, `symbol()` et `decimals()`. Le RPC était `rpc.mainnet.chain.robinhood.com`, en
-lecture seule. Les mêmes vérifications sont rejouées dans `test/ForkV5.t.sol`.
+**Décision du propriétaire (18/10/2026) :** ETH, USDG, $SWOGE et **toutes** les actions tokenisées
+de Robinhood (« SpaceX, Nvidia, et il y en a d'autres — propose-les toutes »). La liste est figée
+au déploiement : aucune fonction ne peut ajouter ni retirer une monnaie.
 
-| Indice | Monnaie | Adresse | Vérification | Tick de départ (FDV ≈ 1 ETH) |
-|---|---|---|---|---|
-| 0 | ETH natif | `address(0)` | — | −207 200 (le départ de V4) |
-| 1 | USDG | `0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168` | code 170 octets (proxy ERC-1967) ; `USDG` ; **6 décimales** ; rapport V5 §1 | −405 600 |
-| 2 | $SWOGE | `0x8a166Fb41Cd659a0a43396272FF73973Ce29F817` | code 12 226 octets ; `SWOGE` ; 18 ; même adresse que `compile_v4.js` | −20 600 |
-| 3 | SPCX | `0x4a0E65A3EcceC6dBe60AE065F2e7bb85Fae35eEa` | registre officiel `api.robinhood.com/rhj/assets` (chainId 4663, `ASSET_STATUS_ACTIVE`) ; code 283 octets (proxy *beacon* `0xe10b6f6b…1b00`) ; `SPCX` ; 18 | −179 000 |
-| 4 | NVDA | `0xd0601CE157Db5bdC3162BbaC2a2C8aF5320D9EEC` | même registre, même beacon ; `NVDA` ; 18 | −183 000 |
+**198 monnaies : ETH, USDG, $SWOGE et 195 actions sur 195. Aucune exclusion.**
 
-- Le tick est celui du prix « cotation par jeton » en unités brutes, arrondi à 200. Il est calculé
-  avec les prix DexScreener du 18/10/2026 à 11:18 UTC : ETH 2 415,87 $, $SWOGE 7,88e-9 ETH,
-  SPCX 144,59 $, NVDA 213,70 $.
-- **Il faut le recalculer le jour du déploiement.** Formule :
-  `tick = round(ln(FDV_cotation / 10⁹ × 10^(déc_cotation − 18)) / ln(1,0001) / 200) × 200`.
+- La source est le registre officiel `https://api.robinhood.com/rhj/assets`. Le 18/10/2026, il
+  listait 195 actions, toutes `ASSET_STATUS_ACTIVE`, chacune avec un déploiement sur la chaîne
+  4663, et toutes à 18 décimales.
+- `script/genere_cotations.js` relit chaque adresse sur la chaîne, en lecture seule
+  (`eth_getCode`, `eth_getStorageAt`, `eth_call`) :
+  - le code est présent (283 octets, un proxy *beacon*) ;
+  - le beacon est le même pour les 195 (`0xe10b6f6B…1b00`), et son implémentation est
+    `0xb35490d6…5aE2`, celle qui a été lue (voir « Le multiplicateur ») ;
+  - `symbol()` et `decimals()` sont égaux au registre : 195 sur 195, aucun écart ;
+  - aucune action n'est en pause, et le PoolManager n'est pas bloqué par le registre d'accès.
+- Le générateur écrit `script/cotations_v5.json` (bloc 91 768 851). `DeployV5.s.sol` lit ce
+  fichier et relit chaque adresse avant de diffuser quoi que ce soit. `test/ForkCotationsV5.t.sol`
+  rejoue les mêmes vérifications sur fork.
+- **Une seule action posait problème : SATS (EchoStar).** Robinhood n'a pas de cours pour SATS
+  (`missing_instruments`), car l'instrument est coté sous **ECHO**. Le jeton, lui, s'appelle
+  toujours SATS. Le générateur cherche donc un instrument actif dont le nom simple est exactement
+  « EchoStar », et il prend son cours. Le champ `symboleCours` de la liste le note.
+- Une adresse qui échouerait à une vérification serait **exclue**, avec sa raison dans `exclues`.
+  Le noyau refuse de toute façon une adresse sans code, un doublon ou une liste de plus de
+  255 monnaies (la limite de l'indice `uint8`).
+
+| Indices | Monnaies | Tick de référence (FDV d'ouverture ≈ 1 ETH) |
+|---|---|---|
+| 0 | ETH natif, `address(0)` | −207 200 (le départ de V4) |
+| 1 | USDG `0x5fc5360D…d168`, **6 décimales** | −405 600 |
+| 2 | $SWOGE `0x8a166Fb4…F817` | −20 600 |
+| 3 à 197 | les 195 actions, par ordre alphabétique (AAOI … ZS) ; SPCX = 166, NVDA = 118 : lire `symbols` | de −203 400 (TE, 2,61 $) à −139 000 (ASML, 1 640 $) |
+
+### Le prix de départ : une référence par monnaie, et un décalage borné choisi par le lanceur
+
+Avec cinq monnaies, chaque tick de départ était écrit à la main. Avec 198, ce n'est plus possible,
+et deux choses vieillissent mal : les prix bougent après le déploiement, et une référence peut
+être fausse (un cours périmé, un multiplicateur mal lu). Sans administrateur, personne ne peut
+corriger. La solution retenue a deux parties :
+
+1. **Une référence par monnaie, calculée par le générateur le jour du déploiement.** C'est
+   l'ouverture à environ 1 ETH de FDV, comme V4. Pour une action, le prix d'un jeton brut vaut
+   `cours de l'action × uiMultiplier()`, puisqu'un jeton brut représente `uiMultiplier` actions.
+   Les cours viennent de `api.robinhood.com/quotes` (dernier cours, séance étendue comprise) ;
+   l'ETH, USDG et $SWOGE de DexScreener. Ce jour-là : ETH 2 413,23 $.
+   Formule : `tick = round(ln(FDV_cotation / 10⁹ × 10^(déc_cotation − 18)) / ln(1,0001) / 200) × 200`.
+2. **Le lanceur peut s'en écarter** de `startShift`, un multiple de 200 avec |x| ≤ 23 000 ticks
+   (1,0001^23 000 ≈ 9,97). L'ouverture va donc d'environ 0,1 à environ 10 ETH de FDV. La page
+   envoie 0 par défaut, et le décalage est publié dans `LaunchedV5.startTick`.
+   - Le constructeur refuse toute référence dont la plage, **décalage maximal compris**, sortirait
+     des ticks utilisables : |référence| + 23 000 + 161 200 ≤ 887 200. Aucun lancement ne peut
+     tomber hors des ticks.
+
+Ce que le lanceur peut en faire, et ce que ça coûte :
+
+- **Ouvrir bas (jusqu'à ÷10).** Les premiers acheteurs paient moins cher. Le créateur aussi, mais
+  son achat initial reste plafonné à 5 % de l'offre, et il paie le frais de base et la taxe. Les
+  snipers profitent davantage d'une ouverture basse : l'anti-snipe du créateur est fait pour ça.
+  Le protocole n'y perd rien : les frais sont un pourcentage de la cotation échangée, et la
+  comptabilité des seaux ne dépend pas du prix.
+- **Ouvrir haut (jusqu'à ×10).** La liquidité est d'un seul côté (le jeton seul) : une FDV
+  d'ouverture élevée n'est qu'un chiffre affiché tant que personne n'a acheté. Le plafond ×10
+  empêche d'afficher une capitalisation fantaisiste (1 000 ETH de FDV sans un wei dans le pool).
+  **La page doit afficher la FDV d'ouverture réelle et la cotation dans laquelle elle est
+  exprimée.**
+- **Aucun gain de manipulation pour un tiers :** le départ est fixé dans la transaction du
+  lancement, avant l'ouverture du pool, et personne d'autre que l'appelant ne le choisit.
+- **Le facteur 10 n'a pas de mesure derrière lui**, comme le départ à 1 ETH. Il est figé au
+  déploiement.
+
+### Le multiplicateur des actions Robinhood : verdict « sûr, sous conditions »
+
+La question : `balanceOf` ou `totalSupply` changent-ils quand Robinhood change le multiplicateur ?
+Un jeton qui *rebase* casserait la comptabilité du PoolManager v4, qui suppose qu'un solde ne bouge
+que par un transfert. Les pools deviendraient insolvables, ou quelqu'un pourrait voler la
+différence.
+
+**Réponse : non. Le multiplicateur ne sert qu'à l'affichage. Les soldes, l'offre et les transferts
+sont en unités brutes, et le multiplicateur ne les touche jamais.** Les preuves, relevées le
+18/10/2026 :
+
+1. **Le code source vérifié.** L'implémentation `0xb35490d6f9163DE4F80d88dc75c3516eb64C5aE2` est
+   vérifiée sur Sourcify en `exact_match` (création et runtime) : `src/Stock.sol` et
+   `src/ERC20ScaledUIUpgradeable.sol`, sur `ERC20Upgradeable` d'OpenZeppelin.
+   - `balanceOf` et `totalSupply` ne sont **pas** surchargés : ce sont ceux d'OpenZeppelin, qui
+     lisent `_balances` et `_totalSupply`.
+   - `_update` appelle `super._update(from, to, value)` sans rien changer, puis émet seulement
+     `TransferWithScaledUI(from, to, value, value × multiplicateur)`.
+   - Le multiplicateur (`_multiplier`, `_newMultiplier`, `_effectiveAt`, à l'emplacement
+     ERC-7201 `robinhood.storage.ERC20Rebase`) n'est lu que par `uiMultiplier()`,
+     `balanceOfUI()` et `totalSupplyUI()`.
+   - `updateMultiplier(m)` et `updateMultiplier(m, effectiveAt)` n'écrivent que ces trois
+     variables. Ils exigent `MULTIPLIER_UPDATER_ROLE` et que le jeton ne soit pas en pause.
+2. **La chaîne.** Pour CRM, la mise à jour du multiplicateur (1 → 1,001148…) a eu lieu au bloc
+   65 383 603, alors que le jeton circulait déjà depuis le bloc 35 516 560. Pourtant
+   `totalSupply()` = Σ mints − Σ burns des événements `Transfer` **au wei près**
+   (121 011 499 750 000 000 000), et `totalSupplyUI / totalSupply` = 1,001148. GE donne le même
+   résultat (mise à jour au bloc 80 347 805, offre = mints − burns au wei près). CRWD a un
+   multiplicateur de 4, programmé avant le premier transfert.
+3. **Les marchés.** SGOV, qui accumule ses dividendes dans le multiplicateur (1,007187), cote sur
+   DexScreener 101,28 $. C'est le cours × multiplicateur (101,30 $), et non le cours seul
+   (100,58 $). Le prix d'un jeton **brut** est donc bien `cours × uiMultiplier`, et c'est ce prix
+   que le générateur utilise.
+4. **Le fork local** (`test_fork_multiplier_update_keeps_v5_pool_solvent`). On lance un pool V5
+   coté en NVDA, et deux comptes achètent. Puis on impersonne, **dans le fork seulement**,
+   `0x92905e8d…8143`, le compte qui détient `MULTIPLIER_UPDATER_ROLE` sur la chaîne (c'est
+   l'expéditeur de la mise à jour de CRM). Ce compte double le multiplicateur. Résultat :
+   - `balanceOf(PoolManager)`, `totalSupply()`, le solde d'un détenteur et les créances ERC-6909
+     de Holders sont **inchangés**, et seul `balanceOfUI` double ;
+   - la même vente, faite avec et sans la mise à jour, donne le **même `BalanceDelta` au wei près** ;
+   - une mise à jour programmée (`effectiveAt` dans 1 h), suivie du passage de l'heure, ne change
+     rien non plus ;
+   - tout le monde sort, chaque retrait passe, et le PoolManager garde au moins le solde NVDA qu'il
+     avait avant le lancement (les autres pools v4 sont intacts).
+
+**Les conditions, c'est-à-dire ce que Robinhood peut faire et qu'aucun code de V5 ne peut empêcher :**
+
+- **Changer l'implémentation.** Le beacon est à Robinhood (`BEACON_UPGRADER_ROLE`). Une future
+  implémentation pourrait rebaser. Le verdict vaut pour `0xb35490d6…5aE2` seulement. Le générateur
+  et le script de déploiement exigent cette implémentation le jour du déploiement, mais rien ne
+  l'impose ensuite.
+- **Mettre en pause** un jeton (`TOKEN_PAUSER_ROLE`) ou **les 195 d'un coup** (`pause()` du
+  registre d'accès, qui est aussi le beacon). Tout transfert, `approve` et `permit` échoue alors :
+  les pools de cette monnaie sont gelés, sans achat, sans vente et sans retrait. L'essai
+  `test_fork_pause_freezes_pool_and_claims_survive` le montre (erreur `IsPaused()`). Les créances
+  restent comptées, et tout repart quand la pause est levée.
+- **Bloquer une adresse** (`BLOCKER_ROLE`, registre commun aux 195 actions) : un portefeuille, le
+  routeur, Holders ou **le PoolManager lui-même**. Si le PoolManager est bloqué, tous les pools v4
+  de toutes les actions sont gelés sur la chaîne. Les restrictions régionales de Robinhood passent
+  par ce blocage : un acheteur d'une région exclue ne pourra ni acheter ni retirer.
+- **Brûler n'importe quel solde** (`adminBurn`, `ADMIN_BURNER_ROLE`, sans condition de pause ni de
+  blocage), y compris celui du PoolManager. Le PoolManager tient **un seul solde par devise pour
+  tous ses pools** : un `adminBurn` sur lui rendrait tous les pools de cette action insolvables.
+  Les derniers à retirer perdraient la différence. C'est le même risque qu'avec USDG (proxy
+  ERC-1967 à administrateur).
+- **Frapper** (`mint`, `MINTER_ROLE`) : cela ne touche pas les pools.
+- **Le multiplicateur reste l'affaire de la page.** Une division 2 pour 1 double
+  `uiMultiplier` : le prix du jeton brut ne bouge pas, mais le cours de l'action est divisé par
+  deux. La page doit afficher les montants en actions (`balanceOfUI`, ou brut × `uiMultiplier`)
+  et lire `uiMultiplier()` en direct. Elle ne doit jamais comparer le prix brut du pool au cours
+  de l'action sans multiplier.
+- **CRWD** a un multiplicateur de 4 sans marché sur la chaîne pour le recouper : sa référence
+  (905 $ le jeton brut) suit la règle `cours × multiplicateur`. Si cette lecture était fausse, le
+  décalage de ±23 000 ticks (facteur 10) couvrirait l'écart de 4 (13 863 ticks).
+
+### Autres adresses vérifiées
+
 - **Vérifié mais non retenu :** le WETH `0x0Bd7D308…AD73` (proxy, `WETH`, 18). En v4, l'ETH natif
   le remplace. Le PositionManager v4 `0x58daec31…04fa7` (`poolManager()` = le PoolManager,
   `permit2()` = `0x0000…22D473…8BA3`) n'est pas utilisé non plus : V5 n'a pas de NFT de position.
@@ -186,23 +318,40 @@ optimizer = true
 optimizer_runs = 200
 via_ir = true
 remappings = ["v4-core/=lib/v4-core/", "solmate/=lib/v4-core/lib/solmate/", "forge-std/=lib/forge-std/src/"]
+fs_permissions = [{ access = "read", path = "contrats/v5/script" }]   # cotations_v5.json
 [fuzz]
 runs = 512
 ```
 
 ```bash
-forge test                                   # 44 essais locaux (unitaires, fuzz, GoPlus), fork sauté
+node contrats/v5/script/genere_cotations.js            # lecture seule : registre + chaine + cours -> cotations_v5.json
+forge test                                             # 55 essais locaux (unitaires, fuzz, GoPlus, longue liste), fork sauté
 anvil --fork-url https://rpc.mainnet.chain.robinhood.com --port 8545    # fork LOCAL, aucune signature
-forge test --fork-url http://127.0.0.1:8545 --match-contract ForkV5     # 4 essais contre le vrai PoolManager
+forge test --fork-url http://127.0.0.1:8545 --match-contract "ForkV5|ForkCotationsV5"   # 9 essais contre la vraie chaine
 ```
 
 Résultats du 18/10/2026 :
 
-- **Local :** 44 réussis, 0 échec, code de sortie 0, avec `FOUNDRY_FUZZ_RUNS=2000`.
-- **Fork :** 4 réussis, 0 échec, code de sortie 0. Le fork part du bloc 91 728 420. Le lancement
-  en ETH avec achat initial coûte 1 170 797 de gaz L2.
-- **Script de déploiement :** il a tourné sur le même fork **local**, avec un compte impersonné
-  (`--unlocked`, aucune clé). Le relevé du RPC public montre 0 octet de code à ces adresses.
+- **Local :** 55 réussis, 0 échec, 9 sautés (ceux du fork), code de sortie 0, avec
+  `FOUNDRY_FUZZ_RUNS=2000`.
+- **Fork :** 9 réussis, 0 échec, code de sortie 0. Le fork part du bloc 91 771 930. Le lancement
+  en ETH avec achat initial coûte 1 171 545 de gaz L2 (+748 pour la vérification de `startShift`).
+- **Script de déploiement :** il a tourné sur le même fork **local** avec les 198 monnaies, avec un
+  compte impersonné (`--unlocked`, aucune clé). Le relevé du RPC public montre 0 octet de code à ces
+  adresses. Gaz des cinq transactions :
+
+  | Transaction | Gaz (5 monnaies, avant) | Gaz (198 monnaies) |
+  |---|---|---|
+  | déployeur CREATE3 | 271 845 | 271 845 |
+  | hook | 2 053 271 | 2 053 271 |
+  | **noyau** | 5 261 226 | **10 974 976** |
+  | Holders | 2 363 135 | 2 429 770 |
+  | Alloc | 814 346 | 814 346 |
+
+  Le noyau coûte environ 26 000 de gaz par monnaie : une adresse en stockage, un tick, la lecture
+  du code et l'ensemble transitoire anti-doublon. Avec les 198 adresses réelles, son constructeur
+  seul coûte 10 837 720 de gaz. Robinhood Chain est une chaîne Arbitrum Orbit à 32 M de gaz par
+  bloc : la marge est large.
 
 Ce que couvrent les essais :
 
@@ -224,7 +373,21 @@ Ce que couvrent les essais :
 - la réentrance par un jeton de cotation et par un receveur d'ETH ;
 - les échanges de poussière ;
 - une suite aléatoire avec ses invariants : somme des seaux = frais pris, solvabilité des créances
-  à l'arrondi près, offre fixe.
+  à l'arrondi près, offre fixe ;
+- la longue liste (`test/CotationsV5.t.sol`) : 198 et 255 monnaies acceptées, 256 refusées ; un
+  doublon refusé où qu'il soit (indices 3 et 190, ETH deux fois) ; une adresse sans code refusée
+  à l'indice 150 ; un tick de référence trop près du bord refusé au déploiement, décalage maximal
+  compris ; un lancement sur la **dernière** monnaie (indice 197) qui s'échange et paie ;
+- le départ choisi : un décalage hors bornes refusé avec son message ; le pool ouvert exactement
+  au tick demandé dans les deux ordres de devises ; fuzz sur tout décalage permis et sur chaque
+  monnaie (achat, vente, créances = frais pris) ;
+- sur fork (`test/ForkCotationsV5.t.sol`) : les 198 adresses réelles relues (code, `symbol()`,
+  `decimals()`, beacon, implémentation, pause) ; le noyau déployé avec elles ; des lancements en
+  CRWD (multiplicateur 4), TE (l'action la moins chère) et ASML (la plus chère), avec un décalage
+  de 0, +23 000 et −11 600 ticks, puis échanges et retraits ; la mise à jour du multiplicateur par
+  le vrai détenteur du rôle (impersonné dans le fork) ; la pause d'une action. **Aucune action
+  n'a de décimales inhabituelles** : les 195 sont à 18. Les 6 décimales sont couvertes par USDG
+  (`ForkV5`, dans les deux ordres de devises).
 
 ## Ce qui n'est PAS fait
 
@@ -247,17 +410,20 @@ Le déploiement n'est fait qu'après l'audit. Le portefeuille du propriétaire s
 transactions. Aucune clé ne passe par le dépôt, le serveur ou une variable d'environnement : la
 signature se fait sur le matériel ou dans le portefeuille.
 
-1. **Recalculer les ticks de départ** avec les prix du jour (formule ci-dessus) et les écrire
-   dans `script/DeployV5.s.sol` (`quoteList()`).
-2. **Relire chaque adresse** de `quoteList()` et `POOL_MANAGER` sur la chaîne : code, `symbol()`,
-   `decimals()`. Pour les actions, vérifier aussi leur présence dans le registre Robinhood. Relancer
-   `forge test` puis le banc sur fork local : tous les essais doivent être verts.
+1. **Régénérer la liste** le jour même : `node contrats/v5/script/genere_cotations.js`. Le script
+   relit le registre Robinhood, la chaîne et les cours, puis réécrit `script/cotations_v5.json`.
+   Lire les lignes `EXCLUE` et le champ `exclues`. Si une action a changé d'implémentation,
+   le générateur l'exclut : il faut alors relire la nouvelle implémentation avant de décider.
+2. **Relancer** `forge test`, puis le banc sur fork local avec `ForkCotationsV5`. Tous les essais
+   doivent être verts. `DeployV5.s.sol` relit lui-même chaque adresse (code, `symbol()`,
+   `decimals()`) avant de diffuser.
 3. **Répétition sur fork local**, avec le compte du propriétaire impersonné :
 
    ```bash
    anvil --fork-url https://rpc.mainnet.chain.robinhood.com --port 8545
    cast rpc anvil_impersonateAccount <PROPRIETAIRE> --rpc-url http://127.0.0.1:8545
    V5_OWNER=<PROPRIETAIRE> V5_TREASURY=<TRESOR> V5_LAUNCH_FEE_WEI=500000000000000 \
+     V5_COTATIONS=contrats/v5/script/cotations_v5.json \
      forge script contrats/v5/script/DeployV5.s.sol:DeployV5 --rpc-url http://127.0.0.1:8545 \
      --broadcast --unlocked --sender <PROPRIETAIRE> --slow
    ```
@@ -296,14 +462,22 @@ Le trésor doit pouvoir recevoir de l'ETH : il reçoit le frais de lancement par
 4. **Staking éclair.** Les récompenses sont créditées au prorata au moment de `distribute`, qui est
    ouvert à tous. Le délai de 24 h ne fait qu'exposer l'attaquant au prix. La récolte est plafonnée
    à `unpaid` : un compte peut perdre 1 wei d'arrondi, jamais le contrat.
-5. **Monnaies de cotation à administrateur.**
+5. **Monnaies de cotation à administrateur : 196 sur 198.**
    - USDG est un proxy ERC-1967.
-   - SPCX et NVDA sont des proxys *beacon*. Leur implémentation (`0xb35490d6…5ae2`, lue le 18/10) a
-     `pause`, `isBlocked` (registre d'accès), `adminBurn`, `mint` et `updateMultiplier` (un
-     multiplicateur d'affichage : `balanceOf` reste brut, `balanceOfUI` applique le multiplicateur).
-   - Conséquence : l'émetteur peut geler ou brûler la cotation détenue par le PoolManager, ou
-     bloquer Holders, et donc les pools V5 de cette cotation. La liste étant figée, retirer une
-     action demande un V5.1. **C'est au propriétaire de décider s'il garde SPCX et NVDA.**
+   - Les 195 actions partagent un seul beacon, qui sert aussi de registre d'accès. Robinhood peut
+     changer leur implémentation, les mettre en pause une par une ou toutes ensemble, bloquer
+     n'importe quelle adresse (PoolManager, Holders, un acheteur d'une région exclue), et brûler
+     n'importe quel solde (`adminBurn`), y compris celui du PoolManager. Le détail et les preuves
+     sont dans « Le multiplicateur ».
+   - La liste étant figée, retirer une action demande un V5.1. Le propriétaire a décidé de toutes
+     les garder (18/10/2026).
+   - **Les pools d'une action peuvent être gelés pour toujours** si Robinhood bloque le PoolManager
+     ou cesse de soutenir l'action (rachat de la société, retrait de la cote). La page doit le dire
+     en tête de fiche, pour chaque lancement coté en action.
+   - **Les conditions d'accès de Robinhood aux actions tokenisées s'appliquent** (pays éligibles,
+     `terms()` = `https://robinhood.com/stocktoken/rhj`). Un acheteur d'une région exclue peut être
+     bloqué au niveau du jeton. Ce point est à faire valider juridiquement avant d'ouvrir les
+     lancements cotés en action (§4.7).
 6. **Collision CREATE2.** Relancer avec le même sel et le même appelant échoue en consommant tout
    le gaz (comportement de CREATE2). La page doit tirer un sel aléatoire.
 7. **Gaz du premier échange de chaque seconde.** Il paie une lecture de `slot0` et deux écritures
@@ -315,7 +489,8 @@ Le trésor doit pouvoir recevoir de l'ETH : il reçoit le frais de lancement par
    - les 5 % d'achat initial ;
    - le découpage LADDER3 ;
    - les 20 000 ticks du mur LP ;
-   - la FDV d'ouverture d'environ 1 ETH dans chaque monnaie ;
+   - la FDV d'ouverture d'environ 1 ETH dans chaque monnaie, et le décalage de ±23 000 ticks
+     (facteur 10) laissé au lanceur ;
    - les défauts anti-snipe.
 
    Tous seront figés au déploiement.

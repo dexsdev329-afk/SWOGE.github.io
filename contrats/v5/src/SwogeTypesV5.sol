@@ -68,6 +68,7 @@ struct LaunchParams {
     TokenMeta meta;
     uint8 quote;            // indice dans la liste figee au deploiement (0 = ETH natif)
     uint8 shape;            // 0 = SINGLE, 1 = LADDER3
+    int24 startShift;       // decalage du prix de depart, en ticks, depuis la reference de la cotation (0 = reference)
     uint16 creatorTaxBps;
     Split split;
     Snipe snipe;
@@ -163,6 +164,25 @@ library V5 {
        cote, juste sous le prix courant, sur 20 000 ticks (prix / 7,4). Position
        du module Holders, sans fonction de retrait : un mur d'achat permanent. */
     int24 internal constant FLOOR_WIDTH_TICKS = 20_000;
+
+    /* ---- liste des monnaies de cotation ----
+       Decision du proprietaire, 18/10/2026 : ETH, USDG, $SWOGE et TOUTES les
+       actions tokenisees de Robinhood, liste figee au deploiement. Le registre
+       officiel en comptait 195 ce jour-la (194 retenues, voir README). Le
+       plafond est celui de l'indice `uint8` : 255 entrees, indices 0 a 254. */
+    uint256 internal constant MAX_QUOTES = 255;
+
+    /* ---- prix de depart choisi par le lanceur ----
+       Chaque cotation a un tick de REFERENCE fige au deploiement (FDV
+       d'ouverture ≈ 1 ETH aux prix du jour du deploiement). Le lanceur peut
+       s'en ecarter de ±23 000 ticks au plus, soit un facteur 1,0001^23 000 ≈ 9,97
+       dans chaque sens : FDV d'ouverture entre ≈ 0,1 et ≈ 10 ETH d'equivalent.
+       Ce facteur 10 n'a PAS de mesure derriere lui. Il couvre deux choses sans
+       administrateur : la derive des prix apres le deploiement (une action ou
+       l'ETH qui fait ×5 deplace la reference d'autant) et une reference fausse
+       (un multiplicateur mal lu, un cours perime). Il borne la vanite : pas de
+       pool ouvert a 1 000 ETH de FDV pour afficher une grosse capitalisation. */
+    int24 internal constant MAX_START_SHIFT_TICKS = 23_000;
 
     address internal constant DEAD = 0x000000000000000000000000000000000000dEaD;
 }

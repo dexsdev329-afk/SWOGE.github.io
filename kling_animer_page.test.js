@@ -318,7 +318,9 @@ const CAPTURES = process.env.CAPTURES || null;
     ok(await q.$eval('#apVue', (i) => /^blob:/.test(i.src)) && journal.some((x) => /\/apercu\/0$/.test(x.chemin) && x.auth === 'jOwner') && /OpenAI cost \$0\.233/.test(await texte(q, 'apInfo')) && await q.isVisible('#apRefait') && await q.isVisible('#apUtilise'),
        'l image lue avec la session (blob:), son cout OpenAI dit, « Regenerate » et « Use this picture »');
     await q.click('#apRefait');
-    await attend(q, () => posts !== null && document.getElementById('apInfo').textContent.indexOf('Picture 2') === 0);
+    /* La condition tourne DANS la page : `posts` (le journal de l essai, cote Node) n y existe pas — la
+       reference levait « posts is not defined », comptee comme erreur de page (rouge du 19/10). */
+    await attend(q, () => document.getElementById('apInfo').textContent.indexOf('Picture 2') === 0);
     ok(posts('/studio/kling/entier/' + ID + '/apercu').length === 2, 'Regenerate : une seconde image demandee');
     await q.click('#apUtilise');
     await attend(q, () => /chatgpt_frame/.test(document.getElementById('imageInfo').textContent));

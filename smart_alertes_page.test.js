@@ -58,6 +58,8 @@ const MESURES_VUE = {
 const LISTE = [];
 for (let id = 1; id <= 10; id++) {
   let f = id === 1 ? F1 : fiche(id);
+  /* 21/10 : un vert retrograde par la mesure de sa ligne (smart_public.jugeParMesure) */
+  if (id === 2) f = fiche(2, { categorie: 'pons', verdict: 'jaune', mesure: { n: 343, part: 14, ref: 27, retrograde: true, texte: '343 past green alerts of this kind: 14% were up 30 min later, vs 27% for what the SWOGE AI colony buys — shown yellow until it beats that' } });
   if (id === 4) f = fiche(4, { categorie: 'pons', verdict: 'rouge', titre: 'EXIT: the dev is selling', risque: 'The dev or their wallets are selling: exit.', plan: PLAN_R });
   if (id === 6) f = fiche(6, { categorie: 'copie', titre: 'Sniper 1 buys on the curve', symbole: PIEGE, qui: [{ nom: 'Sniper 1', adresse: 'javascript:alert(1)', detail: 'bought for $120, 12 min after launch' }] });
   if (id === 9) f = fiche(9, { categorie: 'analyste', verdict: 'vert', titre: 'Analyst: entry setup met', symbole: 'AVERYLONGSYMBOL1', etat: '17 min old · market cap $20k (DexScreener, not verified)', cap_usd: 20000, cap_source: 'dex',
@@ -82,7 +84,7 @@ const BILAN = (avec) => ({
 const LIVE0 = { actif: true, t: T0, dernier_id: 10, alertes: LISTE.slice().reverse(), vivantes: [], bilan: BILAN(false), paliers: [5, 15, 30, 60, 120], palier_bilan: 30, seuil: 40, tg: { lien: 'https://t.me/swoge_alerts' }, compteurs: { publiees: 10 } };
 /* 30 s plus tard : une nouvelle alerte, et la mesure de la 1re avance (+30 rempli) */
 const F11 = fiche(11, { categorie: 'ignition', titre: 'IGNITION launch on their factory', symbole: 'IGN' });
-const LIVE1 = { actif: true, t: T0 + 30, dernier_id: 11, alertes: [alerte(11, 0, F11, mesure(11, {}))],
+const LIVE1 = { actif: true, t: T0 + 30, dernier_id: 11, alertes: [alerte(11, 0, F11, mesure(11, {}, { ref: null, ref_differee: true, releves: 0 }))],
   vivantes: [mesure(1, { 5: { pct: 50, min: 5, source: 'curve' }, 15: { manque: true }, 30: { pct: 60, min: 30.2, source: 'curve' } }, { meilleur_pct: 100, pire_pct: -20, releves: 9 })],
   bilan: BILAN(true), paliers: [5, 15, 30, 60, 120], palier_bilan: 30, seuil: 40, tg: { lien: 'https://t.me/swoge_alerts' } };
 const OFF = { actif: false, raison: 'public alerts off', alertes: [], vivantes: [], bilan: null };
@@ -166,6 +168,8 @@ const VUE = { actif: true, pret: true, mode: 'envoi', t: T0, maintenant: T0,
   ok(/^Price at alert \$0\.00000123 \(Pons curve, read on chain\) · best \+100% · worst −20\.0% over 3 readings$/.test(c1.pied), 'le prix a l\'alerte, sa source, le meilleur et le pire RELEVES : ' + c1.pied);
   ok(c2.res.map((x) => x.t).join() === '−12.3%,0.0%,+1.2k%,−99.9%,−100%' && /down/.test(c2.res[0].cls) && /nul/.test(c2.res[1].cls), 'id 2 : chaque palier rempli, signe et couleur (' + c2.res.map((x) => x.t).join(' ') + ')');
   ok(/No price could be read at the alert: not measured\./.test(c3.pied), 'sans prix a l\'alerte : « not measured », jamais un zero');
+  ok(/Track record: 343 past green alerts of this kind: 14% were up 30 min later, vs 27% for what the SWOGE AI colony buys — shown yellow/.test(c2.faits) && /sm-al jaune/.test(c2.cls), 'un vert retrograde : jaune, et sa mesure est dite (21/10)');
+  ok(!/Track record/.test(c1.faits), 'sans mesure : pas de ligne « Track record »');
   ok(/sm-al rouge/.test(c4.cls) && c4.titre === 'EXIT: the dev is selling', 'une alerte rouge est marquee rouge');
   const tuile = (k) => r.bilan.find((t) => t.txt[0] === k) || { txt: [], cls: '' };
   ok(tuile('Known dev').txt[1] === '—' && tuile('Known dev').txt[2] === 'not enough alerts yet (12 of 40)' && /attente/.test(tuile('Known dev').cls), 'bilan sous le seuil : « not enough alerts yet (12 of 40) », aucun chiffre');
@@ -190,6 +194,7 @@ const VUE = { actif: true, pret: true, mode: 'envoi', t: T0, maintenant: T0,
   const memes = await p.evaluate(() => [...document.querySelectorAll('#live li.sm-al')].filter((li) => li.__vu === 1).map((li) => li.getAttribute('data-id')).sort((a, b) => a - b).join());
   ok(demandes.includes('/api/ai/smart/alertes?depuis=0') && demandes.includes('/api/ai/smart/alertes?depuis=10'), 'le rafraichissement demande seulement ce qui suit la derniere alerte (depuis=10)');
   ok(r.flux[0].id === 11 && r.flux[0].titre === 'IGNITION launch on their factory' && r.flux.length === 6 && r.anciennes.length === 5, 'la nouvelle alerte arrive en tete ; la plus vieille des 6 passe dans les repliees');
+  ok(r.flux[0].pied === 'No market yet: measured from its first price, if one appears within 6 h.', 'IGNITION sans marche : la page dit qu elle attend son premier prix (reference differee, 21/10) : ' + r.flux[0].pied);
   const n1 = r.anciennes.find((c) => c.id === 1);
   ok(n1.res[2].t === '+60.0%' && /up/.test(n1.res[2].cls) && /over 9 readings/.test(n1.pied), 'id 1 : +30 min se REMPLIT (+60.0 %), les releves avancent');
   ok(memes === '1,2,3,4,5,6,7,8,9,10', 'les dix cartes deja la sont les MEMES elements : rien n\'est refait, rien ne clignote');

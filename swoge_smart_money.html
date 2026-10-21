@@ -881,12 +881,15 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
     l_rouge_s: "avoid / exit alerts: here, rising means the warning was wrong",
     bilanNote: function(s, p){ return "Share of alerts whose price was higher " + p + " minutes after the alert than at the alert, and the median change. No figure under " + s + " measured alerts: a handful of tokens is luck, not a result. Green and yellow alerts only; red ones (avoid, exit) have their own tile."; },
     l_age: function(min){ return min < 1 ? "just now" : min < 120 ? Math.round(min) + " min ago" : min < 2880 ? Math.round(min / 60) + " h ago" : Math.round(min / 1440) + " d ago"; },
-    l_etat: "Age and state", l_qui: "Who", l_promo: "DexScreener promo", l_risque: "Main risk", l_plan: "Plan",
+    l_etat: "Age and state", l_qui: "Who", l_promo: "DexScreener promo", l_risque: "Main risk", l_plan: "Plan", l_bilan_al: "Track record",
     l_plan_s: function(p){ return "entry " + p.entree + "; stop " + p.stop + "; target " + p.objectif; },
     l_qui_vide: "no tracked wallet or known dev",
     l_palier: function(x){ return "+" + x + " min"; },
     l_attente: "…", l_manque: "missed",
     l_ref: function(prix, src, retard){ return "Price at alert " + prix + " (" + (src === "curve" ? "Pons curve, read on chain" : "DexScreener, not verified") + (retard > 0 ? ", read " + Math.round(retard) + " s after" : "") + ")"; },
+    /* 21/10 : alerte posee avant tout marche (IGNITION) : mesuree depuis son premier prix, dans les 6 h */
+    l_ref_diff: function(prix, src, retard){ return "No market at the alert: first price " + prix + " (" + (src === "curve" ? "Pons curve, read on chain" : "DexScreener, not verified") + "), read " + Math.round(retard / 60) + " min after; the steps count from it"; },
+    l_ref_attente: "No market yet: measured from its first price, if one appears within 6 h.",
     l_sansref: "No price could be read at the alert: not measured.",
     l_extremes: function(b, w, n){ return "best " + b + " · worst " + w + " over " + n + " reading" + (n === 1 ? "" : "s"); },
     l_anciennes: function(n){ return "Older alerts (" + n + ")"; }
@@ -1281,6 +1284,7 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
     fait(dl, ph("l_risque"), String(f.risque || ""));
     fait(dl, ph("l_promo"), String(f.promo || ""));
     if (f.plan) fait(dl, ph("l_plan"), ph("l_plan_s", f.plan), true);
+    if (f.mesure && f.mesure.texte) fait(dl, ph("l_bilan_al"), String(f.mesure.texte));
     li.appendChild(dl);
     var res = el("div", "sm-res"); res.setAttribute("aria-label", "Price change after the alert");
     var cases = {};
@@ -1300,7 +1304,7 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
       else if (p && p.pct != null) { setCls(box, p.pct > 0 ? "up" : p.pct < 0 ? "down" : "nul"); setTxt(b, pct(p.pct)); box.title = "read " + p.min + " min after the alert"; }
       else { setCls(box, ""); setTxt(b, ph("l_attente")); }
     });
-    var t = m.ref ? ph("l_ref", prixTxt(m.ref.prix), m.ref.source, m.ref.retard_s || 0) + (m.meilleur_pct != null && m.pire_pct != null ? " · " + ph("l_extremes", pct(m.meilleur_pct), pct(m.pire_pct), m.releves) : "") : (m.fini || (live.d && live.d.t - c.a.t > 180) ? ph("l_sansref") : "");
+    var t = m.ref ? ph(m.ref.differee ? "l_ref_diff" : "l_ref", prixTxt(m.ref.prix), m.ref.source, m.ref.retard_s || 0) + (m.meilleur_pct != null && m.pire_pct != null ? " · " + ph("l_extremes", pct(m.meilleur_pct), pct(m.pire_pct), m.releves) : "") : (m.ref_differee && !m.fini ? ph("l_ref_attente") : m.fini || (live.d && live.d.t - c.a.t > 180) ? ph("l_sansref") : "");
     setTxt(c.pied, t);
   }
   function metaTxt(c){

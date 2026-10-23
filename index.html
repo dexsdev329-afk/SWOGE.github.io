@@ -767,7 +767,13 @@ body{ background:#F7F9FC; }
 .acc-ca .acc-ca-copy{ padding:8px 14px; font-size:12.5px; border-radius:10px; }
 .acc-ca-verif{ font:700 12px/1 'Inter',system-ui,sans-serif; color:#1652F0; text-decoration:none; }
 .acc-ca-verif:hover{ text-decoration:underline; }
-.acc-ca-note{ margin:8px 0 0; font:600 12px/1.4 'Inter',system-ui,sans-serif; color:#64748B; }
+/* L'avertissement anti-copie heritait du blanc majuscule de `.heros p` (specificite
+   (0,1,1) > la couleur grise de `.acc-ca-note` (0,1,0)) : blanc sur la partie claire
+   du voile, il devenait illisible — la phrase qui protege le plus l'acheteur. On lui
+   donne son propre fond sombre et une specificite qui gagne (22/10/2026). */
+.heros p.acc-ca-note{ display:inline-block; margin:10px 0 0; padding:7px 12px; border-radius:9px;
+  background:rgba(6,20,46,.78); color:rgba(255,255,255,.94);
+  font:600 11.5px/1.45 'Inter',system-ui,sans-serif; letter-spacing:.3px; text-transform:none; }
 /* L ecosysteme : les quatre portes gardent leur film. */
 .acc .univers{ gap:14px; }
 .acc .uni{ border-radius:18px; }

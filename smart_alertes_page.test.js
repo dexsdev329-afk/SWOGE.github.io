@@ -61,7 +61,8 @@ for (let id = 1; id <= 10; id++) {
   /* 21/10 : un vert retrograde par la mesure de sa ligne (smart_public.jugeParMesure) */
   if (id === 2) f = fiche(2, { categorie: 'pons', verdict: 'jaune', mesure: { n: 343, part: 14, ref: 27, retrograde: true, texte: '343 past green alerts of this kind: 14% were up 30 min later, vs 27% for what the SWOGE AI colony buys — shown yellow until it beats that' } });
   if (id === 4) f = fiche(4, { categorie: 'pons', verdict: 'rouge', titre: 'EXIT: the dev is selling', risque: 'The dev or their wallets are selling: exit.', plan: PLAN_R });
-  if (id === 6) f = fiche(6, { categorie: 'copie', titre: 'Sniper 1 buys on the curve', symbole: PIEGE, qui: [{ nom: 'Sniper 1', adresse: 'javascript:alert(1)', detail: 'bought for $120, 12 min after launch' }] });
+  if (id === 6) f = fiche(6, { categorie: 'copie', titre: 'Sniper 1 buys on the curve', symbole: PIEGE, qui: [{ nom: 'Sniper 1', adresse: 'javascript:alert(1)', detail: 'bought for $120, 12 min after launch' }],
+    force: { band: 'strong', score: 6, seuil: 40, traits: ['first-block volume 2+ ETH', '20+ first-block buyers'], survie: { '24h': { vivantsPct: 8.6, mesures: 120, assez: true }, '7j': { vivantsPct: null, mesures: 12, assez: false } }, base: { '24h': 0.6, '7j': 0.8 } } });
   if (id === 9) f = fiche(9, { categorie: 'analyste', verdict: 'vert', titre: 'Analyst: entry setup met', symbole: 'AVERYLONGSYMBOL1', etat: '17 min old · market cap $20k (DexScreener, not verified)', cap_usd: 20000, cap_source: 'dex',
     qui: [{ nom: 'Sniper 1', adresse: '0x7632bd8e72767ed67a724c564c42ceea98e81180', detail: '2 min ago' }, { nom: 'Tracked wallet', adresse: '0x1ad70bc7ac98539dada8f97360d353687f6c29d6', detail: '4 min ago' }],
     plan: { entree: 'small fixed stake (~$100)', stop: '-30%', objectif: 'at 2x sell 70-80%, keep 20-30% with a wide trailing stop; nothing after 3-4 h: exit' } });
@@ -74,14 +75,14 @@ for (let id = 1; id <= 10; id++) {
   LISTE.push(alerte(id, (11 - id) * 7, f, m));
 }
 const BILAN = (avec) => ({
-  tout: { libelle: 'All', n: 61, mesurees: 58, n30: 52, assez: true, seuil: 40, part_montee30: 38.5, mediane30: -4.2, meilleur_pct: 1500 },
-  dev: { n: 14, mesurees: 13, n30: 12, assez: false, seuil: 40, part_montee30: null, mediane30: null, meilleur_pct: null },
-  pons: { n: 44, mesurees: 42, n30: 40, assez: true, seuil: 40, part_montee30: 35, mediane30: -10, meilleur_pct: 420 },
+  tout: { libelle: 'All', n: 61, mesurees: 58, n30: 52, assez: true, seuil: 40, part_montee30: 38.5, mediane30: -4.2, meilleur_pct: 1500, meilleur_p90: 95 },
+  dev: { n: 14, mesurees: 13, n30: 12, assez: false, seuil: 40, part_montee30: null, mediane30: null, meilleur_pct: null, meilleur_p90: null },
+  pons: { n: 44, mesurees: 42, n30: 40, sans_ref: 2, manque30: 1, assez: true, seuil: 40, part_montee30: 35, mediane30: -10, meilleur_pct: 420, meilleur_p90: 180 },
   ignition: { n: 0, mesurees: 0, n30: 0, assez: false, seuil: 40 }, copie: { n: 2, mesurees: 2, n30: avec ? 2 : 1, assez: false, seuil: 40 },
   rebond: { n: 0, mesurees: 0, n30: 0, assez: false, seuil: 40 }, analyste: { n: 1, mesurees: 1, n30: 0, assez: false, seuil: 40 }, smart: { n: 0, n30: 0, assez: false, seuil: 40 },
   rouge: { n: 5, mesurees: 5, n30: 5, assez: false, seuil: 40 },
 });
-const LIVE0 = { actif: true, t: T0, dernier_id: 10, alertes: LISTE.slice().reverse(), vivantes: [], bilan: BILAN(false), paliers: [5, 15, 30, 60, 120], palier_bilan: 30, seuil: 40, tg: { lien: 'https://t.me/swoge_alerts' }, compteurs: { publiees: 10 } };
+const LIVE0 = { actif: true, t: T0, dernier_id: 10, alertes: LISTE.slice().reverse(), vivantes: [], bilan: BILAN(false), differees: { n: 8, avec_prix: 0, sans_prix_finies: 6, en_attente: 2, delai_median_min: null }, paliers: [5, 15, 30, 60, 120], palier_bilan: 30, seuil: 40, tg: { lien: 'https://t.me/swoge_alerts' }, compteurs: { publiees: 10 } };
 /* 30 s plus tard : une nouvelle alerte, et la mesure de la 1re avance (+30 rempli) */
 const F11 = fiche(11, { categorie: 'ignition', titre: 'IGNITION launch on their factory', symbole: 'IGN' });
 const LIVE1 = { actif: true, t: T0 + 30, dernier_id: 11, alertes: [alerte(11, 0, F11, mesure(11, {}, { ref: null, ref_differee: true, releves: 0 }))],
@@ -173,9 +174,15 @@ const VUE = { actif: true, pret: true, mode: 'envoi', t: T0, maintenant: T0,
   ok(/sm-al rouge/.test(c4.cls) && c4.titre === 'EXIT: the dev is selling', 'une alerte rouge est marquee rouge');
   const tuile = (k) => r.bilan.find((t) => t.txt[0] === k) || { txt: [], cls: '' };
   ok(tuile('Known dev').txt[1] === '—' && tuile('Known dev').txt[2] === 'not enough alerts yet (12 of 40)' && /attente/.test(tuile('Known dev').cls), 'bilan sous le seuil : « not enough alerts yet (12 of 40) », aucun chiffre');
-  ok(tuile('Pons launch').txt[1] === '35% rose' && tuile('Pons launch').txt[2] === 'at +30 min · median −10.0% · best +420%' && tuile('Pons launch').txt[3] === '44 sent · 40 measured', 'bilan au seuil : part, mediane, meilleur, et sur combien');
+  ok(tuile('Pons launch').txt[1] === '35% rose' && tuile('Pons launch').txt[2] === 'at +30 min · median −10.0% · top 10% +180%' && tuile('Pons launch').txt[3] === '44 sent · 40 measured · 2 never priced · 1 lost at +30', 'bilan au seuil : part, mediane, meilleur ROBUSTE (p90, pas le max brut) et les trous montres (jamais prixees, perdues a +30)');
   ok(tuile('All alerts').txt[1] === '38.5% rose' && /here, rising means the warning was wrong/.test(tuile('Red flags').txt[3]), 'la tuile de tout, et celle des alertes rouges (lue a l\'envers)');
-  ok(r.bilan.length === 9 && ['IGNITION', 'Wallet copy', 'Bounce', 'Analyst', 'Smart wallets'].every((k) => tuile(k).txt[1] === '—'), 'neuf tuiles ; chaque categorie sous le seuil reste muette');
+  ok(r.bilan.length === 9 && ['IGNITION', 'Wallet copy', 'Bounce', 'Analyst', 'Smart wallets'].every((k) => tuile(k).txt[1] === '—'), 'chaque categorie sous le seuil reste muette (part) — IGNITION comprise, la plus exposee au sur-comptage');
+  /* 23/10 : le trou IGNITION montre a la place de « pas assez » ; la part reste muette (ci-dessus), seul le trou s affiche */
+  ok(tuile('IGNITION').txt[3] === '0 of 8 ever priced · 6 closed with no price', 'IGNITION : le trou est montre (combien jamais prixees), pas « not enough » : ' + tuile('IGNITION').txt[3]);
+  ok(/IGNITION tokens launch before any market/.test(r.bilanNote) && /would only count survivors/.test(r.bilanNote), 'la note dit le trou IGNITION et le biais du survivant');
+  /* 23/10 : la force a la naissance, sur une alerte dont le jeton a passe son T+2 (copie, 35 min) */
+  const carteDe = (id) => r.flux.concat(r.anciennes).find((c) => c.id === id) || { faits: '' };
+  ok(/Birth strength/.test(carteDe(6).faits) && /STRONG/.test(carteDe(6).faits) && /8\.6% of past strong launches were still alive 24 h later \(n=120/.test(carteDe(6).faits), 'la bande de force (survie mesuree, pas +30 min) s affiche sur l alerte : ' + carteDe(6).faits.slice(-180));
   ok(/No figure under 40 measured alerts/.test(r.bilanNote), 'la note dit le seuil');
   ok(r.tg.length === 1 && r.tg[0].href === 'https://t.me/swoge_alerts' && /Join the Telegram channel/.test(r.tg[0].t) && r.tg[0].target === '_blank', 'le lien « Join the Telegram channel » (servi par le serveur)');
   ok(r.pirate === undefined && r.imgs === 0 && r.flux.find((c) => c.id === 6).sym.includes('<img'), 'symbole piege : affiche en texte, rien n\'execute');

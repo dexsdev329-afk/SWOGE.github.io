@@ -875,11 +875,23 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
     l_tg: "Join the Telegram channel",
     l_cat: { dev: "Known dev", pons: "Pons launch", ignition: "IGNITION", copie: "Wallet copy", rebond: "Bounce", analyste: "Analyst", smart: "Smart wallets", rouge: "Red flags", tout: "All alerts" },
     l_rose: function(p){ return p + "% rose"; },
-    l_rose_s: function(m, b){ return "at +30 min · median " + m + " · best " + b; },
-    l_n: function(n30, n){ return n + " sent · " + n30 + " measured"; },
+    l_rose_s: function(m, b){ return "at +30 min · median " + m + " · top 10% " + b; },
+    l_n: function(n30, n, sansRef, manque){ var s = n + " sent · " + n30 + " measured"; if (sansRef) s += " · " + sansRef + " never priced"; if (manque) s += " · " + manque + " lost at +30"; return s; },
     l_pas_assez: function(n, s){ return "not enough alerts yet (" + n + " of " + s + ")"; },
     l_rouge_s: "avoid / exit alerts: here, rising means the warning was wrong",
-    bilanNote: function(s, p){ return "Share of alerts whose price was higher " + p + " minutes after the alert than at the alert, and the median change. No figure under " + s + " measured alerts: a handful of tokens is luck, not a result. Green and yellow alerts only; red ones (avoid, exit) have their own tile."; },
+    /* 23/10 : le trou IGNITION, montre au lieu d'etre cache */
+    l_ign_s: function(d){ return d.avec_prix + " of " + d.n + " ever priced" + (d.delai_median_min != null ? " (median " + Math.round(d.delai_median_min) + " min)" : "") + " · " + d.sans_prix_finies + " closed with no price"; },
+    l_ign_note: "IGNITION tokens launch before any market: no price source reads them yet, so they are counted but not measured.",
+    /* 23/10 : la force a la naissance (survie mesuree, pas le prix a +30 min) */
+    l_force: "Birth strength",
+    l_force_s: function(fo){
+      var band = { weak: "WEAK", medium: "MEDIUM", strong: "STRONG" }[fo.band] || "—";
+      var tr = (fo.traits || []).length ? " — " + fo.traits.join(", ") : "";
+      var s = fo.survie && fo.survie["24h"], base = fo.base && fo.base["24h"];
+      if (s && s.assez && s.vivantsPct != null) return band + tr + " · " + s.vivantsPct + "% of past " + fo.band + " launches were still alive 24 h later (n=" + s.mesures + (base != null ? ", vs " + base + "% for all launches" : "") + ")";
+      return band + tr + " · observing — survival not scored yet (" + ((s && s.mesures) || 0) + " of " + (fo.seuil || 40) + ")";
+    },
+    bilanNote: function(s, p){ return "Share of alerts whose price was higher " + p + " minutes after the alert than at the alert, and the median change. No figure under " + s + " measured alerts: a handful of tokens is luck, not a result. Alerts never priced (IGNITION pre-market) or whose token died before +30 min are shown, not hidden — otherwise the share would only count survivors. Green and yellow alerts only; red ones (avoid, exit) have their own tile."; },
     l_age: function(min){ return min < 1 ? "just now" : min < 120 ? Math.round(min) + " min ago" : min < 2880 ? Math.round(min / 60) + " h ago" : Math.round(min / 1440) + " d ago"; },
     l_etat: "Age and state", l_qui: "Who", l_promo: "DexScreener promo", l_risque: "Main risk", l_plan: "Plan", l_bilan_al: "Track record",
     l_plan_s: function(p){ return "entry " + p.entree + "; stop " + p.stop + "; target " + p.objectif; },
@@ -1285,6 +1297,7 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
     fait(dl, ph("l_promo"), String(f.promo || ""));
     if (f.plan) fait(dl, ph("l_plan"), ph("l_plan_s", f.plan), true);
     if (f.mesure && f.mesure.texte) fait(dl, ph("l_bilan_al"), String(f.mesure.texte));
+    if (f.force && f.force.band) fait(dl, ph("l_force"), ph("l_force_s", f.force));
     li.appendChild(dl);
     var res = el("div", "sm-res"); res.setAttribute("aria-label", "Price change after the alert");
     var cases = {};
@@ -1320,11 +1333,19 @@ body.ds{ background:var(--ds-fond); color:var(--ds-encre); font:15px/1.5 Inter,s
       var t = z.children[i], x = b[k] || { n: 0, n30: 0, assez: false, seuil: d.seuil };
       var cls = "sm-cat" + (k === "tout" ? " tout" : k === "rouge" ? " rouge" : "") + (x.assez ? "" : " attente");
       setCls(t, cls);
-      if (x.assez) { setTxt(t.children[1], ph("l_rose", x.part_montee30)); setTxt(t.children[2], ph("l_rose_s", pct(x.mediane30) || "--", pct(x.meilleur_pct) || "--")); }
+      /* le meilleur ROBUSTE : p90, jamais le max brut qu'un prix de reference quasi nul fait exploser */
+      var best = x.meilleur_p90 != null ? x.meilleur_p90 : x.meilleur_pct;
+      if (x.assez) { setTxt(t.children[1], ph("l_rose", x.part_montee30)); setTxt(t.children[2], ph("l_rose_s", pct(x.mediane30) || "--", pct(best) || "--")); }
       else { setTxt(t.children[1], "—"); setTxt(t.children[2], ph("l_pas_assez", x.n30 || 0, x.seuil || d.seuil || 40)); }
-      setTxt(t.children[3], k === "rouge" ? ph("l_rouge_s") : ph("l_n", x.n30 || 0, x.n || 0));
+      /* IGNITION : le trou montre (combien jamais prixees) plutot que « pas assez » ; les autres : part non-mesuree */
+      if (k === "ignition" && d.differees && d.differees.n) setTxt(t.children[3], ph("l_ign_s", d.differees));
+      else setTxt(t.children[3], k === "rouge" ? ph("l_rouge_s") : ph("l_n", x.n30 || 0, x.n || 0, x.sans_ref || 0, x.manque30 || 0));
+      /* la COURBE complete par palier, en infobulle (la donnee est au bilan ; la carte de chaque alerte la montre deja) */
+      if (x.paliers) { var cur = [5, 15, 30, 60, 120].map(function(p){ var c = x.paliers[p]; return c && c.assez ? "+" + p + "m " + c.part + "%" : "+" + p + "m —"; }).join("  ·  "); t.title = cur; }
+      else t.title = "";
     });
     setTxt($("bilanNote"), ph("bilanNote", d.seuil || 40, d.palier_bilan || 30));
+    var note = $("bilanNote"); if (note && d.differees && d.differees.n && d.differees.avec_prix === 0) note.textContent += " " + ph("l_ign_note");
   }
   function range(){
     /* les MONTRE plus recentes en vue, les autres repliees ; au plus MAX gardees */

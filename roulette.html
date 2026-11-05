@@ -1,0 +1,1839 @@
+
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>
+/* ================== CORRECTIFS COMMUNS ==================
+ * Bloc identique sur les vingt-cinq pages. Il se pose juste apres le viewport
+ * pour qu'aucune feuille de style de la page ne puisse le prendre de vitesse.
+ *
+ * LE DOUBLE-TAP NE ZOOME PLUS. Deux appuis rapproches sur un bouton — tirer,
+ * tirer ; miser, miser — etaient lus comme un double-tap, et la page grossissait.
+ * On jouait le coup suivant a moitie hors de l'ecran et il fallait pincer pour
+ * revenir. `manipulation` supprime CE geste, et lui seul : le pincement pour
+ * zoomer reste possible, ce qui n'aurait pas ete le cas avec un
+ * `user-scalable=no` dans le viewport — la solution courante, qui prive aussi
+ * les gens qui zooment pour lire. Les 300 ms d'attente avant que le clic parte
+ * disparaissent avec, en prime.
+ *
+ * LA SURFACE DE JEU, elle, ne doit rien laisser passer : un doigt qui glisse
+ * sur un plateau ne doit pas faire defiler la page derriere.
+ *
+ * LES CIBLES : le bouton menu tombait a 38x38 sur telephone, sous les 44 px
+ * recommandes — et c'est le seul chemin vers le depot, le retrait et le compte.
+ * ========================================================= */
+html{ -webkit-text-size-adjust:100%; }
+
+/* ---- ON RELEVE LE NOIR, PARTOUT ----
+ *
+ * Les tables etaient presque entierement noires : 80 % des pixels du casino
+ * sous le seuil du visible, 96 % au Coin Pusher, contre 58 % au hall. A cote
+ * du hall, chaque jeu paraissait eteint.
+ *
+ * Le calque est en `screen`, pas en voile blanc, et la difference est tout :
+ *
+ *   screen(a, g) = 255 - (255 - a)(255 - g) / 255
+ *
+ * Le NOIR monte a la valeur du calque, le BLANC ne bouge pas d'un cran. Les
+ * plaques peintes, les jetons et les cartes gardent donc exactement leur
+ * eclat — seuls les creux se remplissent. Un voile blanc a 5 %, lui, aurait
+ * laiteuse les cartes en meme temps.
+ *
+ * `filter: brightness()` est ecarte pour deux raisons : il MULTIPLIE, donc le
+ * noir reste noir — or c'est justement le noir qu'on veut relever — et un
+ * filtre fait de son element le repere de tout descendant en position fixe,
+ * ce qui nous a deja coute un cadre de palier de deux cents pixels sur le Spin.
+ *
+ * `pointer-events:none` : le calque couvre tout l'ecran, il ne doit rien
+ * intercepter. Verifie par un vrai clic sur la bulle de profil, avec et sans.
+ *
+ * Une seule valeur a regler ici, et elle vaut pour les vingt-six pages. */
+html::after{ content:""; position:fixed; inset:0; pointer-events:none;
+  z-index:2147483000; background:#12121a; mix-blend-mode:screen; }
+button, a, input, select, textarea, label, summary,
+[role="button"], [onclick],
+.card, .chipbtn, .btn, .tile, .sbet, .qclaim, .abtn, .pct, .chip, .sday{
+  touch-action:manipulation;
+}
+canvas{ touch-action:none; }
+
+/* ---- UNE VIDEO NE PEUT PLUS ETRE PLUS LARGE QUE SA PLACE ----
+ *
+ * Signale, capture a l appui : sur telephone, l en-tete de SWOGE BET et la
+ * rangee de navigation s affichent a 59 % de la largeur de l ecran, tout
+ * ratatines, pendant que la banniere et les cartes en dessous occupent bien
+ * toute la largeur. Deux echelles sur la meme page.
+ *
+ * Ce n est pas l en-tete qui a retreci : c est TOUTE LA PAGE qui a ete
+ * degonflee. Quand un element deborde en largeur, iOS ne coupe pas et ne
+ * replie pas — il reduit l echelle de la page entiere pour faire tenir le
+ * document. L en-tete, lui, fait 100 % de la FENETRE (390 px) et non du
+ * document (772 px) : degonfle du meme coup, il n occupe plus que la moitie
+ * de l ecran. Le contenu large, lui, remplit l ecran. C est exactement ce que
+ * montre la capture, et la page porte deja ce constat ailleurs :
+ * « le telephone dezoomait toute la page pour la faire tenir ».
+ *
+ * Ce qui debordait : la banniere video. `<video width="912" height="600">` —
+ * ces attributs sont des indices de presentation, c est-a-dire une largeur de
+ * 912 px si la regle d auteur qui dit `width:100%` ne s applique pas, ou si le
+ * moteur recalcule la largeur depuis `aspect-ratio` quand `max-height` mord.
+ * Mesure, la regle neutralisee : document a 772 px pour une fenetre de 390, et
+ * un en-tete qui occuperait 51 % de l ecran.
+ *
+ * Chaque `<img>` du site etait deja borne — `img{max-width:100%}`. Aucune des
+ * vingt et une pages qui portent une `<video>` ne le faisait pour elle. Le
+ * garde manquait pour un seul type de balise, et c est celui qu on a mis en
+ * pleine largeur en haut de trois pages.
+ *
+ * Pose ici, dans le bloc commun, et pas dans la regle de chaque banniere : ce
+ * n est pas une decision de mise en page, c est un plancher. Une banniere qui
+ * veut deborder devra le dire, et personne ne le veut. */
+video{ max-width:100%; }
+.menubtn{ min-width:44px; min-height:44px; }
+</style>
+
+<title>SWOGE Roulette — European Roulette Played with $SWOGE</title>
+
+<!-- ==================== REFERENCEMENT ET PARTAGE ====================
+     Bloc identique sur toutes les pages, pose juste apres le titre.
+
+     L ICONE. Vingt-trois pages sur vingt-huit n en avaient aucune, et les cinq
+     qui en portaient une pointaient vers trois fichiers differents — dont un
+     qui n existe pas. C est la premiere chose qu on cherche pour retrouver un
+     onglet, et Google la montre a cote du resultat.
+
+     LE PARTAGE. Aucune page ne portait de balise Open Graph : un lien colle
+     dans Telegram, sur X ou dans Discord n affichait ni titre, ni resume, ni
+     image — juste l adresse nue. Pour un projet qui vit dans Telegram, c est
+     le lien lui-meme qui faisait le travail de vitrine, et il ne le faisait
+     pas.
+
+     L ADRESSE CANONIQUE dit au moteur quelle est LA page, quand la meme est
+     atteignable avec un `?game=`, un `#` ou un `www`. Sans elle, les deux
+     versions se font concurrence et aucune ne gagne.
+     ================================================================= -->
+<link rel="canonical" href="https://swoleeswoge.dog/roulette.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="SWOGE WORLD">
+<meta property="og:locale" content="en_US">
+<meta property="og:title" content="SWOGE Roulette — European Roulette Played with $SWOGE">
+<meta property="og:description" content="Play European roulette with $SWOGE on Robinhood Chain. Single zero, 2.7% house edge, provably fair. Same balance as every SWOGE game.">
+<meta property="og:url" content="https://swoleeswoge.dog/roulette.html">
+<meta property="og:image" content="https://swoleeswoge.dog/img/site/partage.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@SwoleDogeSwoge">
+<meta name="twitter:title" content="SWOGE Roulette — European Roulette Played with $SWOGE">
+<meta name="twitter:description" content="Play European roulette with $SWOGE on Robinhood Chain. Single zero, 2.7% house edge, provably fair. Same balance as every SWOGE game.">
+<meta name="twitter:image" content="https://swoleeswoge.dog/img/site/partage.jpg">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/img/site/icone-32.png">
+<link rel="apple-touch-icon" href="/img/site/icone-180.png">
+<link rel="manifest" href="/site.webmanifest">
+<meta name="theme-color" content="#1B5FE0">
+
+<meta name="description" content="Play European roulette with $SWOGE on Robinhood Chain. Single zero, 2.7% house edge, provably fair. Same balance as every SWOGE game.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<!-- La bulle de staking. Chargee tot et SANS defer : elle enveloppe WebSocket
+     pour ecouter ce qui passe deja, et doit donc etre en place avant que la page
+     n ouvre sa connexion. -->
+<script src="stakebubble.min.js?v=a481bde5"></script>
+<script src="coffre.js?v=7ce0ad09"></script>
+<script src="swogeprofil.js?v=aa21d613" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+<script src="swogebuy.js?v=9d7c39e5"></script>
+<style>
+  :root{
+    --gold:#E6A537; --gold2:#FFB84D; --ink:#0B0906; --ink2:#15100A;
+    --text:#F7EEDA; --muted:#A08a63; --line:rgba(230,165,55,.28);
+    --green:#7CFF9B; --red:#FF6B6B; --blue:#6BB8FF;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  /* ---- FOND BLANC, COMME LES AUTRES PAGES CONVERTIES ----
+   * DEMANDE : « la barre menu blanche ... comme se qu on viens de faire sur
+   * les autre page ». Trois calques dessinaient un fond sombre ici (pas
+   * deux comme d'habitude) : ce `html,body{background}`, le degrade+photo
+   * `body::before` juste en dessous, ET un `body{background:url(...)}`
+   * direct plus bas dans la feuille (avec sa variante paysage). Les trois
+   * sont neutralises — c'est la PAGE, autour de la gemme, qui passe au
+   * blanc ; la scene de jeu garde son propre habillage or-sur-noir. */
+  html,body{background:#EEF3FB;color:#0B1B36;font-family:'Space Mono','Courier New',monospace}
+  body{min-height:100vh;overflow-x:hidden}
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:680px;margin:0 auto;padding:0 18px}
+  main,nav{position:relative;z-index:1}
+
+  /* ---- CETTE REGLE NE DOIT PAS ATTEINDRE LE CHROME DE LA PAGE ----
+     Sans classe, elle visait TOUS les <nav>, donc aussi `.sw-nav`, la
+     navigation de la colonne de gauche : quatre liens qui demandent 437 px
+     etaient mis en RANGEE dans une colonne de 230, et comme rien ne les
+     rognait, « Sports » et « Docs » sortaient de 216 px et se peignaient
+     par-dessus le jeu — sur six pages. `nav.sb-ancre` juste plus bas ne
+     faisait qu'annuler le degat sur UN nav : le defaut etait connu et
+     rustine au cas par cas plutot qu'a la source. */
+  nav:not(.sw-nav):not(.sb-ancre){display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid var(--line);
+    background:rgba(11,9,6,.7);backdrop-filter:blur(8px);position:sticky;top:0;z-index:5}
+  .brand{font-family:'Anton',sans-serif;font-size:20px;letter-spacing:1px;color:var(--gold)}
+  .brand span{color:var(--text)}
+  nav .sp{flex:1}
+  .nlink{font-size:13px;color:var(--muted);padding:8px 10px;border-radius:999px}
+  .nlink:hover{color:var(--text)}
+  .chip{font-size:13px;color:var(--text);border:1px solid var(--line);border-radius:999px;padding:8px 13px;background:rgba(0,0,0,.25)}
+  .chip b{color:var(--gold)}
+  .menubtn{font-size:18px;line-height:1;color:var(--text);background:rgba(0,0,0,.25);border:1px solid var(--line);
+    border-radius:12px;width:40px;height:40px;cursor:pointer;transition:.15s}
+  .menubtn:hover{color:var(--gold);border-color:rgba(230,165,55,.6)}
+  .menu{position:absolute;top:60px;right:14px;z-index:20;min-width:210px;display:none;flex-direction:column;
+    background:rgba(11,9,6,.97);border:1px solid var(--line);border-radius:14px;padding:6px;
+    box-shadow:0 16px 40px rgba(0,0,0,.6);backdrop-filter:blur(8px)}
+  .menu.open{display:flex}
+  .menu a{font-size:14px;color:var(--text);padding:11px 13px;border-radius:9px;transition:.12s}
+  .menu a:hover{background:rgba(230,165,55,.12);color:var(--gold)}
+  .menu .msep{height:1px;background:var(--line);margin:5px 8px}
+
+  .hero{text-align:center;padding:26px 18px 4px}
+  .hero h1{font-family:'Anton',sans-serif;font-size:clamp(30px,7vw,52px);line-height:1;letter-spacing:1px}
+  .hero h1 .g{color:var(--gold)}
+  .hero p{max-width:520px;margin:10px auto 0;color:#cdbf9f;font-size:13px;line-height:1.6}
+
+  /* gem stage */
+  .stage{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    min-height:320px;padding:20px 0 6px;user-select:none}
+  .gem{width:170px;height:170px;cursor:pointer;position:relative;transition:transform .12s ease;
+    filter:drop-shadow(0 0 34px rgba(230,165,55,.65));display:flex;align-items:center;justify-content:center;font-size:120px;
+    animation:bob 3s ease-in-out infinite}
+  @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+  .gem:active{transform:scale(.94)}
+  .gem.hit{animation:smash .3s ease-out}
+  @keyframes smash{0%{transform:scale(1) rotate(0)}25%{transform:scale(.86) rotate(-7deg)}55%{transform:scale(1.08) rotate(5deg)}100%{transform:scale(1) rotate(0)}}
+  .gem.win{filter:drop-shadow(0 0 50px rgba(124,255,155,.9))}
+  .gem.big{filter:drop-shadow(0 0 70px rgba(255,215,0,1))}
+
+  .float{position:absolute;font-family:'Anton',sans-serif;pointer-events:none;z-index:6;
+    font-size:40px;opacity:0;animation:floatUp 1s ease-out forwards}
+  .float.win{color:var(--green)} .float.lose{color:var(--muted)} .float.big{color:var(--gold2);font-size:56px}
+  @keyframes floatUp{0%{opacity:0;transform:translateY(10px) scale(.6)}20%{opacity:1;transform:translateY(-6px) scale(1.1)}100%{opacity:0;transform:translateY(-60px) scale(.9)}}
+
+  .result{min-height:26px;font-family:'Archivo',sans-serif;font-weight:800;font-size:16px;text-align:center;margin-top:4px}
+  .result .m{color:var(--gold)}
+
+  /* smash button */
+  .cta{display:flex;flex-direction:column;align-items:center;gap:10px;padding:8px 0 18px}
+  .smash{font-family:'Archivo',sans-serif;font-weight:800;font-size:19px;letter-spacing:.5px;
+    color:var(--ink);background:linear-gradient(135deg,var(--gold2),var(--gold));border:none;cursor:pointer;
+    padding:16px 44px;border-radius:16px;box-shadow:0 10px 30px rgba(230,165,55,.35);transition:transform .1s ease,filter .2s}
+  .smash:hover{filter:brightness(1.05)} .smash:active{transform:translateY(2px)}
+  .smash:disabled{background:rgba(255,255,255,.08);color:var(--muted);cursor:default;box-shadow:none}
+  .costline{font-size:12px;color:var(--muted)}
+  .costline b{color:var(--gold)}
+
+  .connectbtn{font-family:'Archivo',sans-serif;font-weight:800;font-size:16px;color:var(--ink);
+    background:linear-gradient(135deg,var(--gold2),var(--gold));border:none;cursor:pointer;padding:14px 34px;border-radius:14px}
+
+  /* payout table */
+  .odds{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;padding:6px 0 4px}
+  .odds .o{font-size:11px;color:#cdbf9f;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);padding:4px 9px;border-radius:999px}
+  .odds .o b{color:var(--gold)}
+
+  /* recent feed */
+  .sec{padding:16px 0 6px}
+  .sec h2{font-family:'Archivo',sans-serif;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);
+    display:flex;align-items:center;gap:10px}
+  .sec h2::after{content:"";flex:1;height:1px;background:var(--line)}
+  .feed{display:flex;flex-direction:column;gap:7px;padding:8px 0 30px}
+  /* ---- LE FIL DES COUPS, AU CLAIR — ET SURTOUT : PORTEE `.feed` ----
+   * Cette regle s'appelait `.row` tout court, et `.row` ne designe pas que le
+   * fil : le panneau Daily Quests enveloppe son bouton « Close » dans un
+   * `<div class="row">`. Les deux `.box .row` declares plus bas ne redisent que
+   * `display/gap/align-items` — jamais `background` ni `border` — donc ce
+   * degrade noir-sur-or traversait le panneau BLANC et y peignait une plaque
+   * noire sous le bouton. La regle est donc portee a `.feed .row`, et le fil
+   * lui-meme passe au clair : il vit sur la page blanche, sous la gemme.
+   * Les couleurs d'etat suivent : `var(--green)` valait #7CFF9B (vert menthe)
+   * et `var(--muted)` #A08a63 (brun-or) — tous deux illisibles sur blanc. */
+  .feed .row{display:flex;align-items:center;gap:10px;border:1px solid #E1E9F6;border-radius:12px;padding:9px 13px;
+    background:#EEF3FB;animation:slidein .25s ease}
+  @keyframes slidein{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+  .row .mult{font-family:'Anton',sans-serif;font-size:18px;min-width:52px}
+  .row .mult.win{color:#0E7C3E} .row .mult.lose{color:#6B7C99} .row .mult.big{color:#B26A00}
+  .row .txt{flex:1;font-size:12px;color:#6B7C99}
+  .row .pay{font-size:12px;font-weight:700}
+  .row .pay.win{color:#0E7C3E} .row .pay.lose{color:#6B7C99}
+  .feed .empty{text-align:center;color:#6B7C99;font-size:12px;padding:24px}
+
+  .fair{font-size:11px;color:var(--muted);text-align:center;padding:2px 0 8px;line-height:1.6;word-break:break-all}
+  .fair b{color:#cdbf9f}
+
+  .note{border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:6px 0 22px;background:rgba(0,0,0,.22);font-size:12px;color:var(--muted);line-height:1.6}
+  .note b{color:#cdbf9f}
+  .note a{color:var(--gold)}
+
+  footer{border-top:1px solid var(--line);padding:22px 18px 40px;text-align:center;color:var(--muted);font-size:12px}
+  /* Le lien du pied de page gardait le dore de l'ancien theme sombre :
+   #E6A537 sur le fond clair #EEF3FB, soit 1,92:1 — sous le seuil de
+   lisibilite. `swoge_blackjack.html` et `crash.html` etaient deja passes
+   au bleu du systeme ; les dix autres pages converties suivent. */
+footer a{color:#1B5FE0}
+
+  /* account pop-ups */
+  .ovl{position:fixed;inset:0;z-index:60;background:rgba(4,6,10,.72);display:none;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(3px)}
+  .ovl.show{display:flex}
+  .box{display:none;width:min(420px,94vw);max-height:88vh;overflow-y:auto;
+    background:linear-gradient(rgba(11,9,6,.95),rgba(11,9,6,.98));border:1px solid rgba(230,165,55,.45);
+    border-radius:18px;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+  .box.show{display:block}
+  .box h3{font-family:'Anton',sans-serif;font-size:22px;color:var(--gold);margin-bottom:12px;letter-spacing:.5px}
+  .box label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;display:block;margin:8px 0 5px}
+  .box .note{font-size:12px;color:var(--muted);line-height:1.5}
+  .box .note b{color:var(--gold)}
+  .box input{width:100%;padding:11px;border-radius:10px;border:1px solid var(--line);background:#0B0906;color:var(--text);font-family:inherit;font-size:15px}
+  .box .row{display:flex;gap:8px;align-items:center}
+  .box .btn{padding:12px 18px;font-size:15px}
+  .strow{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;padding:6px 0;color:var(--muted)}
+  .strow b{font-size:15px;color:var(--text)}
+  .quest{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:8px;background:rgba(0,0,0,.25)}
+  .quest .qh{display:flex;justify-content:space-between;font-size:13px;color:var(--text);margin-bottom:6px}
+  .quest .qh .qr{color:var(--gold);font-weight:700}
+  .quest .qbar{height:6px;background:rgba(255,255,255,.1);border-radius:6px;overflow:hidden;margin-bottom:8px}
+  .quest .qbar i{display:block;height:100%;background:linear-gradient(90deg,var(--gold2),var(--gold))}
+  .qclaim{width:100%;font-size:12px;font-weight:700;padding:9px;border-radius:8px;border:none;font-family:inherit}
+  .qclaim.on{background:linear-gradient(135deg,var(--green),#39d16a);color:#062a12;cursor:pointer}
+  .qclaim.off{background:rgba(255,255,255,.07);color:var(--muted);cursor:default}
+  .qclaim.done{background:rgba(124,255,155,.14);color:var(--green);cursor:default}
+
+  .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:50;
+    background:rgba(11,9,6,.95);border:1px solid var(--line);color:var(--text);font-size:13px;
+    padding:11px 18px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.5);opacity:0;transition:opacity .25s;pointer-events:none}
+  .toast.show{opacity:1}
+
+  .statusdot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px;background:#555;vertical-align:middle}
+  .statusdot.on{background:var(--green);box-shadow:0 0 8px var(--green)}
+  .statusdot.off{background:var(--red);box-shadow:0 0 8px var(--red)}
+
+/* ===== SWOGE themed panels — AU CLAIR, meme conversion que swoge_casino.html ===== */
+/* ---- #connectBtn ET #emailBtn NE SONT PLUS DECRITS ICI ----
+   Ils vivent maintenant dans l'en-tete et portent `sw-b sw-b-vide` /
+   `sw-b sw-b-plein`, comme sur les autres pages converties. */
+.ovl { position:fixed; inset:0; z-index:300; background:rgba(4,4,12,.7); display:none; align-items:safe center; justify-content:center; padding:16px; font-family:system-ui; overflow-y:auto; }
+.ovl.show { display:flex; }
+.box.show { display:block; }
+#box-dep, #box-wd, #box-wallet, #box-stake {
+  width:min(452px,96vw); max-height:92vh; overflow:hidden;
+  background:#FFFFFF; border:1px solid #E1E9F6; border-radius:18px;
+  box-shadow:0 20px 60px rgba(11,27,54,.16); padding:0; }
+#box-dep .pscroll, #box-wd .pscroll, #box-wallet .pscroll, #box-stake .pscroll { max-height:calc(92vh - 88px); overflow-y:auto; padding:18px 30px 26px; scrollbar-width:none; -ms-overflow-style:none; }
+#box-dep .note2, #box-wd .note2, #box-wallet .note2, #box-stake .note2 { font-size:13px; line-height:1.45; text-align:center; color:#6B7C99; margin-top:8px; }
+#box-dep .note2 b, #box-wd .note2 b, #box-wallet .note2 b, #box-stake .note2 b { color:#1B5FE0; }
+#box-dep label, #box-wd label, #box-wallet label, #box-stake label { font-size:11px; letter-spacing:1.5px; text-align:center; color:#6B7C99; margin:8px 0 5px; }
+#box-dep .strow, #box-wd .strow, #box-wallet .strow, #box-stake .strow { font-size:14px; padding:5px 6px; color:#6B7C99; }
+#box-dep .strow b, #box-wd .strow b, #box-wallet .strow b, #box-stake .strow b { font-size:15px; color:#0B1B36; }
+#box-stake .strow { justify-content:center; gap:11px; font-size:11px; padding:2px 4px; }
+#box-stake .strow b { font-size:12px; }
+#box-stake .note2 { font-size:10px; line-height:1.4; }
+#box-dep input, #box-wd input, #box-wallet input, #box-stake input { padding:10px; font-size:15px; text-align:center; }
+#box-stake .pcts, #box-dep .pcts { gap:6px; margin:6px 0; }
+#box-dep .pscroll::-webkit-scrollbar, #box-wd .pscroll::-webkit-scrollbar, #box-wallet .pscroll::-webkit-scrollbar, #box-stake .pscroll::-webkit-scrollbar { width:0; height:0; display:none; }
+.ptitle, .wtitle-plate { margin:2px auto 12px; text-align:center;
+  font:800 19px/1.2 'Inter',system-ui,sans-serif; letter-spacing:.4px; color:#0B1B36; }
+#box-dep .pscroll, #box-wd .pscroll, #box-stake .pscroll { text-align:center; }
+#box-dep .brow, #box-wd .brow, #box-stake .brow { display:block !important; text-align:center !important; margin-top:10px; }
+#box-dep .abtn.aimg, #box-wd .abtn.aimg, #box-stake .abtn.aimg, #stClaim { display:block !important; width:212px !important; max-width:82% !important; height:56px !important; aspect-ratio:auto !important; min-width:0 !important; margin:9px auto !important; float:none !important; flex:none !important; }
+#box-dep .abtn.closeimg, #box-wd .abtn.closeimg, #box-stake .abtn.closeimg { display:block !important; width:212px !important; max-width:82% !important; height:44px !important; aspect-ratio:auto !important; min-width:0 !important; margin:9px auto !important; float:none !important; flex:none !important; }
+#box-dep input, #box-wd input, #box-wallet input, #box-stake input { display:block; max-width:280px; margin-left:auto; margin-right:auto; }
+#box-dep .strow, #box-wd .strow, #box-wallet .strow, #box-stake .strow { justify-content:center; gap:14px; }
+/* `aimg` voulait dire « ce bouton EST une image ». Il n y a plus d image :
+   la classe ne dit plus rien et le libelle, deja dans le HTML, se voit. */
+.abtn.aimg { background:#1B5FE0; color:#fff; text-indent:0; height:48px; min-height:0; border-radius:10px; font-weight:800; font-family:'Inter',system-ui,sans-serif; }
+.abtn.closeimg { background:#FFFFFF; color:#1B5FE0; border:1px solid #1B5FE0; text-indent:0; min-height:44px; border-radius:10px; font-weight:800; font-family:'Inter',system-ui,sans-serif; }
+.brow.bcol { flex-direction:column; gap:10px; }
+.pcts { gap:8px; }
+.pct.imgpct { background:#EEF3FB; border:1px solid #E1E9F6 !important; color:#0B1B36; text-indent:0; aspect-ratio:auto; min-height:0; padding:9px 0 !important; font-weight:700; font-size:13px; border-radius:8px; }
+.pct.imgpct:hover { border-color:#1B5FE0 !important; color:#1B5FE0; }
+.box h3 { font-family:'Inter',system-ui,sans-serif; font-size:20px; color:#1B5FE0; margin-bottom:12px; }
+.box label { font-size:11px; color:#6B7C99; text-transform:uppercase; letter-spacing:1px; display:block; margin:8px 0 5px; }
+.box .note, .box .note2 { font-size:12px; color:#6B7C99; line-height:1.5; }
+.box .note { border:1px solid #E1E9F6; border-radius:12px; padding:12px 14px; margin:6px 0 22px; background:#EEF3FB; }
+.box .note b, .box .note2 b { color:#1B5FE0; }
+.box input { width:100%; padding:11px; border-radius:10px; border:1px solid #E1E9F6; background:#EEF3FB; color:#0B1B36; font-family:inherit; font-size:15px; }
+.box .row { display:flex; gap:8px; align-items:center; }
+.box .brow { display:flex; gap:8px; align-items:center; margin-top:10px; }
+.box .abtn { flex:1; padding:12px; border-radius:10px; border:none; font-weight:800; font-size:15px; cursor:pointer; text-align:center; font-family:'Inter',system-ui,sans-serif;
+    color:#fff; background:#1B5FE0; }
+.box .abtn.sec { color:#1B5FE0; background:#FFFFFF; border:1px solid #1B5FE0; }
+.box .abtn.danger { color:#ff6b6b; background:transparent; border:1px solid rgba(255,107,107,.4); }
+.box .btn { border-radius:10px; border:1px solid #1B5FE0; background:#FFFFFF; color:#1B5FE0; cursor:pointer; font-family:'Inter',system-ui,sans-serif; font-weight:800; }
+.strow { display:flex; justify-content:space-between; align-items:baseline; font-size:13px; padding:6px 0; color:#6B7C99; }
+.strow b { font-size:15px; color:#0B1B36; }
+.pcts { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin:8px 0; }
+.pct { padding:9px 0; border-radius:8px; border:1px solid #E1E9F6; background:#EEF3FB; color:#0B1B36; font-weight:700; cursor:pointer; font-size:13px; }
+.pct:hover { border-color:#1B5FE0; color:#1B5FE0; }
+.wtitle-plate { width:230px; height:auto; background:none; filter:none; }
+#box-wallet .abtn.wbtn { width:100%; aspect-ratio:auto; min-height:44px; padding:12px; background:#FFFFFF; border:1px solid #E1E9F6; color:#0B1B36; text-indent:0; font-weight:700; margin-top:8px !important; }
+#box-wallet .wb-disconnect { color:#E0443E; border-color:rgba(224,68,62,.45); }
+#box-quests .note2 { text-align:center; }
+.abtn:disabled { opacity:.5; cursor:default; }
+#box-email { width:min(452px,96vw); max-height:92vh; overflow:hidden;
+  background:#FFFFFF; border:1px solid #E1E9F6; border-radius:18px;
+  box-shadow:0 20px 60px rgba(11,27,54,.16); padding:0; }
+#box-email .pscroll { max-height:calc(92vh - 88px); overflow-y:auto; padding:18px 30px 26px; text-align:center; scrollbar-width:none; -ms-overflow-style:none; }
+#box-email .pscroll::-webkit-scrollbar { width:0; height:0; display:none; }
+#box-email .note2 { font-size:13px; line-height:1.45; text-align:center; color:#6B7C99; }
+#box-email label { font-size:11px; letter-spacing:1.5px; text-align:center; color:#6B7C99; }
+#box-email input { display:block; max-width:280px; margin:6px auto; text-align:center; }
+#box-email .brow { display:block !important; text-align:center !important; margin-top:10px; }
+#box-email .abtn.aimg { display:block !important; width:212px !important; max-width:82% !important; height:56px !important; aspect-ratio:auto !important; min-width:0 !important; margin:9px auto !important; float:none !important; flex:none !important; }
+#box-email .abtn.closeimg { display:block !important; width:212px !important; max-width:82% !important; height:44px !important; aspect-ratio:auto !important; min-width:0 !important; margin:9px auto !important; float:none !important; flex:none !important; }
+/* ---- ENVOYER VERS UNE ADRESSE, DANS MY WALLET ---- */
+.wsend{ margin-top:14px; padding-top:12px; border-top:1px solid #E1E9F6; text-align:center; }
+.wsend-t{ font:800 13px/1.2 'Inter',system-ui,sans-serif; color:#0B1B36; margin-bottom:2px; }
+.wsend-row{ display:flex; gap:8px; align-items:center; max-width:280px; margin:6px auto 0; }
+.wsend-row #sendAmt{ flex:1 1 auto; min-width:0; margin:0 !important; }
+.wsend-row #sendTok{ flex:0 0 auto; padding:10px; border-radius:10px; font-family:inherit; font-size:14px;
+  color:#0B1B36; background:#EEF3FB; border:1px solid #E1E9F6; cursor:pointer; }
+.wsend #sendTo{ font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:12.5px; }
+.wsend #sendMsg{ min-height:1em; }
+/* Le bouton suivait la largeur de son texte — soixante-six pixels — la ou
+   tous les autres boutons du panneau tiennent la colonne. */
+.wsend #sendGo{ display:block; width:100%; max-width:280px; margin:10px auto 0; }
+@media (max-width: 820px), (orientation: portrait) {
+    #box-dep, #box-wd, #box-wallet, #box-stake, #box-quests {
+      width:100vw; max-width:100vw; height:100vh; height:100dvh; max-height:100dvh;
+      border-radius:0;
+    }
+    #box-dep .pscroll, #box-wd .pscroll, #box-wallet .pscroll, #box-stake .pscroll {
+      max-height:calc(100dvh - 74px); padding:18px 34px 28px;
+    }
+    #box-dep .note2, #box-wd .note2, #box-wallet .note2, #box-stake .note2 { font-size:12px; }
+    #box-dep .strow, #box-wd .strow, #box-wallet .strow, #box-stake .strow { font-size:12px; }
+    #box-dep label, #box-wd label, #box-wallet label, #box-stake label { font-size:10px; }
+    #box-dep input, #box-wd input, #box-wallet input, #box-stake input { font-size:14px; }
+    #box-wallet .strow, #box-dep .strow, #box-wd .strow { padding-left:2px; padding-right:2px; }
+    #box-dep .pcts, #box-stake .pcts { max-width:94%; margin-left:auto; margin-right:auto; }
+}
+@media (min-width:821px) and (orientation:landscape) {
+    #box-quests { width:min(760px,60vw); max-width:none; max-height:94vh; }
+}
+@media (max-width:820px), (orientation:portrait) {
+    #box-email { width:100vw; max-width:100vw; height:100vh; height:100dvh; max-height:100dvh; border-radius:0; }
+    #box-email .pscroll { max-height:calc(100dvh - 74px); padding:18px 34px 28px; }
+}
+
+/* ---- Daily Quests — AU CLAIR (box-quests garde sa propre structure : pas de
+   `.qscroll`, l'overflow reste directement sur `.box`, comme avant) ---- */
+#box-quests { max-height:88vh; overflow-y:auto; padding:20px; border-radius:18px;
+  background:#FFFFFF; border:1px solid #E1E9F6;
+  box-shadow:0 20px 60px rgba(11,27,54,.16); }
+.quest { border:1px solid #E1E9F6; border-radius:12px; padding:10px 12px; margin-bottom:8px; background:#EEF3FB; }
+.quest .qh { display:flex; justify-content:space-between; font-size:13px; color:#0B1B36; margin-bottom:6px; }
+.quest .qh .qr { color:#1B5FE0; font-weight:700; }
+.quest .qbar { position:relative; height:8px; border-radius:999px; overflow:hidden; background:#E1E9F6; border:1px solid #E1E9F6; margin-bottom:8px; }
+.quest .qbar i { position:absolute; left:0; top:0; bottom:0; display:block; border-radius:999px; background:linear-gradient(90deg,#22B45E,#7CFF9B); box-shadow:0 0 8px rgba(124,255,155,.6); }
+.qclaim { width:100%; font-size:12px; font-weight:700; padding:9px; border-radius:8px; border:none; font-family:inherit; }
+.qclaim.on { height:40px; cursor:pointer; color:#04121f; font-weight:800; background:linear-gradient(180deg,#7CFF9B,#22B45E); }
+.qclaim.on:hover { filter:brightness(1.08); }
+.qclaim.off { background:#EEF3FB; color:#6B7C99; cursor:default; border:1px solid #E1E9F6; }
+.qclaim.done { height:40px; cursor:default; color:#0E7C3E; background:rgba(90,220,140,.16); border:1px solid rgba(120,230,160,.5); }
+
+  /* ===== Menu themed (#menu) ===== */
+  #menu { background:none !important; border:20px solid transparent !important; border-image:url('img/26ab6463b66b.png') 66 fill / 20px stretch !important; border-radius:0 !important; padding:14px 12px !important; box-shadow:none !important; min-width:230px; }
+  #menu > a { display:block !important; margin:5px auto !important; padding:9px 10px !important; text-align:center; color:#ffd54a !important; font-weight:800; font-size:13px; background:rgba(0,0,0,.4) !important; border-radius:9px !important; text-decoration:none; border:none !important; }
+  #menu .msep { display:none !important; }
+  #menu a[data-panel="wallet"], #menu a[data-panel="stake"], #menu a[data-panel="dep"], #menu a[data-panel="wd"], #menu a[data-panel="quests"], #menu a[href="games.html"], #menu a[href="index.html"] { height:44px !important; width:96% !important; padding:0 !important; background-color:transparent !important; background-repeat:no-repeat !important; background-position:center !important; background-size:100% 100% !important; color:transparent !important; text-indent:-9999px; overflow:hidden; white-space:nowrap; border-radius:0 !important; }
+  #menu a[data-panel="wallet"] { background-image:url('img/542cbb0df18d.png') !important; }
+  #menu a[data-panel="stake"] { background-image:url('img/5e1e1fa597be.png') !important; }
+  #menu a[data-panel="dep"] { background-image:url('img/abda24debfcb.png') !important; }
+  #menu a[data-panel="wd"] { background-image:url('img/46d164c97934.png') !important; }
+  #menu a[data-panel="quests"] { background-image:url('img/e4f5ee5fb1d3.png') !important; }
+  #menu a[href="games.html"] { background-image:url('img/9e6be8200ef8.png') !important; }
+  #menu a[href="index.html"] { background-image:url('img/9cbf3c83512f.png') !important; }
+
+/* ==================== LA NOUVELLE BARRE, BLANCHE ====================
+   DEMANDE : « faut mettre la barre menu blanche et les deux deux chaque
+   cote ... comme se qu on viens de faire sur les autre page » — meme barre
+   que `swoge_casino.html`, `swoge_blackjack.html`, `swoge_poker.html`, etc. :
+   marque, chiffres du serveur, solde, connexion, avatar. Seule la BARRE, les
+   panneaux de compte et le fond de page passent au blanc — la gemme et sa
+   scene gardent leur propre habillage or-sur-noir. Couleurs ECRITES ICI,
+   comme sur les autres pages. */
+.sw-haut{
+  display:flex; align-items:center; gap:14px; padding:10px 16px;
+  background:#FFFFFF; border-bottom:1px solid #E1E9F6;
+  position:sticky; top:0; z-index:30;
+}
+.sw-marque{display:flex; align-items:center; gap:9px; flex:0 0 auto}
+nav.sb-ancre{display:flex;align-items:center;gap:12px;
+  background:none;backdrop-filter:none;padding:0;border-bottom:none;
+  position:static;z-index:auto;}
+.sw-patte{
+  width:34px;height:34px;border-radius:10px;background:#EAF1FF;
+  display:grid;place-items:center;font-size:19px;
+}
+.sw-marque b{display:block;font:800 17px/1 'Inter',system-ui,sans-serif;letter-spacing:.4px;color:#1B5FE0}
+.sw-marque i{display:block;font:700 9.5px/1.4 'Inter',system-ui,sans-serif;font-style:normal;
+  letter-spacing:2.6px;color:#6B7C99}
+.sw-chiffres{
+  flex:1 1 auto; min-width:0; display:flex; gap:8px; overflow-x:auto;
+  padding:8px 10px; background:#EEF3FB; border:1px solid #E1E9F6;
+  border-radius:12px; scrollbar-width:none;
+}
+.sw-chiffres::-webkit-scrollbar{display:none}
+/* La bande de stats ne pouvait pas se cacher : le script d'echec pose
+   `bloc.hidden = true`, mais `.sw-chiffres{display:flex}` est une regle
+   d'AUTEUR et l'emporte sur le `[hidden]{display:none}` du navigateur.
+   Quand le fetch de /vitrine.json echouait, la bande restait donc a
+   l'ecran avec ses quatre tirets — l'allure d'un compteur en direct sans
+   compteur derriere. Une ligne, et l'intention du script tient. */
+.sw-chiffres[hidden]{display:none}
+.sw-ch{display:flex;align-items:center;gap:8px;padding:0 12px;flex:0 0 auto}
+.sw-ch+.sw-ch{border-left:1px solid #E1E9F6}
+.sw-ch .ic{width:26px;height:26px;border-radius:8px;background:#EAF1FF;
+  display:grid;place-items:center;font-size:13px}
+.sw-ch small{display:block;font:700 9px/1 'Inter',system-ui,sans-serif;letter-spacing:.9px;color:#6B7C99}
+.sw-ch b{display:block;font:800 14px/1.3 'Inter',system-ui,sans-serif;color:#0A1F44}
+.sb-ancre .chip{font:800 12px/1 'Inter',system-ui,sans-serif;color:#0A1F44;
+  border:1px solid #E1E9F6;border-radius:999px;padding:9px 13px;background:#FFFFFF;
+  box-shadow:0 1px 2px rgba(11,27,54,.06), 0 8px 24px rgba(11,27,54,.05);white-space:nowrap}
+.sb-ancre .chip b{color:#0A1F44}
+.sw-b{
+  padding:10px 16px;border-radius:10px;cursor:pointer;border:none;
+  font:700 12.5px/1 'Inter',system-ui,sans-serif;letter-spacing:.3px;white-space:nowrap;
+}
+.sw-b-plein{background:#1B5FE0;color:#fff}
+.sw-b-plein:hover{background:#1750c4}
+.sw-b-vide{background:#FFFFFF;color:#1B5FE0;border:1.5px solid #1B5FE0}
+.sw-b-vide:hover{background:#EAF1FF}
+.connrow{ position:static !important; flex:0 0 auto;
+  flex-direction:row !important; flex-wrap:nowrap !important;
+  justify-content:flex-start !important; gap:8px; padding:0 !important; }
+.connrow .sw-b{ margin:0 !important; }
+.sw-avatar{
+  width:38px;height:38px;border-radius:11px;border:1px solid #E1E9F6;
+  background:#EEF3FB;display:grid;place-items:center;font-size:16px;flex:0 0 auto;cursor:pointer;
+}
+.gx-menu{position:absolute;top:60px;right:14px;z-index:70;width:236px;
+  background:#FFFFFF;border:1px solid #E1E9F6;border-radius:14px;
+  box-shadow:0 1px 2px rgba(11,27,54,.06), 0 8px 24px rgba(11,27,54,.05);padding:6px;display:flex;flex-direction:column;gap:1px}
+.gx-menu[hidden]{display:none}
+.gx-menu a{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:9px;
+  font:700 12px/1 'Inter',system-ui,sans-serif;color:#0B1B36;text-decoration:none}
+.gx-menu a:hover{background:#EAF1FF;color:#1B5FE0}
+.gx-menu .gx-sep{height:1px;background:#E1E9F6;margin:5px 2px}
+.gx-menu .gx-g{padding:9px 10px 4px;font:800 9px/1 'Inter',system-ui,sans-serif;
+  letter-spacing:1.1px;text-transform:uppercase;color:#6B7C99}
+.gx-menu .gx-g:first-child{padding-top:4px}
+.gx-menu{max-height:min(74vh,560px);overflow-y:auto;scrollbar-width:thin}
+.gx-menu a i{font-style:normal;font-size:14px;width:18px;text-align:center;flex:0 0 auto}
+@media(max-width:520px){ .gx-menu{right:8px;left:8px;width:auto} }
+@media (max-width:620px){
+  .sw-haut{ flex-wrap:wrap; row-gap:8px; }
+  .sw-marque{ order:1 }
+  /* ---- LA RANGEE DE PASTILLES DOIT POUVOIR SE REPLIER ----
+     `stakebubble.js` ajoute DEUX pastilles a cette rangee quand la connexion
+     s'etablit — le rendement en jeu et le nombre de joueurs — soit une seconde
+     ou deux apres l'ouverture. Mesure faite : la rangee passe de 54 a 243 px.
+     En `flex:0 0 auto` elle ne pouvait ni retrecir ni se replier : elle
+     poussait donc la ligne, le document devenait plus large que l'ecran, et
+     le telephone dezoomait toute la page pour la faire tenir — c'est l'en-tete
+     coupe en pleine largeur, deux secondes apres le chargement.
+     Elle peut desormais retrecir ET passer a la ligne. A noter : le garde-fou
+     de `stakebubble.js` ne pouvait pas s'en charger, il ne se retire que s'il
+     mesure un debordement du DOCUMENT — or ici l'en-tete l'absorbait en
+     grandissant en hauteur, sans jamais rien faire deborder. */
+  nav.sb-ancre{ order:2; flex:0 1 auto; min-width:0; margin-left:auto;
+                flex-wrap:wrap; justify-content:flex-end; row-gap:6px }
+  .menubtn, #gxProfil{ order:3 }
+  /* ---- ET ELLE PEUT SE REPLIER QUAND LA LIGNE N EST PLUS ASSEZ LARGE ----
+     Les deux boutons portent `white-space:nowrap` : la paire fait 332 px que
+     rien ne peut retrecir. Sur un ecran de 320 (un iPhone en zoom d affichage,
+     un iPhone SE) il ne reste que 288 px : la rangee debordait, le telephone
+     elargissait la fenetre de mise en page a 348, et TOUTE la page se decalait
+     de 28 px — en-tete coupe a gauche, contenu sous le bord droit.
+     `wrap` ne fait rien tant que la place existe : de 350 a 620 px la rangee
+     reste sur une ligne comme avant. Le `nowrap` de la regle du dessus visait
+     une mise en page en COLONNE ; ici la direction est deja forcee en `row`,
+     donc replier ne la ramene pas. */
+  .connrow{ order:4; flex:1 1 100% !important; justify-content:center !important;
+            flex-wrap:wrap !important }
+  /* ---- ET AVANT DE SE REPLIER, ELLE SE RESSERRE ----
+     Se replier repare le decalage mais coute une rangee d en-tete. A 360 px —
+     la moitie des telephones Android — il ne manquait que quatre pixels : dix
+     de moins de chaque cote des deux boutons les rendent, et la paire reste
+     sur sa ligne comme avant. Sous 340 il n y a plus rien a gratter, et c est
+     `wrap` qui prend le relais. */
+  @media (max-width:400px){
+    .connrow .sw-b{ padding-left:11px !important; padding-right:11px !important }
+  }
+  .sw-chiffres{ order:5; flex:1 1 100% }
+}
+
+/* ==================== LES DEUX COTES DE LA GEMME ====================
+   Meme grille que les autres pages converties : les deux colonnes ne
+   mesurent pas la meme chose (208 px de navigation contre 300 px
+   d'affiches), une grille a trois colonnes garde donc la colonne du milieu
+   au centre EXACT de l'ecran, quelle que soit la largeur de ce qu on pose a
+   cote. */
+.sw-corps{display:grid; grid-template-columns:minmax(208px,1fr) auto minmax(208px,1fr);
+  align-items:start; gap:14px; padding:14px; max-width:1680px; margin:0 auto}
+.sw-corps main{min-width:0}
+.sw-cote{position:sticky; top:74px; width:100%; display:flex; flex-direction:column; gap:12px; justify-self:end}
+.sw-nav{background:#FFFFFF;border:1px solid #E1E9F6;border-radius:14px;
+  padding:8px; box-shadow:0 1px 2px rgba(11,27,54,.06), 0 8px 24px rgba(11,27,54,.05)}
+.sw-nav a{display:flex;align-items:center;gap:11px;padding:11px 12px;border-radius:10px;
+  font:600 13.5px/1 'Inter',system-ui,sans-serif;color:#0B1B36}
+.sw-nav a .ic{width:20px;text-align:center;font-size:15px;opacity:.75}
+.sw-nav a:hover{background:#EEF3FB}
+.sw-nav a.on{background:#EAF1FF;color:#1B5FE0}
+.sw-nav a.on .ic{opacity:1}
+.sw-reseaux{display:flex;gap:8px;justify-content:center;padding-top:4px}
+.sw-reseaux a{width:34px;height:34px;border-radius:10px;background:#FFFFFF;border:1px solid #E1E9F6;
+  display:grid;place-items:center;font-size:14px;color:#6B7C99}
+.sw-reseaux a:hover{color:#1B5FE0;border-color:#1B5FE0}
+.uni{position:relative;border-radius:14px;overflow:hidden;min-height:258px;
+  display:flex;flex-direction:column;justify-content:flex-end;background:#0A1F44;
+  box-shadow:0 1px 2px rgba(11,27,54,.06), 0 8px 24px rgba(11,27,54,.05)}
+.uni img,.uni .film{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+  object-position:center top;border:0;background:#0A1F44}
+@media (prefers-reduced-motion:reduce){ .uni .film{display:none} }
+.uni .voile{position:absolute;inset:0;
+  background:linear-gradient(180deg,rgba(8,24,58,0) 34%,rgba(8,24,58,.88) 74%,rgba(8,24,58,.97) 100%)}
+.uni .dit{position:relative;padding:14px;text-align:center}
+.uni b{display:block;font:900 20px/1 'Inter',system-ui,sans-serif;color:#fff;letter-spacing:.4px}
+.uni i{display:block;font-style:normal;font:600 11px/1.4 'Inter',system-ui,sans-serif;
+  color:rgba(255,255,255,.76);margin:5px 0 11px}
+.uni .sw-b{width:100%;background:rgba(255,255,255,.94);color:#0A1F44;
+  display:block;text-align:center;border-radius:10px}
+.sw-lat{width:300px; position:sticky; top:74px; display:flex; flex-direction:column; gap:14px; justify-self:start}
+.sw-lat .carte{background:#FFFFFF;border:1px solid #E1E9F6;border-radius:14px;
+  box-shadow:0 1px 2px rgba(11,27,54,.06), 0 8px 24px rgba(11,27,54,.05); overflow:hidden}
+.sw-solde{display:flex;align-items:center;gap:12px;padding:14px 16px}
+.sw-solde .ic{flex:0 0 auto;width:38px;height:38px;border-radius:11px;background:#EAF1FF;
+  display:grid;place-items:center;font-size:19px}
+.sw-solde .tx{min-width:0}
+.sw-solde .tx small{display:block;font:800 9.5px/1 'Inter',system-ui,sans-serif;
+  letter-spacing:1px;color:#6B7C99}
+.sw-solde .tx b{display:block;margin-top:4px;font:800 17px/1 'Inter',system-ui,sans-serif;
+  color:#0A1F44}
+.sw-lat .salon{position:relative;display:block;min-height:172px;overflow:hidden;background:#0A1F44}
+.sw-lat .salon img,.sw-lat .salon .film{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+  object-position:center top;border:0;background:#0A1F44}
+@media (prefers-reduced-motion:reduce){ .sw-lat .salon .film{display:none} }
+.sw-lat .salon .voile{position:absolute;inset:auto 0 0 0;height:58%;
+  background:linear-gradient(180deg,rgba(8,24,58,0) 0%,rgba(8,24,58,.88) 60%,rgba(8,24,58,.97) 100%)}
+.sw-lat .salon .dit{position:absolute;left:16px;right:16px;bottom:14px;
+  font:800 13px/1.2 'Inter',system-ui,sans-serif;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.5)}
+.sw-lat .salon:hover img,.sw-lat .salon:hover .film{transform:scale(1.03)}
+.sw-lat .salon img,.sw-lat .salon .film{transition:transform .2s}
+@media (max-width:1360px){
+  .sw-lat{ display:none }
+  .sw-corps{ padding:0; display:block; max-width:none }
+  /* ---- SOUS 1360 px, LE MENU SE COUCHE EN RANGEE — IL NE DISPARAIT PLUS ----
+     Releve du 13/10 (revue du Studio) : 37 pages sur 43 cachaient ici toute la colonne, sans
+     burger ni rangee ; a 1024x768 et 1280x800, Studio n etait cliquable que sur 5 et 6 pages.
+     Meme rangee que l accueil sous 980 px (index.html) et que swoge_ai.html : les neuf entrees
+     defilent dans la rangee, la page ne defile pas en largeur (menu_rangee.test.js, 320 a 1360).
+     `aside.sw-cote` et non `.sw-cote` : la borne a 230 px de la grille a trois colonnes est
+     ecrite plus bas dans le fichier et gagnerait a specificite egale. Le film « SWOGE WORLD »
+     et `.sw-lat` restent caches : decoration de colonne, il n y a plus de colonne. */
+  aside.sw-cote{ position:static; inset:auto; width:100%; max-width:none; z-index:auto;
+            flex-direction:row; flex-wrap:wrap; align-items:center; gap:8px;
+            padding:10px 12px 0; box-sizing:border-box }
+  aside.sw-cote .sw-nav{ flex:1 1 100%; min-width:0; display:flex; overflow-x:auto;
+                         scrollbar-width:none }
+  aside.sw-cote .sw-nav::-webkit-scrollbar{ display:none }
+  aside.sw-cote .sw-nav a{ flex:0 0 auto; white-space:nowrap }
+  aside.sw-cote .uni{ display:none }
+  .sw-reseaux{ padding-top:0 }
+}
+/* ---- LA COLONNE DE GAUCHE NE GONFLE PLUS (meme bug que `swoge_poker.html`
+   et `swoge_casino.html`) ----
+ * BUG MESURE ailleurs sur ce site : `minmax(208px,1fr)` sur les deux
+ * colonnes de bord absorbe TOUT l'espace libre que la colonne du milieu
+ * (`auto`, calee sur le contenu du jeu) ne reclame pas, gonflant `.sw-cote`
+ * a plusieurs centaines de pixels au lieu des ~208px voulus. Des colonnes de
+ * bord FIXES, ecrites directement ici cette fois (page neuve, pas besoin
+ * d'un correctif separe) — la colonne du milieu absorbe le reste. */
+.sw-corps{ grid-template-columns:230px minmax(0,1fr) 300px; }
+.sw-cote{ width:auto; max-width:230px; }
+</style>
+<style>
+/* ---- Mise variable : jetons repris du Blackjack ---- */
+.betrow { display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:center; margin-bottom:10px; }
+.betin { width:96px; text-align:center; font-family:inherit; font-size:17px; font-weight:700;
+         color:#ffd97a; background:rgba(6,3,10,.7); border:1px solid rgba(230,165,55,.5);
+         border-radius:10px; padding:9px 8px; }
+.chipbtn { background-color:transparent !important; background-repeat:no-repeat !important;
+           background-position:center !important; background-size:contain !important;
+           color:transparent !important; text-indent:-9999px; overflow:hidden; white-space:nowrap;
+           border:none !important; box-shadow:none !important; padding:0 !important;
+           width:54px; height:54px; cursor:pointer; }
+.chipbtn[data-add="10"]   { background-image:url('img/e70de94d40e9.png') !important; }
+.chipbtn[data-add="100"]  { background-image:url('img/83b864182b72.png') !important; }
+.chipbtn[data-add="1000"] { background-image:url('img/56de4db95e4e.png') !important; }
+#maxBtn { background-image:url('img/c60919b9f149.png') !important; width:58px; height:58px; }
+/* ligne de connexion, meme placement que sur le Blackjack */
+.connrow { display:flex; align-items:center; justify-content:center; gap:10px; padding:8px 12px 0; flex-wrap:wrap; }
+.connrow .connectbtn { margin:0 !important; }
+@media (min-width:821px) and (orientation:landscape) {
+  .connrow { position:absolute; top:64px; right:18px; z-index:6; flex-direction:column; align-items:flex-end; padding:0; gap:9px; }
+}
+@media (max-width: 820px), (orientation: portrait) {
+  .chipbtn { width:46px; height:46px; }
+  #maxBtn { width:50px; height:50px; }
+  .betin { width:84px; font-size:15px; }
+}
+</style>
+<style>
+/* bouton menu : meme visuel que sur le Blackjack */
+.menubtn { flex:0 0 auto; width:44px; height:44px; aspect-ratio:1/1; border-radius:0 !important;
+  background-color:transparent !important; background-repeat:no-repeat !important;
+  background-position:center !important; background-size:100% 100% !important;
+  color:transparent !important; text-indent:-9999px; overflow:hidden;
+  border:none !important; box-shadow:none !important; padding:0 !important;
+  background-image:url('img/4b13594b566d.png'); }
+@media (max-width: 820px), (orientation: portrait) { .menubtn { width:38px; height:38px; } }
+</style>
+<style>
+/* ===== UI Smash en image ===== */
+.hero h1, #smashBtn {
+  background-color:transparent !important; background-repeat:no-repeat !important;
+  background-position:center !important; background-size:100% 100% !important;
+  color:transparent !important; text-indent:-9999px; overflow:hidden; white-space:nowrap;
+  border:none !important; box-shadow:none !important; padding:0 !important;
+}
+.hero h1 { display:block; width:min(330px,88%); aspect-ratio:520/235; margin:0 auto 6px;
+           background-image:url('img/55fcb54534b3.png'); }
+#smashBtn { display:block; width:min(260px,86%); aspect-ratio:480/174; margin:2px auto 0;
+            background-image:url('img/30d49671b651.png'); }
+#smashBtn:disabled { filter:grayscale(.55) brightness(.6); cursor:default; }
+
+/* la gemme : 3 etats reels au lieu de l'emoji */
+.gem { font-size:0 !important; background-repeat:no-repeat; background-position:center;
+       background-size:contain; background-image:url('img/919f8a7273bb.png'); }
+.gem.hit { background-image:url('img/09d94c9c65c6.png'); }
+.gem.win, .gem.big { background-image:url('img/d0a141a4d8b4.png'); }
+
+/* banniere de resultat : n'occupe la place que lorsqu'elle est affichee */
+.resban { width:min(300px,86%); aspect-ratio:420/110; margin:6px auto 0;
+          background:center/100% 100% no-repeat; display:none; }
+.resban.on { display:block; }
+.resban.smashed { background-image:url('img/50d92efcc6b2.png'); }
+.resban.big     { background-image:url('img/33f676782085.png'); }
+.resban.mega    { background-image:url('img/12fe9c2971b7.png'); }
+.resban.noluck  { background-image:url('img/973ed84c2f38.png'); }
+
+/* Fond sombre retire (voir la note plus haut, pres du premier `html,body`) :
+   ces deux regles peignaient une photo derriere toute la page. */
+@media (max-width: 820px), (orientation: portrait) {
+  .hero h1 { width:min(250px,82%); }
+  #smashBtn { width:min(220px,88%); }
+  .resban { width:min(250px,88%); }
+  /* le pitch mange l'ecran en jeu : on le retire sur telephone */
+  .hero p { display:none; }
+  .hero { padding:6px 14px 0; }
+  /* ---- tenir dans un ecran de telephone sans defilement ----
+     mesure a 393x760 : 974px de contenu pour 760 d'ecran. Le gros poste etait
+     .stage qui reservait 320px pour une gemme de 170. ---- */
+  .hero h1 { width:min(215px,74%); margin-bottom:2px; }
+  .stage { min-height:0; padding:6px 0 2px; }
+  .gem { width:150px; height:150px; }
+  .cta { padding:4px 0 6px; gap:6px; }
+  .betrow { margin-bottom:6px; }
+  .result { font-size:14px; min-height:20px; margin-top:2px; }
+  .resban { margin-top:2px; }
+  .sec { margin:6px 0 2px; }
+  .sec h2 { font-size:11px; }
+  .feed { max-height:86px; overflow-y:auto; }
+  footer { padding:10px 0 12px; font-size:12px; }
+}
+
+/* Barres de defilement masquees : le fil garde son defilement, sans la barre
+   grise qui casse le rendu. */
+.feed, .pscroll, .qscroll { scrollbar-width:none; -ms-overflow-style:none; }
+.feed::-webkit-scrollbar, .pscroll::-webkit-scrollbar, .qscroll::-webkit-scrollbar {
+  width:0; height:0; display:none;
+}
+
+/* Webview vraiment courte : on resserre encore (gemme, fil, pied de page)
+   pour rester sur un seul ecran. Place en fin de feuille pour passer apres
+   les regles mobiles generales. */
+@media (orientation:portrait) and (max-height:709px), (max-width:820px) and (max-height:709px) {
+  .hero h1 { width:min(180px,64%) !important; }
+  .gem { width:120px !important; height:120px !important; }
+  .stage { padding:2px 0 0 !important; }
+  .sec { display:none !important; }
+  .feed { max-height:58px !important; }
+  .fair { display:none !important; }
+  footer { padding:6px 0 8px !important; font-size:11px !important; }
+}
+</style>
+<style id="fond-decor">
+/* ================== LE DECOR, DERRIERE TOUT ==================
+ * L'affiche de Smash : deux panneaux illustres a gauche et a droite, et un
+ * MILIEU TRANSPARENT. Elle n'est pas faite pour etre regardee seule, elle est
+ * faite pour ENCADRER ce qu'on pose dedans. Le jeu vient au centre, dans le
+ * vide qu'elle laisse.
+ *
+ * POURQUOI UN CALQUE, ET SUR `html`
+ * `body` porte deja la couleur de la page, et sur quatre de ces cinq pages son
+ * `::before` sert a autre chose. Le decor se pose donc sur `html::before`, en
+ * `position:fixed` a `z-index:-1` : derriere tout le contenu, devant la couleur
+ * de fond, et immobile quand on defile.
+ *
+ * `body` passe en transparent — sinon il peindrait PAR-DESSUS le calque, un
+ * enfant en z-index automatique passant devant un frere a -1. La couleur ne
+ * disparait pas pour autant : elle est declaree sur `html,body` un peu plus
+ * haut, et c'est `html` qui continue de la porter.
+ *
+ * `position:fixed` PLUTOT QUE `background-attachment:fixed` : la seconde ne
+ * tient pas sur iOS — elle saute au defilement quand elle ne disparait pas — et
+ * elle coute cher a repeindre. La premiere donne le meme resultat partout.
+ *
+ * `pointer-events:none` : le calque couvre tout l'ecran, il ne doit intercepter
+ * ni un clic ni un glissement. Sans cette ligne, le jeu ne repondrait plus.
+ *
+ * CE QU'ON EN VOIT. L'affiche est en 16/9. Sur un ecran large elle tombe juste
+ * et ses deux panneaux encadrent la page. Sur un telephone, `cover` recadre au
+ * centre — c'est-a-dire sur le vide — et le decor ne se voit pas : c'est voulu,
+ * une illustration de bord sur une colonne de 390 px mangerait le jeu.
+ * ============================================================= */
+body{ background:transparent; }
+html::before{
+  content:""; position:fixed; inset:0; z-index:-1; pointer-events:none;
+  background:url("img/site/fond_smash.webp") center center / cover no-repeat;
+}
+</style>
+<style>
+/* ================== SWOGE ROULETTE (05/11/2026) ==================
+ * La roue europeenne, le tapis, les jetons et l'historique. La PAGE ne fait que
+ * MONTRER et animer : le serveur tire le numero et regle chaque pari (le canvas
+ * s'arrete sur m.numero recu). Tout le texte joueur est en anglais. */
+/* le titre redevient du texte (le bloc Smash le remplacait par une image) */
+.hero h1{ background:none !important; text-indent:0 !important; color:inherit !important;
+  width:auto !important; aspect-ratio:auto !important; white-space:normal !important; }
+.rl-top{ display:flex; gap:18px; align-items:center; justify-content:center; flex-wrap:wrap; padding:8px 0 4px; }
+.rl-wheelwrap{ position:relative; width:min(320px,80vw); aspect-ratio:1/1; flex:0 0 auto; }
+#wheel{ width:100%; height:100%; display:block; filter:drop-shadow(0 10px 26px rgba(11,27,54,.22)); }
+.rl-pointer{ position:absolute; top:-2px; left:50%; transform:translateX(-50%);
+  width:0; height:0; border-left:11px solid transparent; border-right:11px solid transparent;
+  border-top:17px solid #E6A537; filter:drop-shadow(0 2px 2px rgba(0,0,0,.4)); z-index:2; }
+.rl-last{ position:absolute; inset:0; margin:auto; width:64px; height:64px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center; font-family:'Anton',sans-serif;
+  font-size:30px; color:#fff; background:#2a2f3a; box-shadow:0 2px 10px rgba(0,0,0,.4) inset,0 0 0 3px #d8c38a;
+  pointer-events:none; }
+.rl-last.red{ background:#C0272D; } .rl-last.black{ background:#1A1A1A; } .rl-last.green{ background:#15803D; }
+.rl-side{ flex:1 1 220px; min-width:200px; max-width:320px; }
+.rl-hist{ display:flex; gap:5px; flex-wrap:wrap; margin-top:8px; }
+.rl-hist .h{ width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+  font-family:'Archivo',sans-serif; font-weight:800; font-size:12px; color:#fff; }
+.rl-hist .h.red{ background:#C0272D; } .rl-hist .h.black{ background:#222; } .rl-hist .h.green{ background:#15803D; }
+
+/* ---- le tapis (feutre vert), grille 0 + 12x3 + exterieurs ---- */
+.rl-tablewrap{ overflow-x:auto; -webkit-overflow-scrolling:touch; padding:6px 0 2px; scrollbar-width:none; }
+.rl-tablewrap::-webkit-scrollbar{ display:none; }
+.rl-table{ position:relative; min-width:340px; margin:0 auto; background:#0B6B3A; border:2px solid #d8c38a;
+  border-radius:10px; padding:5px; color:#fff; font-family:'Archivo',sans-serif; user-select:none; }
+.rl-grid{ display:grid; grid-template-columns:0.7fr repeat(12,1fr); grid-template-rows:repeat(3,1fr); gap:3px; }
+.rl-cell{ position:relative; border:1px solid rgba(255,255,255,.5); border-radius:4px; background:rgba(255,255,255,.04);
+  display:flex; align-items:center; justify-content:center; font-weight:800; font-size:13px; cursor:pointer;
+  aspect-ratio:1/1.15; min-width:0; transition:filter .1s; }
+.rl-cell:hover{ filter:brightness(1.25); }
+.rl-cell.red{ background:#C0272D; } .rl-cell.black{ background:#1A1A1A; } .rl-cell.zero{ background:#15803D; grid-row:1/4; aspect-ratio:auto; }
+.rl-out{ display:grid; grid-template-columns:repeat(3,1fr); gap:3px; margin-top:3px; }
+.rl-out .rl-cell{ aspect-ratio:auto; padding:9px 2px; font-size:12px; }
+.rl-even{ display:grid; grid-template-columns:repeat(6,1fr); gap:3px; margin-top:3px; }
+.rl-even .rl-cell{ aspect-ratio:auto; padding:10px 2px; font-size:12px; }
+.rl-even .rl-cell.red{ background:#C0272D; } .rl-even .rl-cell.black{ background:#1A1A1A; }
+.rl-col{ display:grid; grid-template-rows:repeat(3,1fr); gap:3px; }
+.rl-colwrap{ display:grid; grid-template-columns:1fr auto; gap:3px; }
+.rl-col .rl-cell{ aspect-ratio:auto; padding:0 8px; font-size:11px; writing-mode:vertical-rl; }
+/* zones de pari entre cases (cheval, carre, transversale, sixain) : pastilles posees par le script */
+.rl-zone{ position:absolute; z-index:3; border-radius:50%; cursor:pointer; }
+.rl-zone:hover{ background:rgba(230,165,55,.45); }
+/* le jeton pose sur un pari */
+.rl-token{ position:absolute; z-index:4; width:22px; height:22px; border-radius:50%; transform:translate(-50%,-50%);
+  background:radial-gradient(circle at 50% 35%,#ffe08a,#E6A537); border:2px dashed #7a5a12; color:#3a2a06;
+  font:800 10px/22px 'Archivo',sans-serif; text-align:center; pointer-events:none; box-shadow:0 2px 5px rgba(0,0,0,.4); }
+.rl-token.win{ box-shadow:0 0 0 3px #7CFF9B,0 2px 6px rgba(0,0,0,.4); }
+
+/* ---- jetons, controles, bouton ---- */
+.rl-chips{ display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin:10px 0 6px; }
+.rl-chip{ width:46px; height:46px; border-radius:50%; cursor:pointer; font:800 13px/1 'Archivo',sans-serif; color:#fff;
+  border:3px solid rgba(255,255,255,.7); box-shadow:0 2px 6px rgba(11,27,54,.25); transition:transform .1s; }
+.rl-chip:hover{ transform:translateY(-2px); }
+.rl-chip.on{ outline:3px solid #1B5FE0; outline-offset:2px; }
+.rl-chip.c1{ background:#6B7C99; } .rl-chip.c5{ background:#C0272D; } .rl-chip.c25{ background:#15803D; }
+.rl-chip.c100{ background:#2a2f3a; } .rl-chip.c500{ background:#7A4FBF; }
+.rl-controls{ display:flex; gap:10px; align-items:center; justify-content:center; flex-wrap:wrap; margin-bottom:8px; }
+.rl-btn{ font:800 13px 'Archivo',sans-serif; color:#0B1B36; background:#E1E9F6; border:1px solid #cdd8ec;
+  border-radius:10px; padding:9px 16px; cursor:pointer; }
+.rl-btn:hover{ filter:brightness(1.03); }
+.rl-total{ font:800 14px 'Archivo',sans-serif; color:#0B1B36; } .rl-total b{ color:#1B5FE0; }
+#spinBtn{ font-family:'Archivo',sans-serif; font-weight:800; }
+@media (max-width:820px),(orientation:portrait){
+  .hero p{ display:none; } .hero{ padding:8px 14px 0; }
+  .rl-top{ gap:10px; } .rl-wheelwrap{ width:min(240px,66vw); }
+  .rl-chip{ width:40px; height:40px; font-size:12px; }
+}
+</style>
+</head>
+<body>
+<!-- CE QUE LA PAGE EST, EN TOUTES LETTRES (17/10/2026). La page se dessine en
+     images et en script : un robot qui lit la page n y trouvait ni titre, ni une
+     phrase pour dire de quoi il s agit. Le bloc est hors de l ecran (rien ne
+     bouge a l oeil) mais lu par les moteurs et les lecteurs d ecran. -->
+<div class="sw-lu" style="position:absolute;width:1px;height:1px;margin:-1px;padding:0;border:0;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap"><p>SWOGE Roulette is a European single-zero roulette game played with $SWOGE on Robinhood Chain. Place bets on numbers, splits, streets, corners, columns, dozens, red or black, odd or even, high or low, spin the wheel and the server settles every bet. The house edge is 2.7% and each spin is provably fair: the hash of the server seed is shown on the page before you play.</p></div>
+
+<!-- Barre blanche, meme structure que swoge_casino.html : marque, chiffres du
+     serveur, solde, connexion, avatar. Le hamburger reste dans le DOM mais ne
+     se voit plus, source de donnees pour le profil desormais. -->
+<header class="sw-haut">
+  <a class="sw-marque" href="nexus.html" id="gxMonde">
+    <span class="sw-patte">🐾</span>
+    <span><b>SWOGE</b><i>WORLD</i></span>
+  </a>
+  <div class="sw-chiffres" id="gxChiffres" hidden>
+    <div class="sw-ch"><span class="ic">👤</span><span><small>PLAYERS</small><b data-n="joueurs">—</b></span></div>
+    <div class="sw-ch"><span class="ic">🎲</span><span><small>CASINO VOLUME</small><b data-n="volume">—</b></span></div>
+    <div class="sw-ch"><span class="ic">🎮</span><span><small>ROUNDS PLAYED</small><b data-n="manches">—</b></span></div>
+    <div class="sw-ch"><span class="ic">🏆</span><span><small>WINNINGS PAID</small><b data-n="rendus">—</b></span></div>
+  </div>
+  <nav class="sb-ancre">
+    <span class="chip"><span class="statusdot off" id="dot"></span><b id="bal">—</b> $SWOGE</span>
+  </nav>
+  <div class="connrow" id="connRow">
+    <button class="sw-b sw-b-vide" id="connectBtn">Connect wallet</button>
+    <button class="sw-b sw-b-plein" id="emailBtn">✉️ Sign in with email</button>
+  </div>
+  <button class="sw-avatar" id="gxProfil" type="button"
+          aria-haspopup="menu" aria-expanded="false" aria-label="Account menu">👤</button>
+  <div class="gx-menu" id="gxMenu" role="menu" hidden></div>
+  <button class="menubtn" id="menuBtn" aria-label="Menu" hidden aria-hidden="true" tabindex="-1">☰</button>
+  <div class="menu" id="menu">
+    <a href="#" id="mnSignIn">✉️ Sign in</a>
+    <a href="#" data-panel="stake">🔒 Staking</a>
+    <a href="#" data-panel="dep">💰 Deposit</a>
+    <a href="#" data-panel="wd">🏧 Withdraw</a>
+    <a href="#" data-panel="quests">🎯 Daily Quests</a>
+    <div class="msep"></div>
+    <a href="games.html">🎮 Other games</a>
+    <a href="swoge_pusher_live.html">🎡 Pusher</a>
+    <a href="index.html">🏠 Home</a>
+    <div class="msep"></div>
+    <a href="#" id="soundItem">🔊 Sound: on</a>
+  </div>
+</header>
+
+<!-- Les quatre chiffres de la vitrine, lus sur le serveur — meme script que
+     les autres pages converties. -->
+<script>
+(function(){
+  "use strict";
+  var bloc = document.getElementById("gxChiffres");
+  if(!bloc) return;
+  function serveur(){
+    try{ var q=new URLSearchParams(location.search).get("server"); if(q)
+      return String(q).replace(/^ws/,"http"); }catch(e){}
+    return "https://web-production-220a3.up.railway.app";
+  }
+  function court(n){
+    n = Number(n) || 0;
+    var t = function(v, s){ return (Math.floor(v*10)/10).toFixed(1).replace(/\.0$/,"") + s; };
+    if(n >= 1e9) return t(n/1e9, "B");
+    if(n >= 1e6) return t(n/1e6, "M");
+    if(n >= 1e3) return t(n/1e3, "k");
+    return String(Math.floor(n));
+  }
+  fetch(serveur()+"/vitrine.json", { cache:"no-store" })
+    .then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); })
+    .then(function(j){
+      [].forEach.call(bloc.querySelectorAll("b[data-n]"), function(b){
+        var v = j[b.getAttribute("data-n")];
+        b.textContent = (typeof v === "number" && isFinite(v)) ? court(v) : "—";
+      });
+      bloc.hidden = false;
+    })
+    ['catch'](function(){ bloc.hidden = true; });
+})();
+</script>
+
+<div class="sw-corps">
+
+  <aside class="sw-cote">
+    <nav class="sw-nav">
+      <a href="index.html"><span class="ic">&#127968;</span>Home</a>
+      <a href="games.html" class="on"><span class="ic">&#127920;</span>Casino</a>
+      <a href="swogebet.html"><span class="ic">&#9917;</span>Sports</a>
+      <a href="swoge_wallet.html"><span class="ic">&#129433;</span>Wallet</a>
+      <a href="swoge_ai.html"><span class="ic">&#129302;</span>AI Trading</a>
+      <a href="swoge_agents.html"><span class="ic">&#129504;</span>Agents</a>
+      <a href="studio.html"><span class="ic">&#127912;</span>Studio</a>
+      <a href="launchpad.html"><span class="ic">&#128640;</span>Launchpad</a>
+      <a href="whitepaper.html"><span class="ic">&#128220;</span>Docs</a>
+    </nav>
+    <div class="sw-reseaux">
+      <a href="https://x.com/SwoleDogeSwoge" target="_blank" rel="noopener"
+         title="X — @SwoleDogeSwoge">&#120143;</a>
+      <a href="https://t.me/swoleswoge" target="_blank" rel="noopener"
+         title="Telegram — t.me/swoleswoge">&#9992;</a>
+      <a href="https://dexscreener.com/robinhood/0x2dc0fb72d9284228046cc95910eeaabebfe48456"
+         target="_blank" rel="noopener" title="Dexscreener — $SWOGE chart">&#128200;</a>
+    </div>
+    <article class="uni">
+      <video class="film" src="media/monde_carte.mp4" poster="img/site/monde_carte_poster.webp"
+             muted autoplay loop playsinline disablepictureinpicture
+             aria-hidden="true"></video><div class="voile"></div>
+      <div class="dit"><b>SWOGE WORLD</b><i>Meet. Explore. Own.</i>
+        <a class="sw-b" href="nexus.html">ENTER</a></div>
+    </article>
+  </aside>
+
+<main>
+  <section class="hero">
+    <h1>SWOGE <span class="g">ROULETTE</span></h1>
+    <p>European single-zero roulette. <b style="color:#cdbf9f">Bet 1 to 1,000 $SWOGE per spin.</b> Provably fair, 2.7% house edge. Same balance as every SWOGE game — deposit once, play all.</p>
+  </section>
+
+  <div class="wrap">
+    <div class="rl-top">
+      <div class="rl-wheelwrap">
+        <div class="rl-pointer"></div>
+        <canvas id="wheel" width="360" height="360" aria-label="Roulette wheel"></canvas>
+        <div class="rl-last green" id="rlLast">–</div>
+      </div>
+      <div class="rl-side">
+        <div class="result" id="result">Connect your wallet to play</div>
+        <div class="rl-hist" id="rlHist" aria-label="Recent numbers"></div>
+      </div>
+    </div>
+
+    <div class="rl-tablewrap">
+      <div class="rl-table" id="rlTable" aria-label="Roulette table"><!-- rempli par le script --></div>
+    </div>
+
+    <div class="cta" id="betUI" style="display:none">
+      <div class="rl-chips" id="rlChips"><!-- jetons, poses par le script --></div>
+      <div class="rl-controls">
+        <button class="rl-btn" id="undoBtn" type="button">Undo</button>
+        <button class="rl-btn" id="clearBtn" type="button">Clear</button>
+        <span class="rl-total">Staked <b id="rlTotal">0</b> <span id="rlSym">$SWOGE</span></span>
+      </div>
+      <button class="smash" id="spinBtn" disabled>Spin</button>
+    </div>
+
+    <div class="fair" id="fair"></div>
+    <div class="note">European wheel · single zero · 2.7% house edge · provably fair. The server draws the number and settles every bet — this page only shows it.</div>
+
+    <div class="sec"><h2>Recent spins</h2></div>
+    <div class="feed" id="feed"><div class="empty">Your spins show up here…</div></div>
+  </div>
+
+  <footer>
+    <a href="games.html">← Back to the SWOGE Arcade</a>
+  </footer>
+</main>
+
+  <aside class="sw-lat">
+    <!-- Le solde, pas une cagnotte inventee — meme note que les autres pages
+         converties : ce jeu n'a ni cagnotte commune ni flux de gagnants a
+         montrer, seulement le solde, deja suivi par `#bal`. -->
+    <div class="carte sw-solde">
+      <span class="ic">&#128176;</span>
+      <span class="tx"><small>YOUR BALANCE</small><b id="swSoldeCarte">&mdash;</b></span>
+    </div>
+    <a class="carte salon" href="swoge_blackjack.html">
+      <img src="img/site/jeu_blackjack.webp" alt="" loading="lazy">
+      <span class="voile"></span>
+      <span class="dit">GOLD TABLE &nbsp;&rarr;</span>
+    </a>
+    <a class="carte salon" href="swogebet.html">
+      <video class="film" src="media/doge_sport.mp4" poster="img/site/doge_sport_poster.webp"
+             muted autoplay loop playsinline disablepictureinpicture
+             aria-label="SWOGE Sports"></video>
+      <span class="voile"></span>
+      <span class="dit">SWOGE SPORTS &mdash; BET NOW &nbsp;&rarr;</span>
+    </a>
+  </aside>
+
+</div>
+
+<!-- La carte « YOUR BALANCE » recopie #bal, jamais l'inverse. -->
+<script>
+(function(){
+  "use strict";
+  var source = document.getElementById("bal");
+  var cible = document.getElementById("swSoldeCarte");
+  if(!source || !cible) return;
+  function copie(){
+    var t = (source.textContent || "").trim();
+    cible.textContent = t === "—" ? t : t + " $SWOGE";
+  }
+  copie();
+  new MutationObserver(copie).observe(source, { childList:true, characterData:true, subtree:true });
+})();
+</script>
+
+<!-- account pop-ups (same shared balance as the Pusher) -->
+<div class="ovl" id="ovl">
+  <div class="box" id="box-dep">
+    <div class="pscroll">
+    <div class="ptitle pt-deposit">Deposit</div>
+    <div class="note2">In your wallet: <b id="depSwoge">…</b> $SWOGE · <b id="depEth">…</b> ETH (RH)</div>
+    <label>Amount</label>
+    <input id="depAmt" inputmode="decimal" placeholder="e.g. 100" value="100">
+    <div class="pcts">
+      <button class="pct dpct imgpct p10" data-pct="10">10%</button><button class="pct dpct imgpct p20" data-pct="20">20%</button>
+      <button class="pct dpct imgpct p50" data-pct="50">50%</button><button class="pct dpct imgpct pmax" data-pct="100">MAX</button>
+    </div>
+    <div class="brow bcol"><button class="abtn aimg a-dep" id="depGo">Deposit</button><button class="abtn sec closeimg" data-close>Close</button></div>
+    </div>
+  </div>
+  <div class="box" id="box-wd">
+    <div class="pscroll">
+    <div class="ptitle pt-withdraw">Withdraw</div>
+    <div class="note2">Game balance: <b id="wdBal">…</b> $SWOGE · min <b id="wdMin">50</b></div>
+    <label>Amount</label>
+    <input id="wdAmt" inputmode="decimal" placeholder="e.g. 50">
+    <div class="pcts">
+      <button class="pct wpct imgpct p10" data-pct="10">10%</button><button class="pct wpct imgpct p20" data-pct="20">20%</button>
+      <button class="pct wpct imgpct p50" data-pct="50">50%</button><button class="pct wpct imgpct pmax" data-pct="100">MAX</button>
+    </div>
+    <div class="brow bcol"><button class="abtn aimg a-wd" id="wdGo">Withdraw</button><button class="abtn sec closeimg" data-close>Close</button></div>
+    <div class="note2">Paid straight to your wallet via a signed voucher.</div>
+    </div>
+  </div>
+  <div class="box" id="box-wallet">
+    <div class="pscroll">
+    <div class="wtitle-plate">My Wallet</div>
+    <label>Your address</label>
+    <input id="acAddr" readonly style="width:100%">
+    <button class="abtn wbtn wb-copy" id="acCopy" style="margin-top:8px">Copy</button>
+    <div class="strow"><span>$SWOGE in wallet</span><b id="acSwoge">…</b></div>
+    <div class="strow"><span>ETH (RH) — gas</span><b id="acEth">…</b></div>
+    <button class="abtn wbtn wb-deposit" id="acDeposit" style="margin-top:8px">Deposit</button>
+    <a id="acExplorer" href="#" target="_blank" rel="noopener" class="abtn wbtn wb-explorer" style="display:block;margin-top:8px;text-decoration:none">Explorer</a>
+        <!-- ---- RETIRER VERS UNE ADRESSE DE SON CHOIX ----
+         DEMANDE : « pour les connexions email faut rajouter une option pour
+         retirer, car ca retire sur le wallet du compte du jeu, mais une fois
+         que c est sur son compte faut pouvoir retirer et choisir a quelle
+         adresse ». Le retrait du jeu paie sur le portefeuille du COMPTE —
+         celui que Privy fabrique pour une connexion par e-mail. Les fonds y
+         arrivaient et y restaient : rien, dans l interface, ne permettait de
+         les envoyer ailleurs. La fonction existait pourtant deja en JS
+         (`doSend`), sur quinze pages ; son interface ne vivait que sur
+         `swoge_pusher.html`, la page que plus aucun lien n atteint. On la
+         remet donc la ou on la cherche : dans My Wallet. -->
+    <div class="wsend">
+      <div class="wsend-t">Send to another address</div>
+      <label>Recipient address</label>
+      <input id="sendTo" placeholder="0x…" autocomplete="off" spellcheck="false">
+      <label>Amount</label>
+      <div class="wsend-row">
+        <input id="sendAmt" type="number" inputmode="decimal" placeholder="amount">
+        <select id="sendTok" aria-label="Token to send">
+          <option value="swoge">$SWOGE</option>
+          <option value="eth">ETH (RH)</option>
+        </select>
+      </div>
+      <button class="abtn aimg" id="sendGo">Send</button>
+      <div class="note2" id="sendMsg"></div>
+    </div>
+    <button class="abtn wbtn wb-disconnect" id="acLogout" style="margin-top:8px">Disconnect</button>
+    <div class="brow" style="margin-top:8px"><button class="abtn sec closeimg" data-close style="flex:1">Close</button></div>
+    </div>
+  </div>
+  <div class="box" id="box-stake">
+    <div class="pscroll">
+    <div class="ptitle pt-stake">Staking</div>
+    <div class="note2" id="stApr">100% APR · yield every second</div>
+    <div class="strow"><span>Staked</span><b id="stStaked">0</b></div>
+    <div class="strow"><span>Pending yield</span><b id="stPending" style="color:#7CFF9B">0</b></div>
+    <div class="strow"><span>Unlocked</span><b id="stUnlocked">0</b></div>
+    <div class="note2" id="stLock" style="margin-top:6px"></div>
+    <button class="abtn aimg a-claim" id="stClaim" style="width:100%;margin:10px 0">Claim yield</button>
+    <input id="stAmt" type="number" inputmode="decimal" placeholder="amount to stake">
+    <div class="pcts">
+      <button class="pct spct imgpct p10" data-pct="10">10%</button><button class="pct spct imgpct p20" data-pct="20">20%</button>
+      <button class="pct spct imgpct p50" data-pct="50">50%</button><button class="pct spct imgpct pmax" data-pct="100">MAX</button>
+    </div>
+    <div class="brow"><button class="abtn aimg a-stake" id="stStake">Stake</button><button class="abtn aimg a-unstake" id="stUnstake">Unstake all</button></div>
+    <div class="brow"><button class="abtn sec closeimg" data-close style="flex:1">Close</button></div>
+    </div>
+  </div>
+  <div class="box" id="box-quests">
+    <h3>🎯 Daily Quests</h3>
+    <div class="note">Complete them by playing — smashes and blackjack hands count too.</div>
+    <div id="questrows"></div>
+    <div class="row" style="margin-top:10px"><button class="btn sec" data-close style="flex:1">Close</button></div>
+  </div>
+  <div class="box" id="box-email">
+    <div class="pscroll">
+    <div class="ptitle pt-email">Sign in with email</div>
+    <div class="note2" id="emMsg">A wallet is created for you automatically — no app needed.</div>
+    <label>Email</label>
+    <input id="emEmail" type="email" inputmode="email" placeholder="your@email.com">
+    <div class="brow"><button class="abtn aimg a-emsend" id="emSend">Send code</button><button class="abtn sec closeimg" data-close>Close</button></div>
+    <div id="emCodeWrap" style="display:none;margin-top:10px">
+      <label>6-digit code</label>
+      <input id="emCode" inputmode="numeric" placeholder="123456">
+      <div class="brow"><button class="abtn aimg a-emverify" id="emVerify">Verify &amp; create wallet</button></div>
+    </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  "use strict";
+  // Same server as the Pusher → same account, same balance. Override with ?server=
+  var SERVER_URL = "wss://web-production-220a3.up.railway.app";
+  /* `?server=` : un serveur LOCAL seulement (les essais) — cette socket presente le jeton de session ; sans borne,
+     un lien piege sur le vrai domaine le livrait a l hote de son choix (releve du 13/10, studio.html). */
+  (function(){ try{ var q=new URLSearchParams(location.search).get("server"); if(q && /^(127\.0\.0\.1|localhost|\[::1\])$/.test(new URL(String(q).replace(/^ws/,"http")).hostname)) SERVER_URL=q; }catch(e){} })();
+
+  // chain / vault (vault + token + min arrive in the server 'hello')
+  var CHAIN={ id:4663, hex:"0x1237", name:"Robinhood Chain", rpc:"https://rpc.mainnet.chain.robinhood.com", scan:"https://robinhoodchain.blockscout.com", sym:"ETH" };
+  var TOKEN="0x8a166Fb41Cd659a0a43396272FF73973Ce29F817", VAULT="", MIN_WITHDRAW="50";
+  var ERC20_ABI=["function approve(address,uint256) returns (bool)","function allowance(address,address) view returns (uint256)","function balanceOf(address) view returns (uint256)","function transfer(address,uint256) returns (bool)"];
+  var VAULT_ABI=["function deposit(uint256)","function withdraw(uint256 cumulative,uint256 deadline,uint8 v,bytes32 r,bytes32 s)"];
+  var provider=null, signer=null;
+  function fmtBig(n){ n=parseFloat(n||0); if(n>=1e9)return (n/1e9).toFixed(2)+"B"; if(n>=1e6)return (n/1e6).toFixed(2)+"M"; if(n>=1e3)return (n/1e3).toFixed(2)+"k"; return (Math.round(n*100)/100).toString(); }
+  function esc(s){ return String(s==null?"":s).replace(/[<>&]/g,function(c){return{"<":"&lt;",">":"&gt;","&":"&amp;"}[c];}); }
+
+  var $=function(s){return document.getElementById(s);};
+  var result=$("result"), feed=$("feed"), balEl=$("bal"), dot=$("dot"),
+      connectBtn=$("connectBtn"), spinBtn=$("spinBtn"), fairEl=$("fair");
+
+  var ws=null, authed=false, myAddr=null, loginNonce=null, balance=0, inflight=0, feedCount=0;
+
+  function toast(t){ var e=$("toast"); e.textContent=t; e.classList.add("show"); clearTimeout(e._t); e._t=setTimeout(function(){e.classList.remove("show");},2200); }
+  function fmtBal(b){ b=parseFloat(b||0); return b>=1e9?(b/1e9).toFixed(2)+"B":b>=1e6?(b/1e6).toFixed(2)+"M":b>=1000?(b/1000).toFixed(1)+"k":b.toFixed(2); }
+  function setBalance(b){ balance=parseFloat(b||0); balEl.textContent=fmtBal(balance); updateSpin(); }
+  function setDot(on){ dot.className="statusdot "+(on?"on":"off"); }
+  /* ---- le coffre choisi ($SWOGE vault ou $SWOGEBET bet) : c'est coffre.js
+     qui tient l'interface ; ici on lit juste le solde et le symbole du coffre
+     actif pour borner la mise et nommer le bouton. Sans $SWOGEBET, c'est
+     toujours $SWOGE — comportement d'avant a l'identique. */
+  function soldeActif(){ return (window.SwogeCoffre && SwogeCoffre.jeton()==="swogebet") ? SwogeCoffre.soldeBet() : balance; }
+  function symActif(){ return (window.SwogeCoffre && SwogeCoffre.jeton()==="swogebet") ? "$SWOGEBET" : "$SWOGE"; }
+  function jetonActif(){ return (window.SwogeCoffre && SwogeCoffre.jeton()) || "swoge"; }
+  var ROU_MIN=1, ROU_MAX=1000;          // bornes serveur (ROULETTE_MIN_BET / ROULETTE_MAX_BET)
+  var chipVal=5;                         // valeur du jeton selectionne
+  var bets=[];                           // paris poses : [{cle, numeros:[...], label, mise}]
+  function totalMise(){ var t=0; for(var i=0;i<bets.length;i++) t+=bets[i].mise; return t; }
+  /* le bouton Spin : actif seulement connecte, avec des paris, sous le plafond,
+     couvert par le solde du coffre actif, et aucune manche deja en vol */
+  function updateSpin(){
+    var sym=symActif(); var sm=$("rlSym"); if(sm) sm.textContent=sym;
+    var tot=totalMise(); var te=$("rlTotal"); if(te) te.textContent=tot;
+    if(!spinBtn) return;
+    var av=soldeActif();
+    var can = authed && tot>0 && tot<=ROU_MAX && tot<=av && inflight<1;
+    spinBtn.disabled=!can;
+    spinBtn.textContent = (tot>0 && tot>av) ? ("Need "+sym+" — deposit first")
+                        : (tot>0 ? ("Spin · "+tot+" "+sym) : "Place your bets");
+  }
+
+  // ---- sound (WebAudio, no external files) ----
+  var SFX=(function(){
+    var ctx=null, muted=false;
+    try{ muted=localStorage.getItem("swogeSmashMute")==="1"; }catch(e){}
+    function ac(){ if(!ctx){ try{ ctx=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ return null; } } if(ctx&&ctx.state==="suspended") ctx.resume(); return ctx; }
+    function tone(f,dur,type,vol,when){ var c=ac(); if(!c||muted) return; var o=c.createOscillator(),g=c.createGain(); o.type=type||"sine"; o.frequency.value=f; var t=c.currentTime+(when||0); g.gain.setValueAtTime(vol||0.2,t); g.gain.exponentialRampToValueAtTime(0.0008,t+dur); o.connect(g); g.connect(c.destination); o.start(t); o.stop(t+dur); }
+    function noise(dur,vol){ var c=ac(); if(!c||muted) return; var n=Math.floor(c.sampleRate*dur), buf=c.createBuffer(1,n,c.sampleRate), d=buf.getChannelData(0); for(var i=0;i<n;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/n,2.2); var s=c.createBufferSource(); s.buffer=buf; var g=c.createGain(); g.gain.value=vol||0.15; var f=c.createBiquadFilter(); f.type="highpass"; f.frequency.value=1100; s.connect(f); f.connect(g); g.connect(c.destination); s.start(); }
+    return {
+      unlock:function(){ ac(); },
+      hit:function(){ noise(0.12,0.20); tone(160,0.12,"square",0.16); tone(85,0.17,"sine",0.13); },
+      win:function(m){ var big=m>=50; var notes=[523,659,784, big?1047:880]; notes.forEach(function(f,i){ tone(f,0.16,"triangle",0.16,i*0.07); }); if(big){ tone(1319,0.35,"sine",0.13,0.28); tone(1568,0.4,"sine",0.10,0.36); } },
+      lose:function(){ tone(150,0.1,"sine",0.07); },
+      toggle:function(){ muted=!muted; try{ localStorage.setItem("swogeSmashMute",muted?"1":"0"); }catch(e){} if(!muted) ac(); return muted; },
+      isMuted:function(){ return muted; }
+    };
+  })();
+
+  // ---- WebSocket ----
+  function connect(){
+    try{ ws=new WebSocket(SERVER_URL); }catch(e){ setDot(false); return; }
+    ws.onopen=function(){ setDot(true); loginNonce=null; };   /* login declenche par 'hello' */
+    ws.onclose=function(){ setDot(false); authed=false; setTimeout(connect,3000); };
+    ws.onerror=function(){ setDot(false); };
+    ws.onmessage=function(ev){
+      var m; try{ m=JSON.parse(ev.data); }catch(e){ return; }
+      if(window.SwogeCoffre) SwogeCoffre.vu(m);         // suit le solde $SWOGEBET (auth, betBalance, resultats)
+      if(m.type==="state") return;                     // pusher table — ignore here
+      if(m.type==="hello"){ loginNonce=m.loginNonce; /* Le jeton de session evite de resigner : on le presente des que le nonce est connu. Le serveur repond soit par 'auth' — connecte, sans SDK ni signature — soit par 'resumeFailed'. */
+        var reprise=false;
+        (function(){ var j=null; try{ j=localStorage.getItem("swogeSession"); }catch(e){} if(j){ reprise=true; send({type:"resume", token:j, tgId:(typeof TG_ID!=="undefined"?TG_ID:null)}); } })();
+        if(m.vault)VAULT=m.vault; if(m.token)TOKEN=m.token; if(m.minWithdraw)MIN_WITHDRAW=m.minWithdraw; showFair(m.serverSeedHash,0);
+        /* le nonce n'arrive qu'ici : on relance la session sauvegardee maintenant —
+           mais pas quand une reprise est deja en vol : sinon `doLogin()` fait
+           apparaitre une signature de portefeuille a chaque actualisation
+           alors que le joueur etait deja connecte. Meme fix que `swogebet.html`
+           et `swoge_blackjack.html`. La reprise ratee, elle, appelle deja
+           `doLogin()` depuis 'resumeFailed'. */
+        if(myAddr && !reprise) doLogin(); }
+      if(m.type==="resumeFailed"){ /* jeton perime ou revoque : on l oublie et on repart du chemin long */ try{ localStorage.removeItem("swogeSession"); }catch(e){} if(typeof autoReconnect==="function") autoReconnect(); else if(myAddr) doLogin(); return; }
+      else if(m.type==="auth"){ authed=true; myAddr=m.address; if(m.session){ try{ localStorage.setItem("swogeSession",m.session); }catch(e){} } result.textContent="Place your bets."; setBalance(m.balance); showPlay(); if(window.SwogeCoffre){ SwogeCoffre.monte($("betUI"), function(){ updateSpin(); }); } if(m.fairness) showFair(m.fairness.serverSeedHash,m.fairness.nonce); if(m.stake) setStakeInfo(m.stake); if(m.quests) renderQuests(m.quests); }
+      else if(m.type==="balance"||m.type==="deposit"){ setBalance(m.balance); if(m.type==="deposit") toast("💰 Deposit credited"); }
+      else if(m.type==="rouletteResult"){ onRoulette(m); }
+      else if(m.type==="need_deposit"){ if(m.balance!=null)setBalance(m.balance); inflight=0; updateSpin(); toast("Not enough "+symActif()+(jetonActif()==="swogebet"?" — top up in the Wallet":" — deposit in the Pusher")); }
+      else if(m.type==="error"){ inflight=Math.max(0,inflight-1); toast(m.error||"error"); updateSpin(); }
+      else if(m.type==="voucher"){ setBalance(m.balance); submitWithdraw(m.voucher); }
+      else if(m.type==="stakeInfo"){ setStakeInfo(m); }
+      else if(m.type==="stakeUnstaked"){ setStakeInfo(m); toast("Unstaked "+fmtBig(m.returned)+" $SWOGE"+(parseFloat(m.penalty)>0?" (−"+fmtBig(m.penalty)+" penalty)":"")); }
+      else if(m.type==="quests"){ renderQuests(m.quests); }
+      else if(m.type==="questClaimed"){ setBalance(m.balance); renderQuests(m.quests); toast("🎯 Quest +"+m.reward+" $SWOGE!"); }
+    };
+  }
+
+  function send(o){ if(ws&&ws.readyState===1) ws.send(JSON.stringify(o)); }
+
+  // ---- wallet (ethers signer → enables login + on-chain deposit/withdraw) ----
+  async function doConnect(){
+    var eth=window.ethereum;
+    if(!eth){ /* pas de wallet injecte (Telegram) : connexion e-mail sur place,
+                    pas de redirection vers un autre jeu */
+                 openEmailLogin(); return; }
+    try{
+      await eth.request({method:"eth_requestAccounts"});
+      var cid=await eth.request({method:"eth_chainId"});
+      if(cid!==CHAIN.hex){
+        try{ await eth.request({method:"wallet_switchEthereumChain",params:[{chainId:CHAIN.hex}]}); }
+        catch(sw){ if(sw&&sw.code===4902){ await eth.request({method:"wallet_addEthereumChain",params:[{chainId:CHAIN.hex,chainName:CHAIN.name,nativeCurrency:{name:"Ether",symbol:CHAIN.sym,decimals:18},rpcUrls:[CHAIN.rpc],blockExplorerUrls:[CHAIN.scan]}]}); } }
+      }
+      await onWalletReady(eth);
+      try{ localStorage.setItem("swogeAuth","wallet"); }catch(e){}
+    }catch(e){ toast(String(e.message||e).slice(0,90)); }
+  }
+  // shared for browser wallet OR Privy email wallet
+  async function onWalletReady(eth, addr){
+    provider=new ethers.providers.Web3Provider(eth,"any"); signer=provider.getSigner();
+    myAddr=(addr||(await signer.getAddress())).toLowerCase();
+    if(ws&&ws.readyState===1) doLogin(); else connect();
+  }
+  async function doLogin(){
+    if(!signer||loginNonce==null) return;
+    try{ var msg="SWOGE Pusher login\nnonce: "+loginNonce; var sig=await signer.signMessage(msg); send({type:"login",message:msg,signature:sig,name:myAddr.slice(0,6)}); }
+    catch(e){ toast("login cancelled"); }
+  }
+
+  // ---- email login (Privy embedded wallet, no wallet app needed) ----
+  var PRIVY_APP_ID="cmsga0yzp00a50biaf9vlzzd2", privyLoaded=false, privyEmail="";
+  function loadPrivy(){ return new Promise(function(res,rej){
+    if(privyLoaded) return res();
+    var s=document.createElement("script"); s.src="privy-swoge.js?v=c662549f";
+    s.onload=function(){ privyLoaded=true; try{ SwogePrivy.init(PRIVY_APP_ID); }catch(e){} res(); };
+    s.onerror=function(){ rej(new Error("load failed")); };
+    document.head.appendChild(s);
+  }); }
+  async function openEmailLogin(){
+    /* le panneau s'ouvre AVANT le chargement du SDK : un reseau lent ne doit pas
+       laisser le joueur sans aucun moyen de se connecter */
+    $("emCodeWrap").style.display="none"; $("emCode").value="";
+    $("emMsg").textContent="A wallet is created for you automatically — no app needed.";
+    showBox("email");
+    try{ await loadPrivy(); }
+    catch(e){ $("emMsg").textContent="Couldn't load email sign-in — check your connection and reopen this panel."; }
+  }
+
+  function showPlay(){ connectBtn.style.display="none"; var eb=$("emailBtn"); if(eb)eb.style.display="none";
+    var cr=$("connRow"); if(cr)cr.style.display="none"; var ms=$("mnSignIn"); if(ms)ms.style.display="none";
+    var bu=$("betUI"); if(bu)bu.style.display=""; updateSpin(); }
+  function showFair(hash,nonce){ if(!hash) return; fairEl.innerHTML="Provably fair · serverSeed hash <b>"+String(hash).slice(0,16)+"…</b> · nonce <b>"+nonce+"</b>"; }
+
+  // ====================== SWOGE ROULETTE ======================
+  /* L'ordre des cases sur la roue europeenne (sens horaire depuis le 0). */
+  var ROUE=[0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26];
+  var ROUGE=[1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36], ROUGESET={};
+  ROUGE.forEach(function(n){ ROUGESET[n]=1; });
+  function couleur(n){ return n===0?"green":(ROUGESET[n]?"red":"black"); }
+  function canon(ns){ return ns.slice().sort(function(a,b){return a-b;}).join("-"); }
+  function elt(tag,cls){ var e=document.createElement(tag); if(cls)e.className=cls; return e; }
+  /* numero affiche a la case (colonne c 0..11, rangee r 0..2 ; rangee 0 = haut = 3,6,.. / 2 = bas = 1,4,..) */
+  function N(c,r){ return 3*c + (3-r); }
+
+  var rlTable=$("rlTable"), rlChips=$("rlChips"), wheel=$("wheel"), rlLast=$("rlLast"), rlHist=$("rlHist");
+  var cellByN={};                 // numero -> element de case
+  var CHIPS=[1,5,25,100,500];     // jetons selectionnables
+
+  function buildChips(){
+    rlChips.innerHTML="";
+    CHIPS.forEach(function(v){
+      var b=elt("button","rl-chip c"+v+(v===chipVal?" on":"")); b.type="button"; b.textContent=v; b.setAttribute("data-v",v);
+      b.addEventListener("click",function(){ chipVal=v; [].forEach.call(rlChips.children,function(x){ x.classList.toggle("on", Number(x.getAttribute("data-v"))===chipVal); }); });
+      rlChips.appendChild(b);
+    });
+  }
+  function caseEl(n){
+    var c=elt("div","rl-cell "+couleur(n)); c.textContent=n; c.setAttribute("data-n",n); cellByN[n]=c;
+    c.addEventListener("click",function(){ placeBet([n],"Straight "+n,c); });
+    return c;
+  }
+  function outBtn(label,numeros,cls){
+    var b=elt("div","rl-cell"+(cls?(" "+cls):"")); b.textContent=label;
+    b.addEventListener("click",function(){ placeBet(numeros,label,b); });
+    return b;
+  }
+  function suite(a,b,pas){ var o=[]; for(var i=a;i<=b;i+=(pas||1)) o.push(i); return o; }
+  function buildTable(){
+    rlTable.innerHTML="";
+    var grid=elt("div","rl-grid");
+    var z=caseEl(0); z.classList.add("zero"); z.style.gridColumn="1"; z.style.gridRow="1 / 4"; grid.appendChild(z);
+    for(var r=0;r<3;r++) for(var c=0;c<12;c++){ var cc=caseEl(N(c,r)); cc.style.gridColumn=(c+2); cc.style.gridRow=(r+1); grid.appendChild(cc); }
+    rlTable.appendChild(grid);
+    // 2:1 — les trois colonnes (une par rangee du tapis)
+    var colrow=elt("div","rl-out");
+    colrow.appendChild(outBtn("2:1 (3,6,9…)", suite(3,36,3)));   // rangee du haut, n%3==0
+    colrow.appendChild(outBtn("2:1 (2,5,8…)", suite(2,35,3)));   // milieu, n%3==2
+    colrow.appendChild(outBtn("2:1 (1,4,7…)", suite(1,34,3)));   // bas, n%3==1
+    rlTable.appendChild(colrow);
+    // douzaines
+    var dz=elt("div","rl-out");
+    dz.appendChild(outBtn("1st 12", suite(1,12)));
+    dz.appendChild(outBtn("2nd 12", suite(13,24)));
+    dz.appendChild(outBtn("3rd 12", suite(25,36)));
+    rlTable.appendChild(dz);
+    // chances simples
+    var ev=elt("div","rl-even");
+    ev.appendChild(outBtn("1-18", suite(1,18)));
+    ev.appendChild(outBtn("EVEN", suite(2,36,2)));
+    ev.appendChild(outBtn("RED", ROUGE.slice(), "red"));
+    ev.appendChild(outBtn("BLACK", suite(1,36).filter(function(n){return !ROUGESET[n];}), "black"));
+    ev.appendChild(outBtn("ODD", suite(1,35,2)));
+    ev.appendChild(outBtn("19-36", suite(19,36)));
+    rlTable.appendChild(ev);
+    requestAnimationFrame(function(){ try{ poseZones(); }catch(e){} });
+  }
+  /* Les paris ENTRE cases (cheval, carre, transversale, sixain, et le 0) : des
+     pastilles posees par geometrie sur les bords ; chacune porte un ensemble de
+     cases LEGAL (le serveur refuse tout ensemble hors catalogue). */
+  function poseZones(){
+    [].forEach.call(rlTable.querySelectorAll(".rl-zone"),function(z){ z.remove(); });
+    var tr=rlTable.getBoundingClientRect();
+    function rectOf(n){ var e=cellByN[n]; if(!e) return null; var r=e.getBoundingClientRect(); return {x:r.left-tr.left,y:r.top-tr.top,w:r.width,h:r.height}; }
+    function zone(cx,cy,numeros,label){
+      var z=elt("div","rl-zone"); var s=15; z.style.width=s+"px"; z.style.height=s+"px";
+      z.style.left=(cx-s/2)+"px"; z.style.top=(cy-s/2)+"px"; z.title=label;
+      z.addEventListener("click",function(){ placeBet(numeros,label,z); });
+      rlTable.appendChild(z);
+    }
+    for(var c=0;c<12;c++){
+      for(var r=0;r<3;r++){
+        var a=rectOf(N(c,r)); if(!a) continue;
+        if(r<2) zone(a.x+a.w/2, a.y+a.h, [N(c,r),N(c,r+1)], "Split");                         // cheval vertical
+        if(c<11) zone(a.x+a.w, a.y+a.h/2, [N(c,r),N(c+1,r)], "Split");                          // cheval horizontal
+        if(c<11&&r<2) zone(a.x+a.w, a.y+a.h, [N(c,r),N(c,r+1),N(c+1,r),N(c+1,r+1)], "Corner");  // carre
+      }
+      var bot=rectOf(N(c,2)); if(!bot) continue;
+      zone(bot.x+bot.w/2, bot.y+bot.h, [3*c+1,3*c+2,3*c+3], "Street");                          // transversale
+      if(c<11) zone(bot.x+bot.w, bot.y+bot.h, suite(3*c+1,3*c+6), "Six line");                  // sixain
+    }
+    var z0=rectOf(0);
+    if(z0){
+      zone(z0.x+z0.w, z0.y+z0.h*0.16, [0,3], "Split 0/3");
+      zone(z0.x+z0.w, z0.y+z0.h*0.50, [0,2], "Split 0/2");
+      zone(z0.x+z0.w, z0.y+z0.h*0.84, [0,1], "Split 0/1");
+      zone(z0.x+z0.w, z0.y+z0.h*0.33, [0,2,3], "Trio");
+      zone(z0.x+z0.w, z0.y+z0.h*0.67, [0,1,2], "Trio");
+    }
+    renderTokens();
+  }
+
+  function placeBet(numeros,label,anchor){
+    if(!authed){ toast("connect your wallet first"); return; }
+    if(spinning||inflight>0) return;
+    var cap=Math.min(ROU_MAX, Math.floor(soldeActif()));
+    if(totalMise()+chipVal>cap){ toast(totalMise()+chipVal>ROU_MAX?("Table max "+ROU_MAX+" per spin"):("Not enough "+symActif())); return; }
+    var k=canon(numeros), found=null;
+    for(var i=0;i<bets.length;i++) if(bets[i].cle===k){ found=bets[i]; break; }
+    if(found){ found.mise+=chipVal; found.el=anchor; }
+    else bets.push({cle:k, numeros:numeros.slice().sort(function(a,b){return a-b;}), label:label, mise:chipVal, el:anchor, win:false});
+    SFX.hit(); renderTokens(); updateSpin();
+  }
+  function renderTokens(){
+    [].forEach.call(rlTable.querySelectorAll(".rl-token"),function(t){ t.remove(); });
+    var tr=rlTable.getBoundingClientRect();
+    bets.forEach(function(b){
+      if(!b.el) return;
+      var r=b.el.getBoundingClientRect();
+      var tok=elt("div","rl-token"+(b.win?" win":"")); tok.textContent=b.mise;
+      tok.style.left=(r.left-tr.left+r.width/2)+"px"; tok.style.top=(r.top-tr.top+r.height/2)+"px";
+      rlTable.appendChild(tok);
+    });
+  }
+
+  function spinRoulette(){
+    if(!authed||inflight>0||spinning) return;
+    var tot=totalMise(); if(tot<=0) return;
+    if(tot>soldeActif()){ toast("Not enough "+symActif()); return; }
+    if(tot>ROU_MAX){ toast("Table max "+ROU_MAX+" per spin"); return; }
+    inflight=1;
+    var paris=bets.map(function(b){ return {numeros:b.numeros, bet:b.mise}; });
+    send({type:"rouletteSpin", paris:paris, jeton:jetonActif()});
+    result.textContent="Spinning…";
+    updateSpin();
+  }
+
+  // ---- la roue (canvas) : dessin + animation jusqu'au numero RECU du serveur ----
+  var wctx=wheel.getContext("2d"), WR=wheel.width/2, curRot=0, spinning=false;
+  function drawWheel(rot){
+    var ctx=wctx, L=ROUE.length, step=2*Math.PI/L, i, n;
+    ctx.clearRect(0,0,wheel.width,wheel.height); ctx.save(); ctx.translate(WR,WR);
+    ctx.beginPath(); ctx.arc(0,0,WR-1,0,2*Math.PI); ctx.fillStyle="#6b4a1a"; ctx.fill();
+    for(i=0;i<L;i++){
+      var a0=rot+i*step-step/2, a1=a0+step; n=ROUE[i];
+      ctx.beginPath(); ctx.moveTo(0,0); ctx.arc(0,0,WR-7,a0,a1); ctx.closePath();
+      ctx.fillStyle = n===0?"#15803D":(ROUGESET[n]?"#C0272D":"#161616"); ctx.fill();
+      ctx.save(); ctx.rotate(rot+i*step); ctx.translate(WR-19,0); ctx.rotate(Math.PI/2);
+      ctx.fillStyle="#fff"; ctx.font="bold 11px Archivo,Arial,sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+      ctx.fillText(String(n),0,0); ctx.restore();
+    }
+    ctx.beginPath(); ctx.arc(0,0,WR*0.30,0,2*Math.PI); ctx.fillStyle="#d8c38a"; ctx.fill();
+    ctx.beginPath(); ctx.arc(0,0,WR*0.21,0,2*Math.PI); ctx.fillStyle="#b8992f"; ctx.fill();
+    ctx.restore();
+  }
+  function animateTo(numero,cb){
+    var idx=ROUE.indexOf(numero); if(idx<0) idx=0;
+    var step=2*Math.PI/ROUE.length, base=-Math.PI/2 - idx*step, target=base;
+    while(target < curRot + 5*2*Math.PI) target+=2*Math.PI;   // au moins 5 tours vers l'avant
+    var start=curRot, delta=target-start, dur=4200, t0=null;
+    spinning=true;
+    function ease(p){ return 1-Math.pow(1-p,3); }
+    function frame(ts){
+      if(t0===null) t0=ts; var p=Math.min(1,(ts-t0)/dur);
+      curRot=start+delta*ease(p); drawWheel(curRot);
+      if(p<1) requestAnimationFrame(frame);
+      else { curRot=((target%(2*Math.PI))+2*Math.PI)%(2*Math.PI); drawWheel(curRot); spinning=false; if(cb)cb(); }
+    }
+    requestAnimationFrame(frame);
+  }
+
+  function onRoulette(m){
+    if(m.fairness) showFair(m.fairness.serverSeedHash,m.fairness.nonce);
+    var numero=Number(m.numero)||0, col=couleur(numero);
+    animateTo(numero,function(){
+      inflight=0;
+      setBalance(m.balance);
+      rlLast.className="rl-last "+col; rlLast.textContent=numero;
+      bets.forEach(function(b){ b.win = b.numeros.indexOf(numero)>=0; });
+      renderTokens();
+      var net=(Number(m.payout)||0)-(Number(m.totalBet)||0);
+      if(net>0){ SFX.win(2); toast("🎉 "+numero+" "+col+" — +"+net+" "+symActif()); result.innerHTML='<span class="m">'+numero+'</span> '+col+' — you win +'+net+' '+symActif(); }
+      else if(net<0){ SFX.lose(); toast(numero+" "+col+" — −"+(-net)+" "+symActif()); result.innerHTML='<span class="m">'+numero+'</span> '+col+' — no win this time'; }
+      else { result.innerHTML='<span class="m">'+numero+'</span> '+col+' — even'; }
+      addHistory(numero);
+      setTimeout(function(){ bets=[]; renderTokens(); result.textContent="Place your bets."; updateSpin(); },1100);
+      updateSpin();
+    });
+  }
+  function addHistory(numero){
+    var col=couleur(numero);
+    var h=elt("div","h "+col); h.textContent=numero; rlHist.insertBefore(h,rlHist.firstChild);
+    while(rlHist.children.length>14) rlHist.removeChild(rlHist.lastChild);
+    var empty=feed.querySelector(".empty"); if(empty) empty.remove();
+    var bg = col==="red"?"#C0272D":col==="black"?"#222":"#15803D";
+    var row=elt("div","row");
+    row.innerHTML='<div class="mult" style="color:#fff;min-width:42px;text-align:center;border-radius:8px;background:'+bg+'">'+numero+'</div>'+
+      '<div class="txt">Landed on '+numero+' '+col+'</div>';
+    feed.insertBefore(row,feed.firstChild);
+    if(++feedCount>40){ feed.removeChild(feed.lastChild); feedCount--; }
+  }
+
+  // ---- init + controles ----
+  buildChips(); buildTable(); drawWheel(0);
+  window.addEventListener("resize",function(){ try{ poseZones(); }catch(e){} });
+  spinBtn.addEventListener("click",spinRoulette);
+  (function(){ var u=$("undoBtn"); if(u) u.addEventListener("click",function(){ if(spinning||inflight>0)return; bets.pop(); renderTokens(); updateSpin(); }); })();
+  (function(){ var c=$("clearBtn"); if(c) c.addEventListener("click",function(){ if(spinning||inflight>0)return; bets=[]; renderTokens(); updateSpin(); }); })();
+  (function(){ var ms=$("mnSignIn"); if(ms) ms.addEventListener("click",function(e){ e.preventDefault(); menu.classList.remove("open"); openEmailLogin(); }); })();
+  connectBtn.addEventListener("click",doConnect);
+  (function(){ var b=$("emailBtn"); if(b) b.addEventListener("click",openEmailLogin); })();
+  $("emSend").addEventListener("click",async function(){
+    var e=($("emEmail").value||"").trim(); if(!/.+@.+\..+/.test(e)) return toast("enter a valid email");
+    privyEmail=e; this.disabled=true; $("emMsg").textContent="Sending code…";
+    try{ await SwogePrivy.sendCode(e); $("emCodeWrap").style.display=""; $("emMsg").textContent="Code sent to "+e+" — check your inbox (and spam)."; }
+    catch(err){ $("emMsg").textContent="Error: "+String(err.message||err).slice(0,120); }
+    this.disabled=false;
+  });
+  $("emVerify").addEventListener("click",async function(){
+    var c=($("emCode").value||"").trim(); if(!c) return toast("enter the code");
+    this.disabled=true; $("emMsg").textContent="Verifying + creating your wallet…";
+    try{ await SwogePrivy.verifyCode(privyEmail,c); try{ localStorage.setItem("swogeAuth","email"); }catch(_){} closePanel(); await onWalletReady(SwogePrivy.getProvider(), SwogePrivy.getAddress()); }
+    catch(err){ $("emMsg").textContent="Error: "+String(err.message||err).slice(0,140); }
+    this.disabled=false;
+  });
+  window.addEventListener("keydown",function(e){ if(e.code==="Space"&&authed){ e.preventDefault(); spinRoulette(); } });
+
+  // ============ account pop-ups (deposit / withdraw / wallet / staking / quests) ============
+  var ovl=$("ovl");
+  var PANELS=["dep","wd","wallet","stake","quests","email"];
+  function showBox(name){ ovl.classList.add("show"); PANELS.forEach(function(b){ var el=$("box-"+b); if(el) el.classList.toggle("show", b===name); }); }
+  function openPanel(name){
+    if(!authed){ toast("connect your wallet first"); doConnect(); return; }
+    showBox(name);
+    if(name==="dep") loadWalletBalances();
+    else if(name==="wd"){ $("wdBal").textContent=fmtBig(balance); $("wdMin").textContent=MIN_WITHDRAW; }
+    else if(name==="wallet") openAccount();
+    else if(name==="stake"){ send({type:"stakeInfo"}); renderStake(); }
+    else if(name==="quests") send({type:"quests"});
+  }
+  function closePanel(){ ovl.classList.remove("show"); PANELS.forEach(function(b){ var el=$("box-"+b); if(el) el.classList.remove("show"); }); }
+  ovl.addEventListener("click",function(e){ if(e.target===ovl) closePanel(); });
+  [].forEach.call(document.querySelectorAll("[data-close]"),function(b){ b.addEventListener("click",closePanel); });
+  /* ---- LE PORTEFEUILLE SE RECUPERE QUAND ON EN A BESOIN ----
+   * DEMANDE : « les deposit sur telephone il dit souvent reconnectez-vous a
+   * votre compte alors que je suis deja connecte ».
+   * `autoReconnect()` ne tournait QU UNE FOIS, au chargement. Sur telephone —
+   * et surtout dans le navigateur interne de Telegram — la restauration Privy
+   * expire au bout de douze secondes (voir la note dans `autoReconnect`). Le
+   * joueur reste alors connecte AU JEU, parce que le jeton de session, lui,
+   * passe : son solde s affiche, il peut jouer. Mais `signer` est resté nul,
+   * et il n y avait plus rien pour le rattraper — au premier depot il lisait
+   * donc « connect wallet first » en etant parfaitement connecte, sans aucune
+   * facon de s en sortir a part recharger la page.
+   * La restauration est desormais RETENTEE au moment ou l on en a besoin, et
+   * ce n est qu apres cet echec-la qu on redemande une connexion — celle qui
+   * correspond a SA facon de s etre connecte, e-mail ou portefeuille. */
+  var _repriseEnCours = null;
+  async function assureSigner(){
+    if(signer) return true;
+    /* Deux boutons presses coup sur coup ne doivent pas lancer deux
+       restaurations concurrentes : elles partagent la meme promesse. */
+    if(!_repriseEnCours){
+      _repriseEnCours = (async function(){
+        try{ await autoReconnect(); }catch(e){}
+        /* Privy peut tenir la session en memoire sans que `restore()` reponde
+           jamais : on la lui demande en clair avant d abandonner. */
+        try{
+          if(!signer && window.SwogePrivy && SwogePrivy.isLoggedIn && SwogePrivy.isLoggedIn()){
+            var a = SwogePrivy.getAddress();
+            if(a){
+              provider = new ethers.providers.Web3Provider(SwogePrivy.getProvider(),"any");
+              signer   = provider.getSigner();
+              myAddr   = String(a).toLowerCase();
+            }
+          }
+        }catch(e){}
+      })();
+      try{ await _repriseEnCours; } finally { _repriseEnCours = null; }
+    } else {
+      await _repriseEnCours;
+    }
+    if(signer) return true;
+    var m=null; try{ m=localStorage.getItem("swogeAuth"); }catch(e){}
+    if(m==="email"){ toast("Session expired \u2014 sign in again"); openEmailLogin(); }
+    else { toast("Connect your wallet to continue"); doConnect(); }
+    return false;
+  }
+  async function needSigner(){ return await assureSigner(); }
+
+  async function doDeposit(){
+    if(!(await needSigner())) return; if(!VAULT){ toast("server has no vault set"); return; }
+    var s=($("depAmt").value||"").replace(",",".").trim(), amt;
+    try{ amt=ethers.utils.parseUnits(s,18); }catch(e){ return toast("bad amount"); }
+    if(amt.lte(0)) return toast("enter an amount");
+    try{
+      var token=new ethers.Contract(TOKEN,ERC20_ABI,signer), vault=new ethers.Contract(VAULT,VAULT_ABI,signer);
+      var allow=await token.allowance(myAddr,VAULT);
+      if(allow.lt(amt)){ toast("approve $SWOGE…"); var ta=await token.approve(VAULT,ethers.constants.MaxUint256); await ta.wait(); }
+      toast("depositing…"); var tx=await vault.deposit(amt); await tx.wait(); toast("✅ deposited — credits incoming"); closePanel();
+    }catch(e){ toast("deposit: "+String(e.reason||e.message||e).slice(0,80)); }
+  }
+  function requestWithdraw(){
+    var s=($("wdAmt").value||"").replace(",",".").trim();
+    if(!s||parseFloat(s)<parseFloat(MIN_WITHDRAW)) return toast("min "+MIN_WITHDRAW+" $SWOGE");
+    send({type:"withdraw",amount:s}); toast("requesting voucher…");
+  }
+  async function submitWithdraw(v){
+    if(!(await needSigner())) return;
+    try{ var vault=new ethers.Contract(v.vault||VAULT,VAULT_ABI,signer); toast("confirm withdrawal…"); var tx=await vault.withdraw(v.cumulative,v.deadline,v.v,v.r,v.s); await tx.wait(); toast("✅ paid out to your wallet"); closePanel(); }
+    catch(e){ toast("withdraw: "+String(e.reason||e.message||e).slice(0,80)); }
+  }
+  function openAccount(){
+    if(!myAddr){ toast("connect first"); return; }
+    $("acAddr").value=myAddr; $("acExplorer").href=CHAIN.scan+"/address/"+myAddr; $("acSwoge").textContent="…"; $("acEth").textContent="…"; loadWalletBalances();
+  }
+  var walletSwoge=0;   // raw $SWOGE in the connected wallet (for the deposit % buttons)
+  /* ---- LIRE UN SOLDE NE DEMANDE PAS DE PORTEFEUILLE ----
+     `loadWalletBalances` sortait des que `provider` etait nul, et n'y revenait
+     jamais : les deux lignes restaient sur « … » pour toujours. Sur un compte
+     ouvert par e-mail, le portefeuille est fabrique par Privy et n'arrive
+     qu'apres la restauration de session — donc quiconque ouvrait « My Wallet »
+     ou « Deposit » avant la fin de cette restauration ne voyait plus jamais
+     ses soldes. Rien ne relancait la lecture.
+     Or un solde est PUBLIC : le lire ne demande ni signature, ni portefeuille,
+     ni permission. On retombe donc sur un lecteur RPC en lecture seule, qui
+     marche pour tout le monde — compte e-mail, portefeuille connecte, ou
+     simple visiteur dans le navigateur de Telegram. */
+  var _lecteur=null;
+  function lecteurChaine(){
+    if(provider) return provider;
+    if(_lecteur) return _lecteur;
+    try{ _lecteur=new ethers.providers.JsonRpcProvider(CHAIN.rpc); }catch(e){ _lecteur=null; }
+    return _lecteur;
+  }
+  async function loadWalletBalances(){
+    var lec=lecteurChaine(); if(!lec||!myAddr) return; var e="—", sw="—";
+    try{ var b=await lec.getBalance(myAddr); e=(+ethers.utils.formatEther(b)).toFixed(5); }catch(x){}
+    try{ var t=new ethers.Contract(TOKEN,ERC20_ABI,lec), bb=await t.balanceOf(myAddr); walletSwoge=+ethers.utils.formatUnits(bb,18); sw=fmtBig(walletSwoge); }catch(x){}
+    ["acEth","depEth"].forEach(function(id){ var el=$(id); if(el) el.textContent=e; });
+    ["acSwoge","depSwoge"].forEach(function(id){ var el=$(id); if(el) el.textContent=sw; });
+  }
+  document.addEventListener("click",function(e){
+    var t=e.target&&e.target.closest?e.target.closest(".pct"):null; if(!t) return;
+    var pct=parseInt(t.getAttribute("data-pct"))||0; if(!pct) return;
+    if(t.classList.contains("dpct")){
+      if(!(walletSwoge>0)){ toast("no $SWOGE in your wallet"); try{ loadWalletBalances(); }catch(x){} return; }
+      $("depAmt").value=String(Math.floor(walletSwoge*pct/100*10000)/10000);
+    } else if(t.classList.contains("spct")){
+      if(!(balance>0)){ toast("no $SWOGE balance"); return; }
+      $("stAmt").value=String(Math.floor(balance*pct/100*10000)/10000);
+    } else if(t.classList.contains("wpct")){
+      if(!(balance>0)){ toast("no $SWOGE balance"); return; }
+      $("wdAmt").value=String(Math.floor(balance*pct/100*10000)/10000);
+    }
+  });
+  // staking
+  var stStaked=0,stPending=0,stAprBps=10000,stSyncMs=0,stLocked=0,stUnlocked=0,stNextUnlock=null,stPenaltyBps=5000,stLockDays=365;
+  function setStakeInfo(m){
+    if(m.staked!=null)stStaked=parseFloat(m.staked); if(m.pending!=null)stPending=parseFloat(m.pending); if(m.aprBps!=null)stAprBps=m.aprBps;
+    if(m.locked!=null)stLocked=parseFloat(m.locked); if(m.unlocked!=null)stUnlocked=parseFloat(m.unlocked); if(m.penaltyBps!=null)stPenaltyBps=m.penaltyBps;
+    if(m.lockDays!=null)stLockDays=m.lockDays; if("nextUnlock" in m)stNextUnlock=m.nextUnlock; if(m.balance!=null)setBalance(m.balance);
+    stSyncMs=Date.now(); var ap=$("stApr"); if(ap) ap.textContent=(stAprBps/100)+"% APR · locked "+stLockDays+" days · yield every second"; renderStake();
+  }
+  function livePending(){ var el=(Date.now()-stSyncMs)/1000; return stPending+stStaked*(stAprBps/10000)*(el/31536000); }
+  function fmtYield(n){ return n>=1000?fmtBig(n):(n>=1?n.toFixed(3):n.toFixed(6)); }
+  function renderStake(){
+    if(!$("stStaked")) return;
+    $("stStaked").textContent=fmtBig(stStaked); $("stPending").textContent=fmtYield(livePending()); $("stUnlocked").textContent=fmtBig(stUnlocked);
+    var el=$("stLock");
+    if(stLocked>0){ var w=stNextUnlock?new Date(stNextUnlock).toLocaleDateString():"—"; el.innerHTML="🔒 "+fmtBig(stLocked)+" locked until "+w+" — early unstake forfeits "+(stPenaltyBps/100)+"% of the locked part."; el.style.color="var(--red)"; }
+    else if(stStaked>0){ el.textContent="✅ All unlocked — unstake with no penalty."; el.style.color="var(--green)"; }
+    else el.textContent="";
+  }
+  setInterval(function(){ if(ovl.classList.contains("show")&&$("box-stake").classList.contains("show")) $("stPending").textContent=fmtYield(livePending()); },250);
+  function doStake(){ var v=($("stAmt").value||"").replace(",",".").trim(); if(!(parseFloat(v)>0))return toast("enter an amount"); if(!confirm("Stake "+v+" $SWOGE at "+(stAprBps/100)+"% APR?\nLocks "+stLockDays+" days; early unstake loses "+(stPenaltyBps/100)+"%.")) return; send({type:"stake",amount:v}); $("stAmt").value=""; }
+  function doUnstake(){ if(!(stStaked>0))return toast("nothing staked"); if(stLocked>0&&!confirm("⚠️ "+fmtBig(stLocked)+" still locked. Unstaking now loses "+(stPenaltyBps/100)+"%. Continue?"))return; send({type:"unstake"}); }
+  function doClaimStake(){ send({type:"claimStake"}); }
+  // quests
+  function renderQuests(list){
+    var box=$("questrows"); if(!box||!list) return; var h=[];
+    for(var i=0;i<list.length;i++){ var q=list[i], pct=q.target>0?Math.min(100,Math.round(q.progress/q.target*100)):100, btn,cls;
+      if(q.claimed){btn="Claimed ✓";cls="done";} else if(q.locked){btn="Deposit to unlock";cls="off";} else if(q.claimable){btn="CLAIM +"+q.reward+" $SWOGE";cls="on";} else {btn=(q.metric==="free"?"Come back tomorrow":q.progress+" / "+q.target);cls="off";}
+      h.push('<div class="quest"><div class="qh"><span>'+esc(q.label)+'</span><span class="qr">+'+q.reward+'</span></div><div class="qbar"><i style="width:'+pct+'%"></i></div><button class="qclaim '+cls+'" '+(cls==="on"?'data-q="'+esc(q.id)+'"':'disabled')+'>'+btn+'</button></div>');
+    }
+    box.innerHTML=h.join(""); var bs=box.querySelectorAll(".qclaim[data-q]"); for(var j=0;j<bs.length;j++) bs[j].onclick=function(){ send({type:"claimQuest",id:this.getAttribute("data-q")}); };
+  }
+  $("depGo").onclick=doDeposit; $("wdGo").onclick=requestWithdraw; $("stStake").onclick=doStake; $("stUnstake").onclick=doUnstake; $("stClaim").onclick=doClaimStake;
+  $("acDeposit").onclick=function(){ openPanel("dep"); };
+  $("acCopy").onclick=function(){ try{ navigator.clipboard.writeText(myAddr||""); toast("Address copied"); }catch(e){} };
+  // ---- send $SWOGE / ETH to another address ----
+  function sendMsg(t,c){ var e=$("sendMsg"); if(!e)return; e.textContent=t; e.style.color=c==="warn"?"#E0443E":c==="ok"?"#0E7C3E":"#6B7C99"; }
+  async function doSend(){
+    if(!(await assureSigner())) return;
+    var to=($("sendTo").value||"").trim(); if(!/^0x[0-9a-fA-F]{40}$/.test(to)) return sendMsg("Enter a valid 0x address","warn");
+    var v=($("sendAmt").value||"").replace(",",".").trim(); if(!(parseFloat(v)>0)) return sendMsg("Enter an amount","warn");
+    var tok=$("sendTok").value;
+    try{
+      sendMsg("Confirm in your wallet…");
+      var tx;
+      if(tok==="eth"){ tx=await signer.sendTransaction({to:to,value:ethers.utils.parseEther(v)}); }
+      else { var c=new ethers.Contract(TOKEN,ERC20_ABI,signer); tx=await c.transfer(to,ethers.utils.parseUnits(v,18)); }
+      sendMsg("Sending…"); await tx.wait(); sendMsg("✅ Sent "+v+" "+(tok==="eth"?"ETH (RH)":"$SWOGE"),"ok");
+      $("sendAmt").value=""; $("sendTo").value=""; loadWalletBalances();
+    }catch(e){ sendMsg("Failed: "+String(e.reason||e.message||e).slice(0,110),"warn"); }
+  }
+  (function(){ var b=$("sendGo"); if(b) b.onclick=doSend; })();
+  // ---- disconnect / logout ----
+  async function doLogout(){
+    try{ localStorage.removeItem("swogeAuth"); try{ localStorage.removeItem("swogeSession"); }catch(e){} }catch(e){}
+    try{ if(window.SwogePrivy&&SwogePrivy.isLoggedIn&&SwogePrivy.isLoggedIn()) await SwogePrivy.logout(); }catch(e){}
+    try{ if(ws){ ws.onclose=null; ws.close(); } }catch(e){}
+    authed=false; signer=null; provider=null; myAddr="";
+    toast("Wallet disconnected");
+    setTimeout(function(){ location.reload(); },300);
+  }
+  (function(){ var b=$("acLogout"); if(b) b.onclick=doLogout; })();
+
+  // ---- menu ----
+  var menuBtn=$("menuBtn"), menu=$("menu"), soundItem=$("soundItem");
+  menuBtn.addEventListener("click",function(e){ e.stopPropagation(); menu.classList.toggle("open"); });
+  document.addEventListener("click",function(e){ if(!menu.contains(e.target)&&e.target!==menuBtn) menu.classList.remove("open"); });
+  menu.addEventListener("click",function(e){ var a=e.target.closest("a[data-panel]"); if(!a) return; e.preventDefault(); menu.classList.remove("open"); openPanel(a.getAttribute("data-panel")); });
+  function refreshSoundLabel(){ soundItem.textContent = SFX.isMuted()?"🔇 Sound: off":"🔊 Sound: on"; }
+  refreshSoundLabel();
+  soundItem.addEventListener("click",function(e){ e.preventDefault(); SFX.toggle(); refreshSoundLabel(); });
+  // unlock audio on the first user gesture (mobile browsers require it)
+  ["click","keydown","touchstart"].forEach(function(ev){ window.addEventListener(ev,function once(){ SFX.unlock(); window.removeEventListener(ev,once); }); });
+
+  // ---- silent cross-page reconnect: keep the session when switching games ----
+  /* Un jeton de session en reserve veut dire qu'une reprise est en cours ou
+     va l'etre : rien a faire signer a personne tant qu'il est la. */
+  function jetonDeSession(){
+    try{ return !!localStorage.getItem("swogeSession"); }catch(e){ return false; }
+  }
+  async function autoReconnect(){
+    var method; try{ method=localStorage.getItem("swogeAuth"); }catch(e){}
+    if(!method) return;
+    try{
+      if(method==="wallet"){
+        var eth=window.ethereum; if(!eth) return;
+        var accs=await eth.request({method:"eth_accounts"});   // no popup — only already-authorized accounts
+        if(!accs||!accs.length) return;
+        provider=new ethers.providers.Web3Provider(eth,"any"); signer=provider.getSigner();
+        myAddr=accs[0].toLowerCase();
+        /* ---- ET PAS DAVANTAGE PAR CE CHEMIN-CI ----
+           DEMANDE : « ne redemande pas de connecter son wallet si on est deja
+           connecte a la page ». Le correctif pose sur `hello` ne couvrait que
+           `hello`. Celui-ci est une COURSE, donc plus discret : `autoReconnect`
+           est lance en meme temps que `connect()`, il attend le portefeuille
+           — `eth_accounts`, une iframe Privy — et quand cette attente se
+           termine APRES l'ouverture de la socket, il appelle `doLogin()` de
+           lui-meme. C'est-a-dire une signature a faire signer, alors que la
+           reprise de session est deja partie et va repondre toute seule.
+           Selon la vitesse du portefeuille, la fenetre surgissait ou non : d'ou
+           un defaut qui revient « une fois sur deux ».
+           Le jeton en reserve est le signal, ici comme dans `hello` : s'il y en
+           a un, la reprise s'en charge. S'il est perime, `resumeFailed` l'efface
+           AVANT de rappeler `autoReconnect` — et le chemin long repart alors
+           normalement, jeton absent. */
+        if(ws&&ws.readyState===1 && !jetonDeSession()) doLogin();
+      } else if(method==="email"){
+        await loadPrivy();
+        var addr=null;
+        /* ---- UN PORTEFEUILLE QUI NE REPOND NI OUI NI NON ----
+           `restore()` ouvre une iframe cachee chez Privy et attend qu'elle
+           reponde. Quand cette iframe ne peut pas fonctionner — c'est le cas
+           dans le navigateur interne de Telegram, qui cloisonne le stockage
+           des tiers — la promesse ne se resout jamais ET ne se rejette
+           jamais. Le `try/catch` autour ne rattrape rien : il n'y a pas
+           d'erreur, il n'y a rien du tout. La reconnexion restait donc en
+           suspens pour toujours, et le joueur se retrouvait connecte au jeu
+           mais sans portefeuille, sans qu'aucun message ne le dise.
+           Douze secondes, puis on abandonne proprement. */
+        if(SwogePrivy.restore) addr=await Promise.race([
+          SwogePrivy.restore(),
+          new Promise(function(r){ setTimeout(function(){ r(null); },12000); })
+        ]);
+        else if(SwogePrivy.isLoggedIn&&SwogePrivy.isLoggedIn()) addr=SwogePrivy.getAddress();
+        if(!addr) return;
+        provider=new ethers.providers.Web3Provider(SwogePrivy.getProvider(),"any"); signer=provider.getSigner();
+        myAddr=String(addr).toLowerCase();
+        if(ws&&ws.readyState===1 && !jetonDeSession()) doLogin();
+      }
+    }catch(e){}
+  }
+
+  connect();
+  autoReconnect();
+})();
+</script>
+
+</body>
+</html>
